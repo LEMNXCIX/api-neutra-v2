@@ -1,6 +1,6 @@
 /**
  * Validar los datos
- * @param {Objeto} errors Error de la BD 
+ * @param {Objeto} errors Error de la BD
  * @returns Mensaje que no se ha podido validar los datos
  */
 function validationError(errors) {
