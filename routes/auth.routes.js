@@ -9,7 +9,7 @@ const AuthService = require("../services/auth.services");
 const authValidation = require("../middleware/auth.middleware");
 
 /**
- * Routas de las peticiones de Login y Signup
+ * Rutas de las peticiones de Login y Signup
  * @param {funcion} app express()
  */
 
@@ -32,7 +32,7 @@ function auth(app) {
 		return authResponse(res, result, 200);
 	});
 
-	//Ruta del loguot que elimina la cookie
+	//Ruta del logout que elimina la cookie
 	router.get("/logout", (req, res) => {
 		return deleteCookie(res);
 	});

@@ -1,8 +1,10 @@
+/**
+ *  Lista de variables de entorno para el proyecto
+ */
 require("dotenv").config();
 
 const config = {
   env: process.env.NODE_ENV,
-
   production: process.env.NODE_ENV === "production",
   development: process.env.NODE_ENV === "development",
   port: process.env.PORT,

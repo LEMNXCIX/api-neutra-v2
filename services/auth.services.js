@@ -98,7 +98,9 @@ class Auth {
 		return {
 			success: true,
 			user: userData,
-			message: op?"Se ha creado el usuario":"Se ha iniciado sesión correctamente",
+			message: op
+				? "Se ha creado el usuario"
+				: "Se ha iniciado sesión correctamente",
 			token,
 		};
 	}

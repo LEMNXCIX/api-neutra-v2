@@ -12,7 +12,7 @@ function order(app) {
 
   app.use("/api/order", router);
 
-  //Crear la ordern
+  //Crear la orden
   router.post("/", authMiddleware(1), async (req, res) => {
     const result = await orderServ.create(req.user.id);
     return res.status(result.error ? 400 : 200).json(result);

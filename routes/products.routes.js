@@ -24,7 +24,7 @@ function products(app) {
 		});
 		return res.status(result.error ? 400 : 200).json(result);
 	});
-	//Realizar la busqueda por el nombre del producto
+	//Realizar la búsqueda por el nombre del producto
 	router.post("/search/", async (req, res) => {
 		const name = req.body.name;
 		const result = await productsServ.getByName(name);

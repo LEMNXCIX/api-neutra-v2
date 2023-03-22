@@ -18,7 +18,7 @@ function cart(app) {
     return res.status(result.error ? 400 : 200).json(result);
   });
 
-  //Anadir producto al carrito
+  //Añadir producto al carrito
   router.post("/add", authMiddleware(1), async (req, res) => {
     const { idProduct, amount } = req.body;
     const result = await cartServ.addToCart(req.user.id, idProduct, amount);
