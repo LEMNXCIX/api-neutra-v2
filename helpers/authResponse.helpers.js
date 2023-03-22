@@ -5,7 +5,7 @@ const { production } = require("../config/index.config");
  * @param {res} res
  * @param {result} result
  * @param {string} statusCode
- * @returns Cookie con expiracion de 7 dias
+ * @returns Cookie con expiración de 7 días
  */
 function authResponse(res, result, statusCode) {
 	if (result.success) {
