@@ -46,10 +46,10 @@ app.use(
 	})
 );
 app.use(function (req, res, next) {
-	res.header("Access-Control-Allow-Origin", "http://localhost:3000");
-	res.header("Access-Control-Allow-Headers", true);
-	res.header("Access-Control-Allow-Credentials", true);
-	res.header(
+	req.header("Access-Control-Allow-Origin", "http://localhost:3000");
+	req.header("Access-Control-Allow-Headers", true);
+	req.header("Access-Control-Allow-Credentials", true);
+	req.header(
 		"Access-Control-Allow-Methods",
 		"GET, POST, OPTIONS, PUT, PATCH, DELETE"
 	);
@@ -65,7 +65,7 @@ app.use(
 );
 app.use(passport.initialize());
 
-//Usando estretegias de passport para el Login
+//Usando estrategias de passport para el Login
 passport.use(useGoogleStrategy());
 passport.use(useFacebookStrategy());
 passport.use(useGitHubStrategy());
