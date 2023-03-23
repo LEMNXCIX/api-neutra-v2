@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
+    "test": "cross-env NODE_ENV=test jest --verbose --silent",
     "start": "cross-env NODE_ENV=production node app.js",
     "dev": "cross-env NODE_ENV=development npx nodemon app.js"
   },
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "jest": "^29.5.0",
-    "nodemon": "^2.0.16"
+    "nodemon": "^2.0.16",
+    "supertest": "^6.3.3"
   }
 }
