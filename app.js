@@ -66,7 +66,7 @@ app.use(
 app.use(passport.initialize());
 
 //Usando estrategias de passport para el Login
-passport.use(useGoogleStrategy());
+//passport.use(useGoogleStrategy());
 passport.use(useFacebookStrategy());
 passport.use(useGitHubStrategy());
 passport.use(useTwitterStrategy());
