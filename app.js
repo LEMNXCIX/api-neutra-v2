@@ -63,20 +63,20 @@ app.use(
 		saveUninitialized: false,
 	})
 );
-app.use(passport.initialize());
+// app.use(passport.initialize());
 
-//Usando estrategias de passport para el Login
+///Usando estrategias de passport para el Login
 //passport.use(useGoogleStrategy());
-passport.use(useFacebookStrategy());
-passport.use(useGitHubStrategy());
-passport.use(useTwitterStrategy());
+// passport.use(useFacebookStrategy());
+// passport.use(useGitHubStrategy());
+// passport.use(useTwitterStrategy());
 
-passport.serializeUser((user, done) => {
-	done(null, user);
-});
-passport.deserializeUser((user, done) => {
-	done(null, user);
-});
+// passport.serializeUser((user, done) => {
+// 	done(null, user);
+// });
+// passport.deserializeUser((user, done) => {
+// 	done(null, user);
+// });
 
 //Usando las rutas
 auth(app);
