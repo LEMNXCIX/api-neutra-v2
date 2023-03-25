@@ -11,7 +11,20 @@ on:
 
 jobs:
   build:
-  
+    env: 
+      PORT: ${{ secrets.PORT }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+      OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+      FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
+      FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
+      CALLBACK_URL_DEVELOPMENT: ${{ secrets.CALLBACK_URL_DEVELOPMENT }}
+
     runs-on: self-hosted
     
     strategy:
@@ -20,24 +33,28 @@ jobs:
         
     steps:
     - uses: actions/checkout@v3
+    - name: Create env file
+      run: |
+       touch .env 
+       echo  PORT =  ${{ secrets.PORT }} >> .env
+       echo SESSION_SECRET =  ${{ secrets.SESSION_SECRET }} >> .env
+       echo DB_NAME =  ${{ secrets.DB_NAME }} >> .env
+       echo DB_HOST = ${{ secrets.DB_HOST }} >> .env
+       echo DB_PASSWORD = ${{ secrets.DB_PASSWORD }} >> .env
+       echo DB_USERNAME = ${{ secrets.DB_USERNAME }} >> .env
+       echo JWT_SECRET = ${{ secrets.JWT_SECRET }} >> .env
+       echo OAUTH_CLIENT_SECRET = ${{ secrets.OAUTH_CLIENT_SECRET }} >> .env
+       echo OAUTH_CLIENT_ID = ${{ secrets.OAUTH_CLIENT_ID }} >> .env 
+       echo FACEBOOK_APP_ID = ${{ secrets.FACEBOOK_APP_ID }} >> .env
+       echo FACEBOOK_APP_SECRET =  ${{ secrets.FACEBOOK_APP_SECRET }} >> .env
+       echo CALLBACK_URL_DEVELOPMENT =  ${{ secrets.CALLBACK_URL_DEVELOPMENT }} >> .env
+
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm i
-      env: 
-        PORT: ${{ secrets.PORT }}
-        SESION_SECRET: ${{ secrets.SESION_SECRET }}
-        DB_NAME: ${{ secrets.DB_NAME }}
-        DB_HOST: ${{ secrets.DB_HOST }}
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        DB_USERNAME: ${{ secrets.DB_USERNAME }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
-        OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
-        FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
-        FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
-        CALLBACK_URL_DEVELOPMENT: ${{ secrets.CALLBACK_URL_DEVELOPMENT }}
-    #- run: npm run build --if-present
     - run: npm start
+    #- run: npm run build --if-present
+   
