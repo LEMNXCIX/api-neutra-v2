@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest --verbose --silent",
     "start": "cross-env NODE_ENV=production node app.js",
     "dev": "cross-env NODE_ENV=development npx nodemon app.js"
   },
