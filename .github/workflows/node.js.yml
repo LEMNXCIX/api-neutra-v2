@@ -28,7 +28,7 @@ jobs:
     - run: npm i
       env: 
         PORT: ${{ secrets.PORT }}
-        SESION_SECRET: ${{ secrets.SESION_SECRET }}
+        SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         DB_NAME: ${{ secrets.DB_NAME }}
         DB_HOST: ${{ secrets.DB_HOST }}
         DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
