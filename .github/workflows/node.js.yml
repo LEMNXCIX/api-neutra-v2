@@ -26,5 +26,18 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm i
+      env: 
+        PORT: ${{ secrets.PORT }}
+        SESION_SECRET: ${{ secrets.SESION_SECRET }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        DB_USERNAME: ${{ secrets.DB_USERNAME }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+        OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+        FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
+        FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
+        CALLBACK_URL_DEVELOPMENT: ${{ secrets.CALLBACK_URL_DEVELOPMENT }}
     #- run: npm run build --if-present
     - run: npm start
