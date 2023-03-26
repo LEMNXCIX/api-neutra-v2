@@ -34,9 +34,9 @@ jobs:
         echo CALLBACK_URL_DEVELOPMENT =  ${{ secrets.CALLBACK_URL_DEVELOPMENT }} >> .env
    
     - name: Deploy using ssh
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v0.1.8
       with:
-        host: ${{ secrets.SSH-HOST }}
+        host: ${{ secrets.SSH_HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.PRIVATE_KEY }}
         port: 22
