@@ -1,5 +1,7 @@
 const CartModel = require("../models/cart.models");
 const UserModel = require("../models/user.models");
+const isEmptyObject = require("../helpers/validateVariables");
+const RESPONSE = { success: false, error: false, message: null, data: {}, errorDetails: null };
 class Cart {
 	/**
 	 * Obtener productos del carrito
@@ -7,17 +9,33 @@ class Cart {
 	 * @returns Objeto con los productos del carrito
 	 */
 	async getItems(idUser) {
-		const result = await CartModel.findById(idUser).populate(
-			"items._id",
-			"name price image"
-		);
-		const products = result.items.map((product) => {
-			return {
-				...product._id?._doc,
-				amount: product.amount,
-			};
-		});
-		return products;
+        idUser = 'as'
+		
+		try {
+            if (!Number.isInteger(idUser))
+			{
+				throw new Error ('No es un usuario valido');
+			}
+			const result = await CartModel.findById(idUser).populate(
+				"items._id",
+				"name price image"
+			);
+			result.items.map((product) => {
+				RESPONSE.data =  {
+					...product._id?._doc,
+					amount: product.amount,
+				};
+			});
+			RESPONSE.success = true
+			RESPONSE.message = Object.is(RESPONSE.data)? 'Se realizo la consulta exitosmente' : 'No tienes items :('
+		} catch (error) {
+			RESPONSE.error = true
+			RESPONSE.message = error
+			RESPONSE.errorDetails = [error.message]
+			//Los error stack podrian quedar unicamente como logs no es necesario pasar esa informacion al vista
+		}
+		
+		return RESPONSE;
 	}
 
 	/**
