@@ -1,9 +1,9 @@
 ---
-name: Feature request
+name: "Propuesta de nueva funcionalidad \U0001F31F"
 about: Suggest an idea for this project
-title: ''
-labels: ''
-assignees: ''
+title: "[NEW]"
+labels: enhancement
+assignees: LEMNXCIX
 
 ---
 
