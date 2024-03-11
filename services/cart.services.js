@@ -1,6 +1,8 @@
 const CartModel = require("../models/cart.models");
 const UserModel = require("../models/user.models");
-const isEmptyObject = require("../helpers/validateVariables");
+const {isEmptyObject} = require("../helpers/validateVariables");
+const { isValidObjectId } = require("mongoose");
+
 const RESPONSE = { success: false, error: false, message: null, data: {}, errorDetails: null };
 class Cart {
 	/**
@@ -9,10 +11,9 @@ class Cart {
 	 * @returns Objeto con los productos del carrito
 	 */
 	async getItems(idUser) {
-        idUser = 'as'
-		
+        
 		try {
-            if (!Number.isInteger(idUser))
+            if (!isValidObjectId(idUser))
 			{
 				throw new Error ('No es un usuario valido');
 			}
@@ -26,8 +27,9 @@ class Cart {
 					amount: product.amount,
 				};
 			});
+            
 			RESPONSE.success = true
-			RESPONSE.message = Object.is(RESPONSE.data)? 'Se realizo la consulta exitosmente' : 'No tienes items :('
+			RESPONSE.message = isEmptyObject(RESPONSE.data) ? 'Se realizo la consulta exitosmente' : 'No tienes items :('
 		} catch (error) {
 			RESPONSE.error = true
 			RESPONSE.message = error
