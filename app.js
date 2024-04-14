@@ -28,7 +28,7 @@ connection();
 //Cookies
 
 //Middlewares
-app.use(morgan("dev"));
+app.use(morgan("dev"));//:Tomar desde la variable de entorno
 app.use(express.json());
 app.use(cookie());
 app.use(
