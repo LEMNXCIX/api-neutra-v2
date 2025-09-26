@@ -24,7 +24,7 @@ const {
 
 const app = express();
 
-connection();
+// connection will be started only when running the server directly
 
 //Cookies
 
@@ -106,9 +106,12 @@ app.get("/", (req, res) => {
 	});
 });
 
-//Levantar el servidor
-app.listen(port, () => {
-	console.log("Listening on: http://localhost:" + port);
-});
+// Levantar el servidor solo si se ejecuta directamente
+if (require.main === module) {
+	connection();
+	app.listen(port, () => {
+		console.log('Listening on: http://localhost:' + port);
+	});
+}
 
-module.exports = app
+module.exports = app;
