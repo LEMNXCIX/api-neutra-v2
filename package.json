@@ -4,12 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "cross-env NODE_ENV=production node app.js",
-    "dev": "cross-env NODE_ENV=development npx nodemon app.js",
     "test": "jest --runInBand --detectOpenHandles",
     "build": "tsc -p tsconfig.json",
-    "start:ts": "node -r ts-node/register ./app.ts",
-    "dev:ts": "cross-env NODE_ENV=development ts-node ./app.ts"
+    "start": "node -r ts-node/register ./app.ts",
+    "dev": "cross-env NODE_ENV=development ts-node ./app.ts"
   },
   "keywords": [],
   "author": "",
