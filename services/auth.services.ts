@@ -36,16 +36,17 @@ class Auth {
       };
     }
     const userServ = new User();
-    const userByEmail = await userServ.getByEmail(email);
+    const userByEmail = await userServ.getByEmail(email, true);
     const user = userByEmail.data;
-    console.log(user);
     if (user && (await this.#compare(password, user.password))) {
       const payload = this.#getUserData(user);
+      // Return payload containing both user and token so downstream helper can set cookie and include data
       return {
         success: true,
         code: 200,
-        message: "Se ha iniciado sesión correctamente",
-        data: payload,
+        message: "Se ha iniciado sesión correctamente :)",
+        // flatten data: place user fields at top-level and include token
+        data: { ...payload.user, token: payload.token },
       };
     }
 
@@ -85,7 +86,7 @@ class Auth {
       success: true,
       code: 201,
       message: "Se ha creado el usuario",
-      data: payload,
+      data: { ...payload.user, token: payload.token },
     };
   }
 
@@ -115,18 +116,19 @@ class Auth {
       success: true,
       code: 200,
       message: "Se ha iniciado sesión correctamente",
-      data: payload,
+      data: { ...payload.user, token: payload.token },
     };
   }
 
   #getUserData(user: any) {
+    const resolvedId = user && (user._id || user.id) ? String(user._id || user.id) : undefined;
     const userData = {
       role: user.role,
       name: user.name,
       email: user.email,
       provider: user.provider,
       idProvider: user.idProvider,
-      id: user.id,
+      id: resolvedId,
     };
 
     const token = this.#createToken(userData);
@@ -152,8 +154,6 @@ class Auth {
 
   async #compare(string: string, hash: string) {
     try {
-      console.log(string);
-      console.log(hash);
       return await bcrypt.compare(string, hash);
     } catch (error) {
       return false;

@@ -31,7 +31,12 @@ function authResponse(res: Response, result: any, statusCode: number) {
     // direct token on result (legacy)
     if (r && r.token) {
       const { token, ...rest } = r;
-      return { token, data: Object.keys(rest).length ? rest : undefined };
+      const dataCandidate = Object.keys(rest).length ? rest : undefined;
+      // unwrap legacy { user: { ... } } to flattened object for convenience
+      if (dataCandidate && typeof dataCandidate === 'object' && Object.keys(dataCandidate).length === 1 && dataCandidate.user && typeof dataCandidate.user === 'object') {
+        return { token, data: dataCandidate.user };
+      }
+      return { token, data: dataCandidate };
     }
 
     // token inside result.data (new shape)
@@ -39,13 +44,21 @@ function authResponse(res: Response, result: any, statusCode: number) {
       const inner = r.data;
       if (inner.token) {
         const { token, ...rest } = inner;
-        return { token, data: Object.keys(rest).length ? rest : undefined };
+        const dataCandidate = Object.keys(rest).length ? rest : undefined;
+        if (dataCandidate && typeof dataCandidate === 'object' && Object.keys(dataCandidate).length === 1 && dataCandidate.user && typeof dataCandidate.user === 'object') {
+          return { token, data: dataCandidate.user };
+        }
+        return { token, data: dataCandidate };
       }
 
       // In some cases result.data may itself be an ApiPayload (nested). Try to unwrap once.
       if (inner.data && inner.data.token) {
         const { token, ...rest } = inner.data;
-        return { token, data: Object.keys(rest).length ? rest : undefined };
+        const dataCandidate = Object.keys(rest).length ? rest : undefined;
+        if (dataCandidate && typeof dataCandidate === 'object' && Object.keys(dataCandidate).length === 1 && dataCandidate.user && typeof dataCandidate.user === 'object') {
+          return { token, data: dataCandidate.user };
+        }
+        return { token, data: dataCandidate };
       }
     }
 

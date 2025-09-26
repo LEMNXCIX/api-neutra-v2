@@ -23,7 +23,13 @@ function cart(app: Application) {
 
   //Obtener los productos del carrito
   router.get('/', authMiddleware(1), async (req: Request, res: Response) => {
-    const result = await cartServ.getItems((req as any).user.id);
+    const userObj = (req as any).user;
+    const userId = userObj && (userObj.id || userObj._id) ? String(userObj.id || userObj._id) : null;
+    if (!userId) {
+      return res.apiError('No se encontró id de usuario en el token', 'No autorizado', 403);
+    }
+
+    const result = await cartServ.getItems(userId);
     return sendResult(res, result, '', 200);
   });
 
