@@ -2,7 +2,7 @@ const express = require("express");
 const session = require("express-session");
 const morgan = require("morgan");
 const cookie = require("cookie-parser");
-const { port, sesionSecret } = require("./config/index.config");
+const { port, sesionSecret, ENVIRONMENT } = require("./config/index.config");
 const { connection } = require("./config/db.config");
 const passport = require("passport");
 const cors = require("cors");
@@ -31,28 +31,53 @@ connection();
 app.use(morgan("dev"));//:Tomar desde la variable de entorno
 app.use(express.json());
 app.use(cookie());
+// Configure CORS dynamically based on ENVIRONMENT (dev or prod)
+const allowedOriginsDev = [
+	"http://localhost:3000",
+	"http://localhost:3001",
+	"http://127.0.0.1:5500",
+];
+
+const allowedOriginsProd = [
+	"https://www.neutra.ec",
+	"https://neutra.ec",
+	"https://www.admin.neutra.ec",
+	"https://admin.neutra.ec",
+];
+
+const whitelist = ENVIRONMENT === "prod" || ENVIRONMENT === "production" ? allowedOriginsProd : allowedOriginsDev;
+
 app.use(
 	cors({
-		origin: [
-			"http://localhost:3000",
-			"http://localhost:3001",
-			"http://127.0.0.1:5500",
-			"https://www.neutra.ec",
-			"https://neutra.ec",
-			"https://www.admin.neutra.ec",
-			"https://admin.neutra.ec",
-		],
+		origin: function (origin, callback) {
+			// Allow non-browser requests like curl/postman (no origin)
+			if (!origin) return callback(null, true);
+
+			if (whitelist.indexOf(origin) !== -1) {
+				callback(null, true);
+			} else {
+				callback(new Error("Not allowed by CORS"));
+			}
+		},
 		credentials: true,
+		methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
+		allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
 	})
 );
+
+// Ensure correct Access-Control headers for preflight and responses
 app.use(function (req, res, next) {
-	req.header("Access-Control-Allow-Origin", "http://localhost:3000");
-	req.header("Access-Control-Allow-Headers", true);
-	req.header("Access-Control-Allow-Credentials", true);
-	req.header(
-		"Access-Control-Allow-Methods",
-		"GET, POST, OPTIONS, PUT, PATCH, DELETE"
-	);
+	const origin = req.headers.origin;
+	if (origin && whitelist.indexOf(origin) !== -1) {
+		res.setHeader("Access-Control-Allow-Origin", origin);
+	} else if (!origin && ENVIRONMENT !== "prod") {
+		// allow requests without Origin in dev (like server-to-server or curl)
+		res.setHeader("Access-Control-Allow-Origin", "*");
+	}
+
+	res.setHeader("Access-Control-Allow-Credentials", "true");
+	res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
+	res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
 	next();
 });
 
@@ -63,20 +88,6 @@ app.use(
 		saveUninitialized: false,
 	})
 );
-// app.use(passport.initialize());
-
-///Usando estrategias de passport para el Login
-//passport.use(useGoogleStrategy());
-// passport.use(useFacebookStrategy());
-// passport.use(useGitHubStrategy());
-// passport.use(useTwitterStrategy());
-
-// passport.serializeUser((user, done) => {
-// 	done(null, user);
-// });
-// passport.deserializeUser((user, done) => {
-// 	done(null, user);
-// });
 
 //Usando las rutas
 auth(app);
