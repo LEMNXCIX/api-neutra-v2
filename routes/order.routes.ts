@@ -10,40 +10,49 @@ function order(app: Application) {
 
   router.post('/', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await orderServ.create((req as any).user.id);
-    return res.status(result.error ? 400 : 200).json(result);
+    if (result && (result.error || result.succes === false)) {
+      return res.apiError(result.message || result, result.message || 'Error', 400);
+    }
+    return res.apiSuccess(result, result.message || 'OK', 200);
   });
 
   router.get('/', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await orderServ.getAll((req as any).user.id);
-    return res.status(result.error ? 400 : 200).json(result);
+    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
+    return res.apiSuccess(result, '', 200);
   });
 
   router.get('/all', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await orderServ.getAll((req as any).user.id);
-    return res.status(result.error ? 400 : 200).json(result);
+    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
+    return res.apiSuccess(result, '', 200);
   });
 
   router.get('/getOrder', authMiddleware(1), async (req: Request, res: Response) => {
     const { orderId } = (req as any).body;
     const result = await orderServ.getOrderById(orderId);
-    return res.status(result.error ? 400 : 200).json(result);
+    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
+    return res.apiSuccess(result, '', 200);
   });
 
   router.get('/getOrderByUser', authMiddleware(1), async (req: Request, res: Response) => {
     const { userId } = (req as any).body;
     const result = await orderServ.getOrderByUser(userId);
-    return res.status(result.error ? 400 : 200).json(result);
+    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
+    return res.apiSuccess(result, '', 200);
   });
 
   router.put('/changeStatus', authMiddleware(2), async (req: Request, res: Response) => {
     const { idOrder, status } = (req as any).body;
     const result = await orderServ.changeStatus(idOrder, status);
-    return res.status(result.error ? 400 : 200).json(result);
+    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
+    return res.apiSuccess(result, '', 200);
   });
 
   router.delete('/clear', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await orderServ.clearCart((req as any).user.id);
-    return res.status(result.error ? 400 : 200).json(result);
+    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
+    return res.apiSuccess(result, '', 200);
   });
 }
 

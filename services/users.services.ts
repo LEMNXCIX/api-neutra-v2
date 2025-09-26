@@ -3,39 +3,33 @@ const dbError = require('../helpers/dbError.helpers');
 const UserModel = require('../models/user.models');
 const CartService = require('../services/cart.services');
 const uuid = require('uuid');
+const logger = require('../helpers/logger.helpers');
 
 class User {
-  async getAll() {
+  async getAll(): Promise<ServiceResult<any[]>> {
     try {
       const users = await UserModel.find().sort({ createdAt: 'desc' });
-      return users;
+      logger.info({ action: 'getAllUsers', count: users.length });
+      return { success: true, code: 200, message: '', data: users };
     } catch (error: any) {
-      return {
-        error: true,
-        message: error,
-      };
+      logger.error({ action: 'getAllUsersError', error });
+      return { success: false, code: 500, message: 'Error fetching users', errors: error };
     }
   }
-  async getByEmail(email: any) {
+  async getByEmail(email: string): Promise<ServiceResult<any | null>> {
     try {
       const user = await UserModel.findOne({ email });
-      return user;
+      return { success: true, code: 200, message: '', data: user };
     } catch (error: any) {
-      return {
-        error: true,
-        message: error,
-      };
+      return { success: false, code: 500, message: 'Error fetching user by email', errors: error };
     }
   }
-  async getById(id: any) {
+  async getById(id: string): Promise<ServiceResult<any | null>> {
     try {
       const user = await UserModel.findById(id);
-      return user;
+      return { success: true, code: 200, message: '', data: user };
     } catch (er: any) {
-      return {
-        error: true,
-        er,
-      };
+      return { success: false, code: 500, message: 'Error fetching user by id', errors: er };
     }
   }
 
@@ -48,7 +42,7 @@ class User {
         [data.provider]: data.idProvider,
       },
     };
-    let user = await UserModel.findOne(userData);
+  let user = await UserModel.findOne(userData);
     if (!user) {
       data.password = uuid.v4();
       const newData = {
@@ -59,7 +53,9 @@ class User {
         user = await UserModel.create(newData);
         const cartServ = new CartService();
         const cart = await cartServ.create(user.id);
+        logger.info({ action: 'createUserByProvider', provider: data.provider, userId: user.id });
       } catch (error: any) {
+        logger.error({ action: 'createUserByProviderError', error });
         if (error.code === 11000 && error.keyValue.email) {
           const email = error.keyValue.email;
           const provider = 'provider.' + data.provider;
@@ -74,32 +70,30 @@ class User {
             },
             { new: true }
           );
-          return {
-            created: true,
-            user,
-          };
+          return { success: true, code: 201, message: 'User linked to provider', data: { created: true, user } };
         }
-
-        return dbError(error);
+        // normalize db errors to ServiceResult shape
+        const dbPayload = dbError(error);
+        const msg = dbPayload && dbPayload.message ? (Array.isArray(dbPayload.message) ? dbPayload.message.map((m: any) => m.message).join(', ') : String(dbPayload.message)) : 'Error creating user by provider';
+        return { success: false, code: 400, message: msg, errors: dbPayload.message || dbPayload };
       }
     }
-    return {
-      created: true,
-      user,
-    };
+    return { success: true, code: 200, message: '', data: { created: true, user } };
   }
 
-  async create(data: any) {
+  async create(data: CreateUserDto) {
     try {
       const user = await UserModel.create(data);
       const cartServ = new CartService();
       const cart = await cartServ.create(user.id);
-      return {
-        created: true,
-        user,
-      };
+      logger.info({ action: 'createUser', userId: user.id });
+      return { success: true, code: 201, message: 'User created', data: { created: true, user } };
     } catch (error: any) {
-      return dbError(error);
+      logger.error({ action: 'createUserError', error });
+      // normalize db errors to ServiceResult shape
+      const dbPayload = dbError(error);
+      const msg = dbPayload && dbPayload.message ? (Array.isArray(dbPayload.message) ? dbPayload.message.map((m: any) => m.message).join(', ') : String(dbPayload.message)) : 'Error creating user';
+      return { success: false, code: 400, message: msg, errors: dbPayload.message || dbPayload };
     }
   }
   async getLastUsers() {}
@@ -135,7 +129,7 @@ class User {
       ]);
 
       console.log(data);
-      return data;
+      return { success: true, code: 200, message: '', data };
     } catch (err: any) {
       console.error('Error fetching user stats:', err);
     }

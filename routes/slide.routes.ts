@@ -10,12 +10,9 @@ function slide(app: Application) {
     const newSlide = new Slideshow((req as any).body);
     try {
       const savedSlide = await newSlide.save();
-      res.status(200).json(savedSlide);
+      return res.apiSuccess(savedSlide, 'Slide creado', 200);
     } catch (error) {
-      res.status(500).json({
-        mensaje: 'Ha ocurrido un error al crear el Slide',
-        error: error,
-      });
+      return res.apiError(error, 'Ha ocurrido un error al crear el Slide', 500);
     }
   });
 
@@ -26,27 +23,27 @@ function slide(app: Application) {
         { $set: (req as any).body },
         { new: true }
       );
-      res.status(200).json(updateSlide);
+      return res.apiSuccess(updateSlide, 'Slide actualizado', 200);
     } catch (error) {
-      res.status(500).json(error);
+      return res.apiError(error, 'Error al actualizar el Slide', 500);
     }
   });
 
   router.get('/', async (req: Request, res: Response) => {
     try {
       const getSlide = await Slideshow.find();
-      res.status(200).json(getSlide);
+      return res.apiSuccess(getSlide, '', 200);
     } catch (error) {
-      res.status(500).json('Ha ocurrido un error al obtener Slides');
+      return res.apiError(error, 'Ha ocurrido un error al obtener Slides', 500);
     }
   });
 
   router.delete('/:id', authValidation(2), async (req: Request, res: Response) => {
     try {
       await Slideshow.findOneAndDelete((req.params as any).id);
-      res.status(200).json('El producto ha sido eliminado');
+      return res.apiSuccess(undefined, 'El producto ha sido eliminado', 200);
     } catch (error) {
-      res.status(500).json('Ha ocurrido un error al eliminar el Slide');
+      return res.apiError(error, 'Ha ocurrido un error al eliminar el Slide', 500);
     }
   });
 }

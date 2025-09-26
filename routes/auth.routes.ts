@@ -11,12 +11,14 @@ function auth(app: Application) {
   const authServ = new AuthService();
 
   router.post('/login', async (req: Request, res: Response) => {
-    const result = await authServ.login((req as any).body);
+    const body = (req as any).body as LoginDto;
+    const result = await authServ.login(body);
     return authResponse(res, result, 401);
   });
 
   router.post('/signup', async (req: Request, res: Response) => {
-    const result = await authServ.signup((req as any).body);
+    const body = (req as any).body as CreateUserDto;
+    const result = await authServ.signup(body);
     return authResponse(res, result, 200);
   });
 
@@ -25,7 +27,7 @@ function auth(app: Application) {
   });
 
   router.get('/validate', authValidation(1), (req: Request, res: Response) => {
-    return res.json({ success: true, user: (req as any).user });
+    return res.apiSuccess({ user: (req as any).user }, '', 200);
   });
 
   router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'] }));

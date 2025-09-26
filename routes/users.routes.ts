@@ -9,18 +9,21 @@ function users(app: Application) {
 
   router.get('/', authValidation(2), async (req: Request, res: Response) => {
     const users = await userServ.getAll();
-    return res.status(users.error ? 400 : 200).json(users);
+    if (users && users.error) return res.apiError(users.message || users, 'Error', 400);
+    return res.apiSuccess(users, '', 200);
   });
 
   router.get('/find/:id', authValidation(2), async (req: Request, res: Response) => {
     const users = await userServ.getById((req.params as any).id);
-    return res.status(users.error ? 400 : 200).json(users);
+    if (users && users.error) return res.apiError(users.message || users, 'Error', 400);
+    return res.apiSuccess(users, '', 200);
   });
 
   router.get('/stats', authValidation(2), async (req: Request, res: Response) => {
     const users = await userServ.getUsersStats((req.params as any).id);
     console.log(users);
-    return res.status(users.error ? 400 : 200).json(users);
+    if (users && users.error) return res.apiError(users.message || users, 'Error', 400);
+    return res.apiSuccess(users, '', 200);
   });
 }
 

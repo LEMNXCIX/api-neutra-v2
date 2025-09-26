@@ -7,6 +7,8 @@ const { connection } = require('./config/db.config');
 const passport = require('passport');
 const cors = require('cors');
 const rateLimiter = require('./middleware/rateLimit.middleware');
+const responseMiddleware = require('./middleware/response.middleware').default;
+const logger = require('./helpers/logger.helpers');
 
 // Rutas
 const auth = require('./routes/auth.routes');
@@ -32,6 +34,8 @@ app.use(express.json());
 app.use(cookie());
 // Apply rate limiter globally (relaxed in development)
 app.use(rateLimiter());
+// Standardize API responses and attach tracing/logging
+app.use(responseMiddleware);
 
 // Configure CORS dynamically based on ENVIRONMENT (dev or prod)
 const allowedOriginsDev = [
