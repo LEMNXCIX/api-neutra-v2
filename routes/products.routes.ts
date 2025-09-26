@@ -6,12 +6,24 @@ function products(app: Application) {
   const router = require('express').Router();
   const productsServ = new ProductsServices();
 
+  function sendResult(res: Response, result: any, okMsg = '', okCode = 200) {
+    const isServiceResult = result && typeof result === 'object' && (
+      'success' in result || 'code' in result || 'data' in result || 'error' in result
+    );
+    if (isServiceResult) {
+      if (result && (result.error || result.success === false)) {
+        return res.apiError(result.errors || result.message || result, result.message || 'Error', result.code || 400);
+      }
+      return res.apiSuccess(result.data !== undefined ? result.data : result, result.message || okMsg || 'OK', result.code || okCode);
+    }
+    return res.apiSuccess(result, okMsg || 'OK', okCode);
+  }
+
   app.use('/api/products', router);
 
   router.get('/', async (req: Request, res: Response) => {
     const result = await productsServ.getAll();
-    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
-    return res.apiSuccess(result, '', 200);
+    return sendResult(res, result, '', 200);
   });
 
   router.post('/', authMiddleware(1), async (req: Request, res: Response) => {
@@ -19,41 +31,35 @@ function products(app: Application) {
       ...(req as any).body,
       owner: (req as any).user.id,
     });
-    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
-    return res.apiSuccess(result, '', 200);
+    return sendResult(res, result, '', 200);
   });
 
   router.post('/search/', async (req: Request, res: Response) => {
     const name = (req as any).body.name;
     const result = await productsServ.getByName(name);
-    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
-    return res.apiSuccess(result, '', 200);
+    return sendResult(res, result, '', 200);
   });
 
   router.get('/:id', async (req: Request, res: Response) => {
     const id = (req.params as any).id;
     const result = await productsServ.getOne(id);
-    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
-    return res.apiSuccess(result, '', 200);
+    return sendResult(res, result, '', 200);
   });
 
   router.get('/one/:id', async (req: Request, res: Response) => {
     const id = (req.params as any).id;
     const result = await productsServ.getOne(id);
-    if (result && result.error) return res.apiError(result.message || result, 'Error', 400);
-    return res.apiSuccess(result, '', 200);
+    return sendResult(res, result, '', 200);
   });
 
   router.delete('/:id', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await productsServ.delete((req.params as any).id, (req as any).user.id);
-    if (result && result.error) return res.apiError(result.message || result, 'Error', 403);
-    return res.apiSuccess(result, '', 200);
+    return sendResult(res, result, '', 200);
   });
 
   router.put('/:id', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await productsServ.update((req.params as any).id, (req as any).body);
-    if (result && result.error) return res.apiError(result.message || result, 'Error', 403);
-    return res.apiSuccess(result, '', 200);
+    return sendResult(res, result, '', 200);
   });
 }
 

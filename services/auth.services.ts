@@ -1,36 +1,68 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-const { jwtSecret } = require('../config/index.config');
-const User = require('./users.services');
+/// <reference path="../types/api.d.ts" />
+/// <reference path="../types/requests.d.ts" />
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+const { jwtSecret } = require("../config/index.config");
+const User = require("./users.services");
 
 class Auth {
   async login(data: LoginDto) {
     const re = /^[\w\.-]+@[\w]+\.[\.\w]+$/;
     const { email, password } = data;
 
-    if (email == '') {
-      return { success: false, code: 400, message: 'Ingrese el correo electrónico', errors: ['Ingrese el correo electrónico'] };
+    if (email == "") {
+      return {
+        success: false,
+        code: 400,
+        message: "Ingrese el correo electrónico",
+        errors: ["Ingrese el correo electrónico"],
+      };
     }
 
-    if (password == '') {
-      return { success: false, code: 400, message: 'Ingrese la contraseña', errors: ['Ingrese la contraseña'] };
+    if (password == "") {
+      return {
+        success: false,
+        code: 400,
+        message: "Ingrese la contraseña",
+        errors: ["Ingrese la contraseña"],
+      };
     }
     if (!re.test(email)) {
-      return { success: false, code: 400, message: 'Ingrese un correo electrónico valido', errors: ['Ingrese un correo electrónico valido'] };
+      return {
+        success: false,
+        code: 400,
+        message: "Ingrese un correo electrónico valido",
+        errors: ["Ingrese un correo electrónico valido"],
+      };
     }
     const userServ = new User();
-    const user = await userServ.getByEmail(email);
-
+    const userByEmail = await userServ.getByEmail(email);
+    const user = userByEmail.data;
+    console.log(user);
     if (user && (await this.#compare(password, user.password))) {
-      return { success: true, code: 200, message: 'Se ha iniciado sesión correctamente', data: this.#getUserData(user) };
+      const payload = this.#getUserData(user);
+      return {
+        success: true,
+        code: 200,
+        message: "Se ha iniciado sesión correctamente",
+        data: payload,
+      };
     }
 
-    return { success: false, code: 401, message: 'No se ha podido iniciar sesión', errors: ['Las credenciales son incorrectas'] };
+    return {
+      success: false,
+      code: 401,
+      message: "No se ha podido iniciar sesión",
+      errors: ["Las credenciales son incorrectas"],
+    };
   }
 
   async signup(data: CreateUserDto) {
     if (data && data.password) {
-      data.password = await this.#encrypt(data.password);
+      const encrypted = await this.#encrypt(data.password);
+      if (encrypted) {
+        data.password = encrypted;
+      }
     }
     data.provider = {
       local: true,
@@ -39,10 +71,22 @@ class Auth {
     const userServ = new User();
     const result = await userServ.create(data);
     if (!result || (result as any).success === false) {
-      return { success: false, code: 400, message: (result && (result as any).message) || 'Error', errors: (result && (result as any).errors) || undefined };
+      return {
+        success: false,
+        code: 400,
+        message: (result && (result as any).message) || "Error",
+        errors: (result && (result as any).errors) || undefined,
+      };
     }
 
-    return { success: true, code: 201, message: 'Signup successful', data: this.#getUserData((result as any).data?.user || (result as any).user, 'Signup') };
+    const createdUser = (result as any).data?.user || (result as any).user;
+    const payload = this.#getUserData(createdUser);
+    return {
+      success: true,
+      code: 201,
+      message: "Se ha creado el usuario",
+      data: payload,
+    };
   }
 
   async socialLogin(data: any) {
@@ -57,13 +101,25 @@ class Auth {
     const result = await userServ.getOrCreateByProvider(user);
 
     if (!result || (result as any).success === false) {
-      return { success: false, code: 400, message: 'No se ha podido iniciar sesión', errors: (result && (result as any).errors) || undefined };
+      return {
+        success: false,
+        code: 400,
+        message: "No se ha podido iniciar sesión",
+        errors: (result && (result as any).errors) || undefined,
+      };
     }
 
-    return { success: true, code: 200, message: 'Social login successful', data: this.#getUserData((result as any).data?.user || (result as any).user) };
+    const created = (result as any).data?.user || (result as any).user;
+    const payload = this.#getUserData(created);
+    return {
+      success: true,
+      code: 200,
+      message: "Se ha iniciado sesión correctamente",
+      data: payload,
+    };
   }
 
-  #getUserData(user: any, op?: string) {
+  #getUserData(user: any) {
     const userData = {
       role: user.role,
       name: user.name,
@@ -74,12 +130,13 @@ class Auth {
     };
 
     const token = this.#createToken(userData);
-    return { success: true, code: 200, message: op ? 'Se ha creado el usuario' : 'Se ha iniciado sesión correctamente', data: { user: userData, token } };
+    // Return the raw data (user + token). Callers create the ApiPayload envelope.
+    return { user: userData, token };
   }
 
   #createToken(payload: any) {
     const token = jwt.sign(payload, jwtSecret, {
-      expiresIn: '7d',
+      expiresIn: "7d",
     });
     return token;
   }
@@ -95,6 +152,8 @@ class Auth {
 
   async #compare(string: string, hash: string) {
     try {
+      console.log(string);
+      console.log(hash);
       return await bcrypt.compare(string, hash);
     } catch (error) {
       return false;

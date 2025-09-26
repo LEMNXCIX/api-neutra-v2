@@ -8,7 +8,8 @@
     "test": "jest --runInBand --detectOpenHandles",
     "build": "tsc -p tsconfig.json",
     "start": "node -r ts-node/register ./app.ts",
-    "dev": "cross-env NODE_ENV=development ts-node ./app.ts"
+    "dev": "cross-env NODE_ENV=development ts-node ./app.ts",
+    "dev:watch": "cross-env NODE_ENV=development nodemon --watch \"./**/*.ts\" --exec \"ts-node ./app.ts\""
   },
   "keywords": [],
   "author": "",

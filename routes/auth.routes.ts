@@ -1,3 +1,4 @@
+/// <reference path="../types/requests.d.ts" />
 import { Application, Request, Response } from 'express';
 const passport = require('passport');
 const { authResponse, providerResponse, deleteCookie } = require('../helpers/authResponse.helpers');
