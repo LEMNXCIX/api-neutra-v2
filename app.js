@@ -6,6 +6,7 @@ const { port, sesionSecret, ENVIRONMENT } = require("./config/index.config");
 const { connection } = require("./config/db.config");
 const passport = require("passport");
 const cors = require("cors");
+const rateLimiter = require("./middleware/rateLimit.middleware");
 
 //Rutas
 const auth = require("./routes/auth.routes");
@@ -31,6 +32,8 @@ connection();
 app.use(morgan("dev"));//:Tomar desde la variable de entorno
 app.use(express.json());
 app.use(cookie());
+// Apply rate limiter globally (relaxed in development)
+app.use(rateLimiter());
 // Configure CORS dynamically based on ENVIRONMENT (dev or prod)
 const allowedOriginsDev = [
 	"http://localhost:3000",
