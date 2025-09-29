@@ -6,6 +6,8 @@ const UserModel = require("../models/user.models");
 const CartService = require("../services/cart.services");
 const uuid = require("uuid");
 const logger = require("../helpers/logger.helpers");
+const constants = require("../config/constants.config");
+const EMAIL_REGEX = constants.EMAIL_REGEX;
 
 class User {
   sanitizeUser(u: any) {
@@ -34,8 +36,19 @@ class User {
       };
     }
   }
-  async getByEmail(email: string, includePassword: boolean = false): Promise<ServiceResult<any | null>> {
+  async getByEmail(
+    email: string,
+    includePassword: boolean = false
+  ): Promise<ServiceResult<any | null>> {
     try {
+      if (!email || typeof email !== "string" || !EMAIL_REGEX.test(email)) {
+        return {
+          success: false,
+          code: 400,
+          message: "Invalid email format",
+          errors: { email: "A valid email address is required" },
+        };
+      }
       const user = await UserModel.findOne({ email });
       if (!user) return { success: true, code: 200, message: "", data: null };
       const obj = user.toObject ? user.toObject() : { ...user };
@@ -46,7 +59,12 @@ class User {
       if (!includePassword) delete obj.password;
       return { success: true, code: 200, message: "", data: obj };
     } catch (error: any) {
-      return { success: false, code: 500, message: "Error fetching user by email", errors: error };
+      return {
+        success: false,
+        code: 500,
+        message: "Error fetching user by email",
+        errors: error,
+      };
     }
   }
   async getById(id: string): Promise<ServiceResult<any | null>> {

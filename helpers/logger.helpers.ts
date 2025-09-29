@@ -1,29 +1,28 @@
-const time = () => new Date().toISOString();
+import pino from 'pino';
+const { ENVIRONMENT } = require('../config/index.config');
 
-function safeStringify(obj: any) {
-  try {
-    return typeof obj === 'string' ? obj : JSON.stringify(obj);
-  } catch (err) {
-    return String(obj);
-  }
-}
+// In development we prefer pretty printing for readability
+const isProd = ENVIRONMENT === 'prod' || ENVIRONMENT === 'production';
+
+const transport = !isProd
+  ? pino.transport({
+      target: 'pino-pretty',
+      options: { colorize: true, translateTime: 'SYS:standard' },
+    })
+  : undefined;
+
+const logger = pino(transport ? { transport } : {});
 
 export function info(payload: any) {
-  console.log(
-    safeStringify({ level: 'info', time: time(), ...payload })
-  );
+  logger.info(payload);
 }
 
 export function warn(payload: any) {
-  console.warn(
-    safeStringify({ level: 'warn', time: time(), ...payload })
-  );
+  logger.warn(payload);
 }
 
 export function error(payload: any) {
-  console.error(
-    safeStringify({ level: 'error', time: time(), ...payload })
-  );
+  logger.error(payload);
 }
 
 export default { info, warn, error };
