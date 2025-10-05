@@ -38,6 +38,10 @@ function users(app: Application) {
     }
     return res.apiSuccess(result.data, result.message || '', result.code || 200);
   });
+
+  router.use(async (req: Request, res: Response) => {
+    return res.apiError({ message: 'Pagina no encontrada. :|' }, 'Pagina no encontrada', 400);
+  });
 }
 
 export = users;

@@ -1,90 +1,94 @@
-import express, { Request, Response, NextFunction } from 'express';
-const session = require('express-session');
-const morgan = require('morgan');
-const cookie = require('cookie-parser');
-const { port, sesionSecret, ENVIRONMENT } = require('./config/index.config');
-const { connection } = require('./config/db.config');
-const passport = require('passport');
-const cors = require('cors');
-const rateLimiter = require('./middleware/rateLimit.middleware');
-const responseMiddleware = require('./middleware/response.middleware').default;
-const logger = require('./helpers/logger.helpers');
+import express, { Request, Response, NextFunction } from "express";
+const morgan = require("morgan");
+import cookieParser from "cookie-parser";
+const { port, sesionSecret, ENVIRONMENT } = require("./config/index.config");
+const session = require("express-session");
+const { connection } = require("./config/db.config");
+const passport = require("passport");
+const cors = require("cors");
+const rateLimiter = require("./middleware/rateLimit.middleware");
+import responseMiddleware from "./middleware/response.middleware"; // Asume maneja ApiResponse
+import logger from "./helpers/logger.helpers";
 
 // Rutas
-const auth = require('./routes/auth.routes');
-const users = require('./routes/users.routes');
-const products = require('./routes/products.routes');
-const slide = require('./routes/slide.routes');
-const cart = require('./routes/cart.routes');
-const order = require('./routes/order.routes');
-const {
-  useGoogleStrategy,
-  useFacebookStrategy,
-  useTwitterStrategy,
-  useGitHubStrategy,
-} = require('./middleware/authProvider.middleware');
+import auth from "./routes/auth.routes";
+import users from "./routes/users.routes";
+import products from "./routes/products.routes";
+import slide from "./routes/slide.routes";
+import cart from "./routes/cart.routes";
+import order from "./routes/order.routes";
+// import {
+//   useGoogleStrategy,
+//   useFacebookStrategy,
+//   useTwitterStrategy,
+//   useGitHubStrategy,
+// } from "./middleware/authProvider.middleware";
 
 const app = express();
 
-// Only establish DB connection when running app directly
+// DB connection solo si directo
+if (require.main === module) {
+  connection();
+}
 
-// Middlewares
-app.use(morgan('dev'));
+// Middlewares (orden funcional: logging > parsing > security > custom)
+app.use(morgan("dev"));
 app.use(express.json());
-app.use(cookie());
-// Apply rate limiter globally (relaxed in development)
+app.use(cookieParser());
 app.use(rateLimiter());
-// Standardize API responses and attach tracing/logging
-app.use(responseMiddleware);
+app.use(responseMiddleware); // Estandariza responses a ApiResponse
 
-// Configure CORS dynamically based on ENVIRONMENT (dev or prod)
+// CORS dinámico (sin cambios)
 const allowedOriginsDev = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:5500',
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:5500",
 ];
-
 const allowedOriginsProd = [
-  'https://www.neutra.ec',
-  'https://neutra.ec',
-  'https://www.admin.neutra.ec',
-  'https://admin.neutra.ec',
+  "https://www.neutra.ec",
+  "https://neutra.ec",
+  "https://www.admin.neutra.ec",
+  "https://admin.neutra.ec",
 ];
-
-const whitelist = ENVIRONMENT === 'prod' || ENVIRONMENT === 'production' ? allowedOriginsProd : allowedOriginsDev;
+const whitelist =
+  ENVIRONMENT === "prod" || ENVIRONMENT === "production"
+    ? allowedOriginsProd
+    : allowedOriginsDev;
 
 app.use(
   cors({
-    origin: function (origin: any, callback: any) {
-      // Allow non-browser requests like curl/postman (no origin)
-      if (!origin) return callback(null, true);
-
-      if (whitelist.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+    origin: (origin: any, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin || whitelist.includes(origin)) return callback(null, true);
+      callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+    methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "X-Requested-With",
+    ],
   })
 );
 
-// Ensure correct Access-Control headers for preflight and responses
-app.use(function (req: Request, res: Response, next: NextFunction) {
-  // origin may be undefined
-  const origin = (req.headers as any).origin;
-  if (origin && whitelist.indexOf(origin) !== -1) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin && ENVIRONMENT !== 'prod') {
-    // allow requests without Origin in dev (like server-to-server or curl)
-    res.setHeader('Access-Control-Allow-Origin', '*');
+// Headers manuales para preflight
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin as string | undefined;
+  if (origin && whitelist.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  } else if (!origin && ENVIRONMENT !== "prod") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
   }
-
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With');
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Accept, X-Requested-With"
+  );
   next();
 });
 
@@ -96,27 +100,20 @@ app.use(
   })
 );
 
-// Usando las rutas
-auth(app);
-users(app);
-products(app);
-cart(app);
-slide(app);
-order(app);
+// Rutas (composición)
+[auth, users, products, slide, cart, order].forEach((routeFn) => routeFn(app));
 
-// Ruta inicial del servidor
-app.get('/', (req: Request, res: Response) => {
-  return res.json({
-    name: 'Ecommerce',
-  });
+// Ruta raíz
+app.get("/", (req: Request, res: Response) => {
+  // Simple root response; response middleware will wrap it if needed
+  res.json({ name: "Ecommerce" });
 });
 
-// Levantar el servidor solo si se ejecuta directamente
+// Server lift
 if (require.main === module) {
-  connection();
   app.listen(port, () => {
-    console.log('Listening on: http://localhost:' + port);
+    console.log(`Listening on: http://localhost:${port}`);
   });
 }
 
-module.exports = app;
+export default app;

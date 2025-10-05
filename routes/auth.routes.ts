@@ -1,4 +1,4 @@
-/// <reference path="../types/requests.d.ts" />
+/// <reference path="../types/request-dto.d.ts" />
 import { Application, Request, Response } from 'express';
 const passport = require('passport');
 const { authResponse, providerResponse, deleteCookie } = require('../helpers/authResponse.helpers');
@@ -12,13 +12,13 @@ function auth(app: Application) {
   const authServ = new AuthService();
 
   router.post('/login', async (req: Request, res: Response) => {
-    const body = (req as any).body as LoginDto;
+    const body = (req as any).body;
     const result = await authServ.login(body);
     return authResponse(res, result, 401);
   });
 
   router.post('/signup', async (req: Request, res: Response) => {
-    const body = (req as any).body as CreateUserDto;
+    const body = (req as any).body;
     const result = await authServ.signup(body);
     return authResponse(res, result, 200);
   });

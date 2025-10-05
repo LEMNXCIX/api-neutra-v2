@@ -11,7 +11,7 @@ const transport = !isProd
     })
   : undefined;
 
-const logger = pino(transport ? { transport } : {});
+const logger = pino(transport);
 
 export function info(payload: any) {
   logger.info(payload);

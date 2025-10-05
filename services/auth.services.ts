@@ -1,12 +1,12 @@
-/// <reference path="../types/api.d.ts" />
-/// <reference path="../types/requests.d.ts" />
+/// <reference path="../types/api-response.d.ts" />
+/// <reference path="../types/request-dto.d.ts" />
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 const { jwtSecret } = require("../config/index.config");
 const User = require("./users.services");
 
 class Auth {
-  async login(data: LoginDto) {
+  async login(data: any) {
     const re = /^[\w\.-]+@[\w]+\.[\.\w]+$/;
     const { email, password } = data;
 
@@ -58,7 +58,7 @@ class Auth {
     };
   }
 
-  async signup(data: CreateUserDto) {
+  async signup(data: any) {
     if (data && data.password) {
       const encrypted = await this.#encrypt(data.password);
       if (encrypted) {
