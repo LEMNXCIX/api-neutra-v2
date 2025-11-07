@@ -1,4 +1,5 @@
 import { Application, Request, Response } from 'express';
+import authValidation from '../middleware/auth.middleware';
 const CartService = require('../services/cart.services');
 const authMiddleware = require('../middleware/auth.middleware');
 
@@ -50,6 +51,15 @@ function cart(app: Application) {
   router.delete('/clear', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await cartServ.clearCart((req as any).user.id);
     return sendResult(res, result, '', 200);
+  });
+
+  router.get('/stats', authValidation(2), async (req: Request, res: Response) => {
+    const result = await CartService.getCartsStats((req.params as any).id);
+    // result is a ServiceResult / ApiPayload
+    if (!result || result.success === false) {
+      return res.apiError(result && result.errors ? result.errors : result.message || 'Error', result.message || 'Error', result.code || 400);
+    }
+    return res.apiSuccess(result.data, result.message || '', result.code || 200);
   });
 
   router.use(async (req: Request, res: Response) => {

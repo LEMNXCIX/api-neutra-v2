@@ -7,63 +7,113 @@ class Products {
   async getAll() {
     try {
       const products = await ProductsModel.find();
-      return products;
+      return {
+        success: true,
+        code: 200,
+        message: "Products listed successfully",
+        data: products
+      };
     } catch (error: any) {
       return {
-        error: true,
-        message: error,
+        success: false,
+        code: 500,
+        message: "Error listing products",
+        errors: error.message || error
       };
     }
   }
 
   async create(data: any) {
     try {
-      const products = await ProductsModel.create(data);
-      return products;
+      const product = await ProductsModel.create(data);
+      return {
+        success: true,
+        code: 201,
+        message: "Product created successfully",
+        data: product
+      };
     } catch (error: any) {
-      return dbError(error);
+      const dbResult = dbError(error);
+      return {
+        success: false,
+        code: error.code === 11000 ? 409 : 400,
+        message: dbResult.message || "Error creating product",
+        errors: dbResult.errors || error.message || error
+      };
     }
   }
 
   async getOne(idProduct: any) {
     try {
       const product = await ProductsModel.findById(idProduct);
-
-      return product;
+      if (!product) {
+        return {
+          success: false,
+          code: 404,
+          message: "Product not found",
+          data: null
+        };
+      }
+      return {
+        success: true,
+        code: 200,
+        message: "",
+        data: product
+      };
     } catch (error: any) {
       return {
-        error: true,
         success: false,
-        message: 'No se pudo realizar la búsqueda del producto',
+        code: error.name === 'CastError' ? 400 : 500,
+        message: "Error fetching product",
+        errors: error.message || error
       };
     }
   }
 
   async getByName(name: any) {
     try {
-      const product = await ProductsModel.find({
-        name: { $regex: '.*' + name + '.*' },
+      const products = await ProductsModel.find({
+        name: { $regex: name, $options: 'i' }  // Case-insensitive search
       });
-
-      return product;
+      return {
+        success: true,
+        code: 200,
+        message: products.length ? "" : "No products found matching search",
+        data: products
+      };
     } catch (error: any) {
       return {
-        error: true,
         success: false,
-        message: 'No se pudo realizar la búsqueda  por nombre del producto',
+        code: 500,
+        message: "Error searching products",
+        errors: error.message || error
       };
     }
   }
 
   async update(id: any, data: any) {
     try {
-      const user = await ProductsModel.findByIdAndUpdate(id, data);
-      return user;
+      const product = await ProductsModel.findByIdAndUpdate(id, data, { new: true });
+      if (!product) {
+        return {
+          success: false,
+          code: 404,
+          message: "Product not found",
+          data: null
+        };
+      }
+      return {
+        success: true,
+        code: 200,
+        message: "Product updated successfully",
+        data: product
+      };
     } catch (error: any) {
       return {
-        error: true,
         success: false,
-        message: 'No se pudo actualizar el producto',
+        code: error.name === 'CastError' ? 400 : 500,
+        message: "Error updating product",
+        errors: error.message || error
       };
     }
   }
@@ -72,25 +122,82 @@ class Products {
     try {
       const product = await ProductsModel.findOneAndDelete({
         _id: id,
-        owner: idUser,
+        owner: idUser
       });
-      await CartModelRef.updateMany({
-        $pull: {
-          items: {
-            _id: product.id,
-          },
-        },
-      });
+      
+      if (!product) {
+        return {
+          success: false,
+          code: 404,
+          message: "Product not found or not authorized",
+          data: null
+        };
+      }
+
+      // Remove product from all carts
+      await CartModelRef.updateMany(
+        { 'items._id': product.id },
+        { $pull: { items: { _id: product.id } } }
+      );
 
       return {
         success: true,
-        product,
-        message: 'Se ha borrado el producto',
+        code: 200,
+        message: "Product deleted successfully",
+        data: product
       };
     } catch (error: any) {
       return {
         success: false,
-        message: 'A ocurrido un error al borrar el producto',
+        code: error.name === 'CastError' ? 400 : 500,
+        message: "Error deleting product",
+        errors: error.message || error
+      };
+    }
+  }
+
+  async getProductsStats() {
+    try {
+      const today = new Date();
+      const lastYear = new Date(today);
+      lastYear.setFullYear(today.getFullYear() - 1);
+
+      const data = await ProductsModel.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: lastYear, $lte: today },
+          },
+        },
+        {
+          $project: {
+            yearMonth: {
+              $dateToString: { format: "%Y-%m", date: "$createdAt" },
+            },
+          },
+        },
+        {
+          $group: {
+            _id: "$yearMonth",
+            total: { $sum: 1 },
+          },
+        },
+        {
+          $sort: { _id: 1 },
+        },
+      ]);
+
+      return {
+        success: true,
+        code: 200,
+        message: "Product statistics retrieved successfully",
+        data: data
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        code: 500,
+        message: "Error fetching product statistics",
+        errors: error.message || error
       };
     }
   }

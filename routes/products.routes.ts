@@ -1,4 +1,5 @@
 import { Application, Request, Response } from 'express';
+import authValidation from '../middleware/auth.middleware';
 const ProductsServices = require('../services/products.services');
 const authMiddleware = require('../middleware/auth.middleware');
 
@@ -60,6 +61,15 @@ function products(app: Application) {
   router.put('/:id', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await productsServ.update((req.params as any).id, (req as any).body);
     return sendResult(res, result, '', 200);
+  });
+
+  router.get('/stats', authValidation(2), async (req: Request, res: Response) => {
+    const result = await productsServ.getProductsStats((req.params as any).id);
+    // result is a ServiceResult / ApiPayload
+    if (!result || result.success === false) {
+      return res.apiError(result && result.errors ? result.errors : result.message || 'Error', result.message || 'Error', result.code || 400);
+    }
+    return res.apiSuccess(result.data, result.message || '', result.code || 200);
   });
 }
 
