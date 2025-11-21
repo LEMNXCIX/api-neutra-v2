@@ -1,10 +1,10 @@
-export {};
-const OrderModel = require('../models/order.models');
-const CartService = require('../services/cart.services');
+import OrderModel from '../models/order.models';
+import CartService from '../services/cart.services';
 
-class Order {
+export default class Order {
   async getItems(idUser: any) {
     const result = await OrderModel.findById(idUser).populate('items._id', 'name price image');
+    if (!result) return [];
     const products = result.items.map((product: any) => {
       return {
         ...product._id?._doc,
@@ -16,23 +16,28 @@ class Order {
 
   async create(idUser: any) {
     const cartServ = new CartService();
-    const cart = await cartServ.getItems(idUser);
-    if (cart.length == 0) {
+    const cartResponse = await cartServ.getItems(idUser);
+
+    if (!cartResponse.success || !cartResponse.data || (Array.isArray(cartResponse.data) && cartResponse.data.length === 0)) {
       return {
-        succes: false,
+        success: false, // Fixed typo 'succes' -> 'success'
         message: 'Tu carrito esta vacío, no puedes generar una orden.',
       };
     }
+    const cart = cartResponse.data;
     const order = await OrderModel.create({
       idUser: idUser,
       status: 'Pendiente',
     });
-    cart.map((producto: any) => {
-      this.addToOrder(order._id, producto._id);
-    });
+
+    if (Array.isArray(cart)) {
+      cart.map((producto: any) => {
+        this.addToOrder(order._id, producto._id);
+      });
+    }
 
     await cartServ.clearCart(idUser);
-    const orderFinal = this.getOrderById(order._id);
+    const orderFinal = await this.getOrderById(order._id);
     return { message: 'Se ha generado su orden', orderFinal };
   }
 
@@ -48,6 +53,9 @@ class Order {
       },
       { new: true }
     ).populate('items._id', 'name price image');
+
+    if (!result) return [];
+
     const products = result.items.map((product: any) => {
       return {
         ...product._id?._doc,
@@ -97,4 +105,3 @@ class Order {
     }
   }
 }
-module.exports = Order;

@@ -1,9 +1,9 @@
-import { Application, Request, Response } from 'express';
-const authValidation = require('../middleware/auth.middleware');
-const Slideshow = require('../models/slideshow.model');
+import { Application, Request, Response, Router } from 'express';
+import authValidation from '../middleware/auth.middleware';
+import Slideshow from '../models/slideshow.model';
 
 function slide(app: Application) {
-  const router = require('express').Router();
+  const router = Router();
   app.use('/api/slide', router);
 
   router.post('/', authValidation(2), async (req: Request, res: Response) => {
@@ -48,4 +48,4 @@ function slide(app: Application) {
   });
 }
 
-export = slide;
+export default slide;

@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
-const { dbUsername, dbPassword, dbHost, dbName } = require('./index.config');
+import config from './index.config';
+
+const { dbUsername, dbPassword, dbHost, dbName } = config;
 
 const connection = async function () {
   const conn = await mongoose.connect(
@@ -7,4 +9,4 @@ const connection = async function () {
   );
 };
 
-export = { connection, mongoose };
+export { connection, mongoose };

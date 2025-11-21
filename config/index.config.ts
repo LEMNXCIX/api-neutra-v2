@@ -27,4 +27,4 @@ const config = {
   ENVIRONMENT: process.env.ENVIRONMENT || process.env.NODE_ENV || 'development',
 };
 
-export = config;
+export default config;

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "pretest": "node ./scripts/clean-dist.js",
+    "pretest": "ts-node ./scripts/clean-dist.ts",
     "test": "jest --runInBand --detectOpenHandles",
     "build": "tsc -p tsconfig.json",
     "start": "node -r ts-node/register ./app.ts",

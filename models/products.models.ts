@@ -1,37 +1,30 @@
-const { mongoose } = require('../config/db.config');
+import { mongoose } from '../config/db.config';
 
-const productSchema = new mongoose.Schema(
+const productsSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Nombre es requerido'],
+      required: [true, 'El nombre es requerido'],
       trim: true,
-      unique: [true, 'Ya existe un producto registrado con ese nombre'],
-    },
-    description: {
-      type: String,
-      required: [true, 'La descripción es requerida'],
-    },
-    categories: {
-      type: Array,
-      required: [true, 'La categoría es requerida'],
     },
     price: {
       type: Number,
       required: [true, 'El precio es requerido'],
     },
-    image: {
-      type: [String],
-      required: [true, 'La imagen es requerida'],
+    description: {
+      type: String,
+      required: [true, 'La descripción es requerida'],
+      trim: true,
     },
-    stock: {
-      type: Number,
-      required: [true, 'El stock es requerido'],
+    image: String,
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'user',
     },
   },
   { timestamps: true }
 );
 
-const ProductModel = mongoose.model('product', productSchema);
+const ProductsModel = mongoose.model('product', productsSchema);
 
-export = ProductModel;
+export default ProductsModel;

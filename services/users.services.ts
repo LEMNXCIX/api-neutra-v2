@@ -1,19 +1,19 @@
-const dbError = require("../helpers/dbError.helpers");
-const UserModel = require("../models/user.models");
-const CartService = require("../services/cart.services");
-const uuid = require("uuid");
-const logger = require("../helpers/logger.helpers");
+import dbError from "../helpers/dbError.helpers";
+import UserModel from "../models/user.models";
+import CartService from "../services/cart.services";
+import * as uuid from "uuid";
+import { info, error as logError } from "../helpers/logger.helpers";
 
-class User {
+export default class User {
   sanitizeUser(u: any) {
     // parameter typed as any to avoid implicit-any runtime compile errors
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const _u: any = u;
     if (!_u) return _u;
     const obj = _u.toObject ? _u.toObject() : { ..._u };
-    delete obj.password;
-    delete obj.__v;
-    if (obj.idProvider) delete obj.idProvider;
+    delete (obj as any).password;
+    delete (obj as any).__v;
+    if (obj.idProvider) delete (obj as any).idProvider;
     return obj;
   }
   async getAll() {
@@ -21,11 +21,11 @@ class User {
       const users = await UserModel.find().sort({ createdAt: "desc" });
       // sanitize users: remove password and sensitive/internal fields
       const safeUsers = users.map((u: any) => this.sanitizeUser(u));
-      logger.info({ action: "getAllUsers", count: safeUsers.length });
+      info({ action: "getAllUsers", count: safeUsers.length });
       // return a flat array as data to keep API shape simple: { data: [ ...users ] }
       return { success: true, code: 200, message: "", data: safeUsers };
     } catch (error: any) {
-      logger.error({ action: "getAllUsersError", error });
+      logError({ action: "getAllUsersError", error });
       return {
         success: false,
         code: 500,
@@ -40,10 +40,10 @@ class User {
       if (!user) return { success: true, code: 200, message: "", data: null };
       const obj = user.toObject ? user.toObject() : { ...user };
       // remove internal fields
-      delete obj.__v;
-      if (obj.idProvider) delete obj.idProvider;
+      delete (obj as any).__v;
+      if (obj.idProvider) delete (obj as any).idProvider;
       // only remove password when not explicitly requested
-      if (!includePassword) delete obj.password;
+      if (!includePassword) delete (obj as any).password;
       return { success: true, code: 200, message: "", data: obj };
     } catch (error: any) {
       return { success: false, code: 500, message: "Error fetching user by email", errors: error };
@@ -54,9 +54,9 @@ class User {
       const user = await UserModel.findById(id);
       if (!user) return { success: true, code: 200, message: "", data: null };
       const obj = user.toObject ? user.toObject() : { ...user };
-      delete obj.password;
-      delete obj.__v;
-      if (obj.idProvider) delete obj.idProvider;
+      delete (obj as any).password;
+      delete (obj as any).__v;
+      if (obj.idProvider) delete (obj as any).idProvider;
       return { success: true, code: 200, message: "", data: obj };
     } catch (er: any) {
       return {
@@ -88,18 +88,18 @@ class User {
         user = await UserModel.create(newData);
         const cartServ = new CartService();
         const cart = await cartServ.create(user.id);
-        logger.info({
+        info({
           action: "createUserByProvider",
           provider: data.provider,
           userId: user.id,
         });
       } catch (error: any) {
-        logger.error({ action: "createUserByProviderError", error });
+        logError({ action: "createUserByProviderError", error });
         if (error.code === 11000 && error.keyValue.email) {
           const email = error.keyValue.email;
           const provider = "provider." + data.provider;
           const idProvider = "idProvider." + data.provider;
-          user = await UserModel.updateOne(
+          user = await UserModel.findOneAndUpdate(
             {
               email,
             },
@@ -147,7 +147,7 @@ class User {
       const user = await UserModel.create(data);
       const cartServ = new CartService();
       const cart = await cartServ.create(user.id);
-      logger.info({ action: "createUser", userId: user.id });
+      info({ action: "createUser", userId: user.id });
       return {
         success: true,
         code: 201,
@@ -155,7 +155,7 @@ class User {
         data: { created: true, user: this.sanitizeUser(user) },
       };
     } catch (error: any) {
-      logger.error({ action: "createUserError", error });
+      logError({ action: "createUserError", error });
       // normalize db errors to ServiceResult shape
       const dbPayload = dbError(error);
       const msg =
@@ -172,7 +172,7 @@ class User {
       };
     }
   }
-  async getLastUsers() {}
+  async getLastUsers() { }
 
   async getUsersStats() {
     try {
@@ -215,5 +215,3 @@ class User {
     }
   }
 }
-
-module.exports = User;

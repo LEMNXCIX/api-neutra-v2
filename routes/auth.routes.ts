@@ -1,12 +1,12 @@
 /// <reference path="../types/request-dto.d.ts" />
-import { Application, Request, Response } from 'express';
-const passport = require('passport');
-const { authResponse, providerResponse, deleteCookie } = require('../helpers/authResponse.helpers');
-const AuthService = require('../services/auth.services');
-const authValidation = require('../middleware/auth.middleware');
+import { Application, Request, Response, Router } from 'express';
+import passport from 'passport';
+import { authResponse, providerResponse, deleteCookie } from '../helpers/authResponse.helpers';
+import AuthService from '../services/auth.services';
+import authValidation from '../middleware/auth.middleware';
 
 function auth(app: Application) {
-  const router = require('express').Router();
+  const router = Router();
   app.use('/api/auth', router);
 
   const authServ = new AuthService();
@@ -28,7 +28,7 @@ function auth(app: Application) {
   });
 
   router.get('/validate', authValidation(1), (req: Request, res: Response) => {
-    return res.apiSuccess({ user: (req as any).user }, '', 200);
+    return res.apiSuccess({ user: (req as any).user }, 'Validación exitosa', 200);
   });
 
   router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
@@ -76,4 +76,4 @@ function auth(app: Application) {
   );
 }
 
-export = auth;
+export default auth;

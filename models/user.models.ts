@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';  // Asume import correcto
+import { Schema, model } from 'mongoose';
 
 const userSchema = new Schema(
   {
@@ -15,17 +15,17 @@ const userSchema = new Schema(
       trim: true,
       unique: [true, 'Email ya registrado'],
       match: [/^[\w\.-]+@[\w]+\.[\.\w]+$/, 'Email no válido'],
-      lowercase: true,  // Mejora: normalizar
+      lowercase: true,
     },
     password: {
       type: String,
       required: [true, 'La contraseña es requerida'],
-      select: false,  // Seguridad: no en queries por default
+      select: false,
     },
     role: {
       type: Number,
       default: 1,
-      enum: [1, 2],  // Mejora: enum para roles
+      enum: [1, 2],
     },
     profilePic: String,
     provider: {
@@ -46,8 +46,8 @@ const userSchema = new Schema(
 );
 
 // Método estático funcional para queries comunes
-userSchema.statics.findByEmail = function(email: string) {
-  return this.findOne({ email }).select('+password');  // Incluye password si needed
+userSchema.statics.findByEmail = function (email: string) {
+  return this.findOne({ email }).select('+password');
 };
 
 const UserModel = model('user', userSchema);

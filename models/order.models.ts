@@ -1,4 +1,4 @@
-const { mongoose } = require('../config/db.config');
+import { mongoose } from '../config/db.config';
 
 const orderSchema = new mongoose.Schema(
   {
@@ -16,7 +16,8 @@ const orderSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      trim: true,
+      default: 'Pendiente',
+      enum: ['Pendiente', 'Pagado', 'Enviado', 'Entregado'],
     },
   },
   { timestamps: true }
@@ -24,4 +25,4 @@ const orderSchema = new mongoose.Schema(
 
 const OrderModel = mongoose.model('order', orderSchema);
 
-export = OrderModel;
+export default OrderModel;

@@ -1,9 +1,8 @@
-export {};
-const ProductsModel = require('../models/products.models');
-const dbError = require('../helpers/dbError.helpers');
-const CartModelRef = require('../models/cart.models');
+import ProductsModel from '../models/products.models';
+import dbError from '../helpers/dbError.helpers';
+import CartModelRef from '../models/cart.models';
 
-class Products {
+export default class Products {
   async getAll() {
     try {
       const products = await ProductsModel.find();
@@ -38,7 +37,7 @@ class Products {
         success: false,
         code: error.code === 11000 ? 409 : 400,
         message: dbResult.message || "Error creating product",
-        errors: dbResult.errors || error.message || error
+        errors: dbResult.message ? [dbResult.message] : [error.message]
       };
     }
   }
@@ -124,7 +123,7 @@ class Products {
         _id: id,
         owner: idUser
       });
-      
+
       if (!product) {
         return {
           success: false,
@@ -202,4 +201,3 @@ class Products {
     }
   }
 }
-module.exports = Products;

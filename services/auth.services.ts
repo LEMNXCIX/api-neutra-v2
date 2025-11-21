@@ -1,11 +1,12 @@
-/// <reference path="../types/api-response.d.ts" />
 /// <reference path="../types/request-dto.d.ts" />
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-const { jwtSecret } = require("../config/index.config");
-const User = require("./users.services");
+import config from "../config/index.config";
+import User from "./users.services";
 
-class Auth {
+const { jwtSecret } = config;
+
+export default class Auth {
   async login(data: any) {
     const re = /^[\w\.-]+@[\w]+\.[\.\w]+$/;
     const { email, password } = data;
@@ -149,7 +150,7 @@ class Auth {
       const hash = await bcrypt.hash(string, salt);
 
       return hash;
-    } catch (error) {}
+    } catch (error) { }
   }
 
   async #compare(string: string, hash: string) {
@@ -160,5 +161,3 @@ class Auth {
     }
   }
 }
-
-export = Auth;

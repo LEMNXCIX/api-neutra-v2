@@ -1,24 +1,10 @@
-import { Application, Request, Response } from 'express';
-import authValidation from '../middleware/auth.middleware';
-const CartService = require('../services/cart.services');
-const authMiddleware = require('../middleware/auth.middleware');
+import { Application, Request, Response, Router } from 'express';
+import authMiddleware from '../middleware/auth.middleware';
+import CartService from '../services/cart.services';
 
 function cart(app: Application) {
-  const router = require('express').Router();
+  const router = Router();
   const cartServ = new CartService();
-
-  function sendResult(res: Response, result: any, okMsg = '', okCode = 200) {
-    const isServiceResult = result && typeof result === 'object' && (
-      'success' in result || 'code' in result || 'data' in result || 'error' in result
-    );
-    if (isServiceResult) {
-      if (result && (result.error || result.success === false)) {
-        return res.apiError(result.errors || result.message || result, result.message || 'Error', result.code || 400);
-      }
-      return res.apiSuccess(result.data !== undefined ? result.data : result, result.message || okMsg || 'OK', result.code || okCode);
-    }
-    return res.apiSuccess(result, okMsg || 'OK', okCode);
-  }
 
   app.use('/api/cart', router);
 
@@ -31,40 +17,36 @@ function cart(app: Application) {
     }
 
     const result = await cartServ.getItems(userId);
-    return sendResult(res, result, '', 200);
+    return res.json(result);
   });
 
   //Añadir producto al carrito
   router.post('/add', authMiddleware(1), async (req: Request, res: Response) => {
     const { idProduct, amount } = (req as any).body;
     const result = await cartServ.addToCart((req as any).user.id, idProduct, amount);
-    return sendResult(res, result, result.message || 'OK', 200);
+    return res.json(result);
   });
 
   //Eliminar un producto del carrito
   router.put('/remove', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await cartServ.removeFromCart((req as any).body.cartId, (req as any).body.id);
-    return sendResult(res, result, result.message || 'OK', 200);
+    return res.json(result);
   });
 
   //Limpiar el carrito
   router.delete('/clear', authMiddleware(1), async (req: Request, res: Response) => {
     const result = await cartServ.clearCart((req as any).user.id);
-    return sendResult(res, result, '', 200);
+    return res.json(result);
   });
 
-  router.get('/stats', authValidation(2), async (req: Request, res: Response) => {
-    const result = await CartService.getCartsStats((req.params as any).id);
-    // result is a ServiceResult / ApiPayload
-    if (!result || result.success === false) {
-      return res.apiError(result && result.errors ? result.errors : result.message || 'Error', result.message || 'Error', result.code || 400);
-    }
-    return res.apiSuccess(result.data, result.message || '', result.code || 200);
+  router.get('/stats', authMiddleware(2), async (req: Request, res: Response) => {
+    const result = await cartServ.getCartsStats();
+    return res.json(result);
   });
 
   router.use(async (req: Request, res: Response) => {
-    return res.apiError({ message: 'Pagina no encontrada. :|' }, 'Pagina no encontrada', 400);
+    return res.apiError({ message: 'Pagina no encontrada. :|' }, 'Pagina no encontrada', 404);
   });
 }
 
-export = cart;
+export default cart;

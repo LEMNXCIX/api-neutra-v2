@@ -1,3 +1,12 @@
+import config from '../config/index.config';
+import dotenv from 'dotenv';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as FacebookStrategy } from 'passport-facebook';
+import { Strategy as TwitterStrategy } from 'passport-twitter';
+import { Strategy as GitHubStrategy } from 'passport-github2';
+
+dotenv.config();
+
 const {
   oauthClientID,
   oauthClientSecret,
@@ -10,12 +19,7 @@ const {
   twitterConsumerSecret,
   githubClientID,
   githubClientSecret,
-} = require('../config/index.config');
-require('dotenv').config();
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const FacebookStrategy = require('passport-facebook').Strategy;
-const TwitterStrategy = require('passport-twitter').Strategy;
-const GitHubStrategy = require('passport-github2').Strategy;
+} = config;
 
 const callbackUrl = (provider: string) =>
   `${production ? callbackURL : callbackURLDev}/api/auth/${provider}/callback`;
@@ -24,21 +28,22 @@ const getProfile = (accesToken: any, refreshToken: any, profile: any, done: any)
   done(null, { profile });
 };
 
-const useGoogleStrategy = () => {
+export const useGoogleStrategy = () => {
   return new GoogleStrategy(
     {
-      clientID: oauthClientID,
-      clientSecret: oauthClientSecret,
+      clientID: oauthClientID as string,
+      clientSecret: oauthClientSecret as string,
       callbackURL: callbackUrl('google'),
     },
     getProfile
   );
 };
-const useFacebookStrategy = () => {
+
+export const useFacebookStrategy = () => {
   return new FacebookStrategy(
     {
-      clientID: facebookAppID,
-      clientSecret: facebookAppSecret,
+      clientID: facebookAppID as string,
+      clientSecret: facebookAppSecret as string,
       callbackURL: callbackUrl('facebook'),
       profileFields: ['id', 'emails', 'displayName', 'name', 'photos'],
     },
@@ -46,11 +51,11 @@ const useFacebookStrategy = () => {
   );
 };
 
-const useTwitterStrategy = () => {
+export const useTwitterStrategy = () => {
   return new TwitterStrategy(
     {
-      consumerKey: twitterConsumerID,
-      consumerSecret: twitterConsumerSecret,
+      consumerKey: twitterConsumerID as string,
+      consumerSecret: twitterConsumerSecret as string,
       callbackURL: callbackUrl('twitter'),
       includeEmail: true,
     },
@@ -58,18 +63,19 @@ const useTwitterStrategy = () => {
   );
 };
 
-const useGitHubStrategy = () => {
+export const useGitHubStrategy = () => {
   return new GitHubStrategy(
     {
-      clientID: githubClientID,
-      clientSecret: githubClientSecret,
+      clientID: githubClientID as string,
+      clientSecret: githubClientSecret as string,
       callbackURL: callbackUrl('github'),
       scope: ['user:email'],
     },
     getProfile
   );
 };
-export = {
+
+export default {
   useGoogleStrategy,
   useFacebookStrategy,
   useTwitterStrategy,

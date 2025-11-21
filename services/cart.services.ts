@@ -1,12 +1,10 @@
-export {};
-const CartModel = require('../models/cart.models');
-const UserModel = require('../models/user.models');
-const { isEmptyObject } = require('../helpers/validateVariables');
-const { isValidObjectId } = require('mongoose');
+import CartModel from '../models/cart.models';
+import UserModel from '../models/user.models';
+import { isValidObjectId } from 'mongoose';
 
 // Response shape will be { success, code, message, data?, errors? }
 
-class Cart {
+export default class Cart {
   async getItems(idUser: any) {
     try {
       if (!isValidObjectId(idUser)) {
@@ -19,7 +17,7 @@ class Cart {
       }
 
       const cart = await CartModel.findById(idUser).populate('items._id', 'name price image');
-      
+
       if (!cart) {
         return {
           success: false,
@@ -93,6 +91,15 @@ class Cart {
         },
         { new: true }
       ).populate('items._id', 'name price image');
+
+      if (!result) {
+        return {
+          success: false,
+          code: 404,
+          message: "Cart not found after update",
+          data: null
+        };
+      }
 
       const products = result.items.map((product: any) => ({
         ...product._id?._doc,
@@ -353,4 +360,3 @@ class Cart {
     }
   }
 }
-module.exports = Cart;

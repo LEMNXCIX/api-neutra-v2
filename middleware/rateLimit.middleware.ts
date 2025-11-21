@@ -1,9 +1,8 @@
 import rateLimit from 'express-rate-limit';
-const config = require('../config/index.config');
-const constants = require('../config/constants.config');
+import config from '../config/index.config';
+import { MINUTE_MS } from '../config/constants.config';
 
 const ENVIRONMENT: string = config.ENVIRONMENT;
-const MINUTE_MS: number = constants.MINUTE_MS;
 
 const isDev = ENVIRONMENT === 'dev' || ENVIRONMENT === 'development';
 
@@ -20,8 +19,9 @@ const devLimiter = rateLimit({
   max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' }, // Added message for consistency
 });
 
-export = function rateLimiter() {
+export default function rateLimiter() {
   return isDev ? devLimiter : defaultLimiter;
-};
+}
