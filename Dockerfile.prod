@@ -1,0 +1,26 @@
+# Stage 1: Build
+FROM node:lts-alpine AS builder
+WORKDIR /usr/src/app
+COPY package*.json ./
+# Install all dependencies (including devDeps for building)
+RUN npm install
+COPY . .
+# Build TypeScript to JavaScript
+RUN npm run build
+
+# Stage 2: Production
+FROM node:lts-alpine
+WORKDIR /usr/src/app
+ENV NODE_ENV=production
+COPY package*.json ./
+# Install only production dependencies
+RUN npm install --production --silent && mv node_modules ../
+# Copy built assets from builder stage
+COPY --from=builder /usr/src/app/dist ./dist
+# Copy public assets if any (optional, adjust as needed)
+# COPY --from=builder /usr/src/app/public ./public
+
+EXPOSE 3000
+RUN chown -R node /usr/src/app
+USER node
+CMD ["node", "dist/app.js"]

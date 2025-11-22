@@ -12,12 +12,12 @@ import responseMiddleware from "./middleware/response.middleware";
 import logger from "./helpers/logger.helpers";
 
 // Rutas
-import auth from "./routes/auth.routes";
-import users from "./routes/users.routes";
-import products from "./routes/products.routes";
-import slide from "./routes/slide.routes";
-import cart from "./routes/cart.routes";
-import order from "./routes/order.routes";
+import auth from "./infrastructure/routes/auth.routes";
+import users from "./infrastructure/routes/users.routes";
+import products from "./infrastructure/routes/products.routes";
+import slide from "./infrastructure/routes/slide.routes";
+import cart from "./infrastructure/routes/cart.routes";
+import order from "./infrastructure/routes/order.routes";
 
 const { port, sesionSecret, ENVIRONMENT } = config;
 

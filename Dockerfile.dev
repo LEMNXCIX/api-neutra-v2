@@ -1,0 +1,22 @@
+FROM node:lts-alpine
+
+WORKDIR /usr/src/app
+
+# Install dependencies without running scripts
+COPY ["package.json", "package-lock.json*", "npm-shrinkwrap.json*", "./"]
+RUN npm install --silent --ignore-scripts && mv node_modules ../
+
+# Copy all source files including Prisma schema
+COPY . .
+
+# Now generate Prisma Client with a dummy DATABASE_URL
+# This will be overridden at runtime by docker-compose environment
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+RUN npx prisma generate
+
+EXPOSE 3000
+RUN chown -R node /usr/src/app
+USER node
+
+# Start the dev server directly
+CMD ["npm", "run", "dev"]

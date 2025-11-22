@@ -1,0 +1,5 @@
+config/index.config.ts(1,8): error TS1192: Module '"/usr/src/node_modules/dotenv/lib/main"' has no default export.
+helpers/logger.helpers.ts(1,8): error TS1259: Module '"/usr/src/node_modules/pino/pino"' can only be default-imported using the 'esModuleInterop' flag
+../node_modules/@prisma/client/runtime/library.d.ts(73,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+../node_modules/@prisma/client/runtime/library.d.ts(401,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
+../node_modules/@prisma/client/runtime/library.d.ts(2037,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.
