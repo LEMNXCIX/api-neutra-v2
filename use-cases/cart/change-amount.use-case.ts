@@ -1,4 +1,4 @@
-import { ICartRepository } from '../../core/repositories/cart.repository.interface';
+import { ICartRepository } from '@/core/repositories/cart.repository.interface';
 
 export class ChangeAmountUseCase {
     constructor(private cartRepository: ICartRepository) { }

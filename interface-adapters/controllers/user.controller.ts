@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import { IUserRepository } from '../../core/repositories/user.repository.interface';
-import { ICartRepository } from '../../core/repositories/cart.repository.interface';
-import { GetAllUsersUseCase } from '../../use-cases/users/get-all-users.use-case';
-import { GetUserByIdUseCase } from '../../use-cases/users/get-user-by-id.use-case';
-import { GetUserByEmailUseCase } from '../../use-cases/users/get-user-by-email.use-case';
-import { GetUsersStatsUseCase } from '../../use-cases/users/get-users-stats.use-case';
-import { CreateUserUseCase } from '../../use-cases/users/create-user.use-case';
-import { GetOrCreateByProviderUseCase } from '../../use-cases/users/get-or-create-by-provider.use-case';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { ICartRepository } from '@/core/repositories/cart.repository.interface';
+import { GetAllUsersUseCase } from '@/use-cases/users/get-all-users.use-case';
+import { GetUserByIdUseCase } from '@/use-cases/users/get-user-by-id.use-case';
+import { GetUserByEmailUseCase } from '@/use-cases/users/get-user-by-email.use-case';
+import { GetUsersStatsUseCase } from '@/use-cases/users/get-users-stats.use-case';
+import { CreateUserUseCase } from '@/use-cases/users/create-user.use-case';
+import { GetOrCreateByProviderUseCase } from '@/use-cases/users/get-or-create-by-provider.use-case';
 
 export class UserController {
     constructor(

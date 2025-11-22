@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
-import { IUserRepository } from '../../core/repositories/user.repository.interface';
-import { IPasswordHasher } from '../../core/providers/password-hasher.interface';
-import { ITokenGenerator } from '../../core/providers/token-generator.interface';
-import { LoginUseCase } from '../../use-cases/auth/login.use-case';
-import { RegisterUseCase } from '../../use-cases/auth/register.use-case';
-import { SocialLoginUseCase } from '../../use-cases/auth/social-login.use-case';
-import { authResponse, providerResponse, deleteCookie } from '../../helpers/authResponse.helpers';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { IPasswordHasher, ITokenGenerator } from '@/core/providers/auth-providers.interface';
+import { ILogger } from '@/core/providers/logger.interface';
+import { LoginUseCase } from '@/use-cases/auth/login.use-case';
+import { RegisterUseCase } from '@/use-cases/auth/register.use-case';
+import { SocialLoginUseCase } from '@/use-cases/auth/social-login.use-case';
+import { authResponse, providerResponse, deleteCookie } from '@/helpers/authResponse.helpers';
 
 export class AuthController {
     private loginUseCase: LoginUseCase;
@@ -15,10 +15,11 @@ export class AuthController {
     constructor(
         userRepository: IUserRepository,
         passwordHasher: IPasswordHasher,
-        tokenGenerator: ITokenGenerator
+        tokenGenerator: ITokenGenerator,
+        logger: ILogger
     ) {
-        this.loginUseCase = new LoginUseCase(userRepository, passwordHasher, tokenGenerator);
-        this.registerUseCase = new RegisterUseCase(userRepository, passwordHasher, tokenGenerator);
+        this.loginUseCase = new LoginUseCase(userRepository, passwordHasher, tokenGenerator, logger);
+        this.registerUseCase = new RegisterUseCase(userRepository, passwordHasher, tokenGenerator, logger);
         this.socialLoginUseCase = new SocialLoginUseCase(userRepository, tokenGenerator);
 
         // Bind methods to instance

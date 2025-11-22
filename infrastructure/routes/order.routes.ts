@@ -1,8 +1,8 @@
 import { Application, Router } from 'express';
-import authMiddleware from '../../middleware/auth.middleware';
-import { OrderController } from '../../interface-adapters/controllers/order.controller';
-import { PrismaOrderRepository } from '../database/prisma/order.prisma-repository';
-import { PrismaCartRepository } from '../database/prisma/cart.prisma-repository';
+import authMiddleware from '@/middleware/auth.middleware';
+import { OrderController } from '@/interface-adapters/controllers/order.controller';
+import { PrismaOrderRepository } from '@/infrastructure/database/prisma/order.prisma-repository';
+import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
 
 function order(app: Application) {
     const router = Router();

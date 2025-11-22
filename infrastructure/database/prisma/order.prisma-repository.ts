@@ -1,6 +1,6 @@
-import { prisma } from '../../../config/db.config';
-import { IOrderRepository } from '../../../core/repositories/order.repository.interface';
-import { Order, CreateOrderDTO, OrderStatus } from '../../../core/entities/order.entity';
+import { prisma } from '@/config/db.config';
+import { IOrderRepository } from '@/core/repositories/order.repository.interface';
+import { Order, CreateOrderDTO, OrderStatus } from '@/core/entities/order.entity';
 import { OrderStatus as PrismaOrderStatus } from '@prisma/client';
 
 export class PrismaOrderRepository implements IOrderRepository {

@@ -1,8 +1,8 @@
 import { Application, Request, Response, Router } from 'express';
-import authValidation from '../../middleware/auth.middleware';
-import { UserController } from '../../interface-adapters/controllers/user.controller';
-import { PrismaUserRepository } from '../database/prisma/user.prisma-repository';
-import { PrismaCartRepository } from '../database/prisma/cart.prisma-repository';
+import authValidation from '@/middleware/auth.middleware';
+import { UserController } from '@/interface-adapters/controllers/user.controller';
+import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
+import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
 
 function users(app: Application) {
     const router = Router();

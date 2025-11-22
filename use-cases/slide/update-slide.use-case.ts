@@ -1,5 +1,5 @@
-import { ISlideRepository } from '../../core/repositories/slide.repository.interface';
-import { UpdateSlideDTO } from '../../core/entities/slide.entity';
+import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
+import { UpdateSlideDTO } from '@/core/entities/slide.entity';
 
 export class UpdateSlideUseCase {
     constructor(private slideRepository: ISlideRepository) { }

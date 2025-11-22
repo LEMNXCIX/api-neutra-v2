@@ -1,4 +1,4 @@
-import { IProductRepository } from '../../core/repositories/product.repository.interface';
+import { IProductRepository } from '@/core/repositories/product.repository.interface';
 
 export class GetProductUseCase {
     constructor(private productRepository: IProductRepository) { }

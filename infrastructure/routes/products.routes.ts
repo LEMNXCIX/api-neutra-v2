@@ -1,7 +1,7 @@
 import { Application, Router } from 'express';
-import authMiddleware from '../../middleware/auth.middleware';
-import { ProductController } from '../../interface-adapters/controllers/product.controller';
-import { PrismaProductRepository } from '../database/prisma/product.prisma-repository';
+import authMiddleware from '@/middleware/auth.middleware';
+import { ProductController } from '@/interface-adapters/controllers/product.controller';
+import { PrismaProductRepository } from '@/infrastructure/database/prisma/product.prisma-repository';
 
 function products(app: Application) {
     const router = Router();

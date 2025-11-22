@@ -1,5 +1,5 @@
-import { IUserRepository } from '../../core/repositories/user.repository.interface';
-import { ICartRepository } from '../../core/repositories/cart.repository.interface';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { ICartRepository } from '@/core/repositories/cart.repository.interface';
 import * as uuid from 'uuid';
 
 interface ProviderData {

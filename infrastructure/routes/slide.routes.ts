@@ -1,7 +1,7 @@
 import { Application, Router } from 'express';
-import authValidation from '../../middleware/auth.middleware';
-import { SlideController } from '../../interface-adapters/controllers/slide.controller';
-import { PrismaSlideRepository } from '../database/prisma/slide.prisma-repository';
+import authValidation from '@/middleware/auth.middleware';
+import { SlideController } from '@/interface-adapters/controllers/slide.controller';
+import { PrismaSlideRepository } from '@/infrastructure/database/prisma/slide.prisma-repository';
 
 function slide(app: Application) {
     const router = Router();

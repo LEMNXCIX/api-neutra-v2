@@ -1,6 +1,6 @@
-import { prisma } from '../../../config/db.config';
-import { IProductRepository } from '../../../core/repositories/product.repository.interface';
-import { Product, CreateProductDTO, UpdateProductDTO } from '../../../core/entities/product.entity';
+import { prisma } from '@/config/db.config';
+import { IProductRepository } from '@/core/repositories/product.repository.interface';
+import { Product, CreateProductDTO, UpdateProductDTO } from '@/core/entities/product.entity';
 
 export class PrismaProductRepository implements IProductRepository {
     async findAll(): Promise<Product[]> {

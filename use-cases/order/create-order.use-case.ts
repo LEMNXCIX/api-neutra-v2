@@ -1,7 +1,7 @@
-import { IOrderRepository } from '../../core/repositories/order.repository.interface';
-import { GetCartUseCase } from '../cart/get-cart.use-case';
-import { ClearCartUseCase } from '../cart/clear-cart.use-case';
-import { CreateOrderDTO } from '../../core/entities/order.entity';
+import { IOrderRepository } from '@/core/repositories/order.repository.interface';
+import { GetCartUseCase } from '@/use-cases/cart/get-cart.use-case';
+import { ClearCartUseCase } from '@/use-cases/cart/clear-cart.use-case';
+import { CreateOrderDTO } from '@/core/entities/order.entity';
 
 export class CreateOrderUseCase {
     constructor(

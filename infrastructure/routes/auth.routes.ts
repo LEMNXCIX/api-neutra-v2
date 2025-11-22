@@ -1,11 +1,12 @@
 /// <reference path="../../types/request-dto.d.ts" />
 import { Application, Router } from 'express';
 import passport from 'passport';
-import { AuthController } from '../../interface-adapters/controllers/auth.controller';
-import authValidation from '../../middleware/auth.middleware';
-import { PrismaUserRepository } from '../database/prisma/user.prisma-repository';
-import { BcryptProvider } from '../providers/bcrypt.provider';
-import { JwtProvider } from '../providers/jwt.provider';
+import { AuthController } from '@/interface-adapters/controllers/auth.controller';
+import authValidation from '@/middleware/auth.middleware';
+import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
+import { BcryptProvider } from '@/infrastructure/providers/bcrypt.provider';
+import { JwtProvider } from '@/infrastructure/providers/jwt.provider';
+import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
 
 function auth(app: Application) {
     const router = Router();
@@ -15,7 +16,8 @@ function auth(app: Application) {
     const userRepository = new PrismaUserRepository();
     const passwordHasher = new BcryptProvider();
     const tokenGenerator = new JwtProvider();
-    const authController = new AuthController(userRepository, passwordHasher, tokenGenerator);
+    const logger = new PinoLoggerProvider();
+    const authController = new AuthController(userRepository, passwordHasher, tokenGenerator, logger);
 
     router.post('/login', authController.login);
     router.post('/signup', authController.signup);

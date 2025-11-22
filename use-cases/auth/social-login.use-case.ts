@@ -1,6 +1,6 @@
-import { IUserRepository } from '../../core/repositories/user.repository.interface';
-import { ITokenGenerator } from '../../core/providers/auth-providers.interface';
-import { CreateUserDTO } from '../../core/entities/user.entity';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { ITokenGenerator } from '@/core/providers/auth-providers.interface';
+import { CreateUserDTO } from '@/core/entities/user.entity';
 import * as uuid from 'uuid';
 
 export class SocialLoginUseCase {

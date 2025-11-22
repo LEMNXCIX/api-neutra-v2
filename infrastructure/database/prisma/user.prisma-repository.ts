@@ -1,6 +1,6 @@
-import { prisma } from '../../../config/db.config';
-import { IUserRepository } from '../../../core/repositories/user.repository.interface';
-import { User, CreateUserDTO } from '../../../core/entities/user.entity';
+import { prisma } from '@/config/db.config';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { User, CreateUserDTO } from '@/core/entities/user.entity';
 import { Role } from '@prisma/client';
 
 export class PrismaUserRepository implements IUserRepository {

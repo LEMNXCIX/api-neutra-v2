@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import { IProductRepository } from '../../core/repositories/product.repository.interface';
-import { GetAllProductsUseCase } from '../../use-cases/products/get-all-products.use-case';
-import { GetProductUseCase } from '../../use-cases/products/get-product.use-case';
-import { CreateProductUseCase } from '../../use-cases/products/create-product.use-case';
-import { UpdateProductUseCase } from '../../use-cases/products/update-product.use-case';
-import { DeleteProductUseCase } from '../../use-cases/products/delete-product.use-case';
-import { SearchProductsUseCase } from '../../use-cases/products/search-products.use-case';
-import { GetProductStatsUseCase } from '../../use-cases/products/get-product-stats.use-case';
+import { IProductRepository } from '@/core/repositories/product.repository.interface';
+import { GetAllProductsUseCase } from '@/use-cases/products/get-all-products.use-case';
+import { GetProductUseCase } from '@/use-cases/products/get-product.use-case';
+import { CreateProductUseCase } from '@/use-cases/products/create-product.use-case';
+import { UpdateProductUseCase } from '@/use-cases/products/update-product.use-case';
+import { DeleteProductUseCase } from '@/use-cases/products/delete-product.use-case';
+import { SearchProductsUseCase } from '@/use-cases/products/search-products.use-case';
+import { GetProductStatsUseCase } from '@/use-cases/products/get-product-stats.use-case';
 
 export class ProductController {
     private getAllProductsUseCase: GetAllProductsUseCase;

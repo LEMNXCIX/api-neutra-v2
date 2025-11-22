@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-import config from '../../config/index.config';
-import { ITokenGenerator } from '../../core/providers/auth-providers.interface';
+import config from '@/config/index.config';
+import { ITokenGenerator } from '@/core/providers/auth-providers.interface';
 
 export class JwtProvider implements ITokenGenerator {
     private secret: string;

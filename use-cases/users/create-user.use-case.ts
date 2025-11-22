@@ -1,6 +1,6 @@
-import { IUserRepository } from '../../core/repositories/user.repository.interface';
-import { ICartRepository } from '../../core/repositories/cart.repository.interface';
-import { CreateUserDTO } from '../../core/entities/user.entity';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { ICartRepository } from '@/core/repositories/cart.repository.interface';
+import { CreateUserDTO } from '@/core/entities/user.entity';
 
 export class CreateUserUseCase {
     constructor(

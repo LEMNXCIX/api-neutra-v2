@@ -1,7 +1,7 @@
 import { Application, Request, Response, Router } from 'express';
-import authMiddleware from '../../middleware/auth.middleware';
-import { CartController } from '../../interface-adapters/controllers/cart.controller';
-import { PrismaCartRepository } from '../database/prisma/cart.prisma-repository';
+import authMiddleware from '@/middleware/auth.middleware';
+import { CartController } from '@/interface-adapters/controllers/cart.controller';
+import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
 
 function cart(app: Application) {
     const router = Router();
