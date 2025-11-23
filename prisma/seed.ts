@@ -29,6 +29,21 @@ const PERMISSIONS = [
     // Cart
     { name: 'cart:read', description: 'View own cart' },
     { name: 'cart:write', description: 'Manage own cart items' },
+
+    // Categories
+    { name: 'categories:read', description: 'View categories' },
+    { name: 'categories:write', description: 'Create and update categories' },
+    { name: 'categories:delete', description: 'Delete categories' },
+
+    // Roles
+    { name: 'roles:read', description: 'View roles' },
+    { name: 'roles:write', description: 'Create and update roles' },
+    { name: 'roles:delete', description: 'Delete roles' },
+
+    // Permissions
+    { name: 'permissions:read', description: 'View permissions' },
+    { name: 'permissions:write', description: 'Create and update permissions' },
+    { name: 'permissions:delete', description: 'Delete permissions' },
 ];
 
 // Roles predefinidos con sus permisos
@@ -43,6 +58,7 @@ const ROLES = [
             'orders:write', // Crear órdenes
             'cart:read',
             'cart:write',
+            'categories:read',
         ],
     },
     {
@@ -57,6 +73,8 @@ const ROLES = [
             'stats:read',
             'users:read',
             'cart:read',
+            'categories:read',
+            'categories:write',
         ],
     },
     {
@@ -73,6 +91,15 @@ const ROLES = [
             'slides:write',
             'cart:read',
             'cart:write',
+            'categories:read',
+            'categories:write',
+            'categories:delete',
+            'roles:read',
+            'roles:write',
+            'roles:delete',
+            'permissions:read',
+            'permissions:write',
+            'permissions:delete',
         ],
     },
 ];
