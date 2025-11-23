@@ -2,6 +2,7 @@ import { IOrderRepository } from '@/core/repositories/order.repository.interface
 import { GetCartUseCase } from '@/use-cases/cart/get-cart.use-case';
 import { ClearCartUseCase } from '@/use-cases/cart/clear-cart.use-case';
 import { CreateOrderDTO } from '@/core/entities/order.entity';
+import { BusinessErrorCodes } from '@/types/error-codes';
 
 export class CreateOrderUseCase {
     constructor(
@@ -16,7 +17,12 @@ export class CreateOrderUseCase {
         if (!cartResponse.success || !cartResponse.data || (Array.isArray(cartResponse.data) && cartResponse.data.length === 0)) {
             return {
                 success: false,
+                code: 422,
                 message: 'Tu carrito esta vacío, no puedes generar una orden.',
+                errors: [{
+                    code: BusinessErrorCodes.CART_EMPTY,
+                    message: 'Cannot create order with empty cart'
+                }]
             };
         }
 
@@ -35,12 +41,21 @@ export class CreateOrderUseCase {
             const order = await this.orderRepository.create(orderData);
             await this.clearCartUseCase.execute(userId);
 
-            return { message: 'Se ha generado su orden', orderFinal: order };
+            return {
+                success: true,
+                code: 201,
+                message: 'Se ha generado su orden',
+                data: order
+            };
         } catch (error: any) {
             return {
                 success: false,
+                code: 500,
                 message: "Error creating order",
-                errors: error.message || error
+                errors: [{
+                    code: 'SYSTEM_INTERNAL_ERROR',
+                    message: error.message || 'Unknown error occurred'
+                }]
             };
         }
     }

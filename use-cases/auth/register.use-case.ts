@@ -2,6 +2,7 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { IPasswordHasher, ITokenGenerator } from '@/core/providers/auth-providers.interface';
 import { CreateUserDTO } from '@/core/entities/user.entity';
 import { ILogger } from '@/core/providers/logger.interface';
+import { ValidationErrorCodes, ResourceErrorCodes } from '@/types/error-codes';
 
 export class RegisterUseCase {
     constructor(
@@ -18,7 +19,11 @@ export class RegisterUseCase {
                 success: false,
                 code: 400,
                 message: "Missing required fields",
-                errors: ["Missing required fields"]
+                errors: [{
+                    code: ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
+                    message: "Email, password, and name are required",
+                    field: !data.email ? 'email' : !data.password ? 'password' : 'name'
+                }]
             };
         }
 
@@ -28,9 +33,13 @@ export class RegisterUseCase {
                 this.logger.warn('Registration failed: email already exists', { email: data.email });
                 return {
                     success: false,
-                    code: 400,
+                    code: 409,
                     message: "Email already exists",
-                    errors: ["Email already exists"]
+                    errors: [{
+                        code: ResourceErrorCodes.ALREADY_EXISTS,
+                        message: "A user with this email already exists",
+                        field: 'email'
+                    }]
                 };
             }
 
@@ -40,21 +49,32 @@ export class RegisterUseCase {
                 name: data.name,
                 email: data.email,
                 password: hashedPassword,
-                role: 'USER', // Default role
+                // roleId is optional - repository will assign default USER role
                 profilePic: data.profilePic
             };
 
             const user = await this.userRepository.create(newUser);
-            const token = this.tokenGenerator.generate({
-                id: user.id,
-                email: user.email,
-                role: user.role,
-                name: user.name
+
+            // Fetch user with role and permissions for JWT
+            const userWithRole = await this.userRepository.findById(user.id, {
+                includeRole: true,
+                includePermissions: true
             });
 
-            const { password: _, ...safeUser } = user;
+            if (!userWithRole) {
+                throw new Error('User creation failed');
+            }
 
-            this.logger.info('User registered successfully', { userId: user.id, email: user.email });
+            const token = this.tokenGenerator.generate({
+                id: userWithRole.id,
+                email: userWithRole.email,
+                name: userWithRole.name,
+                role: userWithRole.role  // Includes permissions
+            });
+
+            const { password: _, ...safeUser } = userWithRole;
+
+            this.logger.info('User registered successfully', { userId: userWithRole.id, email: userWithRole.email });
 
             return {
                 success: true,
@@ -68,7 +88,10 @@ export class RegisterUseCase {
                 success: false,
                 code: 500,
                 message: "Error creating user",
-                errors: [error.message]
+                errors: [{
+                    code: 'SYSTEM_INTERNAL_ERROR',
+                    message: error.message
+                }]
             };
         }
     }

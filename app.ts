@@ -101,6 +101,8 @@ app.use(
   })
 );
 
+import { notFoundHandlerEnhanced } from "./middleware/not-found.middleware";
+
 // Rutas (composición)
 // Routes are now default exports that take 'app' as argument
 auth(app);
@@ -114,6 +116,9 @@ order(app);
 app.get("/", (req: Request, res: Response) => {
   res.json({ name: "Ecommerce" });
 });
+
+// 404 Handler - Must be after all routes
+app.use(notFoundHandlerEnhanced);
 
 // Server lift
 if (require.main === module) {

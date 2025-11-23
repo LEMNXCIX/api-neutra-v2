@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { info, error as logError } from '../helpers/logger.helpers';
-import { ApiResponse, StandardResponse, AppError, ErrorDetail } from '../types/api-response';
+import { ApiResponse, StandardResponse, AppError, ErrorDetail, SystemErrorCodes } from '../types/api-response';
 
 declare global {
   namespace Express {
@@ -99,13 +99,13 @@ export default function responseMiddleware(req: Request, res: Response, next: Ne
     } else if (err instanceof Error) {
       finalMessage = err.message || message;
       finalErrors = [{
-        code: 'INTERNAL_SERVER_ERROR',
+        code: SystemErrorCodes.INTERNAL_SERVER_ERROR,
         message: err.message,
         metadata: process.env.NODE_ENV !== 'production' ? { stack: err.stack } : undefined
       }];
     } else if (typeof err === 'string') {
       finalErrors = [{
-        code: 'GENERIC_ERROR',
+        code: SystemErrorCodes.UNKNOWN_ERROR,
         message: err
       }];
     } else if (Array.isArray(err)) {
@@ -129,11 +129,11 @@ function normalizeErrors(errors: any): ErrorDetail[] {
   }
   return errors.map((e: any) => {
     if (typeof e === 'string') {
-      return { code: 'GENERIC_ERROR', message: e };
+      return { code: SystemErrorCodes.UNKNOWN_ERROR, message: e };
     }
     if (e && typeof e === 'object') {
       return {
-        code: e.code || 'GENERIC_ERROR',
+        code: e.code || SystemErrorCodes.UNKNOWN_ERROR,
         message: e.message || 'Unknown error',
         field: e.field,
         domain: e.domain,

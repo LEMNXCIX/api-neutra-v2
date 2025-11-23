@@ -10,9 +10,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  USER
-  ADMIN
+// RBAC Models
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique  // "ADMIN", "MANAGER", "USER"
+  description String?
+  level       Int      @default(0)  // For backward compatibility
+  
+  permissions RolePermission[]
+  users       User[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique  // "users:read", "products:write"
+  description String?
+  
+  roles       RolePermission[]
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
 }
 
 enum OrderStatus {
@@ -27,7 +62,8 @@ model User {
   name      String
   email     String   @unique
   password  String
-  role      Role     @default(USER)
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
   profilePic String?
 
   // Provider IDs

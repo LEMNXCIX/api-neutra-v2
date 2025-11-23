@@ -75,9 +75,72 @@ Una vez que el contenedor de la base de datos esté corriendo, necesitas sincron
 
 1.  **Ejecutar migración (desde tu máquina host si tienes Node/Prisma instalado)**:
     ```bash
-    npx prisma db push
+    npx prisma migrate dev
     ```
     *O si prefieres ejecutarlo desde dentro del contenedor:*
     ```bash
-    docker-compose exec app npx prisma db push
+    docker-compose exec app npx prisma migrate dev
     ```
+
+2.  **Ver el esquema de la base de datos**:
+    ```bash
+    npx prisma studio
+    ```
+
+---
+
+## 🔐 Sistema RBAC (Role-Based Access Control)
+
+Este proyecto implementa un sistema de control de acceso granular basado en roles y permisos.
+
+### Migración RBAC (20251122150656_add_rbac_system)
+
+**Fecha**: 22 de noviembre de 2024
+
+#### ¿Qué cambió?
+
+El sistema de roles se migró de un simple `enum` a un sistema completo de roles y permisos:
+
+**Antes:**
+- Tabla `users` con columna `role` (enum: USER, ADMIN)
+- Sistema jerárquico simple basado en números
+
+**Después:**
+- Tabla `roles`: Define roles del sistema (USER, MANAGER, ADMIN)
+- Tabla `permissions`: Define permisos granulares (`users:read`, `products:write`, etc.)
+- Tabla `role_permissions`: Relación muchos-a-muchos entre roles y permisos
+- Tabla `users` ahora tiene `roleId` (foreign key a `roles`)
+
+#### Comandos ejecutados
+
+```bash
+# 1. Remover archivo de configuración conflictivo
+Remove-Item -Path "prisma.config.ts" -Force
+
+# 2. Reset de la base de datos (elimina datos existentes)
+npx prisma migrate reset --skip-seed
+
+# 3. Crear y aplicar la migración RBAC
+npx prisma migrate dev --name add-rbac-system --skip-seed
+```
+
+#### Estructura de Permisos
+
+Los permisos siguen el formato `resource:action`:
+
+- **Resources**: `users`, `products`, `orders`, `cart`, `slides`, `stats`
+- **Actions**: `read`, `write`, `delete`, `manage`
+
+**Ejemplos**:
+- `users:read` - Ver lista de usuarios
+- `products:write` - Crear/editar productos
+- `orders:manage` - Gestión completa de órdenes
+
+#### Próximos Pasos
+
+1. **Fase 2**: Crear seed data con roles y permisos predefinidos
+2. **Fase 3**: Actualizar middleware de autenticación para usar permisos
+3. **Fase 4**: Migrar rutas para usar el nuevo sistema
+4. **Fase 5**: Actualizar frontend para soporte RBAC
+
+Para más detalles, consulta la documentación en `types/rbac.ts`.

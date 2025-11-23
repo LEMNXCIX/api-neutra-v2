@@ -4,7 +4,7 @@ export interface UpdateUserDTO {
     name?: string;
     email?: string;
     password?: string;
-    role?: 'USER' | 'ADMIN';
+    roleId?: string;  // Updated to use roleId instead of role
     profilePic?: string;
     googleId?: string;
     facebookId?: string;
@@ -12,10 +12,15 @@ export interface UpdateUserDTO {
     githubId?: string;
 }
 
+export interface FindUserOptions {
+    includeRole?: boolean;
+    includePermissions?: boolean;
+}
+
 export interface IUserRepository {
     findAll(): Promise<User[]>;
-    findByEmail(email: string): Promise<User | null>;
-    findById(id: string): Promise<User | null>;
+    findByEmail(email: string, options?: FindUserOptions): Promise<User | null>;
+    findById(id: string, options?: FindUserOptions): Promise<User | null>;
     findByProvider(providerField: string, providerId: string): Promise<User | null>;
     create(user: CreateUserDTO): Promise<User>;
     update(id: string, user: Partial<User>): Promise<User>;

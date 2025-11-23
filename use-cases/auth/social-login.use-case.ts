@@ -43,21 +43,36 @@ export class SocialLoginUseCase {
                     email: email,
                     password: uuid.v4(), // Random password
                     [providerField]: providerId,
-                    role: 'USER',
+                    // roleId is optional - repository will assign default USER role
                     profilePic: data.photos && data.photos[0] ? data.photos[0].value : undefined
                 };
                 user = await this.userRepository.create(newUser);
             }
         }
 
-        const token = this.tokenGenerator.generate({
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            name: user.name
+        // Fetch user with role and permissions for JWT
+        const userWithRole = await this.userRepository.findById(user.id, {
+            includeRole: true,
+            includePermissions: true
         });
 
-        const { password: _, ...safeUser } = user;
+        if (!userWithRole) {
+            return {
+                success: false,
+                code: 500,
+                message: "Error retrieving user data",
+                errors: ["Failed to retrieve user with role information"]
+            };
+        }
+
+        const token = this.tokenGenerator.generate({
+            id: userWithRole.id,
+            email: userWithRole.email,
+            name: userWithRole.name,
+            role: userWithRole.role  // Includes permissions
+        });
+
+        const { password: _, ...safeUser } = userWithRole;
 
         return {
             success: true,
