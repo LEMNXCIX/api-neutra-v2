@@ -198,6 +198,29 @@ export class PrismaUserRepository implements IUserRepository {
         }));
     }
 
+    async findByRoleId(roleId: string): Promise<User[]> {
+        const users = await prisma.user.findMany({
+            where: { roleId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                roleId: true,
+                role: {
+                    select: {
+                        id: true,
+                        name: true,
+                        level: true
+                    }
+                },
+                profilePic: true,
+                createdAt: true,
+                updatedAt: true
+            }
+        });
+        return users as any[];
+    }
+
     async delete(id: string): Promise<void> {
         await prisma.user.delete({
             where: { id }

@@ -12,40 +12,40 @@ datasource db {
 
 // RBAC Models
 model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique  // "ADMIN", "MANAGER", "USER"
+  id          String  @id @default(uuid())
+  name        String  @unique // "ADMIN", "MANAGER", "USER"
   description String?
-  level       Int      @default(0)  // For backward compatibility
-  
+  level       Int     @default(0) // For backward compatibility
+
   permissions RolePermission[]
   users       User[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("roles")
 }
 
 model Permission {
-  id          String   @id @default(uuid())
-  name        String   @unique  // "users:read", "products:write"
+  id          String  @id @default(uuid())
+  name        String  @unique // "users:read", "products:write"
   description String?
-  
-  roles       RolePermission[]
-  
-  createdAt   DateTime @default(now())
-  
+
+  roles RolePermission[]
+
+  createdAt DateTime @default(now())
+
   @@map("permissions")
 }
 
 model RolePermission {
-  id           String     @id @default(uuid())
+  id           String @id @default(uuid())
   roleId       String
   permissionId String
-  
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
   @@unique([roleId, permissionId])
   @@map("role_permissions")
 }
@@ -58,19 +58,19 @@ enum OrderStatus {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  roleId    String
-  role      Role     @relation(fields: [roleId], references: [id])
+  id         String  @id @default(uuid())
+  name       String
+  email      String  @unique
+  password   String
+  roleId     String
+  role       Role    @relation(fields: [roleId], references: [id])
   profilePic String?
 
   // Provider IDs
-  googleId    String?
-  facebookId  String?
-  twitterId   String?
-  githubId    String?
+  googleId   String?
+  facebookId String?
+  twitterId  String?
+  githubId   String?
 
   // Relations
   products Product[]
@@ -84,45 +84,45 @@ model User {
 }
 
 model Product {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
   price       Float
   description String
   image       String?
 
-  ownerId     String
-  owner       User     @relation(fields: [ownerId], references: [id])
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
 
   // Relations
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
-  categories  Category[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  categories Category[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("products")
 }
 
 model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
+  id          String  @id @default(uuid())
+  name        String  @unique
   description String?
 
-  products    Product[]
+  products Product[]
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("categories")
 }
 
 model Cart {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
 
-  items     CartItem[]
+  items CartItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -131,56 +131,131 @@ model Cart {
 }
 
 model CartItem {
-  id        String   @id @default(uuid())
-  cartId    String
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
 
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  amount    Int
+  amount Int
 
   @@unique([cartId, productId]) // Ensure unique product per cart
   @@map("cart_items")
 }
 
 model Order {
-  id        String      @id @default(uuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id])
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  status    OrderStatus @default(PENDIENTE)
+  status OrderStatus @default(PENDIENTE)
 
-  items     OrderItem[]
+  // Coupon relation
+  couponId       String?
+  coupon         Coupon? @relation("CouponOrders", fields: [couponId], references: [id])
+  discountAmount Float   @default(0)
 
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  // Order totals
+  subtotal Float @default(0)
+  total    Float @default(0)
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("orders")
 }
 
 model OrderItem {
-  id        String   @id @default(uuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
 
-  amount    Int
-  price     Float    // Snapshot of price at time of order
+  amount Int
+  price  Float // Snapshot of price at time of order
 
   @@map("order_items")
 }
 
 model Slideshow {
-  id        String   @id @default(uuid())
-  title     String
-  img       String
-  desc      String?
+  id    String  @id @default(uuid())
+  title String
+  img   String
+  desc  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("slideshows")
+}
+
+// Banner Model
+model Banner {
+  id              String  @id @default(uuid())
+  title           String
+  subtitle        String?
+  description     String?
+  imageUrl        String?
+  backgroundColor String? @default("#000000")
+  textColor       String? @default("#FFFFFF")
+
+  cta    String? // Call to action text
+  ctaUrl String? // Call to action URL
+
+  priority Int     @default(0) // Higher = shown first
+  active   Boolean @default(true)
+
+  startsAt DateTime
+  endsAt   DateTime
+
+  // Analytics
+  impressions Int @default(0)
+  clicks      Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("banners")
+}
+
+// Coupon Type Enum
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+// Coupon Model
+model Coupon {
+  id    String     @id @default(uuid())
+  code  String     @unique
+  type  CouponType
+  value Float // Percentage (0-100) or fixed amount
+
+  description String?
+
+  minPurchaseAmount Float? // Minimum order total required
+  maxDiscountAmount Float? // Max discount for percentage coupons
+
+  usageLimit Int? // null = unlimited
+  usageCount Int  @default(0)
+
+  active    Boolean  @default(true)
+  expiresAt DateTime
+
+  // Optional: Limit to specific products/categories
+  applicableProducts   String[] // Array of product IDs
+  applicableCategories String[] // Array of category IDs
+
+  // Relations
+  orders Order[] @relation("CouponOrders")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("coupons")
 }

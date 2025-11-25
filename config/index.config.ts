@@ -25,6 +25,9 @@ const config = {
   callbackURLDev: process.env.CALLBACK_URL_DEVELOPMENT,
   // Custom environment variable to switch behavior ("dev" or "prod").
   ENVIRONMENT: process.env.ENVIRONMENT || process.env.NODE_ENV || 'development',
+  redisHost: process.env.REDIS_HOST,
+  redisPort: process.env.REDIS_PORT,
+  redisPassword: process.env.REDIS_PASSWORD,
 };
 
 export default config;

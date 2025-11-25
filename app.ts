@@ -18,6 +18,11 @@ import products from "./infrastructure/routes/products.routes";
 import slide from "./infrastructure/routes/slide.routes";
 import cart from "./infrastructure/routes/cart.routes";
 import order from "./infrastructure/routes/order.routes";
+import category from "./infrastructure/routes/category.routes";
+import role from "./infrastructure/routes/role.routes";
+import permission from "./infrastructure/routes/permission.routes";
+import banner from "./infrastructure/routes/banner.routes";
+import coupon from "./infrastructure/routes/coupon.routes";
 
 const { port, sesionSecret, ENVIRONMENT } = config;
 
@@ -103,11 +108,6 @@ app.use(
 
 import { notFoundHandlerEnhanced } from "./middleware/not-found.middleware";
 
-import category from "./infrastructure/routes/category.routes";
-
-import role from "./infrastructure/routes/role.routes";
-import permission from "./infrastructure/routes/permission.routes";
-
 // Rutas (composición)
 // Routes are now default exports that take 'app' as argument
 auth(app);
@@ -119,6 +119,8 @@ order(app);
 category(app);
 role(app);
 permission(app);
+banner(app);
+coupon(app);
 
 // Ruta raíz
 app.get("/", (req: Request, res: Response) => {

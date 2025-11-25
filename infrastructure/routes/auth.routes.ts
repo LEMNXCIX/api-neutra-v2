@@ -2,7 +2,7 @@
 import { Application, Router } from 'express';
 import passport from 'passport';
 import { AuthController } from '@/interface-adapters/controllers/auth.controller';
-import authValidation from '@/middleware/auth.middleware';
+import { authenticate } from '@/middleware/authenticate.middleware';
 import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
 import { BcryptProvider } from '@/infrastructure/providers/bcrypt.provider';
 import { JwtProvider } from '@/infrastructure/providers/jwt.provider';
@@ -22,7 +22,7 @@ function auth(app: Application) {
     router.post('/login', authController.login);
     router.post('/signup', authController.signup);
     router.get('/logout', authController.logout);
-    router.get('/validate', authValidation(1), authController.validate);
+    router.get('/validate', authenticate, authController.validate);
 
     router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
     router.get(

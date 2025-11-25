@@ -1,13 +1,15 @@
 import jwt from 'jsonwebtoken';
 import config from '@/config/index.config';
 import { Request, Response, NextFunction } from 'express';
-import { JWTPayload } from '@/types/rbac';
+import { JWTPayload, AuthenticatedUser } from '@/types/rbac';
+import { RedisProvider } from '@/infrastructure/providers/redis.provider';
+import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
 
 /**
  * Middleware to authenticate user via JWT token
- * Validates the token and populates req.user with decoded payload
+ * Validates the token and populates req.user with decoded payload + permissions from Redis
  */
-export function authenticate(req: Request, res: Response, next: NextFunction) {
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
     const token = req.cookies.token;
 
     if (!token) {
@@ -23,15 +25,36 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
 
     try {
         const decoded = jwt.verify(token, config.jwtSecret as string) as JWTPayload;
+        const redis = RedisProvider.getInstance();
 
-        // Attach user info to request
-        // Attach user info to request
-        (req as any).user = {
-            id: decoded.id,
-            email: decoded.email,
-            name: decoded.name,
-            role: decoded.role
+        // Try to get permissions from Redis
+        const cachedPermissions = await redis.get(`user:permissions:${decoded.id}`);
+        let permissions: string[] = [];
+
+        if (cachedPermissions) {
+            permissions = JSON.parse(cachedPermissions);
+        } else {
+            // Fallback: Fetch from DB if not in Redis (e.g. after cache flush)
+            const userRepository = new PrismaUserRepository();
+            const user = await userRepository.findById(decoded.id);
+
+            if (user && user.role) {
+                permissions = user.role.permissions.map(p => p.name);
+                // Cache them again
+                await redis.set(`user:permissions:${decoded.id}`, JSON.stringify(permissions), 3600);
+            }
+        }
+
+        // Attach user info to request with permissions
+        const authenticatedUser: AuthenticatedUser = {
+            ...decoded,
+            role: {
+                ...decoded.role,
+                permissions
+            }
         };
+
+        (req as any).user = authenticatedUser;
 
         next();
     } catch (error: any) {
