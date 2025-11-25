@@ -101,6 +101,13 @@ app.use(
   })
 );
 
+import { notFoundHandlerEnhanced } from "./middleware/not-found.middleware";
+
+import category from "./infrastructure/routes/category.routes";
+
+import role from "./infrastructure/routes/role.routes";
+import permission from "./infrastructure/routes/permission.routes";
+
 // Rutas (composición)
 // Routes are now default exports that take 'app' as argument
 auth(app);
@@ -109,11 +116,17 @@ products(app);
 slide(app);
 cart(app);
 order(app);
+category(app);
+role(app);
+permission(app);
 
 // Ruta raíz
 app.get("/", (req: Request, res: Response) => {
   res.json({ name: "Ecommerce" });
 });
+
+// 404 Handler - Must be after all routes
+app.use(notFoundHandlerEnhanced);
 
 // Server lift
 if (require.main === module) {

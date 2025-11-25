@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
-import { IOrderRepository } from '../../core/repositories/order.repository.interface';
-import { ICartRepository } from '../../core/repositories/cart.repository.interface';
-import { CreateOrderUseCase } from '../../use-cases/order/create-order.use-case';
-import { GetOrderUseCase } from '../../use-cases/order/get-order.use-case';
-import { GetUserOrdersUseCase } from '../../use-cases/order/get-user-orders.use-case';
-import { GetAllOrdersUseCase } from '../../use-cases/order/get-all-orders.use-case';
-import { ChangeOrderStatusUseCase } from '../../use-cases/order/change-order-status.use-case';
-import { GetCartUseCase } from '../../use-cases/cart/get-cart.use-case';
-import { ClearCartUseCase } from '../../use-cases/cart/clear-cart.use-case';
+import { IOrderRepository } from '@/core/repositories/order.repository.interface';
+import { ICartRepository } from '@/core/repositories/cart.repository.interface';
+import { CreateOrderUseCase } from '@/use-cases/order/create-order.use-case';
+import { GetOrderUseCase } from '@/use-cases/order/get-order.use-case';
+import { GetUserOrdersUseCase } from '@/use-cases/order/get-user-orders.use-case';
+import { GetAllOrdersUseCase } from '@/use-cases/order/get-all-orders.use-case';
+import { ChangeOrderStatusUseCase } from '@/use-cases/order/change-order-status.use-case';
+import { GetCartUseCase } from '@/use-cases/cart/get-cart.use-case';
+import { ClearCartUseCase } from '@/use-cases/cart/clear-cart.use-case';
 
 export class OrderController {
     private createOrderUseCase: CreateOrderUseCase;

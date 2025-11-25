@@ -1,6 +1,6 @@
-import { prisma } from '../../../config/db.config';
-import { ICartRepository } from '../../../core/repositories/cart.repository.interface';
-import { Cart, CartItem } from '../../../core/entities/cart.entity';
+import { prisma } from '@/config/db.config';
+import { ICartRepository } from '@/core/repositories/cart.repository.interface';
+import { Cart, CartItem } from '@/core/entities/cart.entity';
 
 export class PrismaCartRepository implements ICartRepository {
     async findByUserId(userId: string): Promise<Cart | null> {

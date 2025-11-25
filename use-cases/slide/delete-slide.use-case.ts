@@ -1,4 +1,4 @@
-import { ISlideRepository } from '../../core/repositories/slide.repository.interface';
+import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
 
 export class DeleteSlideUseCase {
     constructor(private slideRepository: ISlideRepository) { }

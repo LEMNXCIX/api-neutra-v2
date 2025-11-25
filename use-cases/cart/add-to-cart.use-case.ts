@@ -1,18 +1,14 @@
-import { ICartRepository } from '../../core/repositories/cart.repository.interface';
+import { ICartRepository } from '@/core/repositories/cart.repository.interface';
 
 export class AddToCartUseCase {
     constructor(private cartRepository: ICartRepository) { }
 
     async execute(userId: string, productId: string, amount: number) {
-        const cart = await this.cartRepository.findByUserIdSimple(userId);
+        let cart = await this.cartRepository.findByUserIdSimple(userId);
 
         if (!cart) {
-            return {
-                success: false,
-                code: 404,
-                message: "Cart not found",
-                data: null
-            };
+            // Lazy creation: Create cart if it doesn't exist
+            cart = await this.cartRepository.create(userId);
         }
 
         const productExists = cart.items.some(item => item.productId === productId);

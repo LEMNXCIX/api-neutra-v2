@@ -1,4 +1,4 @@
-import { IOrderRepository } from '../../core/repositories/order.repository.interface';
+import { IOrderRepository } from '@/core/repositories/order.repository.interface';
 
 export class GetOrderUseCase {
     constructor(private orderRepository: IOrderRepository) { }

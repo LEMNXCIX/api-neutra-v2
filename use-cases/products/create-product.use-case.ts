@@ -1,5 +1,5 @@
-import { IProductRepository } from '../../core/repositories/product.repository.interface';
-import { CreateProductDTO } from '../../core/entities/product.entity';
+import { IProductRepository } from '@/core/repositories/product.repository.interface';
+import { CreateProductDTO } from '@/core/entities/product.entity';
 
 export class CreateProductUseCase {
     constructor(private productRepository: IProductRepository) { }

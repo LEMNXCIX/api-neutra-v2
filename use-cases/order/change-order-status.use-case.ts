@@ -1,5 +1,5 @@
-import { IOrderRepository } from '../../core/repositories/order.repository.interface';
-import { OrderStatus } from '../../core/entities/order.entity';
+import { IOrderRepository } from '@/core/repositories/order.repository.interface';
+import { OrderStatus } from '@/core/entities/order.entity';
 
 export class ChangeOrderStatusUseCase {
     constructor(private orderRepository: IOrderRepository) { }

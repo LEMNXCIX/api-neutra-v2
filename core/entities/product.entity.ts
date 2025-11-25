@@ -7,14 +7,16 @@ export interface Product {
     ownerId: string;
     createdAt?: Date;
     updatedAt?: Date;
+    categories?: any[]; // Using any[] for now to avoid circular dependency with Category entity
 }
 
 export interface CreateProductDTO {
     name: string;
     description: string;
-    image: string;
+    image?: string;
     price: number;
     ownerId: string;
+    categoryIds?: string[];
 }
 
 export interface UpdateProductDTO {
@@ -22,4 +24,5 @@ export interface UpdateProductDTO {
     description?: string;
     image?: string;
     price?: number;
+    categoryIds?: string[];
 }

@@ -1,9 +1,12 @@
+import { Role } from '@/types/rbac';
+
 export interface User {
     id: string;
     name: string;
     email: string;
     password?: string;
-    role: 'USER' | 'ADMIN';
+    roleId: string;
+    role?: Role;  // Optional, populated when needed
     profilePic?: string;
     googleId?: string;
     facebookId?: string;
@@ -16,7 +19,7 @@ export interface CreateUserDTO {
     name: string;
     email: string;
     password?: string;
-    role?: 'USER' | 'ADMIN';
+    roleId?: string;  // Optional, defaults to USER role if not provided
     profilePic?: string;
     googleId?: string;
     facebookId?: string;

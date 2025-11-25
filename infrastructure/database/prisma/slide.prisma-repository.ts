@@ -1,6 +1,6 @@
-import { prisma } from '../../../config/db.config';
-import { ISlideRepository } from '../../../core/repositories/slide.repository.interface';
-import { Slide, CreateSlideDTO, UpdateSlideDTO } from '../../../core/entities/slide.entity';
+import { prisma } from '@/config/db.config';
+import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
+import { Slide, CreateSlideDTO, UpdateSlideDTO } from '@/core/entities/slide.entity';
 
 export class PrismaSlideRepository implements ISlideRepository {
     async create(data: CreateSlideDTO): Promise<Slide> {

@@ -1,7 +1,8 @@
 import { Application, Request, Response, Router } from 'express';
-import authMiddleware from '../../middleware/auth.middleware';
-import { CartController } from '../../interface-adapters/controllers/cart.controller';
-import { PrismaCartRepository } from '../database/prisma/cart.prisma-repository';
+import { authenticate } from '@/middleware/authenticate.middleware';
+import { requirePermission } from '@/middleware/authorization.middleware';
+import { CartController } from '@/interface-adapters/controllers/cart.controller';
+import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
 
 function cart(app: Application) {
     const router = Router();
@@ -11,18 +12,21 @@ function cart(app: Application) {
     app.use('/api/cart', router);
 
     //Obtener los productos del carrito
-    router.get('/', authMiddleware(1), cartController.getItems);
+    router.get('/', authenticate, requirePermission('cart:read'), cartController.getItems);
+
+    //Crear carrito explícitamente
+    router.post('/', authenticate, requirePermission('cart:write'), cartController.create);
 
     //Añadir producto al carrito
-    router.post('/add', authMiddleware(1), cartController.addToCart);
+    router.post('/add', authenticate, requirePermission('cart:write'), cartController.addToCart);
 
     //Eliminar un producto del carrito
-    router.put('/remove', authMiddleware(1), cartController.removeFromCart);
+    router.put('/remove', authenticate, requirePermission('cart:write'), cartController.removeFromCart);
 
     //Limpiar el carrito
-    router.delete('/clear', authMiddleware(1), cartController.clearCart);
+    router.delete('/clear', authenticate, requirePermission('cart:write'), cartController.clearCart);
 
-    router.get('/stats', authMiddleware(2), cartController.getCartsStats);
+    router.get('/stats', authenticate, requirePermission('stats:read'), cartController.getCartsStats);
 
     router.use(async (req: Request, res: Response) => {
         return res.apiError({ message: 'Pagina no encontrada. :|' }, 'Pagina no encontrada', 404);

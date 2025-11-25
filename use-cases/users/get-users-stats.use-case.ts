@@ -1,4 +1,4 @@
-import { IUserRepository } from '../../core/repositories/user.repository.interface';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
 
 export class GetUsersStatsUseCase {
     constructor(private userRepository: IUserRepository) { }

@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
 export interface ErrorDetail {
-    code: string; // Machine readable error code (e.g., INVALID_EMAIL)
+    code: string; // Machine readable error code (e.g., AUTH_INVALID_CREDENTIALS)
     message: string; // Human readable message
     field?: string; // Field that caused the error
     domain?: string; // Error category (e.g., auth, validation)
@@ -13,7 +13,7 @@ export class AppError extends Error {
     public readonly code: string;
     public readonly details?: ErrorDetail[];
 
-    constructor(message: string, statusCode: number = 500, code: string = 'INTERNAL_SERVER_ERROR', details?: ErrorDetail[]) {
+    constructor(message: string, statusCode: number = 500, code: string = 'SYSTEM_INTERNAL_ERROR', details?: ErrorDetail[]) {
         super(message);
         this.statusCode = statusCode;
         this.code = code;
@@ -62,3 +62,23 @@ export class ApiResponse {
         };
     }
 }
+
+/**
+ * Helper to create a standardized error detail
+ */
+export function createErrorDetail(
+    code: string,
+    message: string,
+    field?: string,
+    metadata?: any
+): ErrorDetail {
+    return {
+        code,
+        message,
+        field,
+        metadata,
+    };
+}
+
+// Re-export error codes for convenience
+export * from './error-codes';

@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { ISlideRepository } from '../../core/repositories/slide.repository.interface';
-import { CreateSlideUseCase } from '../../use-cases/slide/create-slide.use-case';
-import { UpdateSlideUseCase } from '../../use-cases/slide/update-slide.use-case';
-import { GetSlidesUseCase } from '../../use-cases/slide/get-slides.use-case';
-import { DeleteSlideUseCase } from '../../use-cases/slide/delete-slide.use-case';
+import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
+import { CreateSlideUseCase } from '@/use-cases/slide/create-slide.use-case';
+import { UpdateSlideUseCase } from '@/use-cases/slide/update-slide.use-case';
+import { GetSlidesUseCase } from '@/use-cases/slide/get-slides.use-case';
+import { DeleteSlideUseCase } from '@/use-cases/slide/delete-slide.use-case';
 
 export class SlideController {
     private createSlideUseCase: CreateSlideUseCase;

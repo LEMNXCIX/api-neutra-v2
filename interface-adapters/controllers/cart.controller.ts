@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import { ICartRepository } from '../../core/repositories/cart.repository.interface';
-import { GetCartUseCase } from '../../use-cases/cart/get-cart.use-case';
-import { AddToCartUseCase } from '../../use-cases/cart/add-to-cart.use-case';
-import { RemoveFromCartUseCase } from '../../use-cases/cart/remove-from-cart.use-case';
-import { ClearCartUseCase } from '../../use-cases/cart/clear-cart.use-case';
-import { ChangeAmountUseCase } from '../../use-cases/cart/change-amount.use-case';
-import { GetCartStatsUseCase } from '../../use-cases/cart/get-cart-stats.use-case';
-import { CreateCartUseCase } from '../../use-cases/cart/create-cart.use-case';
+import { ICartRepository } from '@/core/repositories/cart.repository.interface';
+import { GetCartUseCase } from '@/use-cases/cart/get-cart.use-case';
+import { AddToCartUseCase } from '@/use-cases/cart/add-to-cart.use-case';
+import { RemoveFromCartUseCase } from '@/use-cases/cart/remove-from-cart.use-case';
+import { ClearCartUseCase } from '@/use-cases/cart/clear-cart.use-case';
+import { ChangeAmountUseCase } from '@/use-cases/cart/change-amount.use-case';
+import { GetCartStatsUseCase } from '@/use-cases/cart/get-cart-stats.use-case';
+import { CreateCartUseCase } from '@/use-cases/cart/create-cart.use-case';
 
 export class CartController {
     constructor(private cartRepository: ICartRepository) { }
