@@ -1,5 +1,5 @@
 import { Response, CookieOptions } from 'express';
-const config = require('../config/index.config');
+import config from '../config/index.config';
 
 const production: boolean = config.production;
 const ENVIRONMENT: string = config.ENVIRONMENT;
@@ -22,91 +22,48 @@ function cookieOptions(): CookieOptions {
   } as CookieOptions;
 }
 
-function authResponse(res: Response, result: any, statusCode: number) {
-  // Prefer explicit code from result when provided
+export function authResponse(res: Response, result: any, statusCode: number) {
   const code = result && typeof result.code === 'number' ? result.code : statusCode;
-
-  // Helper to safely extract token and data from either legacy or new result shapes
-  const extractAuthPayload = (r: any) => {
-    // direct token on result (legacy)
-    if (r && r.token) {
-      const { token, ...rest } = r;
-      const dataCandidate = Object.keys(rest).length ? rest : undefined;
-      // unwrap legacy { user: { ... } } to flattened object for convenience
-      if (dataCandidate && typeof dataCandidate === 'object' && Object.keys(dataCandidate).length === 1 && dataCandidate.user && typeof dataCandidate.user === 'object') {
-        return { token, data: dataCandidate.user };
-      }
-      return { token, data: dataCandidate };
-    }
-
-    // token inside result.data (new shape)
-    if (r && r.data && typeof r.data === 'object') {
-      const inner = r.data;
-      if (inner.token) {
-        const { token, ...rest } = inner;
-        const dataCandidate = Object.keys(rest).length ? rest : undefined;
-        if (dataCandidate && typeof dataCandidate === 'object' && Object.keys(dataCandidate).length === 1 && dataCandidate.user && typeof dataCandidate.user === 'object') {
-          return { token, data: dataCandidate.user };
-        }
-        return { token, data: dataCandidate };
-      }
-
-      // In some cases result.data may itself be an ApiPayload (nested). Try to unwrap once.
-      if (inner.data && inner.data.token) {
-        const { token, ...rest } = inner.data;
-        const dataCandidate = Object.keys(rest).length ? rest : undefined;
-        if (dataCandidate && typeof dataCandidate === 'object' && Object.keys(dataCandidate).length === 1 && dataCandidate.user && typeof dataCandidate.user === 'object') {
-          return { token, data: dataCandidate.user };
-        }
-        return { token, data: dataCandidate };
-      }
-    }
-
-    return { token: undefined, data: undefined };
-  };
 
   if (result && result.success) {
     const opts = Object.assign({}, cookieOptions(), {
       expires: new Date(new Date().setDate(new Date().getDate() + 7)),
     });
 
-    const { token, data } = extractAuthPayload(result);
+    // Extract token from result data
+    let token: string | undefined;
+    let data: any = result.data;
 
-    const payload = {
-      success: true,
-      code,
-      message: result.message || '',
-      data: data !== undefined ? data : undefined,
-    };
-
-    if (token) {
-      res.cookie('token', token, opts).status(code).json(payload);
-      return res;
+    if (result.token) {
+      token = result.token;
+    } else if (result.data && result.data.token) {
+      token = result.data.token;
+      // Clean up token from data if it exists there to avoid redundancy
+      const { token: _, ...rest } = result.data;
+      data = Object.keys(rest).length ? rest : undefined;
+      // Unwrap user object if it's the only thing left
+      if (data && data.user && Object.keys(data).length === 1) {
+        data = data.user;
+      }
     }
 
-    // no token to set, just reply
-    res.status(code).json(payload);
-    return res;
+    if (token) {
+      res.cookie('token', token, opts);
+    }
+
+    return res.apiSuccess(data, result.message, code);
   }
 
-  const payload = {
-    success: false,
-    code,
-    message: result && result.message ? result.message : (result || 'Error'),
-    errors: result && result.errors ? result.errors : undefined,
-  };
-
-  return res.status(code).json(payload);
+  return res.apiError(result.errors || result.message || result, result.message || 'Error', code);
 }
 
-function providerResponse(res: Response, result: any, statusCode: number) {
+export function providerResponse(res: Response, result: any, statusCode: number) {
   const code = result && typeof result.code === 'number' ? result.code : statusCode;
-  const { token } = ((): any => {
-    if (result && result.token) return { token: result.token };
-    if (result && result.data && result.data.token) return { token: result.data.token };
-    if (result && result.data && result.data.data && result.data.data.token) return { token: result.data.data.token };
-    return { token: undefined };
-  })();
+
+  let token: string | undefined;
+  if (result && result.token) token = result.token;
+  else if (result && result.data && result.data.token) token = result.data.token;
+  else if (result && result.data && result.data.data && result.data.data.token) token = result.data.data.token;
 
   if (result && result.success) {
     const opts = Object.assign({}, cookieOptions(), {
@@ -118,28 +75,17 @@ function providerResponse(res: Response, result: any, statusCode: number) {
         ? callbackURL || 'https://neutra.ec'
         : callbackURLDev || 'http://localhost:3000';
 
-    if (token) return res.cookie('token', token, opts).redirect(redirectTo);
+    if (token) {
+      res.cookie('token', token, opts);
+    }
+
     return res.redirect(redirectTo);
   }
 
-  // normalize error shape on provider fallback so middleware will not double-wrap
-  const payload = {
-    success: false,
-    code,
-    message: result && result.message ? result.message : (result || 'Error'),
-    errors: result && result.errors ? result.errors : undefined,
-  };
-
-  return res.status(code).json(payload);
+  return res.apiError(result.errors || result.message || result, result.message || 'Error', code);
 }
 
-function deleteCookie(res: Response) {
-  const payload = {
-    success: true,
-    code: 200,
-    message: 'Se ha cerrado sesión correctamente',
-  };
-
+export function deleteCookie(res: Response) {
   return res
     .cookie(
       'token',
@@ -148,8 +94,7 @@ function deleteCookie(res: Response) {
         expires: new Date(),
       })
     )
-    .status(200)
-    .json(payload);
+    .apiSuccess(undefined, 'Se ha cerrado sesión correctamente', 200);
 }
 
-export = { authResponse, deleteCookie, providerResponse };
+export default { authResponse, deleteCookie, providerResponse };

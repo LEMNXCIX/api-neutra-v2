@@ -1,5 +1,5 @@
-const duplicatedError = require('./duplicatedError.helpers');
-const validationError = require('./validationError.helpers');
+import duplicatedError from './duplicatedError.helpers';
+import validationError from './validationError.helpers';
 
 function dbError(error: any) {
   // Defensive: if error is falsy, return a generic payload
@@ -25,4 +25,4 @@ function dbError(error: any) {
   };
 }
 
-export = dbError;
+export default dbError;

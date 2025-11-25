@@ -1,14 +1,16 @@
 import pino from 'pino';
-const { ENVIRONMENT } = require('../config/index.config');
+import config from '../config/index.config';
+
+const { ENVIRONMENT } = config;
 
 // In development we prefer pretty printing for readability
 const isProd = ENVIRONMENT === 'prod' || ENVIRONMENT === 'production';
 
 const transport = !isProd
   ? pino.transport({
-      target: 'pino-pretty',
-      options: { colorize: true, translateTime: 'SYS:standard' },
-    })
+    target: 'pino-pretty',
+    options: { colorize: true, translateTime: 'SYS:standard' },
+  })
   : undefined;
 
 const logger = pino(transport);

@@ -7,4 +7,4 @@ function duplicatedError(error: any) {
   return errors;
 }
 
-export = duplicatedError;
+export default duplicatedError;

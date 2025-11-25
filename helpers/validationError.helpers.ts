@@ -15,4 +15,4 @@ function validationError(errors: any) {
   }
 }
 
-export = validationError;
+export default validationError;

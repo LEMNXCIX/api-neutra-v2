@@ -1,0 +1,30 @@
+import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
+import { UpdateSlideDTO } from '@/core/entities/slide.entity';
+
+export class UpdateSlideUseCase {
+    constructor(private slideRepository: ISlideRepository) { }
+
+    async execute(id: string, data: any) {
+        try {
+            const updateData: UpdateSlideDTO = {
+                title: data.title,
+                img: data.img,
+                desc: data.desc
+            };
+            const slide = await this.slideRepository.update(id, updateData);
+            return {
+                success: true,
+                code: 200,
+                message: "Slide actualizado",
+                data: slide
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                code: 500,
+                message: "Error al actualizar el Slide",
+                errors: error.message || error
+            };
+        }
+    }
+}

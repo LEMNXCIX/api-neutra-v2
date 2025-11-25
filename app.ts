@@ -1,32 +1,33 @@
 import express, { Request, Response, NextFunction } from "express";
-const morgan = require("morgan");
+import morgan from "morgan";
 import cookieParser from "cookie-parser";
-const { port, sesionSecret, ENVIRONMENT } = require("./config/index.config");
-const session = require("express-session");
-const { connection } = require("./config/db.config");
-const passport = require("passport");
-const cors = require("cors");
-const rateLimiter = require("./middleware/rateLimit.middleware");
-import responseMiddleware from "./middleware/response.middleware"; // Asume maneja ApiResponse
+import session from "express-session";
+import passport from "passport";
+import cors from "cors";
+
+import config from "./config/index.config";
+import { connection } from "./config/db.config";
+import rateLimiter from "./middleware/rateLimit.middleware";
+import responseMiddleware from "./middleware/response.middleware";
 import logger from "./helpers/logger.helpers";
 
 // Rutas
-import auth from "./routes/auth.routes";
-import users from "./routes/users.routes";
-import products from "./routes/products.routes";
-import slide from "./routes/slide.routes";
-import cart from "./routes/cart.routes";
-import order from "./routes/order.routes";
-// import {
-//   useGoogleStrategy,
-//   useFacebookStrategy,
-//   useTwitterStrategy,
-//   useGitHubStrategy,
-// } from "./middleware/authProvider.middleware";
+import auth from "./infrastructure/routes/auth.routes";
+import users from "./infrastructure/routes/users.routes";
+import products from "./infrastructure/routes/products.routes";
+import slide from "./infrastructure/routes/slide.routes";
+import cart from "./infrastructure/routes/cart.routes";
+import order from "./infrastructure/routes/order.routes";
+
+const { port, sesionSecret, ENVIRONMENT } = config;
 
 const app = express();
 
 // DB connection solo si directo
+// In TypeScript/ESM, require.main === module is tricky. 
+// Since we compile to CommonJS, this might still work if we declare require.
+// But better to rely on a separate server file or just run connection if not imported.
+// For now, we'll assume this file is the entry point if run directly.
 if (require.main === module) {
   connection();
 }
@@ -38,7 +39,7 @@ app.use(cookieParser());
 app.use(rateLimiter());
 app.use(responseMiddleware); // Estandariza responses a ApiResponse
 
-// CORS dinámico (sin cambios)
+// CORS dinámico
 const allowedOriginsDev = [
   "http://localhost:3000",
   "http://localhost:3001",
@@ -94,20 +95,38 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(
   session({
-    secret: sesionSecret,
+    secret: sesionSecret as string,
     resave: false,
     saveUninitialized: false,
   })
 );
 
+import { notFoundHandlerEnhanced } from "./middleware/not-found.middleware";
+
+import category from "./infrastructure/routes/category.routes";
+
+import role from "./infrastructure/routes/role.routes";
+import permission from "./infrastructure/routes/permission.routes";
+
 // Rutas (composición)
-[auth, users, products, slide, cart, order].forEach((routeFn) => routeFn(app));
+// Routes are now default exports that take 'app' as argument
+auth(app);
+users(app);
+products(app);
+slide(app);
+cart(app);
+order(app);
+category(app);
+role(app);
+permission(app);
 
 // Ruta raíz
 app.get("/", (req: Request, res: Response) => {
-  // Simple root response; response middleware will wrap it if needed
   res.json({ name: "Ecommerce" });
 });
+
+// 404 Handler - Must be after all routes
+app.use(notFoundHandlerEnhanced);
 
 // Server lift
 if (require.main === module) {

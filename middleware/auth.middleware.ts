@@ -1,14 +1,17 @@
-const jwt = require('jsonwebtoken');
-const { jwtSecret } = require('../config/index.config');
+import jwt from 'jsonwebtoken';
+import config from '../config/index.config';
+import { Request, Response, NextFunction } from 'express';
+
+const { jwtSecret } = config;
 
 function authValidation(role: number) {
-  return (req: any, res: any, next: any) => {
-    req.neededRole = role;
+  return (req: Request, res: Response, next: NextFunction) => {
+    (req as any).neededRole = role;
     return validateToken(req, res, next);
   };
 }
 
-function validateToken(req: any, res: any, next: any) {
+function validateToken(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies.token;
 
   if (!token) {
@@ -20,25 +23,25 @@ function validateToken(req: any, res: any, next: any) {
   return verifyToken(token, req, res, next);
 }
 
-function verifyToken(token: any, req: any, res: any, next: any) {
+function verifyToken(token: any, req: Request, res: Response, next: NextFunction) {
   try {
-    const decoded = jwt.verify(token, jwtSecret);
+    const decoded: any = jwt.verify(token, jwtSecret as string);
     delete decoded.iat;
     delete decoded.exp;
-    req.user = decoded;
+    (req as any).user = decoded;
 
     return validateRole(req, res, next);
-  } catch ({ message, name }: any) {
+  } catch (error: any) {
     return res.status(403).json({
       success: false,
-      message,
-      type: name,
+      message: error.message,
+      type: error.name,
     });
   }
 }
 
-function validateRole(req: any, res: any, next: any) {
-  if (req.user.role >= req.neededRole) {
+function validateRole(req: Request, res: Response, next: NextFunction) {
+  if ((req as any).user.role >= (req as any).neededRole) {
     return next();
   }
 
@@ -48,4 +51,4 @@ function validateRole(req: any, res: any, next: any) {
   });
 }
 
-export = authValidation;
+export default authValidation;

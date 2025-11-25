@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
-import type { ApiResponse, ErrorDetail } from '../types/api-response';
+import type { ErrorDetail } from '../types/api-response';
 
 export const validateDto = <T>(ctor: new () => T) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -12,16 +12,10 @@ export const validateDto = <T>(ctor: new () => T) => {
         code: 'VALIDATION_ERROR',
         message: Object.values(err.constraints || {})[0] || 'Invalid field',
         field: err.property,
+        domain: 'validation',
       } as ErrorDetail));
-      // Build a plain error payload shaped like our ApiPayload
-      const payload = {
-        success: false,
-        code: 400,
-        message: 'Validación fallida',
-        errors: details,
-        traceId: (req as any).traceId || undefined,
-      };
-      res.status(400).json(payload);
+
+      res.apiError(details, 'Validación fallida', 400);
       return;
     }
     (req as any).validatedBody = dto;  // Adjunta para uso downstream
