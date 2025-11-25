@@ -7,11 +7,16 @@ import { GetUserByEmailUseCase } from '@/use-cases/users/get-user-by-email.use-c
 import { GetUsersStatsUseCase } from '@/use-cases/users/get-users-stats.use-case';
 import { CreateUserUseCase } from '@/use-cases/users/create-user.use-case';
 import { GetOrCreateByProviderUseCase } from '@/use-cases/users/get-or-create-by-provider.use-case';
+import { UpdateUserUseCase } from '@/use-cases/users/update-user.use-case';
+import { DeleteUserUseCase } from '@/use-cases/users/delete-user.use-case';
+import { AssignRoleToUserUseCase } from '@/use-cases/users/assign-role.use-case';
+import { IRoleRepository } from '@/core/repositories/role.repository.interface';
 
 export class UserController {
     constructor(
         private userRepository: IUserRepository,
-        private cartRepository: ICartRepository
+        private cartRepository: ICartRepository,
+        private roleRepository: IRoleRepository
     ) { }
 
     getAll = async (req: Request, res: Response) => {
@@ -49,6 +54,28 @@ export class UserController {
     getUsersStats = async (req: Request, res: Response) => {
         const useCase = new GetUsersStatsUseCase(this.userRepository);
         const result = await useCase.execute();
+        return res.status(result.code).json(result);
+    }
+
+    update = async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const useCase = new UpdateUserUseCase(this.userRepository);
+        const result = await useCase.execute(id, req.body);
+        return res.status(result.code).json(result);
+    }
+
+    assignRole = async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const { roleId } = req.body;
+        const useCase = new AssignRoleToUserUseCase(this.userRepository, this.roleRepository); // Need roleRepository
+        const result = await useCase.execute(id, roleId);
+        return res.status(result.code).json(result);
+    }
+
+    delete = async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const useCase = new DeleteUserUseCase(this.userRepository);
+        const result = await useCase.execute(id);
         return res.status(result.code).json(result);
     }
 }

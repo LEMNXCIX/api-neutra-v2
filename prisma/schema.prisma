@@ -96,11 +96,25 @@ model Product {
   // Relations
   cartItems   CartItem[]
   orderItems  OrderItem[]
+  categories  Category[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("products")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+
+  products    Product[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("categories")
 }
 
 model Cart {

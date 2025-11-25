@@ -3,8 +3,19 @@ import { IProductRepository } from '@/core/repositories/product.repository.inter
 import { Product, CreateProductDTO, UpdateProductDTO } from '@/core/entities/product.entity';
 
 export class PrismaProductRepository implements IProductRepository {
-    async findAll(): Promise<Product[]> {
+    async findAll(options?: { categoryId?: string }): Promise<Product[]> {
+        const where: any = {};
+        if (options?.categoryId) {
+            where.categories = {
+                some: {
+                    id: options.categoryId
+                }
+            };
+        }
+
         const products = await prisma.product.findMany({
+            where,
+            include: { categories: true },
             orderBy: { createdAt: 'desc' }
         });
         return products.map(this.mapToEntity);
@@ -12,40 +23,45 @@ export class PrismaProductRepository implements IProductRepository {
 
     async findById(id: string): Promise<Product | null> {
         const product = await prisma.product.findUnique({
-            where: { id }
+            where: { id },
+            include: { categories: true }
         });
         return product ? this.mapToEntity(product) : null;
     }
 
     async create(data: CreateProductDTO): Promise<Product> {
+        const { categoryIds, ...productData } = data;
         const product = await prisma.product.create({
             data: {
-                name: data.name,
-                description: data.description,
-                image: data.image,
-                price: data.price,
-                ownerId: data.ownerId
-            }
+                ...productData,
+                categories: categoryIds ? {
+                    connect: categoryIds.map(id => ({ id }))
+                } : undefined
+            },
+            include: { categories: true }
         });
         return this.mapToEntity(product);
     }
 
     async update(id: string, data: UpdateProductDTO): Promise<Product> {
+        const { categoryIds, ...productData } = data;
         const product = await prisma.product.update({
             where: { id },
             data: {
-                name: data.name,
-                description: data.description,
-                image: data.image,
-                price: data.price
-            }
+                ...productData,
+                categories: categoryIds ? {
+                    set: categoryIds.map(id => ({ id }))
+                } : undefined
+            },
+            include: { categories: true }
         });
         return this.mapToEntity(product);
     }
 
     async delete(id: string): Promise<Product> {
         const product = await prisma.product.delete({
-            where: { id }
+            where: { id },
+            include: { categories: true }
         });
         return this.mapToEntity(product);
     }
@@ -57,7 +73,8 @@ export class PrismaProductRepository implements IProductRepository {
                     contains: name,
                     mode: 'insensitive'
                 }
-            }
+            },
+            include: { categories: true }
         });
         return products.map(this.mapToEntity);
     }
@@ -78,7 +95,8 @@ export class PrismaProductRepository implements IProductRepository {
 
     async findFirst(where: Partial<Product>): Promise<Product | null> {
         const product = await prisma.product.findFirst({
-            where: where as any
+            where: where as any,
+            include: { categories: true }
         });
         return product ? this.mapToEntity(product) : null;
     }
@@ -89,10 +107,11 @@ export class PrismaProductRepository implements IProductRepository {
             name: prismaProduct.name,
             description: prismaProduct.description,
             image: prismaProduct.image,
-            price: prismaProduct.price, // Decimal to number conversion might be needed if Prisma returns Decimal
+            price: prismaProduct.price,
             ownerId: prismaProduct.ownerId,
             createdAt: prismaProduct.createdAt,
-            updatedAt: prismaProduct.updatedAt
+            updatedAt: prismaProduct.updatedAt,
+            categories: prismaProduct.categories // Assuming Product entity has categories field now?
         };
     }
 }
