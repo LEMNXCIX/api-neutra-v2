@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { JWTPayload, AuthenticatedUser } from '@/types/rbac';
 import { RedisProvider } from '@/infrastructure/providers/redis.provider';
 import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
+import { info } from '@/helpers/logger.helpers';
 
 /**
  * Middleware to authenticate user via JWT token
@@ -36,7 +37,10 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
         } else {
             // Fallback: Fetch from DB if not in Redis (e.g. after cache flush)
             const userRepository = new PrismaUserRepository();
-            const user = await userRepository.findById(decoded.id);
+            const user = await userRepository.findById(decoded.id, {
+                includeRole: true,
+                includePermissions: true
+            });
 
             if (user && user.role) {
                 permissions = user.role.permissions.map(p => p.name);

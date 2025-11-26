@@ -1,4 +1,4 @@
-import { prisma } from '../config/db.config';
+import { prisma } from '@/config/db.config';
 
 // Increase default timeout for slow DB operations
 jest.setTimeout(20000);

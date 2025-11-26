@@ -1,4 +1,4 @@
-import { Slide, CreateSlideDTO, UpdateSlideDTO } from '../entities/slide.entity';
+import { Slide, CreateSlideDTO, UpdateSlideDTO } from '@/entities/slide.entity';
 
 export interface ISlideRepository {
     create(data: CreateSlideDTO): Promise<Slide>;

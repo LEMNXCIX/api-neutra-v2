@@ -5,24 +5,24 @@ import session from "express-session";
 import passport from "passport";
 import cors from "cors";
 
-import config from "./config/index.config";
-import { connection } from "./config/db.config";
-import rateLimiter from "./middleware/rateLimit.middleware";
-import responseMiddleware from "./middleware/response.middleware";
-import logger from "./helpers/logger.helpers";
+import config from "@/config/index.config";
+import { connection } from "@/config/db.config";
+import rateLimiter from "@/middleware/rateLimit.middleware";
+import responseMiddleware from "@/middleware/response.middleware";
+import logger from "@/helpers/logger.helpers";
 
 // Rutas
-import auth from "./infrastructure/routes/auth.routes";
-import users from "./infrastructure/routes/users.routes";
-import products from "./infrastructure/routes/products.routes";
-import slide from "./infrastructure/routes/slide.routes";
-import cart from "./infrastructure/routes/cart.routes";
-import order from "./infrastructure/routes/order.routes";
-import category from "./infrastructure/routes/category.routes";
-import role from "./infrastructure/routes/role.routes";
-import permission from "./infrastructure/routes/permission.routes";
-import banner from "./infrastructure/routes/banner.routes";
-import coupon from "./infrastructure/routes/coupon.routes";
+import auth from "@/infrastructure/routes/auth.routes";
+import users from "@/infrastructure/routes/users.routes";
+import products from "@/infrastructure/routes/products.routes";
+import slide from "@/infrastructure/routes/slide.routes";
+import cart from "@/infrastructure/routes/cart.routes";
+import order from "@/infrastructure/routes/order.routes";
+import category from "@/infrastructure/routes/category.routes";
+import role from "@/infrastructure/routes/role.routes";
+import permission from "@/infrastructure/routes/permission.routes";
+import banner from "@/infrastructure/routes/banner.routes";
+import coupon from "@/infrastructure/routes/coupon.routes";
 
 const { port, sesionSecret, ENVIRONMENT } = config;
 
@@ -106,7 +106,7 @@ app.use(
   })
 );
 
-import { notFoundHandlerEnhanced } from "./middleware/not-found.middleware";
+import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
 
 // Rutas (composición)
 // Routes are now default exports that take 'app' as argument

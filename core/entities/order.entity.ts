@@ -1,4 +1,4 @@
-import { Product } from './product.entity';
+import { Product } from '@/core/entities/product.entity';
 
 export type OrderStatus = 'PENDIENTE' | 'COMPLETADO' | 'CANCELADO'; // Adjust based on Prisma Enum if needed
 

@@ -1,4 +1,4 @@
-import { User, CreateUserDTO } from '../entities/user.entity';
+import { User, CreateUserDTO } from '@/entities/user.entity';
 
 export interface UpdateUserDTO {
     name?: string;

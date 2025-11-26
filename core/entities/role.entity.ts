@@ -1,4 +1,4 @@
-import { Permission } from './permission.entity';
+import { Permission } from '@/core/entities/permission.entity';
 
 export interface Role {
     id: string;

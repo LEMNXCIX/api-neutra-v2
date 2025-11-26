@@ -1,5 +1,5 @@
 import pino from 'pino';
-import config from '../config/index.config';
+import config from '@/config/index.config';
 
 const { ENVIRONMENT } = config;
 
