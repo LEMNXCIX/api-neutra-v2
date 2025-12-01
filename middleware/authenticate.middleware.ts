@@ -43,6 +43,18 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
             });
 
             if (user && user.role) {
+                // Check if user is active
+                if (!user.active) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Account is inactive',
+                        errors: [{
+                            code: 'AUTH_007',
+                            message: 'This account has been deactivated or banned'
+                        }]
+                    });
+                }
+
                 permissions = user.role.permissions.map(p => p.name);
                 // Cache them again
                 await redis.set(`user:permissions:${decoded.id}`, JSON.stringify(permissions), 3600);
