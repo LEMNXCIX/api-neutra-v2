@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import session from "express-session";
 import passport from "passport";
 import cors from "cors";
+import lusca from "lusca";
 
 import config from "@/config/index.config";
 import { connection } from "@/config/db.config";
@@ -43,6 +44,7 @@ if (require.main === module) {
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
+app.use(lusca.csrf());
 app.use(rateLimiter());
 app.use(responseMiddleware); // Estandariza responses a ApiResponse
 
