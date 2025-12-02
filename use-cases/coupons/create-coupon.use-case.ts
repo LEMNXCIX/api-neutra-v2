@@ -47,6 +47,47 @@ export class CreateCouponUseCase {
             };
         }
 
+        // Validate expiresAt
+        if (!data.expiresAt) {
+            return {
+                success: false,
+                code: 400,
+                message: 'Expiration date is required',
+                errors: [{
+                    code: ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
+                    message: 'Expiration date is required',
+                    field: 'expiresAt'
+                }]
+            };
+        }
+
+        const expirationDate = new Date(data.expiresAt);
+        if (isNaN(expirationDate.getTime())) {
+            return {
+                success: false,
+                code: 400,
+                message: 'Invalid expiration date format',
+                errors: [{
+                    code: ValidationErrorCodes.INVALID_FORMAT,
+                    message: 'Invalid expiration date format',
+                    field: 'expiresAt'
+                }]
+            };
+        }
+
+        if (expirationDate <= new Date()) {
+            return {
+                success: false,
+                code: 400,
+                message: 'Expiration date must be in the future',
+                errors: [{
+                    code: ValidationErrorCodes.INVALID_FORMAT,
+                    message: 'Expiration date must be in the future',
+                    field: 'expiresAt'
+                }]
+            };
+        }
+
         // Check if code already exists
         const existingCoupon = await this.couponRepository.findByCode(data.code);
         if (existingCoupon) {

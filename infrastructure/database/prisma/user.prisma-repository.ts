@@ -18,6 +18,7 @@ export class PrismaUserRepository implements IUserRepository {
                     }
                 },
                 profilePic: true,
+                active: true,
                 googleId: true,
                 facebookId: true,
                 twitterId: true,
@@ -214,6 +215,7 @@ export class PrismaUserRepository implements IUserRepository {
                     }
                 },
                 profilePic: true,
+                active: true,
                 createdAt: true,
                 updatedAt: true
             }

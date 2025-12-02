@@ -1,4 +1,4 @@
-import { Coupon, CreateCouponDTO, UpdateCouponDTO } from '../entities/coupon.entity';
+import { Coupon, CreateCouponDTO, UpdateCouponDTO } from '@/core/entities/coupon.entity';
 
 export interface ICouponRepository {
     findAll(): Promise<Coupon[]>;

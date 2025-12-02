@@ -1,4 +1,4 @@
-import { Category, CreateCategoryDTO, UpdateCategoryDTO } from '../entities/category.entity';
+import { Category, CreateCategoryDTO, UpdateCategoryDTO } from '@/core/entities/category.entity';
 
 export interface ICategoryRepository {
     findAll(): Promise<Category[]>;
