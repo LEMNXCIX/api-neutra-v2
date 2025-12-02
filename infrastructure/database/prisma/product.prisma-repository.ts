@@ -108,6 +108,7 @@ export class PrismaProductRepository implements IProductRepository {
             description: prismaProduct.description,
             image: prismaProduct.image,
             price: prismaProduct.price,
+            active: prismaProduct.active,
             ownerId: prismaProduct.ownerId,
             createdAt: prismaProduct.createdAt,
             updatedAt: prismaProduct.updatedAt,

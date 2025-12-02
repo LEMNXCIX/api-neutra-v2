@@ -1,32 +1,34 @@
 import { prisma } from '@/config/db.config';
 import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
-import { Slide, CreateSlideDTO, UpdateSlideDTO } from '@/core/entities/slide.entity';
+import { Slideshow, CreateSlideshowDTO, UpdateSlideshowDTO } from '@/core/entities/slide.entity';
 
 export class PrismaSlideRepository implements ISlideRepository {
-    async create(data: CreateSlideDTO): Promise<Slide> {
+    async create(data: CreateSlideshowDTO): Promise<Slideshow> {
         const slide = await prisma.slideshow.create({
             data: {
                 title: data.title,
                 img: data.img,
-                desc: data.desc
+                desc: data.desc,
+                active: data.active ?? true
             }
         });
         return this.mapToEntity(slide);
     }
 
-    async update(id: string, data: UpdateSlideDTO): Promise<Slide> {
+    async update(id: string, data: UpdateSlideshowDTO): Promise<Slideshow> {
         const slide = await prisma.slideshow.update({
             where: { id },
             data: {
                 title: data.title,
                 img: data.img,
-                desc: data.desc
+                desc: data.desc,
+                active: data.active
             }
         });
         return this.mapToEntity(slide);
     }
 
-    async findAll(): Promise<Slide[]> {
+    async findAll(): Promise<Slideshow[]> {
         const slides = await prisma.slideshow.findMany();
         return slides.map(this.mapToEntity);
     }
@@ -37,19 +39,20 @@ export class PrismaSlideRepository implements ISlideRepository {
         });
     }
 
-    async findById(id: string): Promise<Slide | null> {
+    async findById(id: string): Promise<Slideshow | null> {
         const slide = await prisma.slideshow.findUnique({
             where: { id }
         });
         return slide ? this.mapToEntity(slide) : null;
     }
 
-    private mapToEntity(prismaSlide: any): Slide {
+    private mapToEntity(prismaSlide: any): Slideshow {
         return {
             id: prismaSlide.id,
             title: prismaSlide.title,
             img: prismaSlide.img,
             desc: prismaSlide.desc,
+            active: prismaSlide.active,
             createdAt: prismaSlide.createdAt,
             updatedAt: prismaSlide.updatedAt
         };
