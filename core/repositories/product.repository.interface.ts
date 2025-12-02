@@ -1,4 +1,4 @@
-import { Product, CreateProductDTO, UpdateProductDTO } from '../entities/product.entity';
+import { Product, CreateProductDTO, UpdateProductDTO } from '@/core/entities/product.entity';
 
 export interface IProductRepository {
     findAll(): Promise<Product[]>;

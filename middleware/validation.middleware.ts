@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
-import type { ErrorDetail } from '../types/api-response';
+import type { ErrorDetail } from '@/types/api-response';
 
 export const validateDto = <T>(ctor: new () => T) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {

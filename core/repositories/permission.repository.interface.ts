@@ -1,4 +1,4 @@
-import { Permission, CreatePermissionDTO, UpdatePermissionDTO } from '../entities/permission.entity';
+import { Permission, CreatePermissionDTO, UpdatePermissionDTO } from '@/core/entities/permission.entity';
 
 export interface IPermissionRepository {
     findAll(): Promise<Permission[]>;

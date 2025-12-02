@@ -1,4 +1,4 @@
-import { Order, CreateOrderDTO, OrderStatus } from '../entities/order.entity';
+import { Order, CreateOrderDTO, OrderStatus } from '@/core/entities/order.entity';
 
 export interface IOrderRepository {
     create(data: CreateOrderDTO): Promise<Order>;

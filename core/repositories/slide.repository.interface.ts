@@ -1,9 +1,9 @@
-import { Slide, CreateSlideDTO, UpdateSlideDTO } from '../entities/slide.entity';
+import { Slideshow, CreateSlideshowDTO, UpdateSlideshowDTO } from '@/core/entities/slide.entity';
 
 export interface ISlideRepository {
-    create(data: CreateSlideDTO): Promise<Slide>;
-    update(id: string, data: UpdateSlideDTO): Promise<Slide>;
-    findAll(): Promise<Slide[]>;
+    create(data: CreateSlideshowDTO): Promise<Slideshow>;
+    update(id: string, data: UpdateSlideshowDTO): Promise<Slideshow>;
+    findAll(): Promise<Slideshow[]>;
     delete(id: string): Promise<void>;
-    findById(id: string): Promise<Slide | null>;
+    findById(id: string): Promise<Slideshow | null>;
 }

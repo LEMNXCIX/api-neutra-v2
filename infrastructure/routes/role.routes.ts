@@ -3,11 +3,13 @@ import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { RoleController } from '@/interface-adapters/controllers/role.controller';
 import { PrismaRoleRepository } from '@/infrastructure/database/prisma/role.prisma-repository';
+import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
 
 function roleRoutes(app: Application) {
     const router = Router();
     const roleRepository = new PrismaRoleRepository();
-    const roleController = new RoleController(roleRepository);
+    const userRepository = new PrismaUserRepository();
+    const roleController = new RoleController(roleRepository, userRepository);
 
     app.use('/api/roles', router);
 

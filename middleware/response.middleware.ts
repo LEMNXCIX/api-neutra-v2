@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { info, error as logError } from '../helpers/logger.helpers';
-import { ApiResponse, StandardResponse, AppError, ErrorDetail, SystemErrorCodes } from '../types/api-response';
+import { info, error as logError } from '@/helpers/logger.helpers';
+import { ApiResponse, StandardResponse, AppError, ErrorDetail, SystemErrorCodes } from '@/types/api-response';
 
 declare global {
   namespace Express {

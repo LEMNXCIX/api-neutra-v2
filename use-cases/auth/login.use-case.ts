@@ -2,14 +2,19 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { IPasswordHasher, ITokenGenerator } from '@/core/providers/auth-providers.interface';
 import { ILogger } from '@/core/providers/logger.interface';
 import { AuthErrorCodes, ValidationErrorCodes } from '@/types/error-codes';
+import { RedisProvider } from '@/infrastructure/providers/redis.provider';
 
 export class LoginUseCase {
+    private redis: RedisProvider;
+
     constructor(
         private userRepository: IUserRepository,
         private passwordHasher: IPasswordHasher,
         private tokenGenerator: ITokenGenerator,
         private logger: ILogger
-    ) { }
+    ) {
+        this.redis = RedisProvider.getInstance();
+    }
 
     async execute(data: any) {
         const { email, password } = data;
@@ -63,12 +68,35 @@ export class LoginUseCase {
                 };
             }
 
-            // Generate token with role and permissions
+            if (!user.role) {
+                this.logger.warn('Login attempt failed: user has no role', { email });
+                return {
+                    success: false,
+                    code: 403,
+                    message: "User has no role assigned",
+                    errors: [{
+                        code: AuthErrorCodes.FORBIDDEN,
+                        message: "User has no role assigned"
+                    }]
+                };
+            }
+
+            // Extract permissions
+            const permissions = user.role.permissions.map((p) => p.name);
+
+            // Save permissions to Redis (TTL: 1 hour)
+            await this.redis.set(`user:permissions:${user.id}`, JSON.stringify(permissions), 3600);
+
+            // Generate token with lighter payload (no permissions)
             const token = this.tokenGenerator.generate({
                 id: user.id,
                 email: user.email,
                 name: user.name,
-                role: user.role  // Includes id, name, level, and permissions array
+                role: {
+                    id: user.role.id,
+                    name: user.role.name,
+                    level: user.role.level
+                }
             });
 
             // Sanitize user for response
@@ -96,3 +124,4 @@ export class LoginUseCase {
         }
     }
 }
+

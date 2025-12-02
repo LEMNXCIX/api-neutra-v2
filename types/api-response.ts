@@ -81,4 +81,4 @@ export function createErrorDetail(
 }
 
 // Re-export error codes for convenience
-export * from './error-codes';
+export * from '@/types/error-codes';

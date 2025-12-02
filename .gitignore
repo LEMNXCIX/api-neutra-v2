@@ -26,4 +26,5 @@ yarn-error.log*
 /api/.env
 
 /dist
+/docs
 /generated/prisma

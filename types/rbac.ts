@@ -35,7 +35,15 @@ export interface JWTPayload {
         id: string;
         name: string;
         level: number;
-        permissions: string[];  // ["users:read", "products:write"]
+    };
+}
+
+export interface AuthenticatedUser extends JWTPayload {
+    role: {
+        id: string;
+        name: string;
+        level: number;
+        permissions: string[];
     };
 }
 

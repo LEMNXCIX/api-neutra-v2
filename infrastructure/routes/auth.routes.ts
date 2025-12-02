@@ -2,7 +2,7 @@
 import { Application, Router } from 'express';
 import passport from 'passport';
 import { AuthController } from '@/interface-adapters/controllers/auth.controller';
-import authValidation from '@/middleware/auth.middleware';
+import { authenticate } from '@/middleware/authenticate.middleware';
 import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
 import { BcryptProvider } from '@/infrastructure/providers/bcrypt.provider';
 import { JwtProvider } from '@/infrastructure/providers/jwt.provider';
@@ -19,10 +19,80 @@ function auth(app: Application) {
     const logger = new PinoLoggerProvider();
     const authController = new AuthController(userRepository, passwordHasher, tokenGenerator, logger);
 
+    /**
+     * @swagger
+     * tags:
+     *   name: Auth
+     *   description: Authentication endpoints
+     */
+
+    /**
+     * @swagger
+     * /auth/login:
+     *   post:
+     *     summary: Login user
+     *     tags: [Auth]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             $ref: '#/components/schemas/LoginDto'
+     *     responses:
+     *       200:
+     *         description: Login successful
+     *       401:
+     *         description: Invalid credentials
+     */
     router.post('/login', authController.login);
+
+    /**
+     * @swagger
+     * /auth/signup:
+     *   post:
+     *     summary: Register a new user
+     *     tags: [Auth]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             $ref: '#/components/schemas/CreateUserDto'
+     *     responses:
+     *       201:
+     *         description: User created successfully
+     *       400:
+     *         description: Bad request
+     */
     router.post('/signup', authController.signup);
+
+    /**
+     * @swagger
+     * /auth/logout:
+     *   get:
+     *     summary: Logout user
+     *     tags: [Auth]
+     *     responses:
+     *       200:
+     *         description: Logout successful
+     */
     router.get('/logout', authController.logout);
-    router.get('/validate', authValidation(1), authController.validate);
+
+    /**
+     * @swagger
+     * /auth/validate:
+     *   get:
+     *     summary: Validate current session
+     *     tags: [Auth]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Session is valid
+     *       401:
+     *         description: Unauthorized
+     */
+    router.get('/validate', authenticate, authController.validate);
 
     router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
     router.get(

@@ -1,4 +1,4 @@
-import { Role, CreateRoleDTO, UpdateRoleDTO } from '../entities/role.entity';
+import { Role, CreateRoleDTO, UpdateRoleDTO } from '@/core/entities/role.entity';
 
 export interface IRoleRepository {
     findAll(): Promise<Role[]>;
