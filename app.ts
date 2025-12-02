@@ -5,20 +5,26 @@ import session from "express-session";
 import passport from "passport";
 import cors from "cors";
 
-import config from "./config/index.config";
-import { connection } from "./config/db.config";
-import rateLimiter from "./middleware/rateLimit.middleware";
-import responseMiddleware from "./middleware/response.middleware";
-import logger from "./helpers/logger.helpers";
+import config from "@/config/index.config";
+import { connection } from "@/config/db.config";
+import rateLimiter from "@/middleware/rateLimit.middleware";
+import responseMiddleware from "@/middleware/response.middleware";
+import logger from "@/helpers/logger.helpers";
 
 // Rutas
-import auth from "./infrastructure/routes/auth.routes";
-import users from "./infrastructure/routes/users.routes";
-import products from "./infrastructure/routes/products.routes";
-import slide from "./infrastructure/routes/slide.routes";
-import cart from "./infrastructure/routes/cart.routes";
-import order from "./infrastructure/routes/order.routes";
-
+import auth from "@/infrastructure/routes/auth.routes";
+import users from "@/infrastructure/routes/users.routes";
+import products from "@/infrastructure/routes/products.routes";
+import slide from "@/infrastructure/routes/slide.routes";
+import cart from "@/infrastructure/routes/cart.routes";
+import order from "@/infrastructure/routes/order.routes";
+import category from "@/infrastructure/routes/category.routes";
+import role from "@/infrastructure/routes/role.routes";
+import permission from "@/infrastructure/routes/permission.routes";
+import banner from "@/infrastructure/routes/banner.routes";
+import coupon from "@/infrastructure/routes/coupon.routes";
+import { swaggerSpec } from "@/infrastructure/config/swagger.config";
+import { apiReference } from "@scalar/express-api-reference";
 const { port, sesionSecret, ENVIRONMENT } = config;
 
 const app = express();
@@ -32,6 +38,7 @@ if (require.main === module) {
   connection();
 }
 
+
 // Middlewares (orden funcional: logging > parsing > security > custom)
 app.use(morgan("dev"));
 app.use(express.json());
@@ -39,28 +46,62 @@ app.use(cookieParser());
 app.use(rateLimiter());
 app.use(responseMiddleware); // Estandariza responses a ApiResponse
 
-// CORS dinámico
+// CORS Configuration - Enhanced
 const allowedOriginsDev = [
   "http://localhost:3000",
   "http://localhost:3001",
-  "http://127.0.0.1:5500",
+  "http://localhost:4001",
+  "http://localhost:5173", // Vite default
+  "http://localhost:5174",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  "http://127.0.0.1:4001",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5500", // LiveServer
 ];
+
 const allowedOriginsProd = [
   "https://www.neutra.ec",
   "https://neutra.ec",
   "https://www.admin.neutra.ec",
   "https://admin.neutra.ec",
 ];
-const whitelist =
-  ENVIRONMENT === "prod" || ENVIRONMENT === "production"
-    ? allowedOriginsProd
-    : allowedOriginsDev;
+
+const isProduction = ENVIRONMENT === "prod" || ENVIRONMENT === "production";
+const whitelist = isProduction ? allowedOriginsProd : allowedOriginsDev;
+
+// Helper function to validate origin
+const isOriginAllowed = (origin: string | undefined): boolean => {
+  if (!origin) {
+    // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
+    return !isProduction;
+  }
+
+  // Exact match in whitelist
+  if (whitelist.includes(origin)) {
+    return true;
+  }
+
+  // In development, allow any localhost port
+  if (!isProduction) {
+    const localhostPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+    return localhostPattern.test(origin);
+  }
+
+  return false;
+};
 
 app.use(
   cors({
     origin: (origin: any, callback: (err: Error | null, allow?: boolean) => void) => {
-      if (!origin || whitelist.includes(origin)) return callback(null, true);
-      callback(new Error("Not allowed by CORS"));
+      const allowed = isOriginAllowed(origin);
+
+      if (allowed) {
+        callback(null, true);
+      } else {
+        logger.warn(`CORS blocked request from origin: ${origin || 'undefined'}`);
+        callback(new Error(`Origin ${origin || 'undefined'} not allowed by CORS policy`));
+      }
     },
     credentials: true,
     methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
@@ -69,27 +110,43 @@ app.use(
       "Authorization",
       "Accept",
       "X-Requested-With",
+      "Origin",
     ],
+    exposedHeaders: ["Set-Cookie"],
+    maxAge: 86400, // 24 hours - cache preflight requests
   })
 );
 
-// Headers manuales para preflight
+// Additional CORS headers for enhanced compatibility
 app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin as string | undefined;
-  if (origin && whitelist.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  } else if (!origin && ENVIRONMENT !== "prod") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+
+  if (isOriginAllowed(origin)) {
+    // Set origin if allowed
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    } else if (!isProduction) {
+      // In development, allow requests without origin
+      res.setHeader("Access-Control-Allow-Origin", "*");
+    }
+
+    res.setHeader("Access-Control-Allow-Credentials", "true");
   }
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, OPTIONS, PUT, PATCH, DELETE"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, Accept, X-Requested-With"
-  );
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, Accept, X-Requested-With, Origin"
+    );
+    res.setHeader("Access-Control-Max-Age", "86400");
+    return res.status(204).end();
+  }
+
   next();
 });
 
@@ -101,12 +158,7 @@ app.use(
   })
 );
 
-import { notFoundHandlerEnhanced } from "./middleware/not-found.middleware";
-
-import category from "./infrastructure/routes/category.routes";
-
-import role from "./infrastructure/routes/role.routes";
-import permission from "./infrastructure/routes/permission.routes";
+import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
 
 // Rutas (composición)
 // Routes are now default exports that take 'app' as argument
@@ -119,11 +171,25 @@ order(app);
 category(app);
 role(app);
 permission(app);
+banner(app);
+coupon(app);
 
 // Ruta raíz
 app.get("/", (req: Request, res: Response) => {
   res.json({ name: "Ecommerce" });
 });
+
+// Documentation
+app.use(
+  "/reference",
+  apiReference({
+    spec: {
+      content: swaggerSpec,
+    },
+    theme: 'purple',
+  })
+);
+
 
 // 404 Handler - Must be after all routes
 app.use(notFoundHandlerEnhanced);

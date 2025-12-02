@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { JWTPayload } from '@/types/rbac';
+import { AuthenticatedUser } from '@/types/rbac';
 
 /**
  * Check if user has a specific permission
@@ -7,7 +7,7 @@ import { JWTPayload } from '@/types/rbac';
  */
 export function requirePermission(permission: string) {
     return (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as JWTPayload;
+        const user = req.user as unknown as AuthenticatedUser;
 
         if (!user || !user.role || !user.role.permissions) {
             return res.status(401).json({
@@ -47,7 +47,7 @@ export function requirePermission(permission: string) {
  */
 export function requireAnyPermission(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as JWTPayload;
+        const user = req.user as unknown as AuthenticatedUser;
 
         if (!user || !user.role || !user.role.permissions) {
             return res.status(401).json({
@@ -87,7 +87,7 @@ export function requireAnyPermission(permissions: string[]) {
  */
 export function requireAllPermissions(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as JWTPayload;
+        const user = req.user as unknown as AuthenticatedUser;
 
         if (!user || !user.role || !user.role.permissions) {
             return res.status(401).json({
@@ -130,7 +130,7 @@ export function requireAllPermissions(permissions: string[]) {
  */
 export function requireRole(minLevel: number) {
     return (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as JWTPayload;
+        const user = req.user as unknown as AuthenticatedUser;
 
         if (!user || !user.role) {
             return res.status(401).json({
@@ -169,7 +169,7 @@ export function requireRole(minLevel: number) {
  */
 export function requireOwnership(getResourceOwnerId: (req: Request) => Promise<string | null>) {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as JWTPayload;
+        const user = req.user as unknown as AuthenticatedUser;
 
         if (!user) {
             return res.status(401).json({

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import config from './index.config';
+import config from '@/config/index.config';
 
 const { dbUsername, dbPassword, dbHost, dbName } = config;
 

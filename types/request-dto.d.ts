@@ -1,12 +1,52 @@
 import { IsString, IsEmail, MinLength, MaxLength, IsOptional, IsArray, IsNumber, IsPositive, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     ErrorDetail:
+ *       type: object
+ *       properties:
+ *         code:
+ *           type: string
+ *         message:
+ *           type: string
+ *         field:
+ *           type: string
+ */
 export class ErrorDetail {
   code: string = '';
   message: string = '';
   field?: string;
 }
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     CreateUserDto:
+ *       type: object
+ *       required:
+ *         - name
+ *         - email
+ *         - password
+ *       properties:
+ *         name:
+ *           type: string
+ *           minLength: 3
+ *           maxLength: 100
+ *         email:
+ *           type: string
+ *           format: email
+ *         password:
+ *           type: string
+ *           minLength: 8
+ *         provider:
+ *           type: string
+ *         profilePic:
+ *           type: string
+ */
 export class CreateUserDto {
   @IsString()
   @MinLength(3)
@@ -30,6 +70,23 @@ export class CreateUserDto {
   profilePic?: string;
 }
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     LoginDto:
+ *       type: object
+ *       required:
+ *         - email
+ *         - password
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *         password:
+ *           type: string
+ *           minLength: 8
+ */
 export class LoginDto {
   @IsEmail()
   @Transform(({ value }) => value.toLowerCase().trim())
@@ -40,6 +97,32 @@ export class LoginDto {
   password!: string;
 }
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     ProductCreateDto:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         name:
+ *           type: string
+ *         description:
+ *           type: string
+ *         categories:
+ *           type: array
+ *           items:
+ *             type: string
+ *         price:
+ *           type: number
+ *         image:
+ *           type: array
+ *           items:
+ *             type: string
+ *         stock:
+ *           type: number
+ */
 export class ProductCreateDto {
   @IsString()
   @MinLength(1)
@@ -70,6 +153,22 @@ export class ProductCreateDto {
   stock?: number;
 }
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     AddToCartDto:
+ *       type: object
+ *       required:
+ *         - productId
+ *         - quantity
+ *       properties:
+ *         productId:
+ *           type: string
+ *         quantity:
+ *           type: number
+ *           minimum: 1
+ */
 export class AddToCartDto {
   @IsString()
   productId!: string;
@@ -79,6 +178,30 @@ export class AddToCartDto {
   quantity!: number;
 }
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     CreateOrderDto:
+ *       type: object
+ *       required:
+ *         - userId
+ *         - items
+ *       properties:
+ *         userId:
+ *           type: string
+ *         items:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               productId:
+ *                 type: string
+ *               quantity:
+ *                 type: number
+ *         address:
+ *           type: string
+ */
 export class CreateOrderDto {
   @IsString()
   userId!: string;

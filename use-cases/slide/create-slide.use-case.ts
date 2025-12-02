@@ -1,12 +1,12 @@
 import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
-import { CreateSlideDTO } from '@/core/entities/slide.entity';
+import { CreateSlideshowDTO } from '@/core/entities/slide.entity';
 
 export class CreateSlideUseCase {
     constructor(private slideRepository: ISlideRepository) { }
 
     async execute(data: any) {
         try {
-            const newSlide: CreateSlideDTO = {
+            const newSlide: CreateSlideshowDTO = {
                 title: data.title,
                 img: data.img,
                 desc: data.desc

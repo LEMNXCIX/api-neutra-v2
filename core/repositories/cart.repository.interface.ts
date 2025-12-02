@@ -1,4 +1,4 @@
-import { Cart, CartItem } from '../entities/cart.entity';
+import { Cart, CartItem } from '@/core/entities/cart.entity';
 
 export interface ICartRepository {
     findByUserId(userId: string): Promise<Cart | null>;

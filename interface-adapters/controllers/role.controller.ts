@@ -5,8 +5,13 @@ import { GetRolesUseCase } from '@/use-cases/roles/get-roles.use-case';
 import { UpdateRoleUseCase } from '@/use-cases/roles/update-role.use-case';
 import { DeleteRoleUseCase } from '@/use-cases/roles/delete-role.use-case';
 
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
+
 export class RoleController {
-    constructor(private roleRepository: IRoleRepository) { }
+    constructor(
+        private roleRepository: IRoleRepository,
+        private userRepository: IUserRepository
+    ) { }
 
     create = async (req: Request, res: Response) => {
         const useCase = new CreateRoleUseCase(this.roleRepository);
@@ -29,7 +34,7 @@ export class RoleController {
 
     update = async (req: Request, res: Response) => {
         const { id } = req.params;
-        const useCase = new UpdateRoleUseCase(this.roleRepository);
+        const useCase = new UpdateRoleUseCase(this.roleRepository, this.userRepository);
         const result = await useCase.execute(id, req.body);
         return res.status(result.code).json(result);
     }

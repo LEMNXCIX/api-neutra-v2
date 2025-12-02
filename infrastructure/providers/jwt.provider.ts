@@ -7,11 +7,14 @@ export class JwtProvider implements ITokenGenerator {
     private secret: string;
 
     constructor() {
-        this.secret = config.jwtSecret || 'default_secret';
+        if (!config.jwtSecret) {
+            throw new Error('JWT_SECRET is not defined in environment variables');
+        }
+        this.secret = config.jwtSecret;
     }
 
     generate(payload: any): string {
-        // Ensure we include complete role information with permissions
+        // Ensure we include complete role information (without permissions)
         const tokenPayload: JWTPayload = {
             id: payload.id,
             email: payload.email,
@@ -19,17 +22,19 @@ export class JwtProvider implements ITokenGenerator {
             role: {
                 id: payload.role?.id || '',
                 name: payload.role?.name || 'USER',
-                level: payload.role?.level || 1,
-                permissions: payload.role?.permissions?.map((p: any) =>
-                    typeof p === 'string' ? p : p.name
-                ) || []
+                level: payload.role?.level || 1
             }
         };
 
-        return jwt.sign(tokenPayload, this.secret, { expiresIn: '7d' });
+        return jwt.sign(tokenPayload, this.secret, {
+            expiresIn: '7d',
+            algorithm: 'HS256'
+        });
     }
 
     verify(token: string): JWTPayload {
-        return jwt.verify(token, this.secret) as JWTPayload;
+        return jwt.verify(token, this.secret, {
+            algorithms: ['HS256']
+        }) as JWTPayload;
     }
 }

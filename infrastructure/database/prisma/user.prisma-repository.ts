@@ -18,6 +18,7 @@ export class PrismaUserRepository implements IUserRepository {
                     }
                 },
                 profilePic: true,
+                active: true,
                 googleId: true,
                 facebookId: true,
                 twitterId: true,
@@ -196,6 +197,30 @@ export class PrismaUserRepository implements IUserRepository {
             yearMonth: r.yearMonth,
             total: r.total
         }));
+    }
+
+    async findByRoleId(roleId: string): Promise<User[]> {
+        const users = await prisma.user.findMany({
+            where: { roleId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                roleId: true,
+                role: {
+                    select: {
+                        id: true,
+                        name: true,
+                        level: true
+                    }
+                },
+                profilePic: true,
+                active: true,
+                createdAt: true,
+                updatedAt: true
+            }
+        });
+        return users as any[];
     }
 
     async delete(id: string): Promise<void> {

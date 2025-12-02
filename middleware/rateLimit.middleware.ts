@@ -1,6 +1,6 @@
 import rateLimit from 'express-rate-limit';
-import config from '../config/index.config';
-import { MINUTE_MS } from '../config/constants.config';
+import config from '@/config/index.config';
+import { MINUTE_MS } from '@/config/constants.config';
 
 const ENVIRONMENT: string = config.ENVIRONMENT;
 

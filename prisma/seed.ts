@@ -44,6 +44,16 @@ const PERMISSIONS = [
     { name: 'permissions:read', description: 'View permissions' },
     { name: 'permissions:write', description: 'Create and update permissions' },
     { name: 'permissions:delete', description: 'Delete permissions' },
+
+    // Banners
+    { name: 'banners:read', description: 'View banners' },
+    { name: 'banners:write', description: 'Create and update banners' },
+    { name: 'banners:delete', description: 'Delete banners' },
+
+    // Coupons
+    { name: 'coupons:read', description: 'View coupons' },
+    { name: 'coupons:write', description: 'Create and update coupons' },
+    { name: 'coupons:delete', description: 'Delete coupons' },
 ];
 
 // Roles predefinidos con sus permisos
@@ -100,6 +110,12 @@ const ROLES = [
             'permissions:read',
             'permissions:write',
             'permissions:delete',
+            'banners:read',
+            'banners:write',
+            'banners:delete',
+            'coupons:read',
+            'coupons:write',
+            'coupons:delete',
         ],
     },
 ];
