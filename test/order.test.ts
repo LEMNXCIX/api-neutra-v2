@@ -1,6 +1,6 @@
 jest.mock('uuid', () => ({ v4: () => 'test-uuid' }));
 import supertest from 'supertest';
-const app = require('../app');
+const app = require('@/app');
 const api = supertest(app);
 
 describe('Order routes', () => {

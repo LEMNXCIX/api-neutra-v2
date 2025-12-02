@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const db_config_1 = require("../config/db.config");
+const db_config_1 = require("@/config/db.config");
 // Increase default timeout for slow DB operations
 jest.setTimeout(20000);
 beforeAll(async () => {

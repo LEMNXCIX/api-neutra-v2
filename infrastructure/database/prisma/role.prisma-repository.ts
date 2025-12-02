@@ -138,6 +138,7 @@ export class PrismaRoleRepository implements IRoleRepository {
             name: prismaRole.name,
             description: prismaRole.description,
             level: prismaRole.level,
+            active: prismaRole.active,
             permissions: prismaRole.permissions?.map((rp: any) => rp.permission) || [],
             createdAt: prismaRole.createdAt,
             updatedAt: prismaRole.updatedAt

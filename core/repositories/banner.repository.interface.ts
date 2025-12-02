@@ -1,4 +1,4 @@
-import { Banner, CreateBannerDTO, UpdateBannerDTO } from '../entities/banner.entity';
+import { Banner, CreateBannerDTO, UpdateBannerDTO } from '@/core/entities/banner.entity';
 
 export interface IBannerRepository {
     findAll(): Promise<Banner[]>;

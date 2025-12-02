@@ -1,4 +1,4 @@
-import config from '../config/index.config';
+import config from '@/config/index.config';
 import dotenv from 'dotenv';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as FacebookStrategy } from 'passport-facebook';

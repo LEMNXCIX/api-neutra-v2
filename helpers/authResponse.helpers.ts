@@ -1,5 +1,5 @@
 import { Response, CookieOptions } from 'express';
-import config from '../config/index.config';
+import config from '@/config/index.config';
 
 const production: boolean = config.production;
 const ENVIRONMENT: string = config.ENVIRONMENT;

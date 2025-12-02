@@ -1,5 +1,5 @@
-import duplicatedError from './duplicatedError.helpers';
-import validationError from './validationError.helpers';
+import duplicatedError from '@/helpers/duplicatedError.helpers';
+import validationError from '@/helpers/validationError.helpers';
 
 function dbError(error: any) {
   // Defensive: if error is falsy, return a generic payload

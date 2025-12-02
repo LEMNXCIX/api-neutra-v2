@@ -82,7 +82,7 @@ export class LoginUseCase {
             }
 
             // Extract permissions
-            const permissions = user.role.permissions.map(p => p.name);
+            const permissions = user.role.permissions.map((p) => p.name);
 
             // Save permissions to Redis (TTL: 1 hour)
             await this.redis.set(`user:permissions:${user.id}`, JSON.stringify(permissions), 3600);
