@@ -5,9 +5,11 @@ export class GetBannersUseCase {
 
     async execute(activeOnly: boolean = false) {
         try {
+
             const banners = activeOnly
                 ? await this.bannerRepository.findActive()
                 : await this.bannerRepository.findAll();
+
 
             return {
                 success: true,

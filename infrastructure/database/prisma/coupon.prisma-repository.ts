@@ -36,6 +36,71 @@ export class PrismaCouponRepository implements ICouponRepository {
         return coupons as Coupon[];
     }
 
+    async findAllPaginated(options: {
+        search?: string;
+        type?: string;
+        status?: 'active' | 'expired' | 'used' | 'unused' | 'all';
+        page: number;
+        limit: number;
+    }): Promise<{
+        coupons: Coupon[];
+        total: number;
+    }> {
+        const { search, type, status, page, limit } = options;
+        const now = new Date();
+
+        // Build where clause
+        const where: any = {};
+
+        // Search filter (case-insensitive search on code)
+        if (search) {
+            where.code = {
+                contains: search.toUpperCase(),
+                mode: 'insensitive'
+            };
+        }
+
+        // Type filter
+        if (type && type !== 'all') {
+            where.type = type;
+        }
+
+        // Status filter
+        if (status && status !== 'all') {
+            switch (status) {
+                case 'active':
+                    where.active = true;
+                    where.expiresAt = { gte: now };
+                    break;
+                case 'expired':
+                    where.expiresAt = { lt: now };
+                    break;
+                case 'used':
+                    where.usageCount = { gt: 0 };
+                    break;
+                case 'unused':
+                    where.usageCount = 0;
+                    break;
+            }
+        }
+
+        // Execute queries in parallel
+        const [coupons, total] = await Promise.all([
+            prisma.coupon.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip: (page - 1) * limit,
+                take: limit
+            }),
+            prisma.coupon.count({ where })
+        ]);
+
+        return {
+            coupons: coupons as Coupon[],
+            total
+        };
+    }
+
     async create(data: CreateCouponDTO): Promise<Coupon> {
         const coupon = await prisma.coupon.create({
             data: {
@@ -87,5 +152,30 @@ export class PrismaCouponRepository implements ICouponRepository {
                 }
             }
         });
+    }
+
+    async getStats(): Promise<{
+        totalCoupons: number;
+        activeCoupons: number;
+        usedCoupons: number;
+        unusedCoupons: number;
+        expiredCoupons: number;
+    }> {
+        const now = new Date();
+        const [totalCoupons, activeCoupons, usedCoupons, unusedCoupons, expiredCoupons] = await Promise.all([
+            prisma.coupon.count(),
+            prisma.coupon.count({ where: { active: true, expiresAt: { gte: now } } }),
+            prisma.coupon.count({ where: { usageCount: { gt: 0 } } }),
+            prisma.coupon.count({ where: { usageCount: 0 } }),
+            prisma.coupon.count({ where: { expiresAt: { lt: now } } })
+        ]);
+
+        return {
+            totalCoupons,
+            activeCoupons,
+            usedCoupons,
+            unusedCoupons,
+            expiredCoupons
+        };
     }
 }

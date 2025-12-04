@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "pretest": "ts-node ./scripts/clean-dist.ts",
-    "test": "jest --runInBand --detectOpenHandles",
+    "test": "jest --runInBand",
+    "test:ci": "jest --runInBand --forceExit",
     "build": "tsc -p tsconfig.json",
     "start": "node -r ts-node/register ./app.ts",
     "dev": "cross-env NODE_ENV=development ts-node ./app.ts",

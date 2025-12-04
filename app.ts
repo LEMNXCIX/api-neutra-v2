@@ -39,9 +39,12 @@ if (require.main === module) {
 }
 
 
+import requestMiddleware from "@/middleware/request.middleware";
+
 // Middlewares (orden funcional: logging > parsing > security > custom)
 app.use(morgan("dev"));
 app.use(express.json());
+app.use(requestMiddleware);
 app.use(cookieParser());
 app.use(rateLimiter());
 app.use(responseMiddleware); // Estandariza responses a ApiResponse
@@ -77,15 +80,23 @@ const isOriginAllowed = (origin: string | undefined): boolean => {
     return !isProduction;
   }
 
+  // Check environment variable ALLOWED_ORIGINS
+  if (process.env.ALLOWED_ORIGINS) {
+    const envOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+    if (envOrigins.includes(origin)) return true;
+  }
+
   // Exact match in whitelist
   if (whitelist.includes(origin)) {
     return true;
   }
 
-  // In development, allow any localhost port
+  // In development, allow localhost and local network IPs
   if (!isProduction) {
     const localhostPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
-    return localhostPattern.test(origin);
+    const localNetworkPattern = /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+
+    return localhostPattern.test(origin) || localNetworkPattern.test(origin);
   }
 
   return false;

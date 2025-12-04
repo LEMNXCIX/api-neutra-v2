@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import { IBannerRepository } from '@/core/repositories/banner.repository.interface';
-import { CreateBannerUseCase } from '@/use-cases/banners/create-banner.use-case';
-import { GetBannersUseCase } from '@/use-cases/banners/get-banners.use-case';
-import { UpdateBannerUseCase } from '@/use-cases/banners/update-banner.use-case';
-import { DeleteBannerUseCase } from '@/use-cases/banners/delete-banner.use-case';
-import { TrackBannerAnalyticsUseCase } from '@/use-cases/banners/track-banner-analytics.use-case';
+import { CreateBannerUseCase } from '@/core/application/banners/create-banner.use-case';
+import { GetBannersUseCase } from '@/core/application/banners/get-banners.use-case';
+import { UpdateBannerUseCase } from '@/core/application/banners/update-banner.use-case';
+import { DeleteBannerUseCase } from '@/core/application/banners/delete-banner.use-case';
+import { TrackBannerAnalyticsUseCase } from '@/core/application/banners/track-banner-analytics.use-case';
+import { GetBannerStatsUseCase } from '@/core/application/banners/get-banner-stats.use-case';
 
 export class BannerController {
     constructor(private bannerRepository: IBannerRepository) { }
@@ -59,6 +60,12 @@ export class BannerController {
         const { id } = req.params;
         const useCase = new TrackBannerAnalyticsUseCase(this.bannerRepository);
         const result = await useCase.trackClick(id);
+        return res.status(result.code).json(result);
+    }
+
+    getStats = async (req: Request, res: Response) => {
+        const useCase = new GetBannerStatsUseCase(this.bannerRepository);
+        const result = await useCase.execute();
         return res.status(result.code).json(result);
     }
 }

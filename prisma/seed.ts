@@ -121,10 +121,8 @@ const ROLES = [
 ];
 
 async function main() {
-    console.log('🌱 Starting RBAC seed...');
 
     // 1. Crear permisos
-    console.log('📋 Creating permissions...');
     for (const permission of PERMISSIONS) {
         await prisma.permission.upsert({
             where: { name: permission.name },
@@ -132,10 +130,8 @@ async function main() {
             create: permission,
         });
     }
-    console.log(`✅ Created ${PERMISSIONS.length} permissions`);
 
     // 2. Crear roles con sus permisos
-    console.log('👥 Creating roles...');
     for (const roleData of ROLES) {
         const { permissions: permissionNames, ...roleInfo } = roleData;
 
@@ -172,18 +168,8 @@ async function main() {
                 },
             });
         }
-
-        console.log(`  ✓ Role '${role.name}' created with ${permissions.length} permissions`);
     }
 
-    console.log('✅ RBAC seed completed successfully!');
-    console.log('\n📊 Summary:');
-    console.log(`  - Permissions: ${PERMISSIONS.length}`);
-    console.log(`  - Roles: ${ROLES.length}`);
-    console.log('\n💡 Next steps:');
-    console.log('  1. Update JWT provider to include role permissions');
-    console.log('  2. Create authorization middleware');
-    console.log('  3. Migrate routes to use permission-based auth');
 }
 
 main()

@@ -1,15 +1,16 @@
 import { Request, Response } from 'express';
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { ICartRepository } from '@/core/repositories/cart.repository.interface';
-import { GetAllUsersUseCase } from '@/use-cases/users/get-all-users.use-case';
-import { GetUserByIdUseCase } from '@/use-cases/users/get-user-by-id.use-case';
-import { GetUserByEmailUseCase } from '@/use-cases/users/get-user-by-email.use-case';
-import { GetUsersStatsUseCase } from '@/use-cases/users/get-users-stats.use-case';
-import { CreateUserUseCase } from '@/use-cases/users/create-user.use-case';
-import { GetOrCreateByProviderUseCase } from '@/use-cases/users/get-or-create-by-provider.use-case';
-import { UpdateUserUseCase } from '@/use-cases/users/update-user.use-case';
-import { DeleteUserUseCase } from '@/use-cases/users/delete-user.use-case';
-import { AssignRoleToUserUseCase } from '@/use-cases/users/assign-role.use-case';
+import { GetAllUsersUseCase } from '@/core/application/users/get-all-users.use-case';
+import { GetUserByIdUseCase } from '@/core/application/users/get-user-by-id.use-case';
+import { GetUserByEmailUseCase } from '@/core/application/users/get-user-by-email.use-case';
+import { GetUsersStatsUseCase } from '@/core/application/users/get-users-stats.use-case';
+import { GetUsersSummaryStatsUseCase } from '@/core/application/users/get-users-summary-stats.use-case';
+import { CreateUserUseCase } from '@/core/application/users/create-user.use-case';
+import { GetOrCreateByProviderUseCase } from '@/core/application/users/get-or-create-by-provider.use-case';
+import { UpdateUserUseCase } from '@/core/application/users/update-user.use-case';
+import { DeleteUserUseCase } from '@/core/application/users/delete-user.use-case';
+import { AssignRoleToUserUseCase } from '@/core/application/users/assign-role.use-case';
 import { IRoleRepository } from '@/core/repositories/role.repository.interface';
 
 export class UserController {
@@ -53,6 +54,12 @@ export class UserController {
 
     getUsersStats = async (req: Request, res: Response) => {
         const useCase = new GetUsersStatsUseCase(this.userRepository);
+        const result = await useCase.execute();
+        return res.status(result.code).json(result);
+    }
+
+    getSummaryStats = async (req: Request, res: Response) => {
+        const useCase = new GetUsersSummaryStatsUseCase(this.userRepository);
         const result = await useCase.execute();
         return res.status(result.code).json(result);
     }

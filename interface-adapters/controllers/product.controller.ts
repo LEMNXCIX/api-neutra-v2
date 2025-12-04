@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import { IProductRepository } from '@/core/repositories/product.repository.interface';
-import { GetAllProductsUseCase } from '@/use-cases/products/get-all-products.use-case';
-import { GetProductUseCase } from '@/use-cases/products/get-product.use-case';
-import { CreateProductUseCase } from '@/use-cases/products/create-product.use-case';
-import { UpdateProductUseCase } from '@/use-cases/products/update-product.use-case';
-import { DeleteProductUseCase } from '@/use-cases/products/delete-product.use-case';
-import { SearchProductsUseCase } from '@/use-cases/products/search-products.use-case';
-import { GetProductStatsUseCase } from '@/use-cases/products/get-product-stats.use-case';
+import { GetAllProductsUseCase } from '@/core/application/products/get-all-products.use-case';
+import { GetProductUseCase } from '@/core/application/products/get-product.use-case';
+import { CreateProductUseCase } from '@/core/application/products/create-product.use-case';
+import { UpdateProductUseCase } from '@/core/application/products/update-product.use-case';
+import { DeleteProductUseCase } from '@/core/application/products/delete-product.use-case';
+import { SearchProductsUseCase } from '@/core/application/products/search-products.use-case';
+import { GetProductStatsUseCase } from '@/core/application/products/get-product-stats.use-case';
+import { GetProductSummaryStatsUseCase } from '@/core/application/products/get-product-summary-stats.use-case';
 
 export class ProductController {
     private getAllProductsUseCase: GetAllProductsUseCase;
@@ -16,8 +17,10 @@ export class ProductController {
     private deleteProductUseCase: DeleteProductUseCase;
     private searchProductsUseCase: SearchProductsUseCase;
     private getProductStatsUseCase: GetProductStatsUseCase;
+    private productRepository: IProductRepository;
 
     constructor(productRepository: IProductRepository) {
+        this.productRepository = productRepository;
         this.getAllProductsUseCase = new GetAllProductsUseCase(productRepository);
         this.getProductUseCase = new GetProductUseCase(productRepository);
         this.createProductUseCase = new CreateProductUseCase(productRepository);
@@ -34,6 +37,7 @@ export class ProductController {
         this.delete = this.delete.bind(this);
         this.search = this.search.bind(this);
         this.getStats = this.getStats.bind(this);
+        this.getSummaryStats = this.getSummaryStats.bind(this);
     }
 
     async getAll(req: Request, res: Response) {
@@ -76,6 +80,12 @@ export class ProductController {
 
     async getStats(req: Request, res: Response) {
         const result = await this.getProductStatsUseCase.execute();
+        return res.json(result);
+    }
+
+    async getSummaryStats(req: Request, res: Response) {
+        const useCase = new GetProductSummaryStatsUseCase(this.productRepository);
+        const result = await useCase.execute();
         return res.json(result);
     }
 }

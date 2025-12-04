@@ -28,6 +28,12 @@ export interface StandardResponse<T = any> {
     message: string;
     data?: T;
     errors?: ErrorDetail[];
+    pagination?: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    };
     meta: {
         traceId: string;
         timestamp: string;

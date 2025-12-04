@@ -9,7 +9,8 @@ export class UpdateSlideUseCase {
             const updateData: UpdateSlideshowDTO = {
                 title: data.title,
                 img: data.img,
-                desc: data.desc
+                desc: data.desc,
+                active: data.active
             };
             const slide = await this.slideRepository.update(id, updateData);
             return {

@@ -93,6 +93,29 @@ export class PrismaProductRepository implements IProductRepository {
         }));
     }
 
+    async getSummaryStats(): Promise<{ totalProducts: number; totalValue: number; lowStockCount: number }> {
+        const [totalProducts, lowStockCount] = await Promise.all([
+            prisma.product.count(),
+            prisma.product.count({
+                where: {
+                    stock: { lt: 10 }
+                }
+            })
+        ]);
+
+        // Calculate total value (price * stock) in memory for reliability
+        const allProducts = await prisma.product.findMany({
+            select: { price: true, stock: true }
+        });
+        const totalValue = allProducts.reduce((sum, p) => sum + (p.price * p.stock), 0);
+
+        return {
+            totalProducts,
+            totalValue: Number(totalValue),
+            lowStockCount
+        };
+    }
+
     async findFirst(where: Partial<Product>): Promise<Product | null> {
         const product = await prisma.product.findFirst({
             where: where as any,
@@ -108,11 +131,12 @@ export class PrismaProductRepository implements IProductRepository {
             description: prismaProduct.description,
             image: prismaProduct.image,
             price: prismaProduct.price,
+            stock: prismaProduct.stock,
             active: prismaProduct.active,
             ownerId: prismaProduct.ownerId,
             createdAt: prismaProduct.createdAt,
             updatedAt: prismaProduct.updatedAt,
-            categories: prismaProduct.categories // Assuming Product entity has categories field now?
+            categories: prismaProduct.categories
         };
     }
 }

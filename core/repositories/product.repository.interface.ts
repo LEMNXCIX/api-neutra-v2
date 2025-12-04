@@ -8,5 +8,6 @@ export interface IProductRepository {
     delete(id: string): Promise<Product>;
     searchByName(name: string): Promise<Product[]>;
     getStats(): Promise<any[]>; // Define specific stats type if needed
+    getSummaryStats(): Promise<{ totalProducts: number; totalValue: number; lowStockCount: number }>;
     findFirst(where: Partial<Product>): Promise<Product | null>; // Helper for ownership check
 }

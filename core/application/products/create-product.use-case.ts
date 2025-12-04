@@ -11,6 +11,7 @@ export class CreateProductUseCase {
                 description: data.description,
                 image: data.image,
                 price: parseFloat(data.price),
+                stock: parseInt(data.stock) || 0,
                 ownerId: data.owner
             };
 

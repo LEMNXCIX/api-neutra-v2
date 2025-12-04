@@ -17,6 +17,30 @@ export class PrismaRoleRepository implements IRoleRepository {
         return roles.map(this.mapToEntity);
     }
 
+    async findAllPaginated(page: number, limit: number): Promise<{ roles: Role[]; total: number }> {
+        const skip = (page - 1) * limit;
+        const [roles, total] = await Promise.all([
+            prisma.role.findMany({
+                skip,
+                take: limit,
+                include: {
+                    permissions: {
+                        include: {
+                            permission: true
+                        }
+                    }
+                },
+                orderBy: { level: 'asc' }
+            }),
+            prisma.role.count()
+        ]);
+
+        return {
+            roles: roles.map(this.mapToEntity),
+            total
+        };
+    }
+
     async findById(id: string): Promise<Role | null> {
         const role = await prisma.role.findUnique({
             where: { id },

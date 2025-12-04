@@ -57,12 +57,13 @@ jobs:
       run: npx tsc --noEmit
 
     - name: Run Tests
-      run: npm test --if-present
+      run: npm run test:ci
       env:
         DATABASE_URL: postgres://postgres:password@localhost:5432/test_db
         REDIS_HOST: localhost
         REDIS_PORT: 6379
         JWT_SECRET: test_secret
+        SESSION_SECRET: test_session_secret
 
     - name: Build
       run: npm run build

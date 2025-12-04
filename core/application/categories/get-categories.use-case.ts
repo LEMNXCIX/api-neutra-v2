@@ -3,13 +3,19 @@ import { ICategoryRepository } from '@/core/repositories/category.repository.int
 export class GetCategoriesUseCase {
     constructor(private categoryRepository: ICategoryRepository) { }
 
-    async execute() {
-        const categories = await this.categoryRepository.findAll();
+    async execute(page?: number, limit?: number) {
+        const result = await this.categoryRepository.findAll(page, limit);
         return {
             success: true,
             code: 200,
             message: 'Categories retrieved successfully',
-            data: categories
+            data: result.categories,
+            pagination: page && limit ? {
+                page,
+                limit,
+                total: result.total,
+                totalPages: Math.ceil(result.total / limit)
+            } : undefined
         };
     }
 

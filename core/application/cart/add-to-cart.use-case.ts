@@ -1,7 +1,11 @@
 import { ICartRepository } from '@/core/repositories/cart.repository.interface';
+import { IProductRepository } from '@/core/repositories/product.repository.interface';
 
 export class AddToCartUseCase {
-    constructor(private cartRepository: ICartRepository) { }
+    constructor(
+        private cartRepository: ICartRepository,
+        private productRepository: IProductRepository
+    ) { }
 
     async execute(userId: string, productId: string, amount: number) {
         let cart = await this.cartRepository.findByUserIdSimple(userId);
@@ -9,6 +13,26 @@ export class AddToCartUseCase {
         if (!cart) {
             // Lazy creation: Create cart if it doesn't exist
             cart = await this.cartRepository.create(userId);
+        }
+
+        // Check if product exists and has sufficient stock
+        const product = await this.productRepository.findById(productId);
+        if (!product) {
+            return {
+                success: false,
+                code: 404,
+                message: "Product not found",
+                data: null
+            };
+        }
+
+        if (product.stock < amount) {
+            return {
+                success: false,
+                code: 400,
+                message: `Insufficient stock. Available: ${product.stock}`,
+                data: null
+            };
         }
 
         const productExists = cart.items.some(item => item.productId === productId);

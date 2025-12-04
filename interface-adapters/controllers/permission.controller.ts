@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { IPermissionRepository } from '@/core/repositories/permission.repository.interface';
-import { CreatePermissionUseCase } from '@/use-cases/permissions/create-permission.use-case';
-import { GetPermissionsUseCase } from '@/use-cases/permissions/get-permissions.use-case';
-import { UpdatePermissionUseCase } from '@/use-cases/permissions/update-permission.use-case';
-import { DeletePermissionUseCase } from '@/use-cases/permissions/delete-permission.use-case';
+import { CreatePermissionUseCase } from '@/core/application/permissions/create-permission.use-case';
+import { GetPermissionsUseCase } from '@/core/application/permissions/get-permissions.use-case';
+import { UpdatePermissionUseCase } from '@/core/application/permissions/update-permission.use-case';
+import { DeletePermissionUseCase } from '@/core/application/permissions/delete-permission.use-case';
+import { GetPermissionsPaginatedUseCase } from '@/core/application/permissions/get-permissions-paginated.use-case';
 
 export class PermissionController {
     constructor(private permissionRepository: IPermissionRepository) { }
@@ -15,9 +16,18 @@ export class PermissionController {
     }
 
     getAll = async (req: Request, res: Response) => {
-        const useCase = new GetPermissionsUseCase(this.permissionRepository);
-        const result = await useCase.execute();
-        return res.status(result.code).json(result);
+        const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+        const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+
+        if (page || limit) {
+            const useCase = new GetPermissionsPaginatedUseCase(this.permissionRepository);
+            const result = await useCase.execute(page, limit);
+            return res.status(result.code).json(result);
+        } else {
+            const useCase = new GetPermissionsUseCase(this.permissionRepository);
+            const result = await useCase.execute();
+            return res.status(result.code).json(result);
+        }
     }
 
     getById = async (req: Request, res: Response) => {
