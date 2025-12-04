@@ -11,6 +11,7 @@ import rateLimiter from "@/middleware/rateLimit.middleware";
 import responseMiddleware from "@/middleware/response.middleware";
 import logger from "@/helpers/logger.helpers";
 
+const isProduction = process.env.NODE_ENV === "production";
 // Rutas
 import auth from "@/infrastructure/routes/auth.routes";
 import users from "@/infrastructure/routes/users.routes";
@@ -166,6 +167,11 @@ app.use(
     secret: sesionSecret as string,
     resave: false,
     saveUninitialized: false,
+    cookie: {
+      secure: isProduction,
+      httpOnly: true,
+      sameSite: 'lax', // Strongly recommended, but optional
+    }
   })
 );
 
