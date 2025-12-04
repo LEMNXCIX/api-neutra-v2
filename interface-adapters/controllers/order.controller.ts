@@ -48,6 +48,7 @@ export class OrderController {
         // Bind methods
         this.create = this.create.bind(this);
         this.getOne = this.getOne.bind(this);
+        this.getOneById = this.getOneById.bind(this);
         this.getByUser = this.getByUser.bind(this);
         this.getAll = this.getAll.bind(this);
         this.changeStatus = this.changeStatus.bind(this);
@@ -86,6 +87,14 @@ export class OrderController {
 
         const { orderId } = req.body; // Or params, keeping consistent with old route for now
         const result = await this.getOrderUseCase.execute(orderId);
+        return res.json(result);
+    }
+
+    async getOneById(req: Request, res: Response) {
+        this.logger.info('Get One Order By ID Request', { userId: (req as any).user?.id, params: req.params });
+
+        const { id } = req.params;
+        const result = await this.getOrderUseCase.execute(id);
         return res.json(result);
     }
 

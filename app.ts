@@ -65,6 +65,7 @@ const allowedOriginsDev = [
   "http://127.0.0.1:3001",
   "http://127.0.0.1:4001",
   "http://127.0.0.1:5173",
+  "http://192.168.68.105:3000",
   "http://127.0.0.1:5500", // LiveServer
 ];
 
@@ -84,7 +85,6 @@ const isOriginAllowed = (origin: string | undefined): boolean => {
     // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
     return !isProduction;
   }
-  console.log(origin);
 
   // Check environment variable ALLOWED_ORIGINS
   if (process.env.ALLOWED_ORIGINS) {
@@ -218,8 +218,11 @@ app.use(notFoundHandlerEnhanced);
 
 // Server lift
 if (require.main === module) {
-  app.listen(port, () => {
-    console.log(`Listening on: http://localhost:${port}`);
+  const portNumber = typeof port === 'string' ? parseInt(port, 10) : port;
+  app.listen(portNumber, '0.0.0.0', () => {
+    console.log(`Server started successfully!`);
+    console.log(`Local: http://localhost:${portNumber}`);
+    console.log(`Network: http://192.168.68.105:${portNumber}`);
   });
 }
 
