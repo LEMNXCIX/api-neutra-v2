@@ -1,4 +1,6 @@
 name: Node.js CD
+permissions:
+  contents: read
 
 # Trigger manually for now. Uncomment 'push' block to enable auto-deploy.
 on:
