@@ -111,6 +111,8 @@ function order(app: Application) {
      */
     router.get('/getOrder', authenticate, orderController.getOne);
 
+
+
     /**
      * @swagger
      * /order/getOrderByUser:
@@ -240,6 +242,33 @@ function order(app: Application) {
      *         description: Forbidden
      */
     router.put('/:id', authenticate, requirePermission('orders:write'), orderController.update);
+
+    /**
+     * @swagger
+     * /order/{id}:
+     *   get:
+     *     summary: Get order by ID
+     *     tags: [Orders]
+     *     security:
+     *       - bearerAuth: []
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *         description: Order ID
+     *     responses:
+     *       200:
+     *         description: Order details
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Order'
+     *       404:
+     *         description: Order not found
+     */
+    router.get('/:id', authenticate, orderController.getOneById);
 }
 
 export default order;

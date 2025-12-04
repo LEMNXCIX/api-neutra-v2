@@ -12,7 +12,6 @@ import rateLimiter from "@/middleware/rateLimit.middleware";
 import responseMiddleware from "@/middleware/response.middleware";
 import logger from "@/helpers/logger.helpers";
 
-const isProduction = process.env.NODE_ENV === "production";
 // Rutas
 import auth from "@/infrastructure/routes/auth.routes";
 import users from "@/infrastructure/routes/users.routes";
@@ -48,7 +47,10 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(requestMiddleware);
 app.use(cookieParser());
-app.use(lusca.csrf());
+// CSRF protection only in production
+if (ENVIRONMENT === "prod" || ENVIRONMENT === "production") {
+  app.use(lusca.csrf());
+}
 app.use(rateLimiter());
 app.use(responseMiddleware); // Estandariza responses a ApiResponse
 
@@ -63,6 +65,7 @@ const allowedOriginsDev = [
   "http://127.0.0.1:3001",
   "http://127.0.0.1:4001",
   "http://127.0.0.1:5173",
+  "http://192.168.68.105:3000",
   "http://127.0.0.1:5500", // LiveServer
 ];
 
@@ -215,8 +218,11 @@ app.use(notFoundHandlerEnhanced);
 
 // Server lift
 if (require.main === module) {
-  app.listen(port, () => {
-    console.log(`Listening on: http://localhost:${port}`);
+  const portNumber = typeof port === 'string' ? parseInt(port, 10) : port;
+  app.listen(portNumber, '0.0.0.0', () => {
+    console.log(`Server started successfully!`);
+    console.log(`Local: http://localhost:${portNumber}`);
+    console.log(`Network: http://192.168.68.105:${portNumber}`);
   });
 }
 
