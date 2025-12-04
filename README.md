@@ -28,6 +28,12 @@ Este proyecto está configurado para ejecutarse fácilmente utilizando Docker y 
     # Secretos de la App
     JWT_SECRET=tu_secreto_jwt
     SESSION_SECRET=tu_secreto_session
+
+    # Logging Configuration
+    LOG_LEVEL=info
+    LOG_PAYLOADS=false
+    LOG_RESPONSES=false
+    LOG_HEADERS=false
     ```
 
 ### 🛠️ Entorno de Desarrollo

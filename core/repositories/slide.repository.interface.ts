@@ -6,4 +6,5 @@ export interface ISlideRepository {
     findAll(): Promise<Slideshow[]>;
     delete(id: string): Promise<void>;
     findById(id: string): Promise<Slideshow | null>;
+    getStats(): Promise<{ totalSliders: number; activeSliders: number; withImages: number }>;
 }

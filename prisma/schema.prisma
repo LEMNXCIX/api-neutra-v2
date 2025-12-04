@@ -92,6 +92,7 @@ model Product {
   price       Float
   description String
   image       String?
+  stock       Int     @default(0)
   active      Boolean @default(true)
 
   ownerId String
@@ -155,6 +156,7 @@ model Order {
   user   User   @relation(fields: [userId], references: [id])
 
   status OrderStatus @default(PENDIENTE)
+  trackingNumber String?
 
   // Coupon relation
   couponId       String?

@@ -199,6 +199,25 @@ export class PrismaUserRepository implements IUserRepository {
         }));
     }
 
+    async getSummaryStats(): Promise<{ totalUsers: number; adminUsers: number; regularUsers: number }> {
+        const [totalUsers, adminUsers] = await Promise.all([
+            prisma.user.count(),
+            prisma.user.count({
+                where: {
+                    role: {
+                        name: { in: ['ADMIN', 'SUPER_ADMIN'] }
+                    }
+                }
+            })
+        ]);
+
+        return {
+            totalUsers,
+            adminUsers,
+            regularUsers: totalUsers - adminUsers
+        };
+    }
+
     async findByRoleId(roleId: string): Promise<User[]> {
         const users = await prisma.user.findMany({
             where: { roleId },

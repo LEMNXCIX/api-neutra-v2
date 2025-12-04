@@ -2,8 +2,9 @@ export interface Product {
     id: string;
     name: string;
     description: string;
-    image: string;
+    image: string | null;
     price: number;
+    stock: number;
     active: boolean;
     ownerId: string;
     createdAt?: Date;
@@ -16,6 +17,7 @@ export interface CreateProductDTO {
     description: string;
     image?: string;
     price: number;
+    stock?: number;
     active?: boolean;
     ownerId: string;
     categoryIds?: string[];
@@ -26,6 +28,7 @@ export interface UpdateProductDTO {
     description?: string;
     image?: string;
     price?: number;
+    stock?: number;
     active?: boolean;
     categoryIds?: string[];
 }

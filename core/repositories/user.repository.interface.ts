@@ -26,6 +26,7 @@ export interface IUserRepository {
     update(id: string, user: Partial<User>): Promise<User>;
     linkProvider(email: string, providerField: string, providerId: string, profilePic?: string): Promise<User>;
     getUsersStats(): Promise<{ yearMonth: string; total: number }[]>;
+    getSummaryStats(): Promise<{ totalUsers: number; adminUsers: number; regularUsers: number }>;
     findByRoleId(roleId: string): Promise<User[]>;
     delete(id: string): Promise<void>;
 }

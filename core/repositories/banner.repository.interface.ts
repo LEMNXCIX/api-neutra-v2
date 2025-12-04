@@ -9,4 +9,5 @@ export interface IBannerRepository {
     delete(id: string): Promise<void>;
     incrementImpressions(id: string): Promise<void>;
     incrementClicks(id: string): Promise<void>;
+    getStats(): Promise<{ totalBanners: number; activeBanners: number }>;
 }

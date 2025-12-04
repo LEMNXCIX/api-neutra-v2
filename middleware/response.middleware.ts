@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { info, error as logError } from '@/helpers/logger.helpers';
 import { ApiResponse, StandardResponse, AppError, ErrorDetail, SystemErrorCodes } from '@/types/api-response';
+import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
+
+const logger = new PinoLoggerProvider();
 
 declare global {
   namespace Express {
@@ -24,7 +26,7 @@ export default function responseMiddleware(req: Request, res: Response, next: Ne
   res.json = function (body?: any) {
     // Avoid double wrapping if it's already a StandardResponse
     if (body && typeof body === 'object' && 'meta' in body && 'statusCode' in body) {
-      info({ route: req.originalUrl, method: req.method, traceId, payload: body });
+      logger.logResponse({ statusCode: body.statusCode, body });
       return originalJson(body);
     }
 
@@ -35,6 +37,8 @@ export default function responseMiddleware(req: Request, res: Response, next: Ne
     let errors: ErrorDetail[] | undefined = undefined;
     let success = statusCode >= 200 && statusCode < 300;
 
+    let pagination: any = undefined;
+
     if (body && typeof body === 'object') {
       // Check for legacy service result shape: { success, code, message, data, errors }
       if ('success' in body || 'code' in body) {
@@ -42,6 +46,8 @@ export default function responseMiddleware(req: Request, res: Response, next: Ne
         statusCode = body.code ?? statusCode;
         message = body.message ?? message;
         data = body.data;
+        pagination = body.pagination; // Extract pagination
+
         if (body.errors || body.errorDetails) {
           errors = normalizeErrors(body.errors || body.errorDetails);
         }
@@ -52,6 +58,7 @@ export default function responseMiddleware(req: Request, res: Response, next: Ne
         statusCode = body.data.code ?? statusCode;
         message = body.data.message ?? message;
         data = body.data.data;
+        pagination = body.data.pagination; // Extract pagination
         if (body.data.errors || body.data.errorDetails) {
           errors = normalizeErrors(body.data.errors || body.data.errorDetails);
         }
@@ -64,25 +71,26 @@ export default function responseMiddleware(req: Request, res: Response, next: Ne
       message,
       data,
       errors,
+      pagination,
       meta: {
         traceId,
         timestamp: new Date().toISOString(),
       },
     };
 
-    info({ route: req.originalUrl, method: req.method, traceId, payload: response });
-
     // Sync HTTP status code
     if (res.statusCode !== statusCode) {
       res.status(statusCode);
     }
+
+    logger.logResponse({ statusCode, body: response });
 
     return originalJson(response);
   } as any;
 
   res.apiSuccess = function (data?: any, message: string = 'OK', statusCode: number = 200) {
     const response = ApiResponse.success(data, message, statusCode, traceId);
-    info({ route: req.originalUrl, method: req.method, traceId, payload: response });
+    logger.logResponse({ statusCode, body: response });
     res.status(statusCode).json(response);
     return res;
   };
@@ -115,7 +123,7 @@ export default function responseMiddleware(req: Request, res: Response, next: Ne
     }
 
     const response = ApiResponse.error(finalMessage, finalErrors, finalStatusCode, traceId);
-    logError({ route: req.originalUrl, method: req.method, traceId, err: response });
+    logger.error('API Error Response', err, { traceId, response });
     res.status(finalStatusCode).json(response);
     return res;
   };

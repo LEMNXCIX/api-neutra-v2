@@ -1,15 +1,19 @@
 import { Request, Response } from 'express';
 import { ICartRepository } from '@/core/repositories/cart.repository.interface';
-import { GetCartUseCase } from '@/use-cases/cart/get-cart.use-case';
-import { AddToCartUseCase } from '@/use-cases/cart/add-to-cart.use-case';
-import { RemoveFromCartUseCase } from '@/use-cases/cart/remove-from-cart.use-case';
-import { ClearCartUseCase } from '@/use-cases/cart/clear-cart.use-case';
-import { ChangeAmountUseCase } from '@/use-cases/cart/change-amount.use-case';
-import { GetCartStatsUseCase } from '@/use-cases/cart/get-cart-stats.use-case';
-import { CreateCartUseCase } from '@/use-cases/cart/create-cart.use-case';
+import { IProductRepository } from '@/core/repositories/product.repository.interface';
+import { GetCartUseCase } from '@/core/application/cart/get-cart.use-case';
+import { AddToCartUseCase } from '@/core/application/cart/add-to-cart.use-case';
+import { RemoveFromCartUseCase } from '@/core/application/cart/remove-from-cart.use-case';
+import { ClearCartUseCase } from '@/core/application/cart/clear-cart.use-case';
+import { ChangeAmountUseCase } from '@/core/application/cart/change-amount.use-case';
+import { GetCartStatsUseCase } from '@/core/application/cart/get-cart-stats.use-case';
+import { CreateCartUseCase } from '@/core/application/cart/create-cart.use-case';
 
 export class CartController {
-    constructor(private cartRepository: ICartRepository) { }
+    constructor(
+        private cartRepository: ICartRepository,
+        private productRepository: IProductRepository
+    ) { }
 
     getItems = async (req: Request, res: Response) => {
         const { id } = (req as any).user;
@@ -20,9 +24,9 @@ export class CartController {
 
     addToCart = async (req: Request, res: Response) => {
         const { id } = (req as any).user;
-        const { idProduct, amount } = req.body;
-        const useCase = new AddToCartUseCase(this.cartRepository);
-        const result = await useCase.execute(id, idProduct, amount);
+        const { productId, amount } = req.body;
+        const useCase = new AddToCartUseCase(this.cartRepository, this.productRepository);
+        const result = await useCase.execute(id, productId, amount);
         return res.status(result.code).json(result);
     }
 

@@ -3,29 +3,170 @@ import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { CartController } from '@/interface-adapters/controllers/cart.controller';
 import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
+import { PrismaProductRepository } from '@/infrastructure/database/prisma/product.prisma-repository';
 
 function cart(app: Application) {
     const router = Router();
     const cartRepository = new PrismaCartRepository();
-    const cartController = new CartController(cartRepository);
+    const productRepository = new PrismaProductRepository();
+    const cartController = new CartController(cartRepository, productRepository);
 
     app.use('/api/cart', router);
 
-    //Obtener los productos del carrito
+    /**
+     * @swagger
+     * tags:
+     *   name: Cart
+     *   description: Shopping cart management
+     */
+
+    /**
+     * @swagger
+     * components:
+     *   schemas:
+     *     CartItem:
+     *       type: object
+     *       properties:
+     *         productId:
+     *           type: string
+     *         quantity:
+     *           type: number
+     *         price:
+     *           type: number
+     *     Cart:
+     *       type: object
+     *       properties:
+     *         id:
+     *           type: string
+     *         userId:
+     *           type: string
+     *         items:
+     *           type: array
+     *           items:
+     *             $ref: '#/components/schemas/CartItem'
+     */
+
+    /**
+     * @swagger
+     * /cart:
+     *   get:
+     *     summary: Get current user's cart items
+     *     tags: [Cart]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Cart items retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: array
+     *               items:
+     *                 $ref: '#/components/schemas/CartItem'
+     *       401:
+     *         description: Unauthorized
+     */
     router.get('/', authenticate, requirePermission('cart:read'), cartController.getItems);
 
-    //Crear carrito explícitamente
+    /**
+     * @swagger
+     * /cart:
+     *   post:
+     *     summary: Create a new cart explicitly
+     *     tags: [Cart]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       201:
+     *         description: Cart created successfully
+     *       401:
+     *         description: Unauthorized
+     */
     router.post('/', authenticate, requirePermission('cart:write'), cartController.create);
 
-    //Añadir producto al carrito
+    /**
+     * @swagger
+     * /cart/add:
+     *   post:
+     *     summary: Add item to cart
+     *     tags: [Cart]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             $ref: '#/components/schemas/AddToCartDto'
+     *     responses:
+     *       200:
+     *         description: Item added to cart successfully
+     *       401:
+     *         description: Unauthorized
+     *       400:
+     *         description: Invalid input
+     */
     router.post('/add', authenticate, requirePermission('cart:write'), cartController.addToCart);
 
-    //Eliminar un producto del carrito
+    /**
+     * @swagger
+     * /cart/remove:
+     *   put:
+     *     summary: Remove item from cart
+     *     tags: [Cart]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - productId
+     *             properties:
+     *               productId:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Item removed from cart successfully
+     *       401:
+     *         description: Unauthorized
+     */
     router.put('/remove', authenticate, requirePermission('cart:write'), cartController.removeFromCart);
 
-    //Limpiar el carrito
+    /**
+     * @swagger
+     * /cart/clear:
+     *   delete:
+     *     summary: Clear all items from cart
+     *     tags: [Cart]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Cart cleared successfully
+     *       401:
+     *         description: Unauthorized
+     */
     router.delete('/clear', authenticate, requirePermission('cart:write'), cartController.clearCart);
 
+    /**
+     * @swagger
+     * /cart/stats:
+     *   get:
+     *     summary: Get cart statistics (Admin)
+     *     tags: [Cart]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Cart statistics retrieved successfully
+     *       401:
+     *         description: Unauthorized
+     *       403:
+     *         description: Forbidden
+     */
     router.get('/stats', authenticate, requirePermission('stats:read'), cartController.getCartsStats);
 
     router.use(async (req: Request, res: Response) => {

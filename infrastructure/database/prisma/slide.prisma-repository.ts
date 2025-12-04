@@ -46,6 +46,20 @@ export class PrismaSlideRepository implements ISlideRepository {
         return slide ? this.mapToEntity(slide) : null;
     }
 
+    async getStats(): Promise<{ totalSliders: number; activeSliders: number; withImages: number }> {
+        const [totalSliders, activeSliders, withImages] = await Promise.all([
+            prisma.slideshow.count(),
+            prisma.slideshow.count({ where: { active: true } }),
+            prisma.slideshow.count({ where: { img: { not: '' } } })
+        ]);
+
+        return {
+            totalSliders,
+            activeSliders,
+            withImages
+        };
+    }
+
     private mapToEntity(prismaSlide: any): Slideshow {
         return {
             id: prismaSlide.id,

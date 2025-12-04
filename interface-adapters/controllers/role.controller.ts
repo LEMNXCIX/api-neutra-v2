@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { IRoleRepository } from '@/core/repositories/role.repository.interface';
-import { CreateRoleUseCase } from '@/use-cases/roles/create-role.use-case';
-import { GetRolesUseCase } from '@/use-cases/roles/get-roles.use-case';
-import { UpdateRoleUseCase } from '@/use-cases/roles/update-role.use-case';
-import { DeleteRoleUseCase } from '@/use-cases/roles/delete-role.use-case';
+import { CreateRoleUseCase } from '@/core/application/roles/create-role.use-case';
+import { GetRolesUseCase } from '@/core/application/roles/get-roles.use-case';
+import { UpdateRoleUseCase } from '@/core/application/roles/update-role.use-case';
+import { DeleteRoleUseCase } from '@/core/application/roles/delete-role.use-case';
+import { GetRolesPaginatedUseCase } from '@/core/application/roles/get-roles-paginated.use-case';
 
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
 
@@ -20,9 +21,18 @@ export class RoleController {
     }
 
     getAll = async (req: Request, res: Response) => {
-        const useCase = new GetRolesUseCase(this.roleRepository);
-        const result = await useCase.execute();
-        return res.status(result.code).json(result);
+        const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+        const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+
+        if (page || limit) {
+            const useCase = new GetRolesPaginatedUseCase(this.roleRepository);
+            const result = await useCase.execute(page, limit);
+            return res.status(result.code).json(result);
+        } else {
+            const useCase = new GetRolesUseCase(this.roleRepository);
+            const result = await useCase.execute();
+            return res.status(result.code).json(result);
+        }
     }
 
     getById = async (req: Request, res: Response) => {

@@ -10,7 +10,9 @@ export class UpdateProductUseCase {
                 name: data.name,
                 description: data.description,
                 image: data.image,
-                price: data.price ? parseFloat(data.price) : undefined
+                price: data.price ? parseFloat(data.price) : undefined,
+                stock: data.stock !== undefined ? parseInt(data.stock) : undefined,
+                categoryIds: data.categoryIds || data.categories
             };
 
             const product = await this.productRepository.update(id, updateData);

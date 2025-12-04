@@ -11,6 +11,7 @@ export interface User {
     active: boolean;
     googleId?: string;
     facebookId?: string;
+    twitterId?: string;
     githubId?: string;
     createdAt?: Date;
     updatedAt?: Date;
@@ -25,5 +26,6 @@ export interface CreateUserDTO {
     active?: boolean;
     googleId?: string;
     facebookId?: string;
+    twitterId?: string;
     githubId?: string;
 }

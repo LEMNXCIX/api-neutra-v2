@@ -3,13 +3,17 @@ import { IBannerRepository } from '@/core/repositories/banner.repository.interfa
 import { Banner, CreateBannerDTO, UpdateBannerDTO } from '@/core/entities/banner.entity';
 
 export class PrismaBannerRepository implements IBannerRepository {
+
     async findAll(): Promise<Banner[]> {
-        const banners = await prisma.banner.findMany({
-            orderBy: [
-                { priority: 'desc' },
-                { createdAt: 'desc' }
-            ]
-        });
+
+        const banners = await prisma.banner.findMany(
+            {
+                orderBy: [
+                    { priority: 'desc' },
+                    { createdAt: 'desc' }
+                ]
+            });
+
         return banners as Banner[];
     }
 
@@ -99,5 +103,24 @@ export class PrismaBannerRepository implements IBannerRepository {
                 }
             }
         });
+    }
+
+    async getStats(): Promise<{ totalBanners: number; activeBanners: number }> {
+        const now = new Date();
+        const [totalBanners, activeBanners] = await Promise.all([
+            prisma.banner.count(),
+            prisma.banner.count({
+                where: {
+                    active: true,
+                    startsAt: { lte: now },
+                    endsAt: { gte: now }
+                }
+            })
+        ]);
+
+        return {
+            totalBanners,
+            activeBanners
+        };
     }
 }

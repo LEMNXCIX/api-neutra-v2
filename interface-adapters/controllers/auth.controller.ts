@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { IPasswordHasher, ITokenGenerator } from '@/core/providers/auth-providers.interface';
 import { ILogger } from '@/core/providers/logger.interface';
-import { LoginUseCase } from '@/use-cases/auth/login.use-case';
-import { RegisterUseCase } from '@/use-cases/auth/register.use-case';
-import { SocialLoginUseCase } from '@/use-cases/auth/social-login.use-case';
+import { LoginUseCase } from '@/core/application/auth/login.use-case';
+import { RegisterUseCase } from '@/core/application/auth/register.use-case';
+import { SocialLoginUseCase } from '@/core/application/auth/social-login.use-case';
 import { authResponse, providerResponse, deleteCookie } from '@/helpers/authResponse.helpers';
 
 export class AuthController {
