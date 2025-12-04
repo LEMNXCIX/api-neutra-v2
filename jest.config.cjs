@@ -15,6 +15,6 @@ module.exports = {
     '^swagger-jsdoc$': '<rootDir>/test/mocks/swagger-jsdoc.mock.ts',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@scalar)/)',
+    'node_modules/(?!(@scalar|uuid)/)',
   ],
 };

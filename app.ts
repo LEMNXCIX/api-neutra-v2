@@ -12,7 +12,6 @@ import rateLimiter from "@/middleware/rateLimit.middleware";
 import responseMiddleware from "@/middleware/response.middleware";
 import logger from "@/helpers/logger.helpers";
 
-const isProduction = process.env.NODE_ENV === "production";
 // Rutas
 import auth from "@/infrastructure/routes/auth.routes";
 import users from "@/infrastructure/routes/users.routes";
@@ -48,7 +47,10 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(requestMiddleware);
 app.use(cookieParser());
-app.use(lusca.csrf());
+// CSRF protection only in production
+if (ENVIRONMENT === "prod" || ENVIRONMENT === "production") {
+  app.use(lusca.csrf());
+}
 app.use(rateLimiter());
 app.use(responseMiddleware); // Estandariza responses a ApiResponse
 
@@ -82,6 +84,7 @@ const isOriginAllowed = (origin: string | undefined): boolean => {
     // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
     return !isProduction;
   }
+  console.log(origin);
 
   // Check environment variable ALLOWED_ORIGINS
   if (process.env.ALLOWED_ORIGINS) {
