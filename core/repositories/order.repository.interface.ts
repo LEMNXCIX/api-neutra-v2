@@ -10,13 +10,15 @@ export interface IOrderRepository {
         status?: string;
         page: number;
         limit: number;
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{
         orders: Order[];
         total: number;
     }>;
     updateStatus(id: string, status: OrderStatus): Promise<Order>;
     update(id: string, data: UpdateOrderDTO): Promise<Order>;
-    getStats(): Promise<{
+    getStats(startDate?: Date, endDate?: Date): Promise<{
         totalOrders: number;
         totalRevenue: number;
         statusCounts: Record<string, number>;
