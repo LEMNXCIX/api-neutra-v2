@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedUser } from '@/types/rbac';
+import { AuthErrorCodes } from '@/types/error-codes';
 
 /**
  * Check if user has a specific permission
@@ -14,7 +15,7 @@ export function requirePermission(permission: string) {
                 success: false,
                 message: 'Authentication required',
                 errors: [{
-                    code: 'AUTH_001',
+                    code: AuthErrorCodes.MISSING_TOKEN,
                     message: 'You must be logged in to access this resource'
                 }]
             });
@@ -27,7 +28,7 @@ export function requirePermission(permission: string) {
                 success: false,
                 message: 'Insufficient permissions',
                 errors: [{
-                    code: 'AUTH_002',
+                    code: AuthErrorCodes.INSUFFICIENT_PERMISSIONS,
                     message: `You need '${permission}' permission to access this resource`,
                     details: {
                         required: permission,
@@ -54,7 +55,7 @@ export function requireAnyPermission(permissions: string[]) {
                 success: false,
                 message: 'Authentication required',
                 errors: [{
-                    code: 'AUTH_001',
+                    code: AuthErrorCodes.MISSING_TOKEN,
                     message: 'You must be logged in'
                 }]
             });
@@ -67,7 +68,7 @@ export function requireAnyPermission(permissions: string[]) {
                 success: false,
                 message: 'Insufficient permissions',
                 errors: [{
-                    code: 'AUTH_002',
+                    code: AuthErrorCodes.INSUFFICIENT_PERMISSIONS,
                     message: `You need at least one of these permissions: ${permissions.join(', ')}`,
                     details: {
                         required: permissions,
@@ -94,7 +95,7 @@ export function requireAllPermissions(permissions: string[]) {
                 success: false,
                 message: 'Authentication required',
                 errors: [{
-                    code: 'AUTH_001',
+                    code: AuthErrorCodes.MISSING_TOKEN,
                     message: 'You must be logged in'
                 }]
             });
@@ -109,7 +110,7 @@ export function requireAllPermissions(permissions: string[]) {
                 success: false,
                 message: 'Insufficient permissions',
                 errors: [{
-                    code: 'AUTH_002',
+                    code: AuthErrorCodes.INSUFFICIENT_PERMISSIONS,
                     message: `You are missing required permissions: ${missingPermissions.join(', ')}`,
                     details: {
                         required: permissions,
@@ -137,7 +138,7 @@ export function requireRole(minLevel: number) {
                 success: false,
                 message: 'Authentication required',
                 errors: [{
-                    code: 'AUTH_001',
+                    code: AuthErrorCodes.MISSING_TOKEN,
                     message: 'You must be logged in'
                 }]
             });
@@ -148,7 +149,7 @@ export function requireRole(minLevel: number) {
                 success: false,
                 message: 'Insufficient role level',
                 errors: [{
-                    code: 'AUTH_002',
+                    code: AuthErrorCodes.INSUFFICIENT_PERMISSIONS,
                     message: `You need role level ${minLevel} or higher (current: ${user.role.level})`,
                     details: {
                         required: minLevel,
@@ -176,7 +177,7 @@ export function requireOwnership(getResourceOwnerId: (req: Request) => Promise<s
                 success: false,
                 message: 'Authentication required',
                 errors: [{
-                    code: 'AUTH_001',
+                    code: AuthErrorCodes.MISSING_TOKEN,
                     message: 'You must be logged in'
                 }]
             });
@@ -190,7 +191,7 @@ export function requireOwnership(getResourceOwnerId: (req: Request) => Promise<s
                     success: false,
                     message: 'Access denied',
                     errors: [{
-                        code: 'AUTH_003',
+                        code: AuthErrorCodes.PERMISSION_DENIED,
                         message: 'You can only access your own resources'
                     }]
                 });
