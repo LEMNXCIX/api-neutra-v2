@@ -8,6 +8,8 @@ export class GetOrdersPaginatedUseCase {
         status?: string;
         page?: number;
         limit?: number;
+        startDate?: Date;
+        endDate?: Date;
     }) {
         try {
             const page = options.page || 1;
@@ -17,7 +19,9 @@ export class GetOrdersPaginatedUseCase {
                 search: options.search,
                 status: options.status || 'all',
                 page,
-                limit
+                limit,
+                startDate: options.startDate,
+                endDate: options.endDate
             });
 
             const totalPages = Math.ceil(result.total / limit);

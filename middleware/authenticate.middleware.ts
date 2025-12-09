@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import config from '@/config/index.config';
 import { Request, Response, NextFunction } from 'express';
 import { JWTPayload, AuthenticatedUser } from '@/types/rbac';
+import { AuthErrorCodes } from '@/types/error-codes';
 import { RedisProvider } from '@/infrastructure/providers/redis.provider';
 import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
 import { info } from '@/helpers/logger.helpers';
@@ -23,7 +24,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
             success: false,
             message: 'Authentication required',
             errors: [{
-                code: 'AUTH_001',
+                code: AuthErrorCodes.MISSING_TOKEN,
                 message: 'Token is required for this operation'
             }]
         });
@@ -54,7 +55,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
                         success: false,
                         message: 'Account is inactive',
                         errors: [{
-                            code: 'AUTH_007',
+                            code: AuthErrorCodes.ACCOUNT_INACTIVE,
                             message: 'This account has been deactivated or banned'
                         }]
                     });
@@ -83,7 +84,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
             success: false,
             message: 'Invalid or expired token',
             errors: [{
-                code: 'AUTH_004',
+                code: AuthErrorCodes.INVALID_TOKEN,
                 message: error.message,
                 type: error.name
             }]

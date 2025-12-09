@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
 import type { ErrorDetail } from '@/types/api-response';
+import { ValidationErrorCodes } from '@/types/error-codes';
 
 export const validateDto = <T>(ctor: new () => T) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -9,7 +10,7 @@ export const validateDto = <T>(ctor: new () => T) => {
     const errors = await validate(dto as object);
     if (errors.length > 0) {
       const details = errors.map((err: ValidationError) => ({
-        code: 'VALIDATION_ERROR',
+        code: ValidationErrorCodes.INVALID_FORMAT,
         message: Object.values(err.constraints || {})[0] || 'Invalid field',
         field: err.property,
         domain: 'validation',
