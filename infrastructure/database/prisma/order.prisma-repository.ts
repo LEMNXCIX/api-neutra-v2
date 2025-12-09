@@ -113,11 +113,13 @@ export class PrismaOrderRepository implements IOrderRepository {
         status?: string;
         page: number;
         limit: number;
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{
         orders: Order[];
         total: number;
     }> {
-        const { search, status, page, limit } = options;
+        const { search, status, page, limit, startDate, endDate } = options;
 
         // Build where clause
         const where: any = {};
@@ -134,6 +136,14 @@ export class PrismaOrderRepository implements IOrderRepository {
         // Status filter
         if (status && status !== 'all') {
             where.status = status;
+        }
+
+        // Date filter
+        if (startDate && endDate) {
+            where.createdAt = {
+                gte: startDate,
+                lte: endDate
+            };
         }
 
         // Execute queries in parallel
@@ -213,10 +223,19 @@ export class PrismaOrderRepository implements IOrderRepository {
         return this.mapToEntity(order);
     }
 
-    async getStats(): Promise<{ totalOrders: number; totalRevenue: number; statusCounts: Record<string, number> }> {
+    async getStats(startDate?: Date, endDate?: Date): Promise<{ totalOrders: number; totalRevenue: number; statusCounts: Record<string, number> }> {
+
+        const where: any = {};
+        if (startDate && endDate) {
+            where.createdAt = {
+                gte: startDate,
+                lte: endDate
+            };
+        }
 
         const [aggregations, allOrders] = await Promise.all([
             prisma.order.aggregate({
+                where,
                 _count: {
                     id: true
                 },
@@ -225,6 +244,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                 }
             }),
             prisma.order.findMany({
+                where,
                 select: {
                     status: true
                 }
