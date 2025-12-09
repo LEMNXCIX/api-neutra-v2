@@ -58,9 +58,12 @@ export class OrderController {
     }
 
     async getStats(req: Request, res: Response) {
-        this.logger.info('Get Order Stats Request', { userId: (req as any).user?.id });
+        this.logger.info('Get Order Stats Request', { userId: (req as any).user?.id, query: req.query });
 
-        const result = await this.getOrderStatsUseCase.execute();
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+        const result = await this.getOrderStatsUseCase.execute(startDate, endDate);
         return res.json(result);
     }
 
@@ -120,7 +123,9 @@ export class OrderController {
                 search: search as string,
                 status: status as string,
                 page: page ? parseInt(page as string) : undefined,
-                limit: limit ? parseInt(limit as string) : undefined
+                limit: limit ? parseInt(limit as string) : undefined,
+                startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
+                endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined
             });
             return res.json(result);
         } else {

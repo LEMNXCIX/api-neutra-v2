@@ -75,8 +75,15 @@ function auth(app: Application) {
      *     responses:
      *       200:
      *         description: Logout successful
+     *   post:
+     *     summary: Logout user
+     *     tags: [Auth]
+     *     responses:
+     *       200:
+     *         description: Logout successful
      */
     router.get('/logout', authController.logout);
+    router.post('/logout', authController.logout);
 
     /**
      * @swagger
