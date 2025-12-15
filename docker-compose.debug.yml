@@ -5,7 +5,7 @@ services:
     image: ecommerce
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: ./Dockerfile.dev
     env_file:
      - ./.env
     environment:
