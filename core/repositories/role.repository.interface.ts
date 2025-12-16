@@ -2,7 +2,7 @@ import { Role, CreateRoleDTO, UpdateRoleDTO } from '@/core/entities/role.entity'
 
 export interface IRoleRepository {
     findAll(): Promise<Role[]>;
-    findAllPaginated(page: number, limit: number): Promise<{ roles: Role[]; total: number }>;
+    findAllPaginated(page: number, limit: number, search?: string): Promise<{ roles: Role[]; total: number }>;
     findById(id: string): Promise<Role | null>;
     findByName(name: string): Promise<Role | null>;
     create(data: CreateRoleDTO): Promise<Role>;

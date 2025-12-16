@@ -2,7 +2,7 @@ import { Permission, CreatePermissionDTO, UpdatePermissionDTO } from '@/core/ent
 
 export interface IPermissionRepository {
     findAll(): Promise<Permission[]>;
-    findAllPaginated(page: number, limit: number): Promise<{ permissions: Permission[]; total: number }>;
+    findAllPaginated(page: number, limit: number, search?: string): Promise<{ permissions: Permission[]; total: number }>;
     findById(id: string): Promise<Permission | null>;
     findByName(name: string): Promise<Permission | null>;
     create(data: CreatePermissionDTO): Promise<Permission>;

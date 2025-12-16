@@ -33,6 +33,8 @@ export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Environment Helper Functions
 // ============================================================================
 
+export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
 /**
  * Check if the given environment is a development environment
  * @param env - The environment string to check

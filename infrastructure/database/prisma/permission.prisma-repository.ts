@@ -10,15 +10,20 @@ export class PrismaPermissionRepository implements IPermissionRepository {
         return permissions;
     }
 
-    async findAllPaginated(page: number, limit: number): Promise<{ permissions: Permission[]; total: number }> {
+    async findAllPaginated(page: number, limit: number, search?: string): Promise<{ permissions: Permission[]; total: number }> {
         const skip = (page - 1) * limit;
+        const where = search ? {
+            name: { contains: search, mode: 'insensitive' as const }
+        } : {};
+
         const [permissions, total] = await Promise.all([
             prisma.permission.findMany({
+                where,
                 skip,
                 take: limit,
                 orderBy: { name: 'asc' }
             }),
-            prisma.permission.count()
+            prisma.permission.count({ where })
         ]);
 
         return {

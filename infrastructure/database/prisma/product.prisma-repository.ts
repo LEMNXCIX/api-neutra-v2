@@ -93,12 +93,17 @@ export class PrismaProductRepository implements IProductRepository {
         }));
     }
 
-    async getSummaryStats(): Promise<{ totalProducts: number; totalValue: number; lowStockCount: number }> {
-        const [totalProducts, lowStockCount] = await Promise.all([
+    async getSummaryStats(): Promise<{ totalProducts: number; totalValue: number; lowStockCount: number; outOfStockCount: number }> {
+        const [totalProducts, lowStockCount, outOfStockCount] = await Promise.all([
             prisma.product.count(),
             prisma.product.count({
                 where: {
                     stock: { lt: 10 }
+                }
+            }),
+            prisma.product.count({
+                where: {
+                    stock: 0
                 }
             })
         ]);
@@ -112,7 +117,8 @@ export class PrismaProductRepository implements IProductRepository {
         return {
             totalProducts,
             totalValue: Number(totalValue),
-            lowStockCount
+            lowStockCount,
+            outOfStockCount
         };
     }
 

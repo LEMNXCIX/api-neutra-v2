@@ -17,10 +17,15 @@ export class PrismaRoleRepository implements IRoleRepository {
         return roles.map(this.mapToEntity);
     }
 
-    async findAllPaginated(page: number, limit: number): Promise<{ roles: Role[]; total: number }> {
+    async findAllPaginated(page: number, limit: number, search?: string): Promise<{ roles: Role[]; total: number }> {
         const skip = (page - 1) * limit;
+        const where = search ? {
+            name: { contains: search, mode: 'insensitive' as const }
+        } : {};
+
         const [roles, total] = await Promise.all([
             prisma.role.findMany({
+                where,
                 skip,
                 take: limit,
                 include: {
@@ -32,7 +37,7 @@ export class PrismaRoleRepository implements IRoleRepository {
                 },
                 orderBy: { level: 'asc' }
             }),
-            prisma.role.count()
+            prisma.role.count({ where })
         ]);
 
         return {

@@ -9,6 +9,8 @@ import { SearchProductsUseCase } from '@/core/application/products/search-produc
 import { GetProductStatsUseCase } from '@/core/application/products/get-product-stats.use-case';
 import { GetProductSummaryStatsUseCase } from '@/core/application/products/get-product-summary-stats.use-case';
 
+import { MAX_IMAGE_SIZE_BYTES } from '@/config/constants.config';
+
 export class ProductController {
     private getAllProductsUseCase: GetAllProductsUseCase;
     private getProductUseCase: GetProductUseCase;
@@ -51,7 +53,36 @@ export class ProductController {
         return res.json(result);
     }
 
+    private validateImageSize(base64String: string): boolean {
+        // Remove header if present (e.g., "data:image/jpeg;base64,")
+        const base64 = base64String.split(',')[1] || base64String;
+        // Calculate size: each character is 6 bits (3/4 byte). Padding '='
+        const sizeInBytes = (base64.length * 3) / 4 - (base64.indexOf('=') > 0 ? (base64.length - base64.indexOf('=')) : 0);
+        return sizeInBytes <= MAX_IMAGE_SIZE_BYTES;
+    }
+
     async create(req: Request, res: Response) {
+        if (req.body.price < 0 || req.body.stock < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se permiten valores negativos para precio o stock.'
+            });
+        }
+
+        if (req.body.image && !this.validateImageSize(req.body.image)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La imagen excede el tamaño máximo permitido de 5MB.'
+            });
+        }
+
+        if (req.body.price < 0 || req.body.stock < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se permiten valores negativos para precio o stock.'
+            });
+        }
+
         const result = await this.createProductUseCase.execute({
             ...req.body,
             owner: (req as any).user.id
@@ -60,6 +91,20 @@ export class ProductController {
     }
 
     async update(req: Request, res: Response) {
+        if ((req.body.price !== undefined && req.body.price < 0) || (req.body.stock !== undefined && req.body.stock < 0)) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se permiten valores negativos para precio o stock.'
+            });
+        }
+
+        if (req.body.image && !this.validateImageSize(req.body.image)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La imagen excede el tamaño máximo permitido de 5MB.'
+            });
+        }
+
         const id = req.params.id;
         const result = await this.updateProductUseCase.execute(id, req.body);
         return res.json(result);

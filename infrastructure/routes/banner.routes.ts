@@ -60,7 +60,49 @@ function bannerRoutes(app: Application) {
      *               items:
      *                 $ref: '#/components/schemas/Banner'
      */
-    router.get('/', bannerController.getAll);
+    router.get('/', bannerController.getActive);
+
+    /**
+     * @swagger
+     * /banners/all/list:
+     *   get:
+     *     summary: Get all banners (Admin)
+     *     tags: [Banners]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: List of all banners
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: array
+     *               items:
+     *                 $ref: '#/components/schemas/Banner'
+     *       401:
+     *         description: Unauthorized
+     *       403:
+     *         description: Forbidden
+     */
+    router.get('/all/list', authenticate, requirePermission('banners:read'), bannerController.getAll);
+
+    /**
+     * @swagger
+     * /banners/stats:
+     *   get:
+     *     summary: Get banner statistics (Admin)
+     *     tags: [Banners]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Banner statistics
+     *       401:
+     *         description: Unauthorized
+     *       403:
+     *         description: Forbidden
+     */
+    router.get('/stats', authenticate, requirePermission('stats:read'), bannerController.getStats);
 
     /**
      * @swagger
@@ -121,48 +163,6 @@ function bannerRoutes(app: Application) {
      *         description: Click tracked successfully
      */
     router.post('/:id/click', bannerController.trackClick);
-
-    /**
-     * @swagger
-     * /banners/all/list:
-     *   get:
-     *     summary: Get all banners (Admin)
-     *     tags: [Banners]
-     *     security:
-     *       - bearerAuth: []
-     *     responses:
-     *       200:
-     *         description: List of all banners
-     *         content:
-     *           application/json:
-     *             schema:
-     *               type: array
-     *               items:
-     *                 $ref: '#/components/schemas/Banner'
-     *       401:
-     *         description: Unauthorized
-     *       403:
-     *         description: Forbidden
-     */
-    router.get('/all/list', authenticate, requirePermission('banners:read'), bannerController.getAll);
-
-    /**
-     * @swagger
-     * /banners/stats:
-     *   get:
-     *     summary: Get banner statistics (Admin)
-     *     tags: [Banners]
-     *     security:
-     *       - bearerAuth: []
-     *     responses:
-     *       200:
-     *         description: Banner statistics
-     *       401:
-     *         description: Unauthorized
-     *       403:
-     *         description: Forbidden
-     */
-    router.get('/stats', authenticate, requirePermission('stats:read'), bannerController.getStats);
 
     /**
      * @swagger

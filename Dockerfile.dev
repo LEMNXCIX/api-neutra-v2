@@ -1,4 +1,6 @@
-FROM node:lts-alpine
+FROM node:lts-slim
+
+RUN apt-get update -y && apt-get install -y openssl
 
 WORKDIR /usr/src/app
 
