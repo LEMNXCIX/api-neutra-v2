@@ -3,8 +3,8 @@ import { ICartRepository } from '@/core/repositories/cart.repository.interface';
 export class GetCartUseCase {
     constructor(private cartRepository: ICartRepository) { }
 
-    async execute(userId: string) {
-        const cart = await this.cartRepository.findByUserId(userId);
+    async execute(tenantId: string, userId: string) {
+        const cart = await this.cartRepository.findByUserId(tenantId, userId);
 
         if (!cart) {
             return {

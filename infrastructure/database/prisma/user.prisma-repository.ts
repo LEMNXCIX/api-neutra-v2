@@ -1,10 +1,15 @@
 import { prisma } from '@/config/db.config';
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { IUserRepository, FindUserOptions } from '@/core/repositories/user.repository.interface';
 import { User, CreateUserDTO } from '@/core/entities/user.entity';
 
+/**
+ * Tenant-Aware User Repository
+ */
 export class PrismaUserRepository implements IUserRepository {
-    async findAll(): Promise<User[]> {
+    async findAll(tenantId?: string): Promise<User[]> {
+        const where = tenantId ? { tenantId } : {};
         const users = await prisma.user.findMany({
+            where,
             select: {
                 id: true,
                 name: true,
@@ -24,7 +29,15 @@ export class PrismaUserRepository implements IUserRepository {
                 twitterId: true,
                 githubId: true,
                 createdAt: true,
-                updatedAt: true
+                updatedAt: true,
+                tenantId: true,
+                tenant: {
+                    select: {
+                        id: true,
+                        name: true,
+                        slug: true
+                    }
+                }
                 // password excluded for security
             },
             orderBy: { createdAt: 'desc' }
@@ -32,9 +45,12 @@ export class PrismaUserRepository implements IUserRepository {
         return users as any[];
     }
 
-    async findByEmail(email: string, options?: { includeRole?: boolean; includePermissions?: boolean }): Promise<User | null> {
-        const user = await prisma.user.findUnique({
-            where: { email },
+    async findByEmail(tenantId?: string, email?: string, options?: FindUserOptions): Promise<User | null> {
+        const where: any = { email };
+        if (tenantId) where.tenantId = tenantId;
+
+        const user = await prisma.user.findFirst({
+            where,
             include: {
                 role: options?.includeRole ? {
                     include: {
@@ -67,9 +83,12 @@ export class PrismaUserRepository implements IUserRepository {
         return user as any;
     }
 
-    async findById(id: string, options?: { includeRole?: boolean; includePermissions?: boolean }): Promise<User | null> {
-        const user = await prisma.user.findUnique({
-            where: { id },
+    async findById(tenantId: string | undefined, id: string, options?: FindUserOptions): Promise<User | null> {
+        const where: any = { id };
+        if (tenantId) where.tenantId = tenantId;
+
+        const user = await prisma.user.findFirst({
+            where,
             include: {
                 role: options?.includeRole ? {
                     include: {
@@ -102,13 +121,26 @@ export class PrismaUserRepository implements IUserRepository {
         return user as any;
     }
 
-    async create(data: CreateUserDTO): Promise<User> {
+    async create(tenantId: string | undefined, data: CreateUserDTO): Promise<User> {
         // Get default USER role if no role specified
         let roleId = data.roleId;
+        const targetTenantId = tenantId || (data as any).tenantId;
+
+        if (!targetTenantId) {
+            throw new Error('tenantId is required to create a user');
+        }
 
         if (!roleId) {
-            const defaultRole = await prisma.role.findUnique({
-                where: { name: 'USER' }
+            // Find 'USER' role: try tenant specific first, then global
+            const defaultRole = await prisma.role.findFirst({
+                where: {
+                    name: 'USER',
+                    OR: [
+                        { tenantId: targetTenantId },
+                        { tenantId: null }
+                    ]
+                },
+                orderBy: { tenantId: 'desc' } // Prefer tenant specific (if UUID) over null
             });
             roleId = defaultRole?.id;
         }
@@ -123,6 +155,7 @@ export class PrismaUserRepository implements IUserRepository {
                 email: data.email,
                 password: data.password!,
                 roleId: roleId,
+                tenantId: targetTenantId, // Assign tenant
                 profilePic: data.profilePic,
                 googleId: data.googleId,
                 facebookId: data.facebookId,
@@ -135,7 +168,7 @@ export class PrismaUserRepository implements IUserRepository {
         return user as any;
     }
 
-    async update(id: string, data: Partial<User>): Promise<User> {
+    async update(tenantId: string | undefined, id: string, data: Partial<User>): Promise<User> {
         const updateData: any = { ...data };
 
         // Remove nested role object if present, we only want roleId
@@ -143,8 +176,11 @@ export class PrismaUserRepository implements IUserRepository {
             delete updateData.role;
         }
 
+        const where: any = { id };
+        if (tenantId) where.tenantId = tenantId;
+
         const user = await prisma.user.update({
-            where: { id },
+            where,
             data: updateData,
             include: {
                 role: true
@@ -153,11 +189,12 @@ export class PrismaUserRepository implements IUserRepository {
         return user as any;
     }
 
-    async findByProvider(providerField: string, providerId: string): Promise<User | null> {
+    async findByProvider(tenantId: string | undefined, providerField: string, providerId: string): Promise<User | null> {
+        const where: any = { [providerField]: providerId };
+        if (tenantId) where.tenantId = tenantId;
+
         const user = await prisma.user.findFirst({
-            where: {
-                [providerField]: providerId
-            },
+            where,
             include: {
                 role: true
             }
@@ -165,7 +202,7 @@ export class PrismaUserRepository implements IUserRepository {
         return user as any;
     }
 
-    async linkProvider(email: string, providerField: string, providerId: string, profilePic?: string): Promise<User> {
+    async linkProvider(tenantId: string | undefined, email: string, providerField: string, providerId: string, profilePic?: string): Promise<User> {
         const updateData: any = {
             [providerField]: providerId
         };
@@ -174,21 +211,29 @@ export class PrismaUserRepository implements IUserRepository {
             updateData.profilePic = profilePic;
         }
 
-        const user = await prisma.user.update({
-            where: { email },
-            data: updateData,
-            include: {
-                role: true
-            }
+        const where: any = { email };
+        if (tenantId) where.tenantId = tenantId;
+
+        const user = await prisma.user.updateMany({
+            where,
+            data: updateData
         });
-        return user as any;
+
+        // Fetch updated user since updateMany doesn't return the record
+        const updatedUser = await this.findByEmail(tenantId, email, { includeRole: true });
+        if (!updatedUser) throw new Error('User not found after update');
+
+        return updatedUser;
     }
 
-    async getUsersStats(): Promise<{ yearMonth: string; total: number }[]> {
+    async getUsersStats(tenantId?: string): Promise<{ yearMonth: string; total: number }[]> {
+        const tenantFilter = tenantId ? prisma.$queryRaw`AND "tenantId" = ${tenantId}` : prisma.$queryRaw``;
+
         const result: any[] = await prisma.$queryRaw`
             SELECT to_char("createdAt", 'YYYY-MM') as "yearMonth", COUNT(*)::int as total
             FROM users
             WHERE "createdAt" >= NOW() - INTERVAL '1 year'
+            ${tenantFilter}
             GROUP BY "yearMonth"
             ORDER BY "yearMonth" ASC
         `;
@@ -199,11 +244,13 @@ export class PrismaUserRepository implements IUserRepository {
         }));
     }
 
-    async getSummaryStats(): Promise<{ totalUsers: number; adminUsers: number; regularUsers: number }> {
+    async getSummaryStats(tenantId?: string): Promise<{ totalUsers: number; adminUsers: number; regularUsers: number }> {
+        const where: any = tenantId ? { tenantId } : {};
         const [totalUsers, adminUsers] = await Promise.all([
-            prisma.user.count(),
+            prisma.user.count({ where }),
             prisma.user.count({
                 where: {
+                    ...where,
                     role: {
                         name: { in: ['ADMIN', 'SUPER_ADMIN'] }
                     }
@@ -218,9 +265,12 @@ export class PrismaUserRepository implements IUserRepository {
         };
     }
 
-    async findByRoleId(roleId: string): Promise<User[]> {
+    async findByRoleId(tenantId: string | undefined, roleId: string): Promise<User[]> {
+        const where: any = { roleId };
+        if (tenantId) where.tenantId = tenantId;
+
         const users = await prisma.user.findMany({
-            where: { roleId },
+            where,
             select: {
                 id: true,
                 name: true,
@@ -242,9 +292,12 @@ export class PrismaUserRepository implements IUserRepository {
         return users as any[];
     }
 
-    async delete(id: string): Promise<void> {
+    async delete(tenantId: string | undefined, id: string): Promise<void> {
+        const where: any = { id };
+        if (tenantId) where.tenantId = tenantId;
+
         await prisma.user.delete({
-            where: { id }
+            where
         });
     }
 }

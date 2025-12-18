@@ -3,8 +3,8 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 export class DeleteUserUseCase {
     constructor(private userRepository: IUserRepository) { }
 
-    async execute(id: string) {
-        const existingUser = await this.userRepository.findById(id);
+    async execute(tenantId: string | undefined, id: string) {
+        const existingUser = await this.userRepository.findById(tenantId, id);
 
         if (!existingUser) {
             return {
@@ -15,7 +15,7 @@ export class DeleteUserUseCase {
             };
         }
 
-        await this.userRepository.delete(id);
+        await this.userRepository.delete(tenantId, id);
 
         return {
             success: true,

@@ -41,9 +41,12 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
         if (cachedPermissions) {
             permissions = JSON.parse(cachedPermissions);
         } else {
-            // Fallback: Fetch from DB if not in Redis (e.g. after cache flush)
+            // Fallback: Fetch from DB if not in Redis
             const userRepository = new PrismaUserRepository();
-            const user = await userRepository.findById(decoded.id, {
+            const tenantId = (decoded as any).tenantId;
+
+            // findById now handles optional tenantId, allowing global lookup if needed
+            const user = await userRepository.findById(tenantId, decoded.id, {
                 includeRole: true,
                 includePermissions: true
             });

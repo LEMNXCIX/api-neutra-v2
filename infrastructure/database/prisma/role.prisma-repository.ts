@@ -3,8 +3,17 @@ import { IRoleRepository } from '@/core/repositories/role.repository.interface';
 import { Role, CreateRoleDTO, UpdateRoleDTO } from '@/core/entities/role.entity';
 
 export class PrismaRoleRepository implements IRoleRepository {
-    async findAll(): Promise<Role[]> {
+    async findAll(tenantId: string | undefined): Promise<Role[]> {
+        const where: any = {};
+        if (tenantId) {
+            where.OR = [
+                { tenantId },
+                { tenantId: null }
+            ];
+        }
+
         const roles = await prisma.role.findMany({
+            where,
             include: {
                 permissions: {
                     include: {
@@ -17,11 +26,20 @@ export class PrismaRoleRepository implements IRoleRepository {
         return roles.map(this.mapToEntity);
     }
 
-    async findAllPaginated(page: number, limit: number, search?: string): Promise<{ roles: Role[]; total: number }> {
+    async findAllPaginated(tenantId: string | undefined, page: number, limit: number, search?: string): Promise<{ roles: Role[]; total: number }> {
         const skip = (page - 1) * limit;
-        const where = search ? {
-            name: { contains: search, mode: 'insensitive' as const }
-        } : {};
+        const where: any = {};
+
+        if (tenantId) {
+            where.OR = [
+                { tenantId },
+                { tenantId: null }
+            ];
+        }
+
+        if (search) {
+            where.name = { contains: search, mode: 'insensitive' };
+        }
 
         const [roles, total] = await Promise.all([
             prisma.role.findMany({
@@ -46,9 +64,18 @@ export class PrismaRoleRepository implements IRoleRepository {
         };
     }
 
-    async findById(id: string): Promise<Role | null> {
-        const role = await prisma.role.findUnique({
-            where: { id },
+    async findById(tenantId: string | undefined, id: string): Promise<Role | null> {
+        const where: any = { id };
+
+        if (tenantId) {
+            where.OR = [
+                { tenantId },
+                { tenantId: null }
+            ];
+        }
+
+        const role = await prisma.role.findFirst({
+            where,
             include: {
                 permissions: {
                     include: {
@@ -60,9 +87,18 @@ export class PrismaRoleRepository implements IRoleRepository {
         return role ? this.mapToEntity(role) : null;
     }
 
-    async findByName(name: string): Promise<Role | null> {
-        const role = await prisma.role.findUnique({
-            where: { name },
+    async findByName(tenantId: string | undefined, name: string): Promise<Role | null> {
+        const where: any = { name };
+
+        if (tenantId) {
+            where.OR = [
+                { tenantId },
+                { tenantId: null }
+            ];
+        }
+
+        const role = await prisma.role.findFirst({
+            where,
             include: {
                 permissions: {
                     include: {
@@ -74,11 +110,12 @@ export class PrismaRoleRepository implements IRoleRepository {
         return role ? this.mapToEntity(role) : null;
     }
 
-    async create(data: CreateRoleDTO): Promise<Role> {
+    async create(tenantId: string | undefined, data: CreateRoleDTO): Promise<Role> {
         const { permissionIds, ...roleData } = data;
         const role = await prisma.role.create({
             data: {
                 ...roleData,
+                tenantId: tenantId || null, // Global roles have null tenantId
                 permissions: permissionIds ? {
                     create: permissionIds.map(permissionId => ({
                         permission: { connect: { id: permissionId } }
@@ -96,12 +133,25 @@ export class PrismaRoleRepository implements IRoleRepository {
         return this.mapToEntity(role);
     }
 
-    async update(id: string, data: UpdateRoleDTO): Promise<Role> {
+    async update(tenantId: string | undefined, id: string, data: UpdateRoleDTO): Promise<Role> {
         const { permissionIds, ...roleData } = data;
 
-        // If permissionIds provided, we need to handle the relation update
-        // The simplest way for many-to-many with explicit join table in Prisma is deleteMany then create
-        // Or using transaction. For simplicity here, we'll use a transaction if permissions are updated.
+        // Verify role existence and visibility
+        const where: any = { id };
+        if (tenantId) {
+            where.OR = [
+                { tenantId },
+                { tenantId: null }
+            ];
+        }
+
+        const existingRole = await prisma.role.findFirst({
+            where
+        });
+
+        if (!existingRole) {
+            throw new Error(`Role not found or cannot be modified`);
+        }
 
         if (permissionIds) {
             return await prisma.$transaction(async (tx) => {
@@ -155,7 +205,23 @@ export class PrismaRoleRepository implements IRoleRepository {
         }
     }
 
-    async delete(id: string): Promise<void> {
+    async delete(tenantId: string | undefined, id: string): Promise<void> {
+        const where: any = { id };
+        if (tenantId) {
+            where.OR = [
+                { tenantId },
+                { tenantId: null }
+            ];
+        }
+
+        const existingRole = await prisma.role.findFirst({
+            where
+        });
+
+        if (!existingRole) {
+            throw new Error(`Role not found or cannot be deleted`);
+        }
+
         await prisma.role.delete({
             where: { id }
         });

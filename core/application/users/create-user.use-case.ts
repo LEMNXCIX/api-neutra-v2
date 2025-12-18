@@ -8,12 +8,12 @@ export class CreateUserUseCase {
         private cartRepository: ICartRepository
     ) { }
 
-    async execute(data: CreateUserDTO) {
+    async execute(tenantId: string | undefined, data: CreateUserDTO) {
         try {
-            const user = await this.userRepository.create(data);
+            const user = await this.userRepository.create(tenantId, data);
 
             // Create cart for new user
-            await this.cartRepository.create(user.id);
+            await this.cartRepository.create(tenantId, user.id);
 
             return {
                 success: true,

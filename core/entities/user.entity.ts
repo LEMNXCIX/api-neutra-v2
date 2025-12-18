@@ -13,6 +13,7 @@ export interface User {
     facebookId?: string;
     twitterId?: string;
     githubId?: string;
+    tenantId: string;
     createdAt?: Date;
     updatedAt?: Date;
 }

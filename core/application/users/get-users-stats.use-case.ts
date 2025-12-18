@@ -3,9 +3,9 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 export class GetUsersStatsUseCase {
     constructor(private userRepository: IUserRepository) { }
 
-    async execute() {
+    async execute(tenantId?: string) {
         try {
-            const stats = await this.userRepository.getUsersStats();
+            const stats = await this.userRepository.getUsersStats(tenantId);
 
             const data = stats.map(r => ({
                 _id: r.yearMonth,

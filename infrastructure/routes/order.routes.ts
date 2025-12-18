@@ -6,6 +6,7 @@ import { PrismaOrderRepository } from '@/infrastructure/database/prisma/order.pr
 import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
 import { PrismaProductRepository } from '@/infrastructure/database/prisma/product.prisma-repository';
 import { PrismaCouponRepository } from '@/infrastructure/database/prisma/coupon.prisma-repository';
+import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
 
 import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
 
@@ -15,8 +16,9 @@ function order(app: Application) {
     const cartRepository = new PrismaCartRepository();
     const productRepository = new PrismaProductRepository();
     const couponRepository = new PrismaCouponRepository();
+    const userRepository = new PrismaUserRepository();
     const logger = new PinoLoggerProvider();
-    const orderController = new OrderController(orderRepository, cartRepository, productRepository, couponRepository, logger);
+    const orderController = new OrderController(orderRepository, cartRepository, productRepository, couponRepository, userRepository, logger);
 
     app.use('/api/order', router);
 

@@ -3,11 +3,11 @@ import { ICouponRepository } from '@/core/repositories/coupon.repository.interfa
 export class GetCouponsUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(activeOnly: boolean = false) {
+    async execute(tenantId: string, activeOnly: boolean = false) {
         try {
             const coupons = activeOnly
-                ? await this.couponRepository.findActive()
-                : await this.couponRepository.findAll();
+                ? await this.couponRepository.findActive(tenantId)
+                : await this.couponRepository.findAll(tenantId);
 
             return {
                 success: true,
@@ -28,9 +28,9 @@ export class GetCouponsUseCase {
         }
     }
 
-    async executeById(id: string) {
+    async executeById(tenantId: string, id: string) {
         try {
-            const coupon = await this.couponRepository.findById(id);
+            const coupon = await this.couponRepository.findById(tenantId, id);
 
             if (!coupon) {
                 return {
@@ -60,9 +60,9 @@ export class GetCouponsUseCase {
         }
     }
 
-    async executeByCode(code: string) {
+    async executeByCode(tenantId: string, code: string) {
         try {
-            const coupon = await this.couponRepository.findByCode(code);
+            const coupon = await this.couponRepository.findByCode(tenantId, code);
 
             if (!coupon) {
                 return {

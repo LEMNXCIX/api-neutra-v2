@@ -13,8 +13,8 @@ export class UpdateRoleUseCase {
         this.redis = RedisProvider.getInstance();
     }
 
-    async execute(id: string, data: UpdateRoleDTO) {
-        const existingRole = await this.roleRepository.findById(id);
+    async execute(tenantId: string | undefined, id: string, data: UpdateRoleDTO) {
+        const existingRole = await this.roleRepository.findById(tenantId, id);
 
         if (!existingRole) {
             return {
@@ -26,7 +26,7 @@ export class UpdateRoleUseCase {
         }
 
         if (data.name) {
-            const roleWithSameName = await this.roleRepository.findByName(data.name);
+            const roleWithSameName = await this.roleRepository.findByName(tenantId, data.name);
             if (roleWithSameName && roleWithSameName.id !== id) {
                 return {
                     success: false,
@@ -37,11 +37,11 @@ export class UpdateRoleUseCase {
             }
         }
 
-        const updatedRole = await this.roleRepository.update(id, data);
+        const updatedRole = await this.roleRepository.update(tenantId, id, data);
 
         // Invalidate cache for all users with this role
         // This is necessary because permissions might have changed
-        const users = await this.userRepository.findByRoleId(id);
+        const users = await this.userRepository.findByRoleId(tenantId, id);
 
         if (users.length > 0) {
             const pipeline = this.redis['client'].multi(); // Accessing client directly for pipeline if available, or just loop

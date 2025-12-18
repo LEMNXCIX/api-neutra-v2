@@ -1,9 +1,6 @@
 jest.mock('uuid', () => ({ v4: () => 'test-uuid' }));
-import supertest from 'supertest';
-import app from '@/app';
+import api from './test-client';
 import { getAuthToken } from './helpers/auth.helper';
-
-const api = supertest(app);
 
 describe('Products routes', () => {
   let token: string;

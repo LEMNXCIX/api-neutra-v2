@@ -3,9 +3,9 @@ import { ICouponRepository } from '@/core/repositories/coupon.repository.interfa
 export class GetCouponStatsUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute() {
+    async execute(tenantId: string) {
         try {
-            const stats = await this.couponRepository.getStats();
+            const stats = await this.couponRepository.getStats(tenantId);
             return {
                 success: true,
                 code: 200,

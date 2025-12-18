@@ -16,20 +16,21 @@ export class GetOrCreateByProviderUseCase {
         private cartRepository: ICartRepository
     ) { }
 
-    async execute(data: ProviderData) {
+    async execute(tenantId: string | undefined, data: ProviderData) {
         const providerField = `${data.provider}Id`; // e.g., 'googleId', 'facebookId'
 
         try {
             // Find user by provider ID
-            let user = await this.userRepository.findByProvider(providerField, data.idProvider);
+            let user = await this.userRepository.findByProvider(tenantId, providerField, data.idProvider);
 
             if (!user) {
                 // Check if email exists to link account
-                const existingUser = await this.userRepository.findByEmail(data.email);
+                const existingUser = await this.userRepository.findByEmail(tenantId, data.email);
 
                 if (existingUser) {
                     // Link provider to existing user
                     user = await this.userRepository.linkProvider(
+                        tenantId,
                         data.email,
                         providerField,
                         data.idProvider,
@@ -47,7 +48,7 @@ export class GetOrCreateByProviderUseCase {
                 // Create new user with provider
                 const newPassword = uuid.v4(); // Random password for provider users
 
-                user = await this.userRepository.create({
+                user = await this.userRepository.create(tenantId, {
                     name: data.name,
                     email: data.email,
                     password: newPassword,
@@ -56,7 +57,7 @@ export class GetOrCreateByProviderUseCase {
                 });
 
                 // Create cart for new user
-                await this.cartRepository.create(user.id);
+                await this.cartRepository.create(tenantId, user.id);
 
                 return {
                     success: true,

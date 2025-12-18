@@ -4,10 +4,10 @@ import { ValidateCouponDTO, CouponValidationResult, CouponType } from '@/core/en
 export class ValidateCouponUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(data: ValidateCouponDTO): Promise<CouponValidationResult> {
+    async execute(tenantId: string, data: ValidateCouponDTO): Promise<CouponValidationResult> {
         try {
             // Find coupon by code
-            const coupon = await this.couponRepository.findByCode(data.code);
+            const coupon = await this.couponRepository.findByCode(tenantId, data.code);
 
             if (!coupon) {
                 return {

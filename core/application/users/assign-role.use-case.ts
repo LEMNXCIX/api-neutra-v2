@@ -12,8 +12,8 @@ export class AssignRoleToUserUseCase {
         this.redis = RedisProvider.getInstance();
     }
 
-    async execute(userId: string, roleId: string) {
-        const user = await this.userRepository.findById(userId);
+    async execute(tenantId: string | undefined, userId: string, roleId: string) {
+        const user = await this.userRepository.findById(tenantId, userId);
         if (!user) {
             return {
                 success: false,
@@ -23,7 +23,7 @@ export class AssignRoleToUserUseCase {
             };
         }
 
-        const role = await this.roleRepository.findById(roleId);
+        const role = await this.roleRepository.findById(tenantId, roleId);
         if (!role) {
             return {
                 success: false,
@@ -35,7 +35,7 @@ export class AssignRoleToUserUseCase {
 
         // Update user with new roleId
         // We use the generic update method. The repository handles role relation update via roleId.
-        const updatedUser = await this.userRepository.update(userId, { roleId });
+        const updatedUser = await this.userRepository.update(tenantId, userId, { roleId });
 
         // Invalidate user permissions cache
         await this.redis.del(`user:permissions:${userId}`);

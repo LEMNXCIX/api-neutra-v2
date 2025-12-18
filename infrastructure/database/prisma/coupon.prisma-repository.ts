@@ -2,32 +2,40 @@ import { prisma } from '@/config/db.config';
 import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
 import { Coupon, CreateCouponDTO, UpdateCouponDTO } from '@/core/entities/coupon.entity';
 
+/**
+ * Tenant-Aware Coupon Repository
+ */
 export class PrismaCouponRepository implements ICouponRepository {
-    async findAll(): Promise<Coupon[]> {
+    async findAll(tenantId: string): Promise<Coupon[]> {
         const coupons = await prisma.coupon.findMany({
+            where: { tenantId },
             orderBy: { createdAt: 'desc' }
         });
         return coupons as Coupon[];
     }
 
-    async findById(id: string): Promise<Coupon | null> {
-        const coupon = await prisma.coupon.findUnique({
-            where: { id }
+    async findById(tenantId: string, id: string): Promise<Coupon | null> {
+        const coupon = await prisma.coupon.findFirst({
+            where: { id, tenantId }
         });
         return coupon as Coupon | null;
     }
 
-    async findByCode(code: string): Promise<Coupon | null> {
-        const coupon = await prisma.coupon.findUnique({
-            where: { code: code.toUpperCase() }
+    async findByCode(tenantId: string, code: string): Promise<Coupon | null> {
+        const coupon = await prisma.coupon.findFirst({
+            where: {
+                tenantId,
+                code: code.toUpperCase()
+            }
         });
         return coupon as Coupon | null;
     }
 
-    async findActive(): Promise<Coupon[]> {
+    async findActive(tenantId: string): Promise<Coupon[]> {
         const now = new Date();
         const coupons = await prisma.coupon.findMany({
             where: {
+                tenantId,
                 active: true,
                 expiresAt: { gte: now }
             },
@@ -36,7 +44,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         return coupons as Coupon[];
     }
 
-    async findAllPaginated(options: {
+    async findAllPaginated(tenantId: string, options: {
         search?: string;
         type?: string;
         status?: 'active' | 'expired' | 'used' | 'unused' | 'all';
@@ -50,7 +58,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         const now = new Date();
 
         // Build where clause
-        const where: any = {};
+        const where: any = { tenantId };
 
         // Search filter (case-insensitive search on code)
         if (search) {
@@ -101,9 +109,10 @@ export class PrismaCouponRepository implements ICouponRepository {
         };
     }
 
-    async create(data: CreateCouponDTO): Promise<Coupon> {
+    async create(tenantId: string, data: CreateCouponDTO): Promise<Coupon> {
         const coupon = await prisma.coupon.create({
             data: {
+                tenantId, // Assign tenant
                 code: data.code.toUpperCase(),
                 type: data.type,
                 value: data.value,
@@ -120,7 +129,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         return coupon as Coupon;
     }
 
-    async update(id: string, data: UpdateCouponDTO): Promise<Coupon> {
+    async update(tenantId: string, id: string, data: UpdateCouponDTO): Promise<Coupon> {
         const updateData: any = { ...data };
 
         if (data.code) {
@@ -131,21 +140,30 @@ export class PrismaCouponRepository implements ICouponRepository {
         }
 
         const coupon = await prisma.coupon.update({
-            where: { id },
+            where: {
+                id,
+                tenantId // Ensure ownership
+            },
             data: updateData
         });
         return coupon as Coupon;
     }
 
-    async delete(id: string): Promise<void> {
+    async delete(tenantId: string, id: string): Promise<void> {
         await prisma.coupon.delete({
-            where: { id }
+            where: {
+                id,
+                tenantId
+            }
         });
     }
 
-    async incrementUsage(id: string): Promise<void> {
+    async incrementUsage(tenantId: string, id: string): Promise<void> {
         await prisma.coupon.update({
-            where: { id },
+            where: {
+                id,
+                tenantId
+            },
             data: {
                 usageCount: {
                     increment: 1
@@ -154,7 +172,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         });
     }
 
-    async getStats(): Promise<{
+    async getStats(tenantId: string): Promise<{
         totalCoupons: number;
         activeCoupons: number;
         usedCoupons: number;
@@ -163,11 +181,11 @@ export class PrismaCouponRepository implements ICouponRepository {
     }> {
         const now = new Date();
         const [totalCoupons, activeCoupons, usedCoupons, unusedCoupons, expiredCoupons] = await Promise.all([
-            prisma.coupon.count(),
-            prisma.coupon.count({ where: { active: true, expiresAt: { gte: now } } }),
-            prisma.coupon.count({ where: { usageCount: { gt: 0 } } }),
-            prisma.coupon.count({ where: { usageCount: 0 } }),
-            prisma.coupon.count({ where: { expiresAt: { lt: now } } })
+            prisma.coupon.count({ where: { tenantId } }),
+            prisma.coupon.count({ where: { tenantId, active: true, expiresAt: { gte: now } } }),
+            prisma.coupon.count({ where: { tenantId, usageCount: { gt: 0 } } }),
+            prisma.coupon.count({ where: { tenantId, usageCount: 0 } }),
+            prisma.coupon.count({ where: { tenantId, expiresAt: { lt: now } } })
         ]);
 
         return {

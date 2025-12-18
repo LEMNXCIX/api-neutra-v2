@@ -3,8 +3,8 @@ import { ICategoryRepository } from '@/core/repositories/category.repository.int
 export class GetCategoriesUseCase {
     constructor(private categoryRepository: ICategoryRepository) { }
 
-    async execute(page?: number, limit?: number) {
-        const result = await this.categoryRepository.findAll(page, limit);
+    async execute(tenantId: string, page?: number, limit?: number) {
+        const result = await this.categoryRepository.findAll(tenantId, page, limit);
         return {
             success: true,
             code: 200,
@@ -19,8 +19,8 @@ export class GetCategoriesUseCase {
         };
     }
 
-    async executeById(id: string) {
-        const category = await this.categoryRepository.findById(id);
+    async executeById(tenantId: string, id: string) {
+        const category = await this.categoryRepository.findById(tenantId, id);
 
         if (!category) {
             return {

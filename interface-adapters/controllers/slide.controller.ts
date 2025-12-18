@@ -30,8 +30,9 @@ export class SlideController {
     }
 
     async getById(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const id = req.params.id;
-        const result = await this.getSlidesUseCase.executeById(id);
+        const result = await this.getSlidesUseCase.executeById(tenantId, id);
         if (result.success) {
             return res.apiSuccess(result.data, result.message, result.code);
         }
@@ -39,7 +40,8 @@ export class SlideController {
     }
 
     async getStats(req: Request, res: Response) {
-        const result = await this.getSliderStatsUseCase.execute();
+        const tenantId = (req as any).tenantId;
+        const result = await this.getSliderStatsUseCase.execute(tenantId);
         if (result.success) {
             return res.apiSuccess(result.data, result.message, result.code);
         }
@@ -47,7 +49,8 @@ export class SlideController {
     }
 
     async create(req: Request, res: Response) {
-        const result = await this.createSlideUseCase.execute(req.body);
+        const tenantId = (req as any).tenantId;
+        const result = await this.createSlideUseCase.execute(tenantId, req.body);
         if (result.success) {
             return res.apiSuccess(result.data, result.message, result.code);
         }
@@ -55,8 +58,9 @@ export class SlideController {
     }
 
     async update(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const id = req.params.id;
-        const result = await this.updateSlideUseCase.execute(id, req.body);
+        const result = await this.updateSlideUseCase.execute(tenantId, id, req.body);
         if (result.success) {
             return res.apiSuccess(result.data, result.message, result.code);
         }
@@ -64,7 +68,8 @@ export class SlideController {
     }
 
     async getAll(req: Request, res: Response) {
-        const result = await this.getSlidesUseCase.execute();
+        const tenantId = (req as any).tenantId;
+        const result = await this.getSlidesUseCase.execute(tenantId);
         if (result.success) {
             return res.apiSuccess(result.data, result.message, result.code);
         }
@@ -72,8 +77,9 @@ export class SlideController {
     }
 
     async delete(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const id = req.params.id;
-        const result = await this.deleteSlideUseCase.execute(id);
+        const result = await this.deleteSlideUseCase.execute(tenantId, id);
         if (result.success) {
             return res.apiSuccess(result.data, result.message, result.code);
         }

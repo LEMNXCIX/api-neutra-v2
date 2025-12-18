@@ -6,6 +6,8 @@ import { BusinessErrorCodes } from '@/types/error-codes';
 import { IProductRepository } from '@/core/repositories/product.repository.interface';
 import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
 import { ILogger } from '@/core/providers/logger.interface';
+import { emailService } from '@/infrastructure/services/email.service';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
 
 export class CreateOrderUseCase {
     constructor(
@@ -14,13 +16,14 @@ export class CreateOrderUseCase {
         private clearCartUseCase: ClearCartUseCase,
         private productRepository: IProductRepository,
         private couponRepository: ICouponRepository,
+        private userRepository: IUserRepository,
         private logger: ILogger
     ) { }
 
-    async execute(userId: string, couponId?: string) {
+    async execute(tenantId: string, userId: string, couponId?: string) {
         this.logger.info('CreateOrder - Executing', { userId, couponId });
 
-        const cartResponse = await this.getCartUseCase.execute(userId);
+        const cartResponse = await this.getCartUseCase.execute(tenantId, userId);
 
         if (!cartResponse.success || !cartResponse.data || (Array.isArray(cartResponse.data) && cartResponse.data.length === 0)) {
             this.logger.warn('CreateOrder - Cart is empty', { userId });
@@ -50,29 +53,34 @@ export class CreateOrderUseCase {
             };
 
             this.logger.info('CreateOrder - Creating order', { orderData }, { includePayload: true });
-            const order = await this.orderRepository.create(orderData);
+            const order = await this.orderRepository.create(tenantId, orderData);
 
             // Increment coupon usage if coupon was used
             if (couponId) {
                 this.logger.info('CreateOrder - Incrementing coupon usage', { couponId });
-                await this.couponRepository.incrementUsage(couponId);
+                await this.couponRepository.incrementUsage(tenantId, couponId);
             }
 
             // Decrement stock for each product in the order
             this.logger.info('CreateOrder - Updating product stock');
             for (const item of cartItems) {
-                const product = await this.productRepository.findById(item.id);
+                const product = await this.productRepository.findById(tenantId, item.id);
                 if (product) {
                     const newStock = product.stock - item.amount;
                     this.logger.debug(`Product ${item.id}: ${product.stock} -> ${newStock}`);
-                    await this.productRepository.update(item.id, { stock: newStock });
+                    await this.productRepository.update(tenantId, item.id, { stock: newStock });
                 }
             }
 
             this.logger.info('CreateOrder - Clearing cart', { userId });
-            await this.clearCartUseCase.execute(userId);
+            await this.clearCartUseCase.execute(tenantId, userId);
 
             this.logger.info('CreateOrder - Success', { orderId: order.id }, { includeResponse: true });
+
+            // Send order confirmation email asynchronously
+            this.sendOrderConfirmation(tenantId, userId, order).catch((err: any) => {
+                this.logger.error('Failed to send order confirmation email', { orderId: order.id, error: err.message });
+            });
 
             return {
                 success: true,
@@ -91,6 +99,32 @@ export class CreateOrderUseCase {
                     message: error.message || 'Unknown error occurred'
                 }]
             };
+        }
+    }
+
+    /**
+     * Send order confirmation email
+     * This runs asynchronously and doesn't block order creation
+     */
+    private async sendOrderConfirmation(tenantId: string, userId: string, order: any): Promise<void> {
+        try {
+            // Fetch user to get email
+            const user = await this.userRepository.findById(tenantId, userId);
+            if (!user || !user.email) {
+                this.logger.warn('Cannot send order confirmation: user email not found', { userId });
+                return;
+            }
+
+            await emailService.sendOrderConfirmation(user.email, order, {
+                tenantName: 'Neutra', // TODO: Get from tenant configuration
+                supportEmail: process.env.SMTP_FROM || 'support@neutra.com',
+                websiteUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+                primaryColor: '#000000',
+            });
+            this.logger.info('Order confirmation email sent successfully', { orderId: order.id, email: user.email });
+        } catch (error: any) {
+            this.logger.error('Order confirmation email failed', { orderId: order.id, error: error.message });
+            throw error;
         }
     }
 }

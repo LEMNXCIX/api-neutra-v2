@@ -3,7 +3,7 @@ import { IOrderRepository } from '@/core/repositories/order.repository.interface
 export class GetOrdersPaginatedUseCase {
     constructor(private orderRepository: IOrderRepository) { }
 
-    async execute(options: {
+    async execute(tenantId: string, options: {
         search?: string;
         status?: string;
         page?: number;
@@ -15,7 +15,7 @@ export class GetOrdersPaginatedUseCase {
             const page = options.page || 1;
             const limit = options.limit || 10;
 
-            const result = await this.orderRepository.findAllPaginated({
+            const result = await this.orderRepository.findAllPaginated(tenantId, {
                 search: options.search,
                 status: options.status || 'all',
                 page,

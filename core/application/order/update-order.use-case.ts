@@ -8,11 +8,11 @@ export class UpdateOrderUseCase {
         private logger: ILogger
     ) { }
 
-    async execute(id: string, data: UpdateOrderDTO) {
+    async execute(tenantId: string, id: string, data: UpdateOrderDTO) {
         this.logger.info('UpdateOrder - Executing', { id, data }, { includePayload: true });
 
         try {
-            const order = await this.orderRepository.update(id, data);
+            const order = await this.orderRepository.update(tenantId, id, data);
 
             this.logger.info('UpdateOrder - Success', { id }, { includeResponse: true });
             return {

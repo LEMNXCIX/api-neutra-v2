@@ -16,7 +16,7 @@ export class LoginUseCase {
         this.redis = RedisProvider.getInstance();
     }
 
-    async execute(data: any) {
+    async execute(tenantId: string | undefined, data: any) {
         const { email, password } = data;
 
         if (!email || !password) {
@@ -35,7 +35,7 @@ export class LoginUseCase {
 
         try {
             // Fetch user with role and permissions
-            const user = await this.userRepository.findByEmail(email, {
+            const user = await this.userRepository.findByEmail(tenantId, email, {
                 includeRole: true,
                 includePermissions: true
             });
@@ -96,7 +96,8 @@ export class LoginUseCase {
                     id: user.role.id,
                     name: user.role.name,
                     level: user.role.level
-                }
+                },
+                tenantId: user.tenantId // Use user's actual tenantId for the token
             });
 
             // Sanitize user for response

@@ -1,0 +1,51 @@
+import { Request, Response } from 'express';
+import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
+import { CreateStaffUseCase } from '@/core/application/booking/create-staff.use-case';
+import { GetStaffUseCase } from '@/core/application/booking/get-staff.use-case';
+import { ILogger } from '@/core/providers/logger.interface';
+
+export class StaffController {
+    private createStaffUseCase: CreateStaffUseCase;
+    private getStaffUseCase: GetStaffUseCase;
+
+    constructor(
+        private staffRepository: IStaffRepository,
+        private logger: ILogger
+    ) {
+        this.createStaffUseCase = new CreateStaffUseCase(staffRepository, logger);
+        this.getStaffUseCase = new GetStaffUseCase(staffRepository, logger);
+    }
+
+    async create(req: Request, res: Response) {
+        const tenantId = req.tenantId!;
+        const result = await this.createStaffUseCase.execute(tenantId, req.body);
+        return res.status(result.code).json(result);
+    }
+
+    async getAll(req: Request, res: Response) {
+        const tenantId = req.tenantId!;
+        const activeOnly = req.query.activeOnly !== 'false';
+        const result = await this.getStaffUseCase.execute(tenantId, activeOnly);
+        return res.status(result.code).json(result);
+    }
+
+    async assignService(req: Request, res: Response) {
+        const tenantId = req.tenantId!;
+        const { staffId } = req.params;
+        const { serviceId } = req.body;
+
+        try {
+            await this.staffRepository.assignService(tenantId, staffId, serviceId);
+            return res.status(200).json({
+                success: true,
+                message: 'Service assigned to staff successfully',
+            });
+        } catch (error: any) {
+            this.logger.error('Error assigning service to staff', { error: error.message });
+            return res.status(500).json({
+                success: false,
+                message: 'Error assigning service',
+            });
+        }
+    }
+}

@@ -24,8 +24,15 @@ import role from "@/infrastructure/routes/role.routes";
 import permission from "@/infrastructure/routes/permission.routes";
 import banner from "@/infrastructure/routes/banner.routes";
 import coupon from "@/infrastructure/routes/coupon.routes";
+import tenants from "@/infrastructure/routes/tenant.routes";
 import { swaggerSpec } from "@/infrastructure/config/swagger.config";
 import { apiReference } from "@scalar/express-api-reference";
+
+// Booking Module Routes
+import serviceRoutes from '@/infrastructure/routes/service.routes';
+import staffRoutes from '@/infrastructure/routes/staff.routes';
+import appointmentRoutes from '@/infrastructure/routes/appointment.routes';
+
 const { port, sesionSecret, ENVIRONMENT } = config;
 
 const app = express();
@@ -181,6 +188,13 @@ app.use(
 );
 
 import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
+import { tenantMiddleware } from "@/middleware/tenant.middleware";
+
+tenants(app);
+
+// Tenant Middleware - MUST be registered AFTER auth, BEFORE routes
+// This ensures every request has tenant context
+app.use(tenantMiddleware);
 
 // Rutas (composición)
 // Routes are now default exports that take 'app' as argument
@@ -193,6 +207,11 @@ order(app);
 category(app);
 role(app);
 permission(app);
+
+// Booking Module
+serviceRoutes(app);
+staffRoutes(app);
+appointmentRoutes(app);
 banner(app);
 coupon(app);
 

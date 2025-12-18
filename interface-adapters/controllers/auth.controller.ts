@@ -31,18 +31,22 @@ export class AuthController {
     }
 
     async login(req: Request, res: Response) {
-        const result = await this.loginUseCase.execute(req.body);
+        // tenantId can be undefined for global login
+        const tenantId = (req as any).tenantId;
+        const result = await this.loginUseCase.execute(tenantId, req.body);
         return authResponse(res, result, 401);
     }
 
     async signup(req: Request, res: Response) {
-        const result = await this.registerUseCase.execute(req.body);
+        const tenantId = (req as any).tenantId;
+        const result = await this.registerUseCase.execute(tenantId, req.body);
         return authResponse(res, result, 200);
     }
 
     async socialLogin(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const user = (req as any).user.profile;
-        const result = await this.socialLoginUseCase.execute(user);
+        const result = await this.socialLoginUseCase.execute(tenantId, user);
         return providerResponse(res, result, 401);
     }
 

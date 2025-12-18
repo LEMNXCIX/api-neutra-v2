@@ -3,9 +3,9 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 export class GetUserByIdUseCase {
     constructor(private userRepository: IUserRepository) { }
 
-    async execute(id: string) {
+    async execute(tenantId: string | undefined, id: string) {
         try {
-            const user = await this.userRepository.findById(id);
+            const user = await this.userRepository.findById(tenantId, id);
 
             if (!user) {
                 return {

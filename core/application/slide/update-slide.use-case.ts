@@ -4,7 +4,7 @@ import { UpdateSlideshowDTO } from '@/core/entities/slide.entity';
 export class UpdateSlideUseCase {
     constructor(private slideRepository: ISlideRepository) { }
 
-    async execute(id: string, data: any) {
+    async execute(tenantId: string, id: string, data: any) {
         try {
             const updateData: UpdateSlideshowDTO = {
                 title: data.title,
@@ -12,7 +12,7 @@ export class UpdateSlideUseCase {
                 desc: data.desc,
                 active: data.active
             };
-            const slide = await this.slideRepository.update(id, updateData);
+            const slide = await this.slideRepository.update(tenantId, id, updateData);
             return {
                 success: true,
                 code: 200,

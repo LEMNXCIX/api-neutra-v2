@@ -3,9 +3,9 @@ import { IPermissionRepository } from '@/core/repositories/permission.repository
 export class GetPermissionsPaginatedUseCase {
     constructor(private permissionRepository: IPermissionRepository) { }
 
-    async execute(page: number = 1, limit: number = 10, search?: string) {
+    async execute(tenantId: string | undefined, page: number = 1, limit: number = 10, search?: string) {
         try {
-            const { permissions, total } = await this.permissionRepository.findAllPaginated(page, limit, search);
+            const { permissions, total } = await this.permissionRepository.findAllPaginated(tenantId, page, limit, search);
             const totalPages = Math.ceil(total / limit);
 
             return {

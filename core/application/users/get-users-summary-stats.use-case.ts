@@ -3,9 +3,9 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 export class GetUsersSummaryStatsUseCase {
     constructor(private userRepository: IUserRepository) { }
 
-    async execute() {
+    async execute(tenantId?: string) {
         try {
-            const stats = await this.userRepository.getSummaryStats();
+            const stats = await this.userRepository.getSummaryStats(tenantId);
             return {
                 success: true,
                 code: 200,

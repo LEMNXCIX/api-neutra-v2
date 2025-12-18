@@ -43,13 +43,15 @@ export class ProductController {
     }
 
     async getAll(req: Request, res: Response) {
-        const result = await this.getAllProductsUseCase.execute();
+        const tenantId = (req as any).tenantId;
+        const result = await this.getAllProductsUseCase.execute(tenantId);
         return res.json(result);
     }
 
     async getOne(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const id = req.params.id;
-        const result = await this.getProductUseCase.execute(id);
+        const result = await this.getProductUseCase.execute(tenantId, id);
         return res.json(result);
     }
 
@@ -62,6 +64,7 @@ export class ProductController {
     }
 
     async create(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         if (req.body.price < 0 || req.body.stock < 0) {
             return res.status(400).json({
                 success: false,
@@ -76,14 +79,7 @@ export class ProductController {
             });
         }
 
-        if (req.body.price < 0 || req.body.stock < 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'No se permiten valores negativos para precio o stock.'
-            });
-        }
-
-        const result = await this.createProductUseCase.execute({
+        const result = await this.createProductUseCase.execute(tenantId, {
             ...req.body,
             owner: (req as any).user.id
         });
@@ -91,6 +87,7 @@ export class ProductController {
     }
 
     async update(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         if ((req.body.price !== undefined && req.body.price < 0) || (req.body.stock !== undefined && req.body.stock < 0)) {
             return res.status(400).json({
                 success: false,
@@ -106,31 +103,35 @@ export class ProductController {
         }
 
         const id = req.params.id;
-        const result = await this.updateProductUseCase.execute(id, req.body);
+        const result = await this.updateProductUseCase.execute(tenantId, id, req.body);
         return res.json(result);
     }
 
     async delete(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const id = req.params.id;
         const userId = (req as any).user.id;
-        const result = await this.deleteProductUseCase.execute(id, userId);
+        const result = await this.deleteProductUseCase.execute(tenantId, id, userId);
         return res.json(result);
     }
 
     async search(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const name = req.body.name;
-        const result = await this.searchProductsUseCase.execute(name);
+        const result = await this.searchProductsUseCase.execute(tenantId, name);
         return res.json(result);
     }
 
     async getStats(req: Request, res: Response) {
-        const result = await this.getProductStatsUseCase.execute();
+        const tenantId = (req as any).tenantId;
+        const result = await this.getProductStatsUseCase.execute(tenantId);
         return res.json(result);
     }
 
     async getSummaryStats(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const useCase = new GetProductSummaryStatsUseCase(this.productRepository);
-        const result = await useCase.execute();
+        const result = await useCase.execute(tenantId);
         return res.json(result);
     }
 }

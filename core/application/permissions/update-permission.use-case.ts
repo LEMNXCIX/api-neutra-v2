@@ -4,8 +4,8 @@ import { UpdatePermissionDTO } from '@/core/entities/permission.entity';
 export class UpdatePermissionUseCase {
     constructor(private permissionRepository: IPermissionRepository) { }
 
-    async execute(id: string, data: UpdatePermissionDTO) {
-        const existingPermission = await this.permissionRepository.findById(id);
+    async execute(tenantId: string | undefined, id: string, data: UpdatePermissionDTO) {
+        const existingPermission = await this.permissionRepository.findById(tenantId, id);
 
         if (!existingPermission) {
             return {
@@ -17,7 +17,7 @@ export class UpdatePermissionUseCase {
         }
 
         if (data.name) {
-            const permissionWithSameName = await this.permissionRepository.findByName(data.name);
+            const permissionWithSameName = await this.permissionRepository.findByName(tenantId, data.name);
             if (permissionWithSameName && permissionWithSameName.id !== id) {
                 return {
                     success: false,
@@ -28,7 +28,7 @@ export class UpdatePermissionUseCase {
             }
         }
 
-        const updatedPermission = await this.permissionRepository.update(id, data);
+        const updatedPermission = await this.permissionRepository.update(tenantId, id, data);
 
         return {
             success: true,

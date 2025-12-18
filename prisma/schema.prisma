@@ -11,6 +11,123 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Multi-Tenancy
+enum TenantType {
+  STORE
+  BOOKING
+  HYBRID
+}
+
+enum PlanType {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+model Plan {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  type        PlanType
+  price       Float    @default(0)
+  description String?
+  maxUsers    Int? // null = unlimited
+  maxProducts Int? // null = unlimited
+
+  tenants Tenant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("plans")
+}
+
+model Feature {
+  id          String  @id @default(uuid())
+  key         String  @unique // ECOMMERCE, BOOKING, CUSTOM_DOMAIN, etc.
+  name        String
+  description String?
+  category    String? // MODULE, INTEGRATION, CUSTOMIZATION
+
+  tenantFeatures TenantFeature[]
+
+  createdAt DateTime @default(now())
+
+  @@map("features")
+}
+
+model TenantFeature {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  featureId String
+  feature   Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, featureId])
+  @@index([tenantId])
+  @@map("tenant_features")
+}
+
+model AuditLog {
+  id     String @id @default(uuid())
+  action String // IMPERSONATE, TENANT_TOGGLE, FEATURE_CHANGE
+  userId String // SuperAdmin who performed action
+
+  targetType String? // TENANT, USER
+  targetId   String?
+  metadata   Json? // Additional context
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+model Tenant {
+  id     String     @id @default(uuid())
+  name   String
+  slug   String     @unique // Used for subdomain identification
+  type   TenantType @default(STORE)
+  config Json? // Tenant-specific configuration (colors, logo, etc.)
+  active Boolean    @default(true)
+
+  // Subscription
+  planId String?
+  plan   Plan?   @relation(fields: [planId], references: [id])
+
+  // Relations
+  users          User[]
+  products       Product[]
+  categories     Category[]
+  orders         Order[]
+  banners        Banner[]
+  slideshows     Slideshow[]
+  coupons        Coupon[]
+  tenantFeatures TenantFeature[]
+  roles          Role[]
+  permissions    Permission[]
+  
+  // Booking Module Relations
+  services       Service[]       @relation("TenantServices")
+  staff          Staff[]         @relation("TenantStaff")
+  appointments   Appointment[]   @relation("TenantAppointments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId])
+  @@map("tenants")
+}
+
 // RBAC Models
 model Role {
   id          String  @id @default(uuid())
@@ -19,12 +136,17 @@ model Role {
   level       Int     @default(0) // For backward compatibility
   active      Boolean @default(true)
 
+  // Multi-tenancy: NULL = Global role (SUPER_ADMIN), <uuid> = Tenant-specific
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
   permissions RolePermission[]
   users       User[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("roles")
 }
 
@@ -34,10 +156,15 @@ model Permission {
   description String?
   active      Boolean @default(true)
 
+  // Multi-tenancy: NULL = Global permission, <uuid> = Tenant-specific
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
   roles RolePermission[]
 
   createdAt DateTime @default(now())
 
+  @@index([tenantId])
   @@map("permissions")
 }
 
@@ -70,6 +197,10 @@ model User {
   profilePic String?
   active     Boolean @default(true)
 
+  // Multi-tenancy
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   // Provider IDs
   googleId   String?
   facebookId String?
@@ -80,10 +211,12 @@ model User {
   products Product[]
   cart     Cart?
   orders   Order[]
+  appointments Appointment[] @relation("UserAppointments")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("users")
 }
 
@@ -99,6 +232,10 @@ model Product {
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id])
 
+  // Multi-tenancy
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   // Relations
   cartItems  CartItem[]
   orderItems OrderItem[]
@@ -107,6 +244,7 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("products")
 }
 
@@ -116,11 +254,16 @@ model Category {
   description String?
   active      Boolean @default(true)
 
+  // Multi-tenancy
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   products Product[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("categories")
 }
 
@@ -156,8 +299,12 @@ model Order {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  status OrderStatus @default(PENDIENTE)
+  status         OrderStatus @default(PENDIENTE)
   trackingNumber String?
+
+  // Multi-tenancy
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   // Coupon relation
   couponId       String?
@@ -173,6 +320,7 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("orders")
 }
 
@@ -197,9 +345,14 @@ model Slideshow {
   desc   String?
   active Boolean @default(true)
 
+  // Multi-tenancy
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("slideshows")
 }
 
@@ -222,6 +375,10 @@ model Banner {
   startsAt DateTime
   endsAt   DateTime
 
+  // Multi-tenancy
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   // Analytics
   impressions Int @default(0)
   clicks      Int @default(0)
@@ -229,6 +386,7 @@ model Banner {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("banners")
 }
 
@@ -256,6 +414,10 @@ model Coupon {
   active    Boolean  @default(true)
   expiresAt DateTime
 
+  // Multi-tenancy
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   // Optional: Limit to specific products/categories
   applicableProducts   String[] // Array of product IDs
   applicableCategories String[] // Array of category IDs
@@ -266,5 +428,133 @@ model Coupon {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("coupons")
+}
+
+// ============================================
+// BOOKING MODULE
+// ============================================
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Service {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  duration    Int // Duration in minutes
+  price       Float
+  category    String?
+  active      Boolean  @default(true)
+  
+  // Multi-tenancy
+  tenantId    String
+  tenant      Tenant @relation("TenantServices", fields: [tenantId], references: [id])
+  
+  // Relations
+  appointments Appointment[]
+  staffServices StaffService[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@map("services")
+}
+
+model Staff {
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  avatar      String?
+  bio         String?
+  active      Boolean  @default(true)
+  
+  // Working hours (JSON: {monday: {start: "09:00", end: "17:00"}, ...})
+  workingHours Json?
+  
+  // Multi-tenancy
+  tenantId    String
+  tenant      Tenant @relation("TenantStaff", fields: [tenantId], references: [id])
+  
+  // Relations
+  appointments Appointment[]
+  staffServices StaffService[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@map("staff")
+}
+
+// Junction table for many-to-many Staff-Service
+model StaffService {
+  id        String  @id @default(uuid())
+  
+  staffId   String
+  staff     Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  
+  tenantId  String
+  
+  @@unique([staffId, serviceId])
+  @@index([tenantId])
+  @@map("staff_services")
+}
+
+model Appointment {
+  id              String   @id @default(uuid())
+  
+  // Who is booking
+  userId          String
+  user            User     @relation("UserAppointments", fields: [userId], references: [id])
+  
+  // What service
+  serviceId       String
+  service         Service  @relation(fields: [serviceId], references: [id])
+  
+  // With which staff member
+  staffId         String
+  staff           Staff    @relation(fields: [staffId], references: [id])
+  
+  // When
+  startTime       DateTime
+  endTime         DateTime
+  
+  // Status
+  status          AppointmentStatus @default(PENDING)
+  
+  // Additional info
+  notes           String?
+  cancellationReason String?
+  
+  // Email tracking
+  confirmationSent Boolean @default(false)
+  reminderSent     Boolean @default(false)
+  
+  // Multi-tenancy
+  tenantId        String
+  tenant          Tenant   @relation("TenantAppointments", fields: [tenantId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([tenantId])
+  @@index([tenantId, userId])
+  @@index([tenantId, staffId, startTime])
+  @@index([tenantId, status])
+  @@map("appointments")
 }

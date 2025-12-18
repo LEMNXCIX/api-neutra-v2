@@ -3,8 +3,8 @@ import { ICartRepository } from '@/core/repositories/cart.repository.interface';
 export class GetCartStatsUseCase {
     constructor(private cartRepository: ICartRepository) { }
 
-    async execute() {
-        const result: any[] = await this.cartRepository.getStats();
+    async execute(tenantId: string) {
+        const result: any[] = await this.cartRepository.getStats(tenantId);
 
         const data = result.map(r => ({
             _id: r.yearMonth,

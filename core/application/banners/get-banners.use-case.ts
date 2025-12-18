@@ -3,12 +3,12 @@ import { IBannerRepository } from '@/core/repositories/banner.repository.interfa
 export class GetBannersUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async execute(activeOnly: boolean = false) {
+    async execute(tenantId: string, activeOnly: boolean = false) {
         try {
 
             const banners = activeOnly
-                ? await this.bannerRepository.findActive()
-                : await this.bannerRepository.findAll();
+                ? await this.bannerRepository.findActive(tenantId)
+                : await this.bannerRepository.findAll(tenantId);
 
 
             return {
@@ -30,9 +30,9 @@ export class GetBannersUseCase {
         }
     }
 
-    async executeById(id: string) {
+    async executeById(tenantId: string, id: string) {
         try {
-            const banner = await this.bannerRepository.findById(id);
+            const banner = await this.bannerRepository.findById(tenantId, id);
 
             if (!banner) {
                 return {

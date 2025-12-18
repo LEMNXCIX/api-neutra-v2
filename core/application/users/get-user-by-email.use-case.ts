@@ -3,9 +3,9 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 export class GetUserByEmailUseCase {
     constructor(private userRepository: IUserRepository) { }
 
-    async execute(email: string, includePassword: boolean = false) {
+    async execute(tenantId: string | undefined, email: string, includePassword: boolean = false) {
         try {
-            const user = await this.userRepository.findByEmail(email);
+            const user = await this.userRepository.findByEmail(tenantId, email);
 
             if (!user) {
                 return {

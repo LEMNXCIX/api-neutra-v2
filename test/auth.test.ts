@@ -1,7 +1,6 @@
 jest.mock('uuid', () => ({ v4: () => 'test-uuid' }));
-import supertest from 'supertest';
-import app from '@/app';
-const api = supertest(app);
+jest.mock('uuid', () => ({ v4: () => 'test-uuid' }));
+import api from './test-client';
 
 describe('Auth routes', () => {
   test('POST /api/auth/login without body returns 401 or 400', async () => {

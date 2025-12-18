@@ -3,9 +3,9 @@ import { ICartRepository } from '@/core/repositories/cart.repository.interface';
 export class CreateCartUseCase {
     constructor(private cartRepository: ICartRepository) { }
 
-    async execute(userId: string) {
+    async execute(tenantId: string, userId: string) {
         try {
-            const cart = await this.cartRepository.create(userId);
+            const cart = await this.cartRepository.create(tenantId, userId);
             return {
                 success: true,
                 code: 201,

@@ -21,6 +21,11 @@ export function requirePermission(permission: string) {
             });
         }
 
+        // Super Admin bypass
+        if (user.role.name === 'SUPER_ADMIN') {
+            return next();
+        }
+
         const hasPermission = user.role.permissions.includes(permission);
 
         if (!hasPermission) {
@@ -61,6 +66,11 @@ export function requireAnyPermission(permissions: string[]) {
             });
         }
 
+        // Super Admin bypass
+        if (user.role.name === 'SUPER_ADMIN') {
+            return next();
+        }
+
         const hasAnyPermission = permissions.some(p => user.role.permissions.includes(p));
 
         if (!hasAnyPermission) {
@@ -99,6 +109,11 @@ export function requireAllPermissions(permissions: string[]) {
                     message: 'You must be logged in'
                 }]
             });
+        }
+
+        // Super Admin bypass
+        if (user.role.name === 'SUPER_ADMIN') {
+            return next();
         }
 
         const hasAllPermissions = permissions.every(p => user.role.permissions.includes(p));
@@ -142,6 +157,11 @@ export function requireRole(minLevel: number) {
                     message: 'You must be logged in'
                 }]
             });
+        }
+
+        // Super Admin bypass
+        if (user.role.name === 'SUPER_ADMIN') {
+            return next();
         }
 
         if (user.role.level < minLevel) {

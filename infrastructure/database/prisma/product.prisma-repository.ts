@@ -2,9 +2,14 @@ import { prisma } from '@/config/db.config';
 import { IProductRepository } from '@/core/repositories/product.repository.interface';
 import { Product, CreateProductDTO, UpdateProductDTO } from '@/core/entities/product.entity';
 
+/**
+ * Tenant-Aware Product Repository
+ * All queries are automatically scoped to the provided tenantId
+ */
 export class PrismaProductRepository implements IProductRepository {
-    async findAll(options?: { categoryId?: string }): Promise<Product[]> {
-        const where: any = {};
+    async findAll(tenantId: string, options?: { categoryId?: string }): Promise<Product[]> {
+        const where: any = { tenantId };
+
         if (options?.categoryId) {
             where.categories = {
                 some: {
@@ -21,19 +26,20 @@ export class PrismaProductRepository implements IProductRepository {
         return products.map(this.mapToEntity);
     }
 
-    async findById(id: string): Promise<Product | null> {
-        const product = await prisma.product.findUnique({
-            where: { id },
+    async findById(tenantId: string, id: string): Promise<Product | null> {
+        const product = await prisma.product.findFirst({
+            where: { id, tenantId },
             include: { categories: true }
         });
         return product ? this.mapToEntity(product) : null;
     }
 
-    async create(data: CreateProductDTO): Promise<Product> {
+    async create(tenantId: string, data: CreateProductDTO): Promise<Product> {
         const { categoryIds, ...productData } = data;
         const product = await prisma.product.create({
             data: {
                 ...productData,
+                tenantId, // Automatically assign tenant
                 categories: categoryIds ? {
                     connect: categoryIds.map(id => ({ id }))
                 } : undefined
@@ -43,10 +49,15 @@ export class PrismaProductRepository implements IProductRepository {
         return this.mapToEntity(product);
     }
 
-    async update(id: string, data: UpdateProductDTO): Promise<Product> {
+    async update(tenantId: string, id: string, data: UpdateProductDTO): Promise<Product> {
         const { categoryIds, ...productData } = data;
+
+        // Ensure product belongs to tenant before updating
         const product = await prisma.product.update({
-            where: { id },
+            where: {
+                id,
+                tenantId // Compound condition ensures tenant ownership
+            },
             data: {
                 ...productData,
                 categories: categoryIds ? {
@@ -58,17 +69,21 @@ export class PrismaProductRepository implements IProductRepository {
         return this.mapToEntity(product);
     }
 
-    async delete(id: string): Promise<Product> {
+    async delete(tenantId: string, id: string): Promise<Product> {
         const product = await prisma.product.delete({
-            where: { id },
+            where: {
+                id,
+                tenantId // Ensures only tenant's own products can be deleted
+            },
             include: { categories: true }
         });
         return this.mapToEntity(product);
     }
 
-    async searchByName(name: string): Promise<Product[]> {
+    async searchByName(tenantId: string, name: string): Promise<Product[]> {
         const products = await prisma.product.findMany({
             where: {
+                tenantId,
                 name: {
                     contains: name,
                     mode: 'insensitive'
@@ -79,11 +94,12 @@ export class PrismaProductRepository implements IProductRepository {
         return products.map(this.mapToEntity);
     }
 
-    async getStats(): Promise<any[]> {
+    async getStats(tenantId: string): Promise<any[]> {
         const result: any[] = await prisma.$queryRaw`
             SELECT to_char("createdAt", 'YYYY-MM') as "yearMonth", COUNT(*)::int as total
             FROM products
             WHERE "createdAt" >= NOW() - INTERVAL '1 year'
+              AND "tenantId" = ${tenantId}
             GROUP BY "yearMonth"
             ORDER BY "yearMonth" ASC
         `;
@@ -93,23 +109,26 @@ export class PrismaProductRepository implements IProductRepository {
         }));
     }
 
-    async getSummaryStats(): Promise<{ totalProducts: number; totalValue: number; lowStockCount: number; outOfStockCount: number }> {
+    async getSummaryStats(tenantId: string): Promise<{ totalProducts: number; totalValue: number; lowStockCount: number; outOfStockCount: number }> {
         const [totalProducts, lowStockCount, outOfStockCount] = await Promise.all([
-            prisma.product.count(),
+            prisma.product.count({ where: { tenantId } }),
             prisma.product.count({
                 where: {
+                    tenantId,
                     stock: { lt: 10 }
                 }
             }),
             prisma.product.count({
                 where: {
+                    tenantId,
                     stock: 0
                 }
             })
         ]);
 
-        // Calculate total value (price * stock) in memory for reliability
+        // Calculate total value (price * stock) scoped to tenant
         const allProducts = await prisma.product.findMany({
+            where: { tenantId },
             select: { price: true, stock: true }
         });
         const totalValue = allProducts.reduce((sum, p) => sum + (p.price * p.stock), 0);
@@ -122,9 +141,12 @@ export class PrismaProductRepository implements IProductRepository {
         };
     }
 
-    async findFirst(where: Partial<Product>): Promise<Product | null> {
+    async findFirst(tenantId: string, where: Partial<Product>): Promise<Product | null> {
         const product = await prisma.product.findFirst({
-            where: where as any,
+            where: {
+                ...where as any,
+                tenantId // Always include tenant filter
+            },
             include: { categories: true }
         });
         return product ? this.mapToEntity(product) : null;

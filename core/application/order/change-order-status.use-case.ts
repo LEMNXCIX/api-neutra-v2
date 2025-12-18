@@ -8,7 +8,7 @@ export class ChangeOrderStatusUseCase {
         private logger: ILogger
     ) { }
 
-    async execute(id: string, status: string) {
+    async execute(tenantId: string, id: string, status: string) {
         this.logger.info('ChangeOrderStatus - Executing', { id, status }, { includePayload: true });
 
         try {
@@ -22,7 +22,7 @@ export class ChangeOrderStatusUseCase {
                 };
             }
 
-            const order = await this.orderRepository.updateStatus(id, status as OrderStatus);
+            const order = await this.orderRepository.updateStatus(tenantId, id, status as OrderStatus);
             this.logger.info('ChangeOrderStatus - Success', { id, newStatus: status }, { includeResponse: true });
             return {
                 success: true,

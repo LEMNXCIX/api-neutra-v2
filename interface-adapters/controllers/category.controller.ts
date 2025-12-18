@@ -10,44 +10,50 @@ export class CategoryController {
     constructor(private categoryRepository: ICategoryRepository) { }
 
     create = async (req: Request, res: Response) => {
+        const tenantId = (req as any).tenantId;
         const useCase = new CreateCategoryUseCase(this.categoryRepository);
-        const result = await useCase.execute(req.body);
+        const result = await useCase.execute(tenantId, req.body);
         return res.status(result.code).json(result);
     }
 
     getAll = async (req: Request, res: Response) => {
+        const tenantId = (req as any).tenantId;
         const page = req.query.page ? parseInt(req.query.page as string) : undefined;
         const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
 
         const useCase = new GetCategoriesUseCase(this.categoryRepository);
-        const result = await useCase.execute(page, limit);
+        const result = await useCase.execute(tenantId, page, limit);
         return res.status(result.code).json(result);
     }
 
     getById = async (req: Request, res: Response) => {
+        const tenantId = (req as any).tenantId;
         const { id } = req.params;
         const useCase = new GetCategoriesUseCase(this.categoryRepository);
-        const result = await useCase.executeById(id);
+        const result = await useCase.executeById(tenantId, id);
         return res.status(result.code).json(result);
     }
 
     update = async (req: Request, res: Response) => {
+        const tenantId = (req as any).tenantId;
         const { id } = req.params;
         const useCase = new UpdateCategoryUseCase(this.categoryRepository);
-        const result = await useCase.execute(id, req.body);
+        const result = await useCase.execute(tenantId, id, req.body);
         return res.status(result.code).json(result);
     }
 
     delete = async (req: Request, res: Response) => {
+        const tenantId = (req as any).tenantId;
         const { id } = req.params;
         const useCase = new DeleteCategoryUseCase(this.categoryRepository);
-        const result = await useCase.execute(id);
+        const result = await useCase.execute(tenantId, id);
         return res.status(result.code).json(result);
     }
 
     getStats = async (req: Request, res: Response) => {
+        const tenantId = (req as any).tenantId;
         const useCase = new GetCategoryStatsUseCase(this.categoryRepository);
-        const result = await useCase.execute();
+        const result = await useCase.execute(tenantId);
         return res.status(result.code).json(result);
     }
 }

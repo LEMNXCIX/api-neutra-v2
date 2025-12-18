@@ -4,7 +4,7 @@ import { UpdateProductDTO } from '@/core/entities/product.entity';
 export class UpdateProductUseCase {
     constructor(private productRepository: IProductRepository) { }
 
-    async execute(id: string, data: any) {
+    async execute(tenantId: string, id: string, data: any) {
         try {
             const updateData: UpdateProductDTO = {
                 name: data.name,
@@ -15,7 +15,7 @@ export class UpdateProductUseCase {
                 categoryIds: data.categoryIds || data.categories
             };
 
-            const product = await this.productRepository.update(id, updateData);
+            const product = await this.productRepository.update(tenantId, id, updateData);
             return {
                 success: true,
                 code: 200,

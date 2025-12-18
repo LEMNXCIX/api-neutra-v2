@@ -9,7 +9,7 @@ export class SocialLoginUseCase {
         private tokenGenerator: ITokenGenerator
     ) { }
 
-    async execute(data: any) {
+    async execute(tenantId: string, data: any) {
         // data structure from passport profile
         const providerField = `${data.provider}Id`;
         const providerId = data.id;
@@ -24,15 +24,15 @@ export class SocialLoginUseCase {
             };
         }
 
-        let user = await this.userRepository.findByProvider(providerField, providerId);
+        let user = await this.userRepository.findByProvider(tenantId, providerField, providerId);
 
         if (!user) {
             // Check if email exists to link
-            user = await this.userRepository.findByEmail(email);
+            user = await this.userRepository.findByEmail(tenantId, email);
 
             if (user) {
                 // Link account
-                user = await this.userRepository.update(user.id, {
+                user = await this.userRepository.update(tenantId, user.id, {
                     [providerField]: providerId,
                     profilePic: data.photos && data.photos[0] ? data.photos[0].value : user.profilePic
                 });
@@ -46,12 +46,12 @@ export class SocialLoginUseCase {
                     // roleId is optional - repository will assign default USER role
                     profilePic: data.photos && data.photos[0] ? data.photos[0].value : undefined
                 };
-                user = await this.userRepository.create(newUser);
+                user = await this.userRepository.create(tenantId, newUser);
             }
         }
 
         // Fetch user with role and permissions for JWT
-        const userWithRole = await this.userRepository.findById(user.id, {
+        const userWithRole = await this.userRepository.findById(tenantId, user.id, {
             includeRole: true,
             includePermissions: true
         });
@@ -69,7 +69,8 @@ export class SocialLoginUseCase {
             id: userWithRole.id,
             email: userWithRole.email,
             name: userWithRole.name,
-            role: userWithRole.role  // Includes permissions
+            role: userWithRole.role,  // Includes permissions
+            tenantId: tenantId
         });
 
         const { password: _, ...safeUser } = userWithRole;

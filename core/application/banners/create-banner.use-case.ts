@@ -5,7 +5,7 @@ import { ResourceErrorCodes, ValidationErrorCodes } from '@/types/error-codes';
 export class CreateBannerUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async execute(data: CreateBannerDTO) {
+    async execute(tenantId: string, data: CreateBannerDTO) {
         // Validate dates
         const startsAt = new Date(data.startsAt);
         const endsAt = new Date(data.endsAt);
@@ -24,7 +24,7 @@ export class CreateBannerUseCase {
         }
 
         try {
-            const banner = await this.bannerRepository.create(data);
+            const banner = await this.bannerRepository.create(tenantId, data);
 
             return {
                 success: true,
