@@ -5,6 +5,7 @@ import { IServiceRepository } from '@/core/repositories/service.repository.inter
 import { CreateAppointmentUseCase } from '@/core/application/booking/create-appointment.use-case';
 import { GetAppointmentsUseCase } from '@/core/application/booking/get-appointments.use-case';
 import { GetAvailabilityUseCase } from '@/core/application/booking/get-availability.use-case';
+import { UpdateAppointmentStatusUseCase } from '@/core/application/booking/update-appointment-status.use-case';
 import { AppointmentStatus } from '@/core/entities/appointment.entity';
 import { ILogger } from '@/core/providers/logger.interface';
 
@@ -12,6 +13,7 @@ export class AppointmentController {
     private createAppointmentUseCase: CreateAppointmentUseCase;
     private getAppointmentsUseCase: GetAppointmentsUseCase;
     private getAvailabilityUseCase: GetAvailabilityUseCase;
+    private updateAppointmentStatusUseCase: UpdateAppointmentStatusUseCase;
 
     constructor(
         private appointmentRepository: IAppointmentRepository,
@@ -32,6 +34,7 @@ export class AppointmentController {
             serviceRepository,
             logger
         );
+        this.updateAppointmentStatusUseCase = new UpdateAppointmentStatusUseCase(appointmentRepository, logger);
     }
 
     async create(req: Request, res: Response) {
@@ -120,18 +123,19 @@ export class AppointmentController {
         }
 
         try {
-            const appointment = await this.appointmentRepository.updateStatus(tenantId, id, status as AppointmentStatus);
-
-            return res.status(200).json({
-                success: true,
-                message: `Appointment status updated to ${status}`,
-                data: appointment,
-            });
+            const result = await this.updateAppointmentStatusUseCase.execute(tenantId, id, status as AppointmentStatus);
+            return res.status(result.code).json(result);
         } catch (error: any) {
-            this.logger.error('Error updating appointment status', { error: error.message });
+            this.logger.error('Error updating appointment status in controller', {
+                tenantId,
+                id,
+                status,
+                error: error.message
+            });
             return res.status(500).json({
                 success: false,
                 message: 'Error updating appointment status',
+                error: error.message
             });
         }
     }

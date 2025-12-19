@@ -248,10 +248,16 @@ model Product {
   @@map("products")
 }
 
+enum CategoryType {
+  PRODUCT
+  SERVICE
+}
+
 model Category {
   id          String  @id @default(uuid())
-  name        String  @unique
+  name        String  // Removed @unique to allow same name in different tenants/types
   description String?
+  type        CategoryType @default(PRODUCT)
   active      Boolean @default(true)
 
   // Multi-tenancy
@@ -259,10 +265,12 @@ model Category {
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   products Product[]
+  services Service[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, name, type])
   @@index([tenantId])
   @@map("categories")
 }
@@ -451,7 +459,10 @@ model Service {
   description String?
   duration    Int // Duration in minutes
   price       Float
-  category    String?
+  
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  
   active      Boolean  @default(true)
   
   // Multi-tenancy

@@ -6,6 +6,8 @@ import { UpdateCategoryUseCase } from '@/core/application/categories/update-cate
 import { DeleteCategoryUseCase } from '@/core/application/categories/delete-category.use-case';
 import { GetCategoryStatsUseCase } from '@/core/application/categories/get-category-stats.use-case';
 
+import { CategoryType } from '@/core/entities/category.entity';
+
 export class CategoryController {
     constructor(private categoryRepository: ICategoryRepository) { }
 
@@ -20,9 +22,10 @@ export class CategoryController {
         const tenantId = (req as any).tenantId;
         const page = req.query.page ? parseInt(req.query.page as string) : undefined;
         const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+        const type = req.query.type as CategoryType;
 
         const useCase = new GetCategoriesUseCase(this.categoryRepository);
-        const result = await useCase.execute(tenantId, page, limit);
+        const result = await useCase.execute(tenantId, page, limit, type);
         return res.status(result.code).json(result);
     }
 

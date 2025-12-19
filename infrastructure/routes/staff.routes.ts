@@ -47,6 +47,30 @@ function staff(app: Application) {
         requirePermission('staff:write'),
         (req, res) => staffController.assignService(req, res)
     );
+
+    /**
+     * @route PUT /api/staff/:id
+     * @desc Update a staff member
+     * @access Admin only
+     */
+    router.put(
+        '/:id',
+        authenticate,
+        requirePermission('staff:write'),
+        (req, res) => staffController.update(req, res)
+    );
+
+    /**
+     * @route DELETE /api/staff/:id
+     * @desc Delete a staff member
+     * @access Admin only
+     */
+    router.delete(
+        '/:id',
+        authenticate,
+        requirePermission('staff:write'),
+        (req, res) => staffController.delete(req, res)
+    );
 }
 
 export default staff;

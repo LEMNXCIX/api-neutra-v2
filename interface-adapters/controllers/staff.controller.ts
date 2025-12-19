@@ -2,11 +2,15 @@ import { Request, Response } from 'express';
 import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
 import { CreateStaffUseCase } from '@/core/application/booking/create-staff.use-case';
 import { GetStaffUseCase } from '@/core/application/booking/get-staff.use-case';
+import { UpdateStaffUseCase } from '@/core/application/booking/update-staff.use-case';
+import { DeleteStaffUseCase } from '@/core/application/booking/delete-staff.use-case';
 import { ILogger } from '@/core/providers/logger.interface';
 
 export class StaffController {
     private createStaffUseCase: CreateStaffUseCase;
     private getStaffUseCase: GetStaffUseCase;
+    private updateStaffUseCase: UpdateStaffUseCase;
+    private deleteStaffUseCase: DeleteStaffUseCase;
 
     constructor(
         private staffRepository: IStaffRepository,
@@ -14,6 +18,8 @@ export class StaffController {
     ) {
         this.createStaffUseCase = new CreateStaffUseCase(staffRepository, logger);
         this.getStaffUseCase = new GetStaffUseCase(staffRepository, logger);
+        this.updateStaffUseCase = new UpdateStaffUseCase(staffRepository, logger);
+        this.deleteStaffUseCase = new DeleteStaffUseCase(staffRepository, logger);
     }
 
     async create(req: Request, res: Response) {
@@ -26,6 +32,20 @@ export class StaffController {
         const tenantId = req.tenantId!;
         const activeOnly = req.query.activeOnly !== 'false';
         const result = await this.getStaffUseCase.execute(tenantId, activeOnly);
+        return res.status(result.code).json(result);
+    }
+
+    async update(req: Request, res: Response) {
+        const tenantId = req.tenantId!;
+        const { id } = req.params;
+        const result = await this.updateStaffUseCase.execute(tenantId, id, req.body);
+        return res.status(result.code).json(result);
+    }
+
+    async delete(req: Request, res: Response) {
+        const tenantId = req.tenantId!;
+        const { id } = req.params;
+        const result = await this.deleteStaffUseCase.execute(tenantId, id);
         return res.status(result.code).json(result);
     }
 

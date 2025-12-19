@@ -11,15 +11,17 @@ import { prisma } from '../config/db.config';
 async function seedBooking() {
     console.log('🌱 Seeding booking data...');
 
-    // Get or create a tenant
-    let tenant = await prisma.tenant.findFirst();
+    // Get or create the booking tenant
+    let tenant = await prisma.tenant.findUnique({
+        where: { slug: 'booking1' }
+    });
 
     if (!tenant) {
-        console.log('Creating default tenant...');
+        console.log('Creating booking1 tenant...');
         tenant = await prisma.tenant.create({
             data: {
-                name: 'Demo Salon',
-                slug: 'demo-salon',
+                name: 'Booking Salon',
+                slug: 'booking1',
                 type: 'BOOKING',
                 active: true,
             },
@@ -27,6 +29,41 @@ async function seedBooking() {
     }
 
     console.log(`Using tenant: ${tenant.name} (${tenant.id})`);
+
+    // Create categories
+    console.log('Creating categories...');
+    const catHair = await prisma.category.create({
+        data: {
+            tenantId: tenant.id,
+            name: 'Hair',
+            type: 'SERVICE',
+            active: true
+        }
+    });
+    const catNails = await prisma.category.create({
+        data: {
+            tenantId: tenant.id,
+            name: 'Nails',
+            type: 'SERVICE',
+            active: true
+        }
+    });
+    const catSkincare = await prisma.category.create({
+        data: {
+            tenantId: tenant.id,
+            name: 'Skincare',
+            type: 'SERVICE',
+            active: true
+        }
+    });
+    const catWellness = await prisma.category.create({
+        data: {
+            tenantId: tenant.id,
+            name: 'Wellness',
+            type: 'SERVICE',
+            active: true
+        }
+    });
 
     // Create services
     console.log('Creating services...');
@@ -39,7 +76,7 @@ async function seedBooking() {
                 description: 'Professional haircut and styling',
                 duration: 45,
                 price: 35.00,
-                category: 'Hair',
+                categoryId: catHair.id,
                 active: true,
             },
         }),
@@ -50,7 +87,7 @@ async function seedBooking() {
                 description: 'Full hair coloring service',
                 duration: 120,
                 price: 85.00,
-                category: 'Hair',
+                categoryId: catHair.id,
                 active: true,
             },
         }),
@@ -61,7 +98,7 @@ async function seedBooking() {
                 description: 'Professional manicure service',
                 duration: 30,
                 price: 25.00,
-                category: 'Nails',
+                categoryId: catNails.id,
                 active: true,
             },
         }),
@@ -72,7 +109,7 @@ async function seedBooking() {
                 description: 'Relaxing pedicure treatment',
                 duration: 45,
                 price: 35.00,
-                category: 'Nails',
+                categoryId: catNails.id,
                 active: true,
             },
         }),
@@ -83,7 +120,7 @@ async function seedBooking() {
                 description: 'Rejuvenating facial treatment',
                 duration: 60,
                 price: 65.00,
-                category: 'Skincare',
+                categoryId: catSkincare.id,
                 active: true,
             },
         }),
@@ -94,7 +131,7 @@ async function seedBooking() {
                 description: 'Relaxing full body massage',
                 duration: 60,
                 price: 75.00,
-                category: 'Wellness',
+                categoryId: catWellness.id,
                 active: true,
             },
         }),

@@ -38,8 +38,27 @@ export class PinoLoggerProvider implements ILogger {
     }
 
     error(message: string, error?: Error | unknown, metadata?: any): void {
-        const errorObj = error instanceof Error ? { message: error.message, stack: error.stack, name: error.name } : { message: String(error) };
-        logger.error({ msg: message, error: errorObj, ...metadata });
+        let finalError = error;
+        let finalMetadata = metadata;
+
+        // If the second argument is an object but not an instance of Error, 
+        // and metadata is undefined, treat the second argument as metadata.
+        if (error && !(error instanceof Error) && typeof error === 'object' && metadata === undefined) {
+            finalMetadata = error;
+            finalError = undefined;
+        }
+
+        const errorObj = finalError instanceof Error
+            ? { message: finalError.message, stack: finalError.stack, name: finalError.name }
+            : finalError !== undefined
+                ? (typeof finalError === 'object' && finalError !== null ? this.sanitize(finalError) : { message: String(finalError) })
+                : undefined;
+
+        const logPayload: any = { msg: message };
+        if (errorObj) logPayload.error = errorObj;
+        if (finalMetadata) Object.assign(logPayload, this.sanitize(finalMetadata));
+
+        logger.error(logPayload);
     }
 
     debug(message: string, metadata?: any, options?: LogOptions): void {

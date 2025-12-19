@@ -3,13 +3,16 @@
  * Represents a service offering in the booking system
  */
 
+import { Category } from './category.entity';
+
 export interface Service {
     id: string;
     name: string;
     description?: string;
     duration: number; // Duration in minutes
     price: number;
-    category?: string;
+    categoryId?: string;
+    category?: Category;
     active: boolean;
     tenantId: string;
     createdAt: Date;
@@ -21,7 +24,7 @@ export interface CreateServiceDTO {
     description?: string;
     duration: number;
     price: number;
-    category?: string;
+    categoryId?: string;
     active?: boolean;
 }
 
@@ -30,6 +33,6 @@ export interface UpdateServiceDTO {
     description?: string;
     duration?: number;
     price?: number;
-    category?: string;
+    categoryId?: string;
     active?: boolean;
 }

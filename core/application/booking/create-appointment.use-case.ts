@@ -4,7 +4,7 @@ import { IServiceRepository } from '@/core/repositories/service.repository.inter
 import { CreateAppointmentDTO } from '@/core/entities/appointment.entity';
 import { ILogger } from '@/core/providers/logger.interface';
 import { ValidationErrorCodes, BusinessErrorCodes } from '@/types/error-codes';
-import { emailService } from '@/infrastructure/services/email.service';
+import { AppointmentNotificationService } from '@/infrastructure/services/appointment-notification.service';
 
 export class CreateAppointmentUseCase {
     constructor(
@@ -12,7 +12,11 @@ export class CreateAppointmentUseCase {
         private staffRepository: IStaffRepository,
         private serviceRepository: IServiceRepository,
         private logger: ILogger
-    ) { }
+    ) {
+        this.notificationService = new AppointmentNotificationService(appointmentRepository, logger);
+    }
+
+    private notificationService: AppointmentNotificationService;
 
     async execute(tenantId: string, data: CreateAppointmentDTO) {
         // Validation
@@ -103,7 +107,7 @@ export class CreateAppointmentUseCase {
             this.logger.info('Appointment created successfully', { appointmentId: appointment.id });
 
             // Send confirmation email (async, non-blocking)
-            this.sendConfirmationEmail(appointment).catch(err => {
+            this.notificationService.sendConfirmationEmail(tenantId, appointment.id).catch(err => {
                 this.logger.error('Failed to send appointment confirmation email', {
                     appointmentId: appointment.id,
                     error: err.message
@@ -130,9 +134,4 @@ export class CreateAppointmentUseCase {
         }
     }
 
-    private async sendConfirmationEmail(appointment: any): Promise<void> {
-        // TODO: Fetch user email and send confirmation
-        // Implementation will be added when email templates are created
-        this.logger.info('Appointment confirmation email queued', { appointmentId: appointment.id });
-    }
 }

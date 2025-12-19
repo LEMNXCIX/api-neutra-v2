@@ -17,7 +17,8 @@ export interface IEmailService {
         subject: string,
         template: string,
         data: Record<string, any>,
-        tenantConfig?: TenantEmailConfig
+        tenantConfig?: TenantEmailConfig,
+        attachments?: Attachment[]
     ): Promise<boolean>;
 
     /**
@@ -53,7 +54,8 @@ export interface IEmailService {
     sendAppointmentConfirmation(
         to: string,
         appointment: any,
-        tenantConfig?: TenantEmailConfig
+        tenantConfig?: TenantEmailConfig,
+        attachments?: Attachment[]
     ): Promise<boolean>;
 
     /**
@@ -85,4 +87,13 @@ export interface TenantEmailConfig {
     primaryColor?: string;
     supportEmail?: string;
     websiteUrl?: string;
+}
+
+/**
+ * Email Attachment
+ */
+export interface Attachment {
+    filename: string;
+    content: string | Buffer;
+    contentType?: string;
 }

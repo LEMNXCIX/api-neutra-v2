@@ -45,8 +45,23 @@ export const tenantMiddleware = async (
 
         // Strategy 2: Tenant slug from header
         const headerTenantSlug = req.headers['x-tenant-slug'] as string;
-        if (!tenantId && headerTenantSlug) {
+        if (headerTenantSlug) {
             tenantSlug = headerTenantSlug;
+        }
+
+        // Strategy 2.5: From Cookies (useful for server-side fetches)
+        if (!tenantId && !tenantSlug) {
+            const cookieHeader = req.headers.cookie;
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').reduce((acc: any, cookie) => {
+                    const [key, value] = cookie.trim().split('=');
+                    acc[key] = value;
+                    return acc;
+                }, {});
+
+                if (cookies['tenant-id']) tenantId = cookies['tenant-id'];
+                if (cookies['tenant-slug']) tenantSlug = cookies['tenant-slug'];
+            }
         }
 
         // Strategy 3: Extract from subdomain
@@ -98,9 +113,9 @@ export const tenantMiddleware = async (
 
         // Fetch tenant from database
         let tenant;
-        if (tenantId) {
+        if (tenantSlug) {
             tenant = await prisma.tenant.findUnique({
-                where: { id: tenantId },
+                where: { slug: tenantSlug },
                 select: {
                     id: true,
                     name: true,
@@ -109,9 +124,9 @@ export const tenantMiddleware = async (
                     active: true,
                 },
             });
-        } else if (tenantSlug) {
+        } else if (tenantId) {
             tenant = await prisma.tenant.findUnique({
-                where: { slug: tenantSlug },
+                where: { id: tenantId },
                 select: {
                     id: true,
                     name: true,

@@ -68,10 +68,8 @@ export class PrismaStaffRepository implements IStaffRepository {
     }
 
     async delete(tenantId: string, id: string): Promise<void> {
-        // Soft delete
-        await prisma.staff.update({
+        await prisma.staff.delete({
             where: { id, tenantId },
-            data: { active: false },
         });
     }
 

@@ -15,9 +15,10 @@ export class PrismaServiceRepository implements IServiceRepository {
                 description: data.description,
                 duration: data.duration,
                 price: data.price,
-                category: data.category,
+                categoryId: data.categoryId,
                 active: data.active ?? true,
             },
+            include: { category: true }
         });
         return this.mapToEntity(service);
     }
@@ -25,6 +26,7 @@ export class PrismaServiceRepository implements IServiceRepository {
     async findById(tenantId: string, id: string): Promise<Service | null> {
         const service = await prisma.service.findFirst({
             where: { id, tenantId },
+            include: { category: true }
         });
         return service ? this.mapToEntity(service) : null;
     }
@@ -35,18 +37,20 @@ export class PrismaServiceRepository implements IServiceRepository {
                 tenantId,
                 ...(activeOnly && { active: true }),
             },
+            include: { category: true },
             orderBy: { name: 'asc' },
         });
         return services.map(this.mapToEntity);
     }
 
-    async findByCategory(tenantId: string, category: string): Promise<Service[]> {
+    async findByCategoryId(tenantId: string, categoryId: string): Promise<Service[]> {
         const services = await prisma.service.findMany({
             where: {
                 tenantId,
-                category,
+                categoryId,
                 active: true,
             },
+            include: { category: true },
             orderBy: { name: 'asc' },
         });
         return services.map(this.mapToEntity);
@@ -63,18 +67,17 @@ export class PrismaServiceRepository implements IServiceRepository {
                 description: data.description,
                 duration: data.duration,
                 price: data.price,
-                category: data.category,
+                categoryId: data.categoryId,
                 active: data.active,
             },
+            include: { category: true }
         });
         return this.mapToEntity(service);
     }
 
     async delete(tenantId: string, id: string): Promise<void> {
-        // Soft delete by setting active to false
-        await prisma.service.update({
+        await prisma.service.delete({
             where: { id, tenantId },
-            data: { active: false },
         });
     }
 
@@ -85,7 +88,17 @@ export class PrismaServiceRepository implements IServiceRepository {
             description: service.description,
             duration: service.duration,
             price: service.price,
-            category: service.category,
+            categoryId: service.categoryId,
+            category: service.category ? {
+                id: service.category.id,
+                name: service.category.name,
+                description: service.category.description,
+                type: service.category.type,
+                active: service.category.active,
+                tenantId: service.category.tenantId,
+                createdAt: service.category.createdAt,
+                updatedAt: service.category.updatedAt,
+            } : undefined,
             active: service.active,
             tenantId: service.tenantId,
             createdAt: service.createdAt,

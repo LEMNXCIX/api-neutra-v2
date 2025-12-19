@@ -32,7 +32,8 @@ export class NodemailerProvider implements IEmailService {
         subject: string,
         template: string,
         data: Record<string, any>,
-        tenantConfig?: TenantEmailConfig
+        tenantConfig?: TenantEmailConfig,
+        attachments?: any[]
     ): Promise<boolean> {
         try {
             // Load and compile template
@@ -60,6 +61,7 @@ export class NodemailerProvider implements IEmailService {
                 to,
                 subject,
                 html,
+                attachments,
             });
 
             console.log('Email sent successfully:', info.messageId);
@@ -127,7 +129,8 @@ export class NodemailerProvider implements IEmailService {
     async sendAppointmentConfirmation(
         to: string,
         appointment: any,
-        tenantConfig?: TenantEmailConfig
+        tenantConfig?: TenantEmailConfig,
+        attachments?: any[]
     ): Promise<boolean> {
         return this.sendEmail(
             to,
@@ -144,7 +147,8 @@ export class NodemailerProvider implements IEmailService {
                 appointmentId: appointment.id,
                 calendarLink: appointment.calendarLink || '#',
             },
-            tenantConfig
+            tenantConfig,
+            attachments
         );
     }
 
