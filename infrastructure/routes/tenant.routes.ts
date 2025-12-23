@@ -15,6 +15,7 @@ function tenants(app: Application) {
     router.get('/test-debug', (req, res) => res.json({ message: 'Tenants router is working' }));
 
     // Basic CRUD
+    router.get('/config/:slug', (req, res) => tenantController.getBySlug(req, res));
     router.get('/', authenticate, (req, res) => tenantController.getAll(req, res));
     router.post('/', authenticate, (req, res) => tenantController.create(req, res));
     router.get('/:id', authenticate, (req, res) => tenantController.getById(req, res));
