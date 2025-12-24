@@ -2,15 +2,16 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { IPasswordHasher, ITokenGenerator } from '@/core/providers/auth-providers.interface';
 import { CreateUserDTO } from '@/core/entities/user.entity';
 import { ILogger } from '@/core/providers/logger.interface';
+import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 import { ValidationErrorCodes, ResourceErrorCodes } from '@/types/error-codes';
-import { emailService } from '@/infrastructure/services/email.service';
 
 export class RegisterUseCase {
     constructor(
         private userRepository: IUserRepository,
         private passwordHasher: IPasswordHasher,
         private tokenGenerator: ITokenGenerator,
-        private logger: ILogger
+        private logger: ILogger,
+        private queueProvider: IQueueProvider
     ) { }
 
     async execute(tenantId: string, data: any) {
@@ -78,9 +79,14 @@ export class RegisterUseCase {
 
             this.logger.info('User registered successfully', { userId: userWithRole.id, email: userWithRole.email });
 
-            // Send welcome email asynchronously (don't block registration)
-            this.sendWelcomeEmail(userWithRole.email, userWithRole.name, tenantId).catch(err => {
-                this.logger.error('Failed to send welcome email', { userId: userWithRole.id, error: err.message });
+            // Enqueue welcome email asynchronously
+            await this.queueProvider.enqueue('notifications', {
+                type: 'WELCOME_EMAIL',
+                email: userWithRole.email,
+                name: userWithRole.name,
+                tenantId: tenantId
+            }).catch(err => {
+                this.logger.error('Failed to enqueue welcome email', { userId: userWithRole.id, error: err.message });
             });
 
             return {
@@ -102,23 +108,5 @@ export class RegisterUseCase {
             };
         }
     }
-
-    /**
-     * Send welcome email to new user
-     * This runs asynchronously and doesn't block registration
-     */
-    private async sendWelcomeEmail(email: string, name: string, tenantId: string): Promise<void> {
-        try {
-            await emailService.sendWelcomeEmail(email, name, {
-                tenantName: 'Neutra', // TODO: Get from tenant configuration
-                supportEmail: process.env.SMTP_FROM || 'support@neutra.com',
-                websiteUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
-                primaryColor: '#000000',
-            });
-            this.logger.info('Welcome email sent successfully', { email });
-        } catch (error: any) {
-            this.logger.error('Welcome email failed', { email, error: error.message });
-            throw error;
-        }
-    }
 }
+

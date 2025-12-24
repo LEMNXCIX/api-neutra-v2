@@ -7,6 +7,7 @@ import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.pris
 import { BcryptProvider } from '@/infrastructure/providers/bcrypt.provider';
 import { JwtProvider } from '@/infrastructure/providers/jwt.provider';
 import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
+import { BullMQQueueProvider } from '@/infrastructure/providers/bullmq-queue.provider';
 
 function auth(app: Application) {
     const router = Router();
@@ -17,7 +18,8 @@ function auth(app: Application) {
     const passwordHasher = new BcryptProvider();
     const tokenGenerator = new JwtProvider();
     const logger = new PinoLoggerProvider();
-    const authController = new AuthController(userRepository, passwordHasher, tokenGenerator, logger);
+    const queueProvider = new BullMQQueueProvider();
+    const authController = new AuthController(userRepository, passwordHasher, tokenGenerator, logger, queueProvider);
 
     /**
      * @swagger

@@ -15,4 +15,5 @@ export interface IStaffRepository {
     assignService(tenantId: string, staffId: string, serviceId: string): Promise<void>;
     removeService(tenantId: string, staffId: string, serviceId: string): Promise<void>;
     getServices(tenantId: string, staffId: string): Promise<string[]>; // Returns service IDs
+    syncServices(tenantId: string, staffId: string, serviceIds: string[]): Promise<void>;
 }

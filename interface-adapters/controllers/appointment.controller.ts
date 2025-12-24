@@ -8,6 +8,7 @@ import { GetAvailabilityUseCase } from '@/core/application/booking/get-availabil
 import { UpdateAppointmentStatusUseCase } from '@/core/application/booking/update-appointment-status.use-case';
 import { AppointmentStatus } from '@/core/entities/appointment.entity';
 import { ILogger } from '@/core/providers/logger.interface';
+import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 
 export class AppointmentController {
     private createAppointmentUseCase: CreateAppointmentUseCase;
@@ -19,13 +20,15 @@ export class AppointmentController {
         private appointmentRepository: IAppointmentRepository,
         private staffRepository: IStaffRepository,
         private serviceRepository: IServiceRepository,
-        private logger: ILogger
+        private logger: ILogger,
+        private queueProvider: IQueueProvider
     ) {
         this.createAppointmentUseCase = new CreateAppointmentUseCase(
             appointmentRepository,
             staffRepository,
             serviceRepository,
-            logger
+            logger,
+            queueProvider
         );
         this.getAppointmentsUseCase = new GetAppointmentsUseCase(appointmentRepository, logger);
         this.getAvailabilityUseCase = new GetAvailabilityUseCase(
@@ -34,8 +37,9 @@ export class AppointmentController {
             serviceRepository,
             logger
         );
-        this.updateAppointmentStatusUseCase = new UpdateAppointmentStatusUseCase(appointmentRepository, logger);
+        this.updateAppointmentStatusUseCase = new UpdateAppointmentStatusUseCase(appointmentRepository, logger, queueProvider);
     }
+
 
     async create(req: Request, res: Response) {
         const tenantId = req.tenantId!;
@@ -94,6 +98,14 @@ export class AppointmentController {
             const appointment = await this.appointmentRepository.update(tenantId, id, {
                 status: AppointmentStatus.CANCELLED,
                 cancellationReason: reason,
+            });
+
+            // Enqueue notification
+            await this.queueProvider.enqueue('notifications', {
+                type: 'CANCELLED',
+                appointmentId: id,
+                tenantId: tenantId,
+                reason: reason
             });
 
             return res.status(200).json({

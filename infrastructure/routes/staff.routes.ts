@@ -49,6 +49,18 @@ function staff(app: Application) {
     );
 
     /**
+     * @route PUT /api/staff/:staffId/services
+     * @desc Sync all services for a staff member
+     * @access Admin only
+     */
+    router.put(
+        '/:staffId/services',
+        authenticate,
+        requirePermission('staff:write'),
+        (req, res) => staffController.syncServices(req, res)
+    );
+
+    /**
      * @route PUT /api/staff/:id
      * @desc Update a staff member
      * @access Admin only

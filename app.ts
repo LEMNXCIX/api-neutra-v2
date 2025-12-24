@@ -33,6 +33,9 @@ import serviceRoutes from '@/infrastructure/routes/service.routes';
 import staffRoutes from '@/infrastructure/routes/staff.routes';
 import appointmentRoutes from '@/infrastructure/routes/appointment.routes';
 
+// Initialize Background Workers
+import '@/infrastructure/workers/notification.worker';
+
 const { port, sesionSecret, ENVIRONMENT } = config;
 
 const app = express();

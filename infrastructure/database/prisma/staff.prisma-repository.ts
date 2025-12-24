@@ -107,6 +107,29 @@ export class PrismaStaffRepository implements IStaffRepository {
         return staffServices.map(ss => ss.serviceId);
     }
 
+    async syncServices(tenantId: string, staffId: string, serviceIds: string[]): Promise<void> {
+        await prisma.$transaction(async (tx) => {
+            // Remove all existing services for this staff member
+            await tx.staffService.deleteMany({
+                where: {
+                    tenantId,
+                    staffId,
+                },
+            });
+
+            // Add new services
+            if (serviceIds.length > 0) {
+                await tx.staffService.createMany({
+                    data: serviceIds.map(serviceId => ({
+                        tenantId,
+                        staffId,
+                        serviceId,
+                    })),
+                });
+            }
+        });
+    }
+
     private mapToEntity(staff: any): Staff {
         return {
             id: staff.id,

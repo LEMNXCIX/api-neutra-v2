@@ -6,8 +6,9 @@ import { BusinessErrorCodes } from '@/types/error-codes';
 import { IProductRepository } from '@/core/repositories/product.repository.interface';
 import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
 import { ILogger } from '@/core/providers/logger.interface';
-import { emailService } from '@/infrastructure/services/email.service';
+import { IEmailService } from '@/core/ports/email.port';
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { UseCaseResult } from '@/core/utils/use-case-result';
 
 export class CreateOrderUseCase {
     constructor(
@@ -17,10 +18,11 @@ export class CreateOrderUseCase {
         private productRepository: IProductRepository,
         private couponRepository: ICouponRepository,
         private userRepository: IUserRepository,
-        private logger: ILogger
+        private logger: ILogger,
+        private emailService: IEmailService
     ) { }
 
-    async execute(tenantId: string, userId: string, couponId?: string) {
+    async execute(tenantId: string, userId: string, couponId?: string): Promise<UseCaseResult> {
         this.logger.info('CreateOrder - Executing', { userId, couponId });
 
         const cartResponse = await this.getCartUseCase.execute(tenantId, userId);
@@ -115,7 +117,7 @@ export class CreateOrderUseCase {
                 return;
             }
 
-            await emailService.sendOrderConfirmation(user.email, order, {
+            await this.emailService.sendOrderConfirmation(user.email, order, {
                 tenantName: 'Neutra', // TODO: Get from tenant configuration
                 supportEmail: process.env.SMTP_FROM || 'support@neutra.com',
                 websiteUrl: process.env.FRONTEND_URL || 'http://localhost:3000',

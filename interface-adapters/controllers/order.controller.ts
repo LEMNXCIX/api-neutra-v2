@@ -17,6 +17,8 @@ import { ClearCartUseCase } from '@/core/application/cart/clear-cart.use-case';
 import { GetOrderStatsUseCase } from '@/core/application/order/get-order-stats.use-case';
 
 import { ILogger } from '@/core/providers/logger.interface';
+import { IEmailService } from '@/core/ports/email.port';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
 
 export class OrderController {
     private createOrderUseCase: CreateOrderUseCase;
@@ -32,13 +34,23 @@ export class OrderController {
         cartRepository: ICartRepository,
         productRepository: IProductRepository,
         couponRepository: ICouponRepository,
-        userRepository: any, // IUserRepository
+        userRepository: IUserRepository,
+        emailService: IEmailService,
         private logger: ILogger
     ) {
         const getCartUseCase = new GetCartUseCase(cartRepository);
         const clearCartUseCase = new ClearCartUseCase(cartRepository);
 
-        this.createOrderUseCase = new CreateOrderUseCase(orderRepository, getCartUseCase, clearCartUseCase, productRepository, couponRepository, userRepository, logger);
+        this.createOrderUseCase = new CreateOrderUseCase(
+            orderRepository,
+            getCartUseCase,
+            clearCartUseCase,
+            productRepository,
+            couponRepository,
+            userRepository,
+            logger,
+            emailService
+        );
         this.getOrderUseCase = new GetOrderUseCase(orderRepository);
         this.getUserOrdersUseCase = new GetUserOrdersUseCase(orderRepository);
         this.getAllOrdersUseCase = new GetAllOrdersUseCase(orderRepository);

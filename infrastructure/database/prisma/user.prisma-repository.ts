@@ -23,6 +23,8 @@ export class PrismaUserRepository implements IUserRepository {
                     }
                 },
                 profilePic: true,
+                phone: true,
+                pushToken: true,
                 active: true,
                 googleId: true,
                 facebookId: true,
@@ -157,6 +159,8 @@ export class PrismaUserRepository implements IUserRepository {
                 roleId: roleId,
                 tenantId: targetTenantId, // Assign tenant
                 profilePic: data.profilePic,
+                phone: data.phone,
+                pushToken: data.pushToken,
                 googleId: data.googleId,
                 facebookId: data.facebookId,
                 githubId: data.githubId

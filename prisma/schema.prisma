@@ -195,6 +195,8 @@ model User {
   roleId     String
   role       Role    @relation(fields: [roleId], references: [id])
   profilePic String?
+  phone      String?
+  pushToken  String?
   active     Boolean @default(true)
 
   // Multi-tenancy

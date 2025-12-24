@@ -1,17 +1,15 @@
 import { IAppointmentRepository } from '@/core/repositories/appointment.repository.interface';
 import { AppointmentStatus } from '@/core/entities/appointment.entity';
 import { ILogger } from '@/core/providers/logger.interface';
-import { AppointmentNotificationService } from '@/infrastructure/services/appointment-notification.service';
+import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 
 export class UpdateAppointmentStatusUseCase {
-    private notificationService: AppointmentNotificationService;
 
     constructor(
         private appointmentRepository: IAppointmentRepository,
-        private logger: ILogger
-    ) {
-        this.notificationService = new AppointmentNotificationService(appointmentRepository, logger);
-    }
+        private logger: ILogger,
+        private queueProvider: IQueueProvider
+    ) { }
 
     async execute(tenantId: string, id: string, status: AppointmentStatus) {
         try {
@@ -28,15 +26,15 @@ export class UpdateAppointmentStatusUseCase {
 
             this.logger.info('Appointment status updated', { appointmentId: id, status });
 
-            // 2. If confirmed, send email with ICS
+            // 2. If confirmed, enqueue notification job
             if (status === AppointmentStatus.CONFIRMED) {
-                this.notificationService.sendConfirmationEmail(tenantId, id).catch(err => {
-                    this.logger.error('Failed to send confirmation email', {
-                        appointmentId: id,
-                        error: err.message
-                    });
+                await this.queueProvider.enqueue('notifications', {
+                    type: 'CONFIRMED',
+                    appointmentId: id,
+                    tenantId: tenantId
                 });
             }
+
 
             return {
                 success: true,

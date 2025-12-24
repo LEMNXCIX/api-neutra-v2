@@ -8,6 +8,8 @@ export interface User {
     roleId: string;
     role?: Role;  // Optional, populated when needed
     profilePic?: string;
+    phone?: string;
+    pushToken?: string;
     active: boolean;
     googleId?: string;
     facebookId?: string;
@@ -24,6 +26,8 @@ export interface CreateUserDTO {
     password?: string;
     roleId?: string;  // Optional, defaults to USER role if not provided
     profilePic?: string;
+    phone?: string;
+    pushToken?: string;
     active?: boolean;
     googleId?: string;
     facebookId?: string;

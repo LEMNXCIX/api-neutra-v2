@@ -3,20 +3,17 @@ import { IStaffRepository } from '@/core/repositories/staff.repository.interface
 import { IServiceRepository } from '@/core/repositories/service.repository.interface';
 import { CreateAppointmentDTO } from '@/core/entities/appointment.entity';
 import { ILogger } from '@/core/providers/logger.interface';
+import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 import { ValidationErrorCodes, BusinessErrorCodes } from '@/types/error-codes';
-import { AppointmentNotificationService } from '@/infrastructure/services/appointment-notification.service';
 
 export class CreateAppointmentUseCase {
     constructor(
         private appointmentRepository: IAppointmentRepository,
         private staffRepository: IStaffRepository,
         private serviceRepository: IServiceRepository,
-        private logger: ILogger
-    ) {
-        this.notificationService = new AppointmentNotificationService(appointmentRepository, logger);
-    }
-
-    private notificationService: AppointmentNotificationService;
+        private logger: ILogger,
+        private queueProvider: IQueueProvider
+    ) { }
 
     async execute(tenantId: string, data: CreateAppointmentDTO) {
         // Validation
@@ -106,12 +103,11 @@ export class CreateAppointmentUseCase {
 
             this.logger.info('Appointment created successfully', { appointmentId: appointment.id });
 
-            // Send confirmation email (async, non-blocking)
-            this.notificationService.sendConfirmationEmail(tenantId, appointment.id).catch(err => {
-                this.logger.error('Failed to send appointment confirmation email', {
-                    appointmentId: appointment.id,
-                    error: err.message
-                });
+            // Enqueue notification job (async, non-blocking)
+            await this.queueProvider.enqueue('notifications', {
+                type: 'CONFIRMED',
+                appointmentId: appointment.id,
+                tenantId: tenantId
             });
 
             return {

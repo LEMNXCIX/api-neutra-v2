@@ -68,4 +68,31 @@ export class StaffController {
             });
         }
     }
+
+    async syncServices(req: Request, res: Response) {
+        const tenantId = req.tenantId!;
+        const { staffId } = req.params;
+        const { serviceIds } = req.body;
+
+        if (!Array.isArray(serviceIds)) {
+            return res.status(400).json({
+                success: false,
+                message: 'serviceIds must be an array',
+            });
+        }
+
+        try {
+            await this.staffRepository.syncServices(tenantId, staffId, serviceIds);
+            return res.status(200).json({
+                success: true,
+                message: 'Staff services synchronized successfully',
+            });
+        } catch (error: any) {
+            this.logger.error('Error syncing staff services', { error: error.message });
+            return res.status(500).json({
+                success: false,
+                message: 'Error syncing services',
+            });
+        }
+    }
 }

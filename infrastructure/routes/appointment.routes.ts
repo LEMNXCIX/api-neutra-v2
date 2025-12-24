@@ -6,6 +6,7 @@ import { PrismaAppointmentRepository } from '@/infrastructure/database/prisma/ap
 import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.prisma-repository';
 import { PrismaServiceRepository } from '@/infrastructure/database/prisma/service.prisma-repository';
 import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
+import { BullMQQueueProvider } from '@/infrastructure/providers/bullmq-queue.provider';
 
 function appointments(app: Application) {
     const router = Router();
@@ -13,13 +14,16 @@ function appointments(app: Application) {
     const staffRepository = new PrismaStaffRepository();
     const serviceRepository = new PrismaServiceRepository();
     const logger = new PinoLoggerProvider();
+    const queueProvider = new BullMQQueueProvider();
 
     const appointmentController = new AppointmentController(
         appointmentRepository,
         staffRepository,
         serviceRepository,
-        logger
+        logger,
+        queueProvider
     );
+
 
     app.use('/api/appointments', router);
 

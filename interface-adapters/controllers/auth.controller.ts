@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { IPasswordHasher, ITokenGenerator } from '@/core/providers/auth-providers.interface';
 import { ILogger } from '@/core/providers/logger.interface';
+import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 import { LoginUseCase } from '@/core/application/auth/login.use-case';
 import { RegisterUseCase } from '@/core/application/auth/register.use-case';
 import { SocialLoginUseCase } from '@/core/application/auth/social-login.use-case';
@@ -16,10 +17,11 @@ export class AuthController {
         userRepository: IUserRepository,
         passwordHasher: IPasswordHasher,
         tokenGenerator: ITokenGenerator,
-        logger: ILogger
+        logger: ILogger,
+        queueProvider: IQueueProvider
     ) {
         this.loginUseCase = new LoginUseCase(userRepository, passwordHasher, tokenGenerator, logger);
-        this.registerUseCase = new RegisterUseCase(userRepository, passwordHasher, tokenGenerator, logger);
+        this.registerUseCase = new RegisterUseCase(userRepository, passwordHasher, tokenGenerator, logger, queueProvider);
         this.socialLoginUseCase = new SocialLoginUseCase(userRepository, tokenGenerator);
 
         // Bind methods to instance
