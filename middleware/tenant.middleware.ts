@@ -37,6 +37,18 @@ export const tenantMiddleware = async (
         let tenantId: string | undefined;
         let tenantSlug: string | undefined;
 
+        // Check if this is a management route that might require global scope
+        const isManagementRoute =
+            req.path.startsWith('/api/users') ||
+            req.path.startsWith('/api/roles') ||
+            req.path.startsWith('/api/permissions') ||
+            req.path.startsWith('/api/tenants') ||
+            req.path.startsWith('/api/admin/stats') ||
+            req.path.startsWith('/api/auth/login') || // allow global login
+            req.path.startsWith('/api/auth/validate'); // allow session check
+
+        console.log(`[TenantMiddleware] Path: ${req.path}, SlugHeader: ${req.headers['x-tenant-slug']}, Host: ${req.headers.host}, IsManagementRoute: ${isManagementRoute}`);
+
         // Strategy 1: Explicit tenant ID from header
         const headerTenantId = req.headers['x-tenant-id'] as string;
         if (headerTenantId) {
@@ -75,18 +87,8 @@ export const tenantMiddleware = async (
 
         // Strategy 4: Fallback to default (development only)
         if (!tenantId && !tenantSlug) {
-            // Check if this is a management route that might require global scope
-            const isManagementRoute =
-                req.path.startsWith('/api/users') ||
-                req.path.startsWith('/api/roles') ||
-                req.path.startsWith('/api/permissions') ||
-                req.path.startsWith('/api/tenants') ||
-                req.path.startsWith('/api/admin/stats') ||
-                req.path.startsWith('/api/auth/login'); // allow global login
-
             if (isManagementRoute) {
-                // Allow proceeding to authentication/authorization where global access 
-                // will be verified based on user permissions.
+                // Return next() immediately if it's a management route and no tenant context provided
                 return next();
             }
 
@@ -139,6 +141,12 @@ export const tenantMiddleware = async (
 
         // Validate tenant exists and is active
         if (!tenant) {
+            if (isManagementRoute) {
+                // If it's a management route, we allow proceeding even if tenant is not found
+                // (e.g. Global Admin operations, or Login)
+                return next();
+            }
+
             res.status(404).json({
                 success: false,
                 message: 'Tenant not found',

@@ -428,12 +428,14 @@ model Coupon {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  // Optional: Limit to specific products/categories
+  // Optional: Limit to specific products/categories/services
   applicableProducts   String[] // Array of product IDs
   applicableCategories String[] // Array of category IDs
+  applicableServices   String[] // Array of service IDs
 
   // Relations
-  orders Order[] @relation("CouponOrders")
+  orders       Order[]       @relation("CouponOrders")
+  appointments Appointment[] @relation("CouponAppointments")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -553,6 +555,15 @@ model Appointment {
   // Additional info
   notes           String?
   cancellationReason String?
+  
+  // Coupon relation
+  couponId       String?
+  coupon         Coupon? @relation("CouponAppointments", fields: [couponId], references: [id])
+  discountAmount Float   @default(0)
+  
+  // Pricing
+  subtotal Float @default(0)
+  total    Float @default(0)
   
   // Email tracking
   confirmationSent Boolean @default(false)

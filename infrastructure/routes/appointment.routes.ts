@@ -5,6 +5,7 @@ import { AppointmentController } from '@/interface-adapters/controllers/appointm
 import { PrismaAppointmentRepository } from '@/infrastructure/database/prisma/appointment.prisma-repository';
 import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.prisma-repository';
 import { PrismaServiceRepository } from '@/infrastructure/database/prisma/service.prisma-repository';
+import { PrismaCouponRepository } from '@/infrastructure/database/prisma/coupon.prisma-repository';
 import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
 import { BullMQQueueProvider } from '@/infrastructure/providers/bullmq-queue.provider';
 
@@ -13,6 +14,7 @@ function appointments(app: Application) {
     const appointmentRepository = new PrismaAppointmentRepository();
     const staffRepository = new PrismaStaffRepository();
     const serviceRepository = new PrismaServiceRepository();
+    const couponRepository = new PrismaCouponRepository();
     const logger = new PinoLoggerProvider();
     const queueProvider = new BullMQQueueProvider();
 
@@ -20,6 +22,7 @@ function appointments(app: Application) {
         appointmentRepository,
         staffRepository,
         serviceRepository,
+        couponRepository,
         logger,
         queueProvider
     );

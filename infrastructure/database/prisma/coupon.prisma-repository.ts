@@ -123,7 +123,8 @@ export class PrismaCouponRepository implements ICouponRepository {
                 active: data.active ?? true,
                 expiresAt: new Date(data.expiresAt),
                 applicableProducts: data.applicableProducts || [],
-                applicableCategories: data.applicableCategories || []
+                applicableCategories: data.applicableCategories || [],
+                applicableServices: data.applicableServices || []
             }
         });
         return coupon as Coupon;

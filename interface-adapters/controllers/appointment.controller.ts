@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { IAppointmentRepository } from '@/core/repositories/appointment.repository.interface';
 import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
 import { IServiceRepository } from '@/core/repositories/service.repository.interface';
+import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
 import { CreateAppointmentUseCase } from '@/core/application/booking/create-appointment.use-case';
 import { GetAppointmentsUseCase } from '@/core/application/booking/get-appointments.use-case';
 import { GetAvailabilityUseCase } from '@/core/application/booking/get-availability.use-case';
@@ -20,6 +21,7 @@ export class AppointmentController {
         private appointmentRepository: IAppointmentRepository,
         private staffRepository: IStaffRepository,
         private serviceRepository: IServiceRepository,
+        private couponRepository: ICouponRepository,
         private logger: ILogger,
         private queueProvider: IQueueProvider
     ) {
@@ -27,6 +29,7 @@ export class AppointmentController {
             appointmentRepository,
             staffRepository,
             serviceRepository,
+            couponRepository,
             logger,
             queueProvider
         );

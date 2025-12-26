@@ -10,6 +10,7 @@ export class Tenant {
     name: string;
     slug: string;
     type: TenantType;
+    config?: any;
     active: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -20,6 +21,7 @@ export class Tenant {
         slug: string,
         type: TenantType,
         active: boolean,
+        config: any,
         createdAt: Date,
         updatedAt: Date
     ) {
@@ -28,6 +30,7 @@ export class Tenant {
         this.slug = slug;
         this.type = type;
         this.active = active;
+        this.config = config;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }

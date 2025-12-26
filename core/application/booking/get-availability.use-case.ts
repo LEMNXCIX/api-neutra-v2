@@ -95,6 +95,13 @@ export class GetAvailabilityUseCase {
                 const slotStartUTC = new Date(slotGeneric.getTime() + offset * 60000);
                 const slotEndUTC = new Date(slotStartUTC.getTime() + service.duration * 60000); // Duration in ms
 
+                // Skip slots in the past
+                const now = new Date();
+                if (slotStartUTC < now) {
+                    currentSlot.setMinutes(currentSlot.getMinutes() + interval);
+                    continue;
+                }
+
                 // Ensure slot fits within working hours (Local Check)
                 const slotEndLocal = new Date(slotGeneric.getTime() + service.duration * 60000);
 

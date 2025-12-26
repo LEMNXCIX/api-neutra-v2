@@ -17,6 +17,7 @@ export class TenantPrismaRepository implements ITenantRepository {
             data.slug,
             data.type as TenantType,
             data.active,
+            data.config || {},
             data.createdAt,
             data.updatedAt
         );
@@ -49,6 +50,7 @@ export class TenantPrismaRepository implements ITenantRepository {
                 name: data.name!,
                 slug: data.slug!,
                 type: data.type || TenantType.STORE,
+                config: data.config || {},
                 active: data.active ?? true,
             },
         });
@@ -62,6 +64,7 @@ export class TenantPrismaRepository implements ITenantRepository {
                 name: data.name,
                 slug: data.slug,
                 type: data.type,
+                config: data.config,
                 active: data.active,
             },
         });

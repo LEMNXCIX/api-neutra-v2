@@ -18,6 +18,8 @@ function tenants(app: Application) {
     router.get('/config/:slug', (req, res) => tenantController.getBySlug(req, res));
     router.get('/', authenticate, (req, res) => tenantController.getAll(req, res));
     router.post('/', authenticate, (req, res) => tenantController.create(req, res));
+    router.get('/:id/features', (req, res) => tenantController.getFeatures(req, res));
+    router.put('/:id/features', authenticate, (req, res) => tenantController.updateFeatures(req, res));
     router.get('/:id', authenticate, (req, res) => tenantController.getById(req, res));
     router.put('/:id', (req, res) => tenantController.update(req, res));
 

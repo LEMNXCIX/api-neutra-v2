@@ -1,16 +1,19 @@
 import { IAppointmentRepository } from '@/core/repositories/appointment.repository.interface';
 import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
 import { IServiceRepository } from '@/core/repositories/service.repository.interface';
+import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
 import { CreateAppointmentDTO } from '@/core/entities/appointment.entity';
 import { ILogger } from '@/core/providers/logger.interface';
 import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 import { ValidationErrorCodes, BusinessErrorCodes } from '@/types/error-codes';
+import { ValidateCouponUseCase } from '@/core/application/coupons/validate-coupon.use-case';
 
 export class CreateAppointmentUseCase {
     constructor(
         private appointmentRepository: IAppointmentRepository,
         private staffRepository: IStaffRepository,
         private serviceRepository: IServiceRepository,
+        private couponRepository: ICouponRepository,
         private logger: ILogger,
         private queueProvider: IQueueProvider
     ) { }
@@ -98,8 +101,52 @@ export class CreateAppointmentUseCase {
                 };
             }
 
+            // Coupon Logic
+            let couponId = undefined;
+            let discountAmount = 0;
+            let subtotal = service.price;
+            let total = service.price;
+
+            if (data.couponCode) {
+                const validateCouponUseCase = new ValidateCouponUseCase(this.couponRepository);
+                const validationResult = await validateCouponUseCase.execute(tenantId, {
+                    code: data.couponCode,
+                    orderTotal: service.price,
+                    serviceIds: [service.id]
+                });
+
+                if (!validationResult.valid) {
+                    return {
+                        success: false,
+                        code: 400,
+                        message: validationResult.message || 'Invalid coupon',
+                        errors: [{
+                            code: 'INVALID_COUPON',
+                            message: validationResult.message || 'The provided coupon is invalid',
+                        }],
+                    };
+                }
+
+                couponId = validationResult.coupon!.id;
+                discountAmount = validationResult.discountAmount || 0;
+                total = subtotal - discountAmount;
+                if (total < 0) total = 0;
+
+                await this.couponRepository.incrementUsage(tenantId, couponId);
+            }
+
             // Create appointment
-            const appointment = await this.appointmentRepository.create(tenantId, data);
+            // We need to pass the calculated values
+            // data doesn't have these fields, we need to extend what we pass to repo
+            const appointmentData = {
+                ...data,
+                couponId,
+                discountAmount,
+                subtotal,
+                total
+            };
+
+            const appointment = await this.appointmentRepository.create(tenantId, appointmentData);
 
             this.logger.info('Appointment created successfully', { appointmentId: appointment.id });
 
@@ -129,5 +176,4 @@ export class CreateAppointmentUseCase {
             };
         }
     }
-
 }

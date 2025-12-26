@@ -28,10 +28,17 @@ export interface Appointment {
     createdAt: Date;
     updatedAt: Date;
 
+    // Coupon info
+    couponId?: string;
+    discountAmount: number;
+    subtotal: number;
+    total: number;
+
     // Populated relations (optional)
     user?: any;
     service?: any;
     staff?: any;
+    coupon?: any;
 }
 
 export interface CreateAppointmentDTO {
@@ -40,6 +47,7 @@ export interface CreateAppointmentDTO {
     staffId: string;
     startTime: Date;
     notes?: string;
+    couponCode?: string;
 }
 
 export interface UpdateAppointmentDTO {
