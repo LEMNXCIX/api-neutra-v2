@@ -18,6 +18,12 @@ export const JWT_EXPIRATION = '7d'; // Token expiration time (7 days)
 export const JWT_ALGORITHM = 'HS256'; // JWT signing algorithm
 
 // ============================================================================
+// Auth Constants
+// ============================================================================
+export const AUTH_PASSWORD_RESET_TOKEN_BYTES = 32;
+export const AUTH_PASSWORD_RESET_EXPIRATION_MS = 60 * MINUTE_MS; // 1 hour
+
+// ============================================================================
 // Environment Constants
 // ============================================================================
 export const ENV_PRODUCTION = 'production'; // Production environment identifier

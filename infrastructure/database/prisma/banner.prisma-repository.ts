@@ -7,9 +7,9 @@ import { Banner, CreateBannerDTO, UpdateBannerDTO } from '@/core/entities/banner
  */
 export class PrismaBannerRepository implements IBannerRepository {
 
-    async findAll(tenantId: string): Promise<Banner[]> {
+    async findAll(tenantId: string | undefined): Promise<Banner[]> {
         const banners = await prisma.banner.findMany({
-            where: { tenantId },
+            where: { ...(tenantId && { tenantId }) },
             orderBy: [
                 { priority: 'desc' },
                 { createdAt: 'desc' }
@@ -26,11 +26,11 @@ export class PrismaBannerRepository implements IBannerRepository {
         return banner as Banner | null;
     }
 
-    async findActive(tenantId: string): Promise<Banner[]> {
+    async findActive(tenantId: string | undefined): Promise<Banner[]> {
         const now = new Date();
         const banners = await prisma.banner.findMany({
             where: {
-                tenantId,
+                ...(tenantId && { tenantId }),
                 active: true,
                 startsAt: { lte: now },
                 endsAt: { gte: now }

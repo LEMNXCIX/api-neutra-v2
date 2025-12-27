@@ -45,6 +45,8 @@ export const tenantMiddleware = async (
             req.path.startsWith('/api/tenants') ||
             req.path.startsWith('/api/admin/stats') ||
             req.path.startsWith('/api/auth/login') || // allow global login
+            req.path.startsWith('/api/auth/forgot-password') ||
+            req.path.startsWith('/api/auth/reset-password') ||
             req.path.startsWith('/api/auth/validate'); // allow session check
 
         console.log(`[TenantMiddleware] Path: ${req.path}, SlugHeader: ${req.headers['x-tenant-slug']}, Host: ${req.headers.host}, IsManagementRoute: ${isManagementRoute}`);

@@ -16,6 +16,8 @@ export interface User {
     twitterId?: string;
     githubId?: string;
     tenantId: string;
+    resetPasswordToken?: string;
+    resetPasswordExpires?: Date;
     createdAt?: Date;
     updatedAt?: Date;
 }

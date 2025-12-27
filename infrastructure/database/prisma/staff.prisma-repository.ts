@@ -35,10 +35,10 @@ export class PrismaStaffRepository implements IStaffRepository {
         return staff ? this.mapToEntity(staff) : null;
     }
 
-    async findAll(tenantId: string, activeOnly: boolean = false): Promise<Staff[]> {
+    async findAll(tenantId: string | undefined, activeOnly: boolean = false): Promise<Staff[]> {
         const staffList = await prisma.staff.findMany({
             where: {
-                tenantId,
+                ...(tenantId && { tenantId }),
                 ...(activeOnly && { active: true }),
             },
             include: {

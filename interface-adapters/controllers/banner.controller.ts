@@ -18,7 +18,19 @@ export class BannerController {
     }
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        let tenantId = (req as any).tenantId;
+        const user = (req as any).user;
+
+        // Super Admin Bypass
+        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+            if (req.query.tenantId) {
+                tenantId = req.query.tenantId as string;
+                if (tenantId === 'all') tenantId = undefined;
+            }
+        } else if (!tenantId) {
+            return res.status(400).json({ success: false, message: "Tenant ID required" });
+        }
+
         const useCase = new GetBannersUseCase(this.bannerRepository);
         const result = await useCase.execute(tenantId, false); // Get all banners
         return res.status(result.code).json(result);

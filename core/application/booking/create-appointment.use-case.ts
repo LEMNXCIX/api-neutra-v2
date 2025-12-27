@@ -18,7 +18,7 @@ export class CreateAppointmentUseCase {
         private queueProvider: IQueueProvider
     ) { }
 
-    async execute(tenantId: string, data: CreateAppointmentDTO) {
+    async execute(tenantId: string, data: CreateAppointmentDTO, origin?: string) {
         // Validation
         if (!data.userId || !data.serviceId || !data.staffId || !data.startTime) {
             this.logger.warn('CreateAppointment failed: missing required fields', { data });
@@ -150,17 +150,19 @@ export class CreateAppointmentUseCase {
 
             this.logger.info('Appointment created successfully', { appointmentId: appointment.id });
 
-            // Enqueue notification job (async, non-blocking)
+            // Enqueue notification job to notify STAFF (not user) about pending appointment
+            // User will be notified when staff approves/rejects
             await this.queueProvider.enqueue('notifications', {
-                type: 'CONFIRMED',
+                type: 'PENDING_APPROVAL',
                 appointmentId: appointment.id,
-                tenantId: tenantId
+                tenantId: tenantId,
+                origin: origin // Pass origin for correct links in email
             });
 
             return {
                 success: true,
                 code: 201,
-                message: 'Appointment created successfully',
+                message: 'Appointment created successfully. Awaiting staff approval.',
                 data: appointment,
             };
         } catch (error: any) {

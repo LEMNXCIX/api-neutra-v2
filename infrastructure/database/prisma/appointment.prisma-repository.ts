@@ -56,10 +56,10 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         return appointment ? this.mapToEntity(appointment) : null;
     }
 
-    async findAll(tenantId: string, filters?: AppointmentFilters): Promise<Appointment[]> {
+    async findAll(tenantId: string | undefined, filters?: AppointmentFilters): Promise<Appointment[]> {
         const appointments = await prisma.appointment.findMany({
             where: {
-                tenantId,
+                ...(tenantId && { tenantId }),
                 ...(filters?.userId && { userId: filters.userId }),
                 ...(filters?.staffId && { staffId: filters.staffId }),
                 ...(filters?.serviceId && { serviceId: filters.serviceId }),

@@ -102,6 +102,8 @@ function auth(app: Application) {
      *         description: Unauthorized
      */
     router.get('/validate', authenticate, authController.validate);
+    router.post('/forgot-password', authController.forgotPassword);
+    router.post('/reset-password', authController.resetPassword);
 
     router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
     router.get(

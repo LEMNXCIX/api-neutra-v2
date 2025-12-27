@@ -6,12 +6,16 @@ import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 import { LoginUseCase } from '@/core/application/auth/login.use-case';
 import { RegisterUseCase } from '@/core/application/auth/register.use-case';
 import { SocialLoginUseCase } from '@/core/application/auth/social-login.use-case';
+import { ForgotPasswordUseCase } from '@/core/application/auth/forgot-password.use-case';
+import { ResetPasswordUseCase } from '@/core/application/auth/reset-password.use-case';
 import { authResponse, providerResponse, deleteCookie } from '@/helpers/authResponse.helpers';
 
 export class AuthController {
     private loginUseCase: LoginUseCase;
     private registerUseCase: RegisterUseCase;
     private socialLoginUseCase: SocialLoginUseCase;
+    private forgotPasswordUseCase: ForgotPasswordUseCase;
+    private resetPasswordUseCase: ResetPasswordUseCase;
 
     constructor(
         userRepository: IUserRepository,
@@ -23,6 +27,8 @@ export class AuthController {
         this.loginUseCase = new LoginUseCase(userRepository, passwordHasher, tokenGenerator, logger);
         this.registerUseCase = new RegisterUseCase(userRepository, passwordHasher, tokenGenerator, logger, queueProvider);
         this.socialLoginUseCase = new SocialLoginUseCase(userRepository, tokenGenerator);
+        this.forgotPasswordUseCase = new ForgotPasswordUseCase(userRepository, logger, queueProvider);
+        this.resetPasswordUseCase = new ResetPasswordUseCase(userRepository, passwordHasher, logger);
 
         // Bind methods to instance
         this.login = this.login.bind(this);
@@ -30,6 +36,8 @@ export class AuthController {
         this.socialLogin = this.socialLogin.bind(this);
         this.logout = this.logout.bind(this);
         this.validate = this.validate.bind(this);
+        this.forgotPassword = this.forgotPassword.bind(this);
+        this.resetPassword = this.resetPassword.bind(this);
     }
 
     async login(req: Request, res: Response) {
@@ -41,7 +49,8 @@ export class AuthController {
 
     async signup(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
-        const result = await this.registerUseCase.execute(tenantId, req.body);
+        const origin = (req.headers['x-original-origin'] as string) || req.headers.origin || `${req.protocol}://${req.get('host')}`;
+        const result = await this.registerUseCase.execute(tenantId, req.body, origin);
         return authResponse(res, result, 200);
     }
 
@@ -62,5 +71,18 @@ export class AuthController {
             message: 'Validación exitosa',
             data: { user: (req as any).user }
         });
+    }
+
+    async forgotPassword(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
+        const origin = (req.headers['x-original-origin'] as string) || req.headers.origin || `${req.protocol}://${req.get('host')}`;
+        const result = await this.forgotPasswordUseCase.execute(tenantId, req.body.email, origin);
+        return res.status(result.code).json(result);
+    }
+
+    async resetPassword(req: Request, res: Response) {
+        const { token, newPassword } = req.body;
+        const result = await this.resetPasswordUseCase.execute(token, newPassword);
+        return res.status(result.code).json(result);
     }
 }

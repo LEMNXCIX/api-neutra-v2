@@ -93,6 +93,12 @@ function appointments(app: Application) {
         authenticate,
         (req, res) => appointmentController.updateStatus(req, res)
     );
+
+    router.delete(
+        '/:id',
+        authenticate,
+        (req, res) => appointmentController.delete(req, res)
+    );
 }
 
 export default appointments;

@@ -11,7 +11,7 @@ export class UpdateAppointmentStatusUseCase {
         private queueProvider: IQueueProvider
     ) { }
 
-    async execute(tenantId: string, id: string, status: AppointmentStatus) {
+    async execute(tenantId: string, id: string, status: AppointmentStatus, origin?: string) {
         try {
             // 1. Update status
             const appointment = await this.appointmentRepository.updateStatus(tenantId, id, status);
@@ -26,15 +26,24 @@ export class UpdateAppointmentStatusUseCase {
 
             this.logger.info('Appointment status updated', { appointmentId: id, status });
 
-            // 2. If confirmed, enqueue notification job
+            // 2. Enqueue notification job to notify USER about status change
             if (status === AppointmentStatus.CONFIRMED) {
+                // Staff approved the appointment - notify user
                 await this.queueProvider.enqueue('notifications', {
                     type: 'CONFIRMED',
                     appointmentId: id,
-                    tenantId: tenantId
+                    tenantId: tenantId,
+                    origin: origin
+                });
+            } else if (status === AppointmentStatus.CANCELLED) {
+                // Staff rejected or cancelled the appointment - notify user
+                await this.queueProvider.enqueue('notifications', {
+                    type: 'CANCELLED',
+                    appointmentId: id,
+                    tenantId: tenantId,
+                    origin: origin
                 });
             }
-
 
             return {
                 success: true,

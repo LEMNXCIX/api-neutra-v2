@@ -14,7 +14,7 @@ export class RegisterUseCase {
         private queueProvider: IQueueProvider
     ) { }
 
-    async execute(tenantId: string, data: any) {
+    async execute(tenantId: string, data: any, origin?: string) {
         if (!data.email || !data.password || !data.name) {
             this.logger.warn('Registration failed: missing fields', { data });
             return {
@@ -84,7 +84,8 @@ export class RegisterUseCase {
                 type: 'WELCOME_EMAIL',
                 email: userWithRole.email,
                 name: userWithRole.name,
-                tenantId: tenantId
+                tenantId: tenantId,
+                origin: origin
             }).catch(err => {
                 this.logger.error('Failed to enqueue welcome email', { userId: userWithRole.id, error: err.message });
             });

@@ -1,12 +1,13 @@
 
 import { ITenantRepository } from '@/core/repositories/tenant.repository.interface';
 import { ILogger } from '@/core/providers/logger.interface';
-import { Tenant, TenantType } from '@/core/entities/tenant.entity';
+import { Tenant, TenantType, TenantConfig } from '@/core/entities/tenant.entity';
 
 export interface CreateTenantDTO {
     name: string;
     slug: string;
     type: TenantType;
+    config?: TenantConfig;
 }
 
 export class CreateTenantUseCase {
@@ -31,6 +32,7 @@ export class CreateTenantUseCase {
                 name: data.name,
                 slug: data.slug,
                 type: data.type,
+                config: data.config,
                 active: true,
             });
 

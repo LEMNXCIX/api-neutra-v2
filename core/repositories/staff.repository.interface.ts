@@ -7,7 +7,7 @@ import { Staff, CreateStaffDTO, UpdateStaffDTO } from '@/core/entities/staff.ent
 export interface IStaffRepository {
     create(tenantId: string, data: CreateStaffDTO): Promise<Staff>;
     findById(tenantId: string, id: string): Promise<Staff | null>;
-    findAll(tenantId: string, activeOnly?: boolean): Promise<Staff[]>;
+    findAll(tenantId: string | undefined, activeOnly?: boolean): Promise<Staff[]>;
     update(tenantId: string, id: string, data: UpdateStaffDTO): Promise<Staff>;
     delete(tenantId: string, id: string): Promise<void>;
 

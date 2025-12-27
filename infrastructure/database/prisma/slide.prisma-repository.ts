@@ -35,9 +35,9 @@ export class PrismaSlideRepository implements ISlideRepository {
         return this.mapToEntity(slide);
     }
 
-    async findAll(tenantId: string): Promise<Slideshow[]> {
+    async findAll(tenantId: string | undefined): Promise<Slideshow[]> {
         const slides = await prisma.slideshow.findMany({
-            where: { tenantId }
+            where: { ...(tenantId && { tenantId }) }
         });
         return slides.map(this.mapToEntity);
     }

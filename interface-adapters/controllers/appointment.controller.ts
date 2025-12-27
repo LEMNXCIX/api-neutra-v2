@@ -7,6 +7,7 @@ import { CreateAppointmentUseCase } from '@/core/application/booking/create-appo
 import { GetAppointmentsUseCase } from '@/core/application/booking/get-appointments.use-case';
 import { GetAvailabilityUseCase } from '@/core/application/booking/get-availability.use-case';
 import { UpdateAppointmentStatusUseCase } from '@/core/application/booking/update-appointment-status.use-case';
+import { DeleteAppointmentUseCase } from '@/core/application/booking/delete-appointment.use-case';
 import { AppointmentStatus } from '@/core/entities/appointment.entity';
 import { ILogger } from '@/core/providers/logger.interface';
 import { IQueueProvider } from '@/core/providers/queue-provider.interface';
@@ -16,6 +17,7 @@ export class AppointmentController {
     private getAppointmentsUseCase: GetAppointmentsUseCase;
     private getAvailabilityUseCase: GetAvailabilityUseCase;
     private updateAppointmentStatusUseCase: UpdateAppointmentStatusUseCase;
+    private deleteAppointmentUseCase: DeleteAppointmentUseCase;
 
     constructor(
         private appointmentRepository: IAppointmentRepository,
@@ -41,17 +43,36 @@ export class AppointmentController {
             logger
         );
         this.updateAppointmentStatusUseCase = new UpdateAppointmentStatusUseCase(appointmentRepository, logger, queueProvider);
+        this.deleteAppointmentUseCase = new DeleteAppointmentUseCase(appointmentRepository, logger);
     }
 
 
     async create(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const result = await this.createAppointmentUseCase.execute(tenantId, req.body);
+        const origin = (req.headers['x-original-origin'] as string) || req.headers.origin || `${req.protocol}://${req.get('host')}`;
+        this.logger.info(`[AppointmentController] Create origin captured: ${origin}`, {
+            xOriginalOrigin: req.headers['x-original-origin'],
+            originHeader: req.headers.origin,
+            host: req.get('host')
+        });
+        const result = await this.createAppointmentUseCase.execute(tenantId, req.body, origin);
         return res.status(result.code).json(result);
     }
 
     async getAll(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        let tenantId = req.tenantId;
+        const user = req.user as any;
+
+        // Super Admin Bypass
+        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+            if (req.query.tenantId) {
+                tenantId = req.query.tenantId as string;
+                if (tenantId === 'all') tenantId = undefined; // Fetch all tenants
+            }
+        } else if (!tenantId) {
+            return res.status(400).json({ success: false, message: "Tenant ID required" });
+        }
+
         const filters: any = {};
 
         if (req.query.userId) filters.userId = req.query.userId as string;
@@ -61,7 +82,7 @@ export class AppointmentController {
         if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
         if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
 
-        const result = await this.getAppointmentsUseCase.execute(tenantId, filters);
+        const result = await this.getAppointmentsUseCase.execute(tenantId!, filters);
         return res.status(result.code).json(result);
     }
 
@@ -138,7 +159,8 @@ export class AppointmentController {
         }
 
         try {
-            const result = await this.updateAppointmentStatusUseCase.execute(tenantId, id, status as AppointmentStatus);
+            const origin = (req.headers['x-original-origin'] as string) || req.headers.origin || `${req.protocol}://${req.get('host')}`;
+            const result = await this.updateAppointmentStatusUseCase.execute(tenantId, id, status as AppointmentStatus, origin);
             return res.status(result.code).json(result);
         } catch (error: any) {
             this.logger.error('Error updating appointment status in controller', {
@@ -175,5 +197,26 @@ export class AppointmentController {
         });
 
         return res.status(result.code).json(result);
+    }
+
+    async delete(req: Request, res: Response) {
+        const tenantId = req.tenantId!;
+        const { id } = req.params;
+
+        try {
+            const result = await this.deleteAppointmentUseCase.execute(tenantId, id);
+            return res.status(result.code).json(result);
+        } catch (error: any) {
+            this.logger.error('Error deleting appointment', {
+                tenantId,
+                id,
+                error: error.message
+            });
+            return res.status(500).json({
+                success: false,
+                message: 'Error deleting appointment',
+                error: error.message
+            });
+        }
     }
 }

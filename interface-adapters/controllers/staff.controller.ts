@@ -29,9 +29,21 @@ export class StaffController {
     }
 
     async getAll(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        let tenantId = req.tenantId;
+        const user = (req as any).user;
+
+        // Super Admin Bypass
+        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+            if (req.query.tenantId) {
+                tenantId = req.query.tenantId as string;
+                if (tenantId === 'all') tenantId = undefined;
+            }
+        } else if (!tenantId) {
+            return res.status(400).json({ success: false, message: "Tenant ID required" });
+        }
+
         const activeOnly = req.query.activeOnly !== 'false';
-        const result = await this.getStaffUseCase.execute(tenantId, activeOnly);
+        const result = await this.getStaffUseCase.execute(tenantId!, activeOnly);
         return res.status(result.code).json(result);
     }
 

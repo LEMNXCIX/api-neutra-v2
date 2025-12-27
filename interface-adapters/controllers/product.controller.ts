@@ -43,7 +43,19 @@ export class ProductController {
     }
 
     async getAll(req: Request, res: Response) {
-        const tenantId = (req as any).tenantId;
+        let tenantId = (req as any).tenantId;
+        const user = (req as any).user;
+
+        // Super Admin Bypass
+        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+            if (req.query.tenantId) {
+                tenantId = req.query.tenantId as string;
+                if (tenantId === 'all') tenantId = undefined;
+            }
+        } else if (!tenantId) {
+            return res.status(400).json({ success: false, message: "Tenant ID required" });
+        }
+
         const result = await this.getAllProductsUseCase.execute(tenantId);
         return res.json(result);
     }

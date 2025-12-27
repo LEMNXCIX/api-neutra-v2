@@ -5,7 +5,7 @@ import { Product, CreateProductDTO, UpdateProductDTO } from '@/core/entities/pro
  * All operations are scoped to a specific tenant for data isolation
  */
 export interface IProductRepository {
-    findAll(tenantId: string, options?: { categoryId?: string }): Promise<Product[]>;
+    findAll(tenantId: string | undefined, options?: { categoryId?: string }): Promise<Product[]>;
     findById(tenantId: string, id: string): Promise<Product | null>;
     create(tenantId: string, product: CreateProductDTO): Promise<Product>;
     update(tenantId: string, id: string, product: UpdateProductDTO): Promise<Product>;

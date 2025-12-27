@@ -296,6 +296,18 @@ export class PrismaUserRepository implements IUserRepository {
         return users as any[];
     }
 
+    async findByResetToken(token: string): Promise<User | null> {
+        const user = await prisma.user.findFirst({
+            where: {
+                resetPasswordToken: token,
+                resetPasswordExpires: {
+                    gt: new Date()
+                }
+            }
+        });
+        return user as any;
+    }
+
     async delete(tenantId: string | undefined, id: string): Promise<void> {
         const where: any = { id };
         if (tenantId) where.tenantId = tenantId;

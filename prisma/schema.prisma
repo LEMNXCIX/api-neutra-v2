@@ -209,6 +209,10 @@ model User {
   twitterId  String?
   githubId   String?
 
+  // Password Reset
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
   // Relations
   products Product[]
   cart     Cart?

@@ -7,8 +7,8 @@ import { Product, CreateProductDTO, UpdateProductDTO } from '@/core/entities/pro
  * All queries are automatically scoped to the provided tenantId
  */
 export class PrismaProductRepository implements IProductRepository {
-    async findAll(tenantId: string, options?: { categoryId?: string }): Promise<Product[]> {
-        const where: any = { tenantId };
+    async findAll(tenantId: string | undefined, options?: { categoryId?: string }): Promise<Product[]> {
+        const where: any = { ...(tenantId && { tenantId }) };
 
         if (options?.categoryId) {
             where.categories = {

@@ -31,5 +31,6 @@ export interface IUserRepository {
     getUsersStats(tenantId?: string): Promise<{ yearMonth: string; total: number }[]>;
     getSummaryStats(tenantId?: string): Promise<{ totalUsers: number; adminUsers: number; regularUsers: number }>;
     findByRoleId(tenantId: string | undefined, roleId: string): Promise<User[]>;
+    findByResetToken(token: string): Promise<User | null>;
     delete(tenantId: string | undefined, id: string): Promise<void>;
 }
