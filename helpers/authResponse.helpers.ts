@@ -1,4 +1,4 @@
-import { Response, CookieOptions } from 'express';
+import { Response, Request, CookieOptions } from 'express';
 import config from '@/config/index.config';
 
 const production: boolean = config.production;
@@ -6,27 +6,61 @@ const ENVIRONMENT: string = config.ENVIRONMENT;
 const callbackURL: string | undefined = config.callbackURL;
 const callbackURLDev: string | undefined = config.callbackURLDev;
 
-function cookieOptions(): CookieOptions {
-  if (production || ENVIRONMENT === 'prod' || ENVIRONMENT === 'production') {
-    return {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-    } as CookieOptions;
+function getCookieDomain(req: Request): string | undefined {
+  const host = req.get('host');
+  if (!host) return undefined;
+
+  const domain = host.split(':')[0];
+
+  // For local development with subdomains
+  if (domain.endsWith('.localhost')) {
+    return '.localhost';
   }
 
-  return {
-    httpOnly: false,
-    secure: false,
-    sameSite: 'lax',
-  } as CookieOptions;
+  // For nip.io development (e.g. 172.27.16.1.nip.io)
+  if (domain.endsWith('.nip.io')) {
+    const parts = domain.split('.');
+    // nip.io with IP: [a,b,c,d,nip,io] -> 6 parts
+    // We want the last 6 parts to cover any subdomain of that IP nip.io address
+    if (parts.length >= 6) {
+      return '.' + parts.slice(-6).join('.');
+    }
+    return '.nip.io';
+  }
+
+  // For production - can be configured or derived
+  // If we have a main domain like neuntra.ec, we might want .neuntra.ec
+  if (production && !domain.includes('localhost') && domain.includes('.')) {
+    const parts = domain.split('.');
+    if (parts.length >= 2) {
+      return '.' + parts.slice(-2).join('.');
+    }
+  }
+
+  return undefined;
 }
 
-export function authResponse(res: Response, result: any, statusCode: number) {
+function cookieOptions(req: Request): CookieOptions {
+  const domain = getCookieDomain(req);
+
+  const options: CookieOptions = {
+    httpOnly: production || ENVIRONMENT === 'prod' || ENVIRONMENT === 'production',
+    secure: production || ENVIRONMENT === 'prod' || ENVIRONMENT === 'production',
+    sameSite: (production || ENVIRONMENT === 'prod' || ENVIRONMENT === 'production') ? 'none' : 'lax',
+  };
+
+  if (domain) {
+    options.domain = domain;
+  }
+
+  return options;
+}
+
+export function authResponse(req: Request, res: Response, result: any, statusCode: number) {
   const code = result && typeof result.code === 'number' ? result.code : statusCode;
 
   if (result && result.success) {
-    const opts = Object.assign({}, cookieOptions(), {
+    const opts = Object.assign({}, cookieOptions(req), {
       expires: new Date(new Date().setDate(new Date().getDate() + 7)),
     });
 
@@ -57,7 +91,7 @@ export function authResponse(res: Response, result: any, statusCode: number) {
   return res.apiError(result.errors || result.message || result, result.message || 'Error', code);
 }
 
-export function providerResponse(res: Response, result: any, statusCode: number) {
+export function providerResponse(req: Request, res: Response, result: any, statusCode: number) {
   const code = result && typeof result.code === 'number' ? result.code : statusCode;
 
   let token: string | undefined;
@@ -66,7 +100,7 @@ export function providerResponse(res: Response, result: any, statusCode: number)
   else if (result && result.data && result.data.data && result.data.data.token) token = result.data.data.token;
 
   if (result && result.success) {
-    const opts = Object.assign({}, cookieOptions(), {
+    const opts = Object.assign({}, cookieOptions(req), {
       expires: new Date(new Date().setDate(new Date().getDate() + 7)),
     });
 
@@ -85,12 +119,12 @@ export function providerResponse(res: Response, result: any, statusCode: number)
   return res.apiError(result.errors || result.message || result, result.message || 'Error', code);
 }
 
-export function deleteCookie(res: Response) {
+export function deleteCookie(req: Request, res: Response) {
   return res
     .cookie(
       'token',
       '',
-      Object.assign({}, cookieOptions(), {
+      Object.assign({}, cookieOptions(req), {
         expires: new Date(),
       })
     )

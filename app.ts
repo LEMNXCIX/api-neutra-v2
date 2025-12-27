@@ -25,6 +25,7 @@ import permission from "@/infrastructure/routes/permission.routes";
 import banner from "@/infrastructure/routes/banner.routes";
 import coupon from "@/infrastructure/routes/coupon.routes";
 import tenants from "@/infrastructure/routes/tenant.routes";
+import features from "@/infrastructure/routes/feature.routes";
 import { swaggerSpec } from "@/infrastructure/config/swagger.config";
 import { apiReference } from "@scalar/express-api-reference";
 
@@ -138,6 +139,8 @@ app.use(
       "Accept",
       "X-Requested-With",
       "Origin",
+      "x-tenant-id",
+      "x-tenant-slug"
     ],
     exposedHeaders: ["Set-Cookie"],
     maxAge: 86400, // 24 hours - cache preflight requests
@@ -168,7 +171,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, Accept, X-Requested-With, Origin"
+      "Content-Type, Authorization, Accept, X-Requested-With, Origin, x-tenant-id, x-tenant-slug"
     );
     res.setHeader("Access-Control-Max-Age", "86400");
     return res.status(204).end();
@@ -177,18 +180,25 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.use(
-  session({
-    secret: sesionSecret as string,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: isProduction,
-      httpOnly: true,
-      sameSite: 'lax', // Strongly recommended, but optional
+// Token cookie domain middleware for development
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (!isProduction && req.cookies.token) {
+    const host = req.get('host');
+    if (host && host.includes('.localhost')) {
+      // Re-set the cookie with the correct domain if it's missing or set to the specific host
+      // This is a safety measure to ensure the token remains shared
+      res.cookie('token', req.cookies.token, {
+        domain: '.localhost',
+        path: '/',
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      });
     }
-  })
-);
+  }
+  next();
+});
 
 import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
 import { tenantMiddleware } from "@/middleware/tenant.middleware";
@@ -217,6 +227,7 @@ staffRoutes(app);
 appointmentRoutes(app);
 banner(app);
 coupon(app);
+features(app);
 
 // Ruta raíz
 app.get("/", (req: Request, res: Response) => {

@@ -12,6 +12,7 @@ export interface WorkingHours {
 
 export interface Staff {
     id: string;
+    userId?: string; // Optional link to registered user
     name: string;
     email?: string;
     phone?: string;
@@ -26,6 +27,7 @@ export interface Staff {
 }
 
 export interface CreateStaffDTO {
+    userId?: string;
     name: string;
     email?: string;
     phone?: string;
@@ -36,6 +38,7 @@ export interface CreateStaffDTO {
 }
 
 export interface UpdateStaffDTO {
+    userId?: string;
     name?: string;
     email?: string;
     phone?: string;

@@ -1,11 +1,14 @@
 import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { UpdateStaffDTO } from '@/core/entities/staff.entity';
 import { ILogger } from '@/core/providers/logger.interface';
 import { ValidationErrorCodes } from '@/types/error-codes';
+import { prisma } from '@/config/db.config';
 
 export class UpdateStaffUseCase {
     constructor(
         private staffRepository: IStaffRepository,
+        private userRepository: IUserRepository,
         private logger: ILogger
     ) { }
 
@@ -33,7 +36,34 @@ export class UpdateStaffUseCase {
                 };
             }
 
-            const staff = await this.staffRepository.update(tenantId, id, data);
+            let userId = data.userId || existingStaff.userId;
+
+            // If email is being updated or exists, check for user linking
+            if (!userId && (data.email || existingStaff.email)) {
+                const emailToSearch = data.email || existingStaff.email;
+                if (emailToSearch) {
+                    const user = await this.userRepository.findByEmail(emailToSearch);
+                    if (user) {
+                        userId = user.id;
+                    }
+                }
+            }
+
+            // Sync role if userId is present
+            if (userId) {
+                const role = await (prisma as any).role.findFirst({
+                    where: { name: 'STAFF', tenantId }
+                });
+
+                if (role) {
+                    await this.userRepository.addTenant(userId, tenantId, role.id);
+                }
+            }
+
+            const staff = await this.staffRepository.update(tenantId, id, {
+                ...data,
+                userId
+            });
 
             this.logger.info('Staff updated successfully', { staffId: staff.id });
 

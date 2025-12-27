@@ -21,8 +21,8 @@ export class ForgotPasswordUseCase {
         }
 
         try {
-            // Find user globally or within tenant
-            const user = await this.userRepository.findByEmail(tenantId, email);
+            // Find user globally
+            const user = await this.userRepository.findByEmail(email);
 
             if (!user) {
                 // For security, don't reveal if user exists or not
@@ -39,7 +39,7 @@ export class ForgotPasswordUseCase {
             const resetExpires = new Date(Date.now() + AUTH_PASSWORD_RESET_EXPIRATION_MS);
 
             // Update user with reset info
-            await this.userRepository.update(user.tenantId, user.id, {
+            await this.userRepository.update(user.id, {
                 resetPasswordToken: resetToken,
                 resetPasswordExpires: resetExpires
             });
@@ -53,7 +53,8 @@ export class ForgotPasswordUseCase {
                 type: 'PASSWORD_RESET',
                 email: user.email,
                 resetLink,
-                tenantId: user.tenantId
+                tenantId: tenantId || user.tenants?.[0]?.tenantId,
+                origin: origin
             });
 
             this.logger.info('Password reset token generated and enqueued', { userId: user.id, email: user.email });

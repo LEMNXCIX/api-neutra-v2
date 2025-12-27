@@ -4,7 +4,7 @@ export class DeleteUserUseCase {
     constructor(private userRepository: IUserRepository) { }
 
     async execute(tenantId: string | undefined, id: string) {
-        const existingUser = await this.userRepository.findById(tenantId, id);
+        const existingUser = await this.userRepository.findById(id);
 
         if (!existingUser) {
             return {
@@ -15,7 +15,7 @@ export class DeleteUserUseCase {
             };
         }
 
-        await this.userRepository.delete(tenantId, id);
+        await this.userRepository.delete(id);
 
         return {
             success: true,

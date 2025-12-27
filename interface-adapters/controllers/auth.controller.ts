@@ -44,25 +44,28 @@ export class AuthController {
         // tenantId can be undefined for global login
         const tenantId = (req as any).tenantId;
         const result = await this.loginUseCase.execute(tenantId, req.body);
-        return authResponse(res, result, 401);
+        return authResponse(req, res, result, 401);
     }
 
     async signup(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
-        const origin = (req.headers['x-original-origin'] as string) || req.headers.origin || `${req.protocol}://${req.get('host')}`;
+        const origin = (req.headers['x-original-origin'] as string) ||
+            req.headers.origin ||
+            (req.headers.referer ? new URL(req.headers.referer as string).origin : null) ||
+            `${req.protocol}://${req.get('host')}`;
         const result = await this.registerUseCase.execute(tenantId, req.body, origin);
-        return authResponse(res, result, 200);
+        return authResponse(req, res, result, 200);
     }
 
     async socialLogin(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
         const user = (req as any).user.profile;
         const result = await this.socialLoginUseCase.execute(tenantId, user);
-        return providerResponse(res, result, 401);
+        return providerResponse(req, res, result, 401);
     }
 
     logout(req: Request, res: Response) {
-        return deleteCookie(res);
+        return deleteCookie(req, res);
     }
 
     validate(req: Request, res: Response) {
@@ -75,7 +78,10 @@ export class AuthController {
 
     async forgotPassword(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
-        const origin = (req.headers['x-original-origin'] as string) || req.headers.origin || `${req.protocol}://${req.get('host')}`;
+        const origin = (req.headers['x-original-origin'] as string) ||
+            req.headers.origin ||
+            (req.headers.referer ? new URL(req.headers.referer as string).origin : null) ||
+            `${req.protocol}://${req.get('host')}`;
         const result = await this.forgotPasswordUseCase.execute(tenantId, req.body.email, origin);
         return res.status(result.code).json(result);
     }

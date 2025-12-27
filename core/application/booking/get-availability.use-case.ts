@@ -71,9 +71,6 @@ export class GetAvailabilityUseCase {
                 a => a.status !== 'CANCELLED' && a.status !== 'NO_SHOW'
             );
 
-            console.log(`[Avail] Debug Start. Offset=${data.timezoneOffset}. ActiveApps=${activeAppointments.length}`);
-            activeAppointments.forEach(a => console.log(`[Avail] App: ${a.id} ${a.status} ${a.startTime.toISOString()} - ${a.endTime.toISOString()}`));
-
             // 4. Generate slots in generic terms (09:00, 09:30...)
             const availableSlots: string[] = [];
             const interval = 30; // minutes
@@ -112,9 +109,7 @@ export class GetAvailabilityUseCase {
                         const appEnd = new Date(app.endTime);
                         // Overlap condition: (StartA < EndB) and (EndA > StartB)
                         const overlap = (slotStartUTC < appEnd && slotEndUTC > appStart);
-                        if (overlap) {
-                            console.log(`[Avail] Conflict! Slot ${slotStartUTC.toISOString()} overlaps App ${appStart.toISOString()}`);
-                        }
+
                         return overlap;
                     });
 

@@ -48,6 +48,7 @@ model Feature {
   name        String
   description String?
   category    String? // MODULE, INTEGRATION, CUSTOMIZATION
+  price       Float   @default(0)
 
   tenantFeatures TenantFeature[]
 
@@ -105,7 +106,7 @@ model Tenant {
   plan   Plan?   @relation(fields: [planId], references: [id])
 
   // Relations
-  users          User[]
+  users          UserTenant[]
   products       Product[]
   categories     Category[]
   orders         Order[]
@@ -131,7 +132,7 @@ model Tenant {
 // RBAC Models
 model Role {
   id          String  @id @default(uuid())
-  name        String  @unique // "ADMIN", "MANAGER", "USER"
+  name        String  // "ADMIN", "MANAGER", "USER"
   description String?
   level       Int     @default(0) // For backward compatibility
   active      Boolean @default(true)
@@ -141,11 +142,12 @@ model Role {
   tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
   permissions RolePermission[]
-  users       User[]
+  users       UserTenant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, name])
   @@index([tenantId])
   @@map("roles")
 }
@@ -192,16 +194,13 @@ model User {
   name       String
   email      String  @unique
   password   String
-  roleId     String
-  role       Role    @relation(fields: [roleId], references: [id])
   profilePic String?
   phone      String?
   pushToken  String?
   active     Boolean @default(true)
 
   // Multi-tenancy
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenants    UserTenant[]
 
   // Provider IDs
   googleId   String?
@@ -218,12 +217,29 @@ model User {
   cart     Cart?
   orders   Order[]
   appointments Appointment[] @relation("UserAppointments")
+  staff        Staff[]       @relation("UserAsStaff")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([tenantId])
   @@map("users")
+}
+
+model UserTenant {
+  id       String @id @default(uuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  roleId   String
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+  @@map("user_tenants")
 }
 
 model Product {
@@ -491,6 +507,11 @@ model Service {
 
 model Staff {
   id          String   @id @default(uuid())
+  
+  // Link to User
+  userId      String?
+  user        User?    @relation("UserAsStaff", fields: [userId], references: [id])
+
   name        String
   email       String?
   phone       String?
@@ -513,6 +534,7 @@ model Staff {
   updatedAt   DateTime @updatedAt
   
   @@index([tenantId])
+  @@index([userId])
   @@index([tenantId, active])
   @@map("staff")
 }

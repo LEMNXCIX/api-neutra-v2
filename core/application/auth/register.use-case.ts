@@ -4,6 +4,7 @@ import { CreateUserDTO } from '@/core/entities/user.entity';
 import { ILogger } from '@/core/providers/logger.interface';
 import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 import { ValidationErrorCodes, ResourceErrorCodes } from '@/types/error-codes';
+import { prisma } from '@/config/db.config';
 
 export class RegisterUseCase {
     constructor(
@@ -14,7 +15,23 @@ export class RegisterUseCase {
         private queueProvider: IQueueProvider
     ) { }
 
-    async execute(tenantId: string, data: any, origin?: string) {
+    async execute(tenantId: string | undefined, data: any, origin?: string) {
+        // Default to superadmin tenant if none provided
+        let resolvedTenantId = tenantId;
+        if (!resolvedTenantId) {
+            const superadminTenant = await prisma.tenant.findFirst({
+                where: { slug: 'superadmin' }
+            });
+            resolvedTenantId = superadminTenant?.id;
+        }
+
+        if (!resolvedTenantId) {
+            this.logger.error('No tenant context provided and superadmin not found');
+            throw new Error('Tenant context required');
+        }
+
+        const currentTenantId = resolvedTenantId;
+
         if (!data.email || !data.password || !data.name) {
             this.logger.warn('Registration failed: missing fields', { data });
             return {
@@ -30,9 +47,28 @@ export class RegisterUseCase {
         }
 
         try {
-            const existingUser = await this.userRepository.findByEmail(tenantId, data.email);
-            if (existingUser) {
-                this.logger.warn('Registration failed: email already exists', { email: data.email });
+            // findByEmail signature changed: (email, options)
+            let user = await this.userRepository.findByEmail(data.email);
+
+            if (user) {
+                // Check if user already belongs to this tenant
+                const alreadyInTenant = user.tenants?.some(ut => ut.tenantId === currentTenantId || ut.tenant?.slug === currentTenantId);
+                if (alreadyInTenant) {
+                    this.logger.warn('Registration failed: user already in tenant', { email: data.email, currentTenantId });
+                    return {
+                        success: false,
+                        code: 409,
+                        message: "Email already exists in this tenant",
+                        errors: [{
+                            code: ResourceErrorCodes.ALREADY_EXISTS,
+                            message: "You are already registered in this site. Please login.",
+                            field: 'email'
+                        }]
+                    };
+                }
+                // If user exists globally but not in this tenant, we might want to add them or tell them to use "Join Site"
+                // For now, let's treat it as email exists to keep it simple and secure
+                this.logger.warn('Registration failed: email exists globally', { email: data.email });
                 return {
                     success: false,
                     code: 409,
@@ -47,18 +83,44 @@ export class RegisterUseCase {
 
             const hashedPassword = await this.passwordHasher.hash(data.password);
 
-            const newUser: CreateUserDTO = {
+            const newUserDTO: CreateUserDTO = {
                 name: data.name,
                 email: data.email,
                 password: hashedPassword,
-                // roleId is optional - repository will assign default USER role
                 profilePic: data.profilePic
             };
 
-            const user = await this.userRepository.create(tenantId, newUser);
+            user = await this.userRepository.create(newUserDTO);
+
+            // Fetch 'USER' role for this tenant
+            // Need a way to get roles from repo - for now I'll assume we have a way or use a default ID if we had one
+            // Better: repository.addTenant should find the default role if not provided? 
+            // no, let's find it here or in the controller.
+
+            // To be safe, I'll use a placeholder and fix it if I need a RoleRepository
+            // Actually, I'll just assume the first 'USER' role for the tenant.
+
+            // For now, let's use the userRepository.addTenant method 
+            // which I'll update to handle default roles if needed, 
+            // but here I need the roleId.
+
+            // I'll add a temporary findRoleByName to userRepository or similar.
+            // Wait, I'll just use a direct prisma call for now if I don't have a RoleRepository.
+            // Actually, I should probably have a RoleRepository.
+
+            const role = await (prisma as any).role.findFirst({
+                where: { name: 'USER', tenantId: currentTenantId }
+            });
+
+            if (!role) {
+                this.logger.error('DEFAULT_ROLE_NOT_FOUND', { currentTenantId });
+                throw new Error(`Default role 'USER' not found for tenant. Please ensure the tenant is correctly initialized.`);
+            }
+
+            await this.userRepository.addTenant(user.id, currentTenantId, role.id);
 
             // Fetch user with role and permissions for JWT
-            const userWithRole = await this.userRepository.findById(tenantId, user.id, {
+            const userWithRole = await this.userRepository.findById(user.id, {
                 includeRole: true,
                 includePermissions: true
             });
@@ -67,12 +129,19 @@ export class RegisterUseCase {
                 throw new Error('User creation failed');
             }
 
+            // Resolve the specific tenant context for the token
+            const userTenant = userWithRole.tenants?.find(ut => ut.tenantId === currentTenantId);
+
             const token = this.tokenGenerator.generate({
                 id: userWithRole.id,
                 email: userWithRole.email,
                 name: userWithRole.name,
-                role: userWithRole.role,  // Includes permissions
-                tenantId: tenantId
+                role: {
+                    id: userTenant?.role?.id || '',
+                    name: userTenant?.role?.name || '',
+                    level: userTenant?.role?.level || 0
+                },
+                tenantId: currentTenantId
             });
 
             const { password: _, ...safeUser } = userWithRole;
@@ -84,7 +153,7 @@ export class RegisterUseCase {
                 type: 'WELCOME_EMAIL',
                 email: userWithRole.email,
                 name: userWithRole.name,
-                tenantId: tenantId,
+                tenantId: currentTenantId,
                 origin: origin
             }).catch(err => {
                 this.logger.error('Failed to enqueue welcome email', { userId: userWithRole.id, error: err.message });

@@ -11,6 +11,7 @@ export class PrismaStaffRepository implements IStaffRepository {
         const staff = await prisma.staff.create({
             data: {
                 tenantId,
+                userId: data.userId,
                 name: data.name,
                 email: data.email,
                 phone: data.phone,
@@ -26,6 +27,30 @@ export class PrismaStaffRepository implements IStaffRepository {
     async findById(tenantId: string, id: string): Promise<Staff | null> {
         const staff = await prisma.staff.findFirst({
             where: { id, tenantId },
+            include: {
+                staffServices: {
+                    select: { serviceId: true }
+                }
+            }
+        });
+        return staff ? this.mapToEntity(staff) : null;
+    }
+
+    async findByEmail(tenantId: string, email: string): Promise<Staff | null> {
+        const staff = await prisma.staff.findFirst({
+            where: { email, tenantId },
+            include: {
+                staffServices: {
+                    select: { serviceId: true }
+                }
+            }
+        });
+        return staff ? this.mapToEntity(staff) : null;
+    }
+
+    async findByUserId(tenantId: string, userId: string): Promise<Staff | null> {
+        const staff = await prisma.staff.findFirst({
+            where: { userId, tenantId },
             include: {
                 staffServices: {
                     select: { serviceId: true }
@@ -55,6 +80,7 @@ export class PrismaStaffRepository implements IStaffRepository {
         const staff = await prisma.staff.update({
             where: { id, tenantId },
             data: {
+                userId: data.userId,
                 name: data.name,
                 email: data.email,
                 phone: data.phone,
@@ -133,6 +159,7 @@ export class PrismaStaffRepository implements IStaffRepository {
     private mapToEntity(staff: any): Staff {
         return {
             id: staff.id,
+            userId: staff.userId,
             name: staff.name,
             email: staff.email,
             phone: staff.phone,

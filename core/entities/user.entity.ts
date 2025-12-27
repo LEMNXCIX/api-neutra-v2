@@ -5,8 +5,6 @@ export interface User {
     name: string;
     email: string;
     password?: string;
-    roleId: string;
-    role?: Role;  // Optional, populated when needed
     profilePic?: string;
     phone?: string;
     pushToken?: string;
@@ -15,18 +13,40 @@ export interface User {
     facebookId?: string;
     twitterId?: string;
     githubId?: string;
-    tenantId: string;
+
+    // Multi-tenancy
+    tenants?: UserTenant[];
+    tenant?: {
+        id: string;
+        name: string;
+        slug: string;
+    };
+    role?: Role;
+
     resetPasswordToken?: string;
     resetPasswordExpires?: Date;
     createdAt?: Date;
     updatedAt?: Date;
 }
 
+export interface UserTenant {
+    id: string;
+    userId: string;
+    tenantId: string;
+    roleId: string;
+    role?: Role;
+    tenantId_userId?: string; // Prisma internal composite if needed
+    tenant?: {
+        id: string;
+        name: string;
+        slug: string;
+    };
+}
+
 export interface CreateUserDTO {
     name: string;
     email: string;
     password?: string;
-    roleId?: string;  // Optional, defaults to USER role if not provided
     profilePic?: string;
     phone?: string;
     pushToken?: string;

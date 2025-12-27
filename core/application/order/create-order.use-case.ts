@@ -111,7 +111,7 @@ export class CreateOrderUseCase {
     private async sendOrderConfirmation(tenantId: string, userId: string, order: any): Promise<void> {
         try {
             // Fetch user to get email
-            const user = await this.userRepository.findById(tenantId, userId);
+            const user = await this.userRepository.findById(userId);
             if (!user || !user.email) {
                 this.logger.warn('Cannot send order confirmation: user email not found', { userId });
                 return;

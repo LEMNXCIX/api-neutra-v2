@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
+import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { CreateStaffUseCase } from '@/core/application/booking/create-staff.use-case';
 import { GetStaffUseCase } from '@/core/application/booking/get-staff.use-case';
 import { UpdateStaffUseCase } from '@/core/application/booking/update-staff.use-case';
@@ -14,11 +15,12 @@ export class StaffController {
 
     constructor(
         private staffRepository: IStaffRepository,
+        private userRepository: IUserRepository,
         private logger: ILogger
     ) {
-        this.createStaffUseCase = new CreateStaffUseCase(staffRepository, logger);
+        this.createStaffUseCase = new CreateStaffUseCase(staffRepository, userRepository, logger);
         this.getStaffUseCase = new GetStaffUseCase(staffRepository, logger);
-        this.updateStaffUseCase = new UpdateStaffUseCase(staffRepository, logger);
+        this.updateStaffUseCase = new UpdateStaffUseCase(staffRepository, userRepository, logger);
         this.deleteStaffUseCase = new DeleteStaffUseCase(staffRepository, logger);
     }
 
@@ -104,6 +106,39 @@ export class StaffController {
             return res.status(500).json({
                 success: false,
                 message: 'Error syncing services',
+            });
+        }
+    }
+    async getMe(req: Request, res: Response) {
+        const tenantId = req.tenantId!;
+        const user = (req as any).user;
+
+        this.logger.info(`[StaffController.getMe] User: ${user?.id}, Tenant: ${tenantId}`);
+
+        if (!user || !user.id) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        try {
+            const staff = await this.staffRepository.findByUserId(tenantId, user.id);
+            this.logger.info(`[StaffController.getMe] Repository result: ${staff ? staff.id : 'NOT_FOUND'}`);
+
+            if (!staff) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Staff profile not found for this user',
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: staff,
+            });
+        } catch (error: any) {
+            this.logger.error('Error retrieving staff profile', { error: error.message });
+            return res.status(500).json({
+                success: false,
+                message: 'Error retrieving staff profile',
             });
         }
     }

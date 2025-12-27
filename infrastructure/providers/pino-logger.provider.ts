@@ -100,6 +100,26 @@ export class PinoLoggerProvider implements ILogger {
             statusCode: res.statusCode
         };
 
+        // For error responses (4xx, 5xx), extract error message if available
+        if (res.statusCode >= 400 && res.body) {
+            try {
+                const body = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+                if (body.errors && Array.isArray(body.errors) && body.errors.length > 0) {
+                    metadata.message = body.errors[0].message;
+
+                    // Si también hay un body.message, lo concatenamos
+                    if (body.message) {
+                        metadata.message += ` | ${body.message}`;
+                        // O alternativamente: metadata.message = `${body.errors[0].message} - ${body.message}`;
+                    }
+                } else if (body.message) {
+                    metadata.message = body.message;
+                }
+            } catch (e) {
+                // Ignore parsing errors
+            }
+        }
+
         if (this.logResponses && res.body) {
             metadata.body = this.sanitize(res.body);
         }

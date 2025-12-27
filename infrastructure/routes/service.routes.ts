@@ -31,10 +31,11 @@ function services(app: Application) {
      * @route GET /api/services
      * @desc Get all services
      * @query activeOnly - Filter by active status (default: true)
-     * @access Public
+     * @access Authenticated (Public for regular users, all tenants for SUPER_ADMIN)
      */
     router.get(
         '/',
+        authenticate,
         (req, res) => serviceController.getAll(req, res)
     );
 

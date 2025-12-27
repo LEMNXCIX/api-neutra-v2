@@ -35,10 +35,10 @@ export class ResetPasswordUseCase {
             const hashedPassword = await this.passwordHasher.hash(newPassword);
 
             // Update user password and clear reset info
-            await this.userRepository.update(user.tenantId, user.id, {
+            await this.userRepository.update(user.id, {
                 password: hashedPassword,
-                resetPasswordToken: null as any, // Using any to allow null
-                resetPasswordExpires: null as any
+                resetPasswordToken: undefined,
+                resetPasswordExpires: undefined
             });
 
             this.logger.info('Password reset successful', { userId: user.id, email: user.email });
