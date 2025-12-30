@@ -1,201 +1,45 @@
-<!DOCTYPE html>
-<html lang="es">
+<h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Confirmación de Pedido</h1>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Confirmation - {{tenant.tenantName}}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<p>¡Gracias por tu pedido! Lo estamos procesando y te notificaremos cuando se envíe.</p>
 
-        body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f4f4f4;
-        }
+<div style="background-color: #f8f8f8; padding: 20px; border-radius: 5px; margin: 20px 0;">
+    <p style="margin-bottom: 10px;"><strong>Número de Pedido:</strong> #{{order.id}}</p>
+    <p style="margin-bottom: 10px;"><strong>Fecha del Pedido:</strong> {{order.createdAt}}</p>
+    <p style="margin-bottom: 0;"><strong>Estado:</strong> {{order.status}}</p>
+</div>
 
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background-color: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
+<h2 style="font-size: 18px; margin: 30px 0 15px;">Detalles del Pedido</h2>
 
-        .header {
-            background-color: {
-                    {
-                    tenant.primaryColor
-                }
-            }
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <thead>
+        <tr>
+            <th style="background-color: #f0f0f0; padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                Producto</th>
+            <th style="background-color: #f0f0f0; padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                Cantidad</th>
+            <th style="background-color: #f0f0f0; padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                Precio</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each order.items}}
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">{{this.productName}}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">{{this.quantity}}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">${{this.price}}</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
 
-            ;
-            padding: 30px 20px;
-            text-align: center;
-        }
+<div style="font-size: 18px; font-weight: bold; text-align: right; margin-top: 20px;">
+    <p>Total: ${{order.total}}</p>
+</div>
 
-        .logo {
-            max-width: 150px;
-            height: auto;
-        }
+<div style="text-align: center; margin-top: 30px;">
+    <a href="{{tenant.websiteUrl}}/orders/{{order.id}}" class="button">Ver Detalles del Pedido</a>
+</div>
 
-        .content {
-            padding: 40px 30px;
-        }
+<p style="margin-top: 30px;">Si tienes alguna pregunta sobre tu pedido, por favor contáctanos.</p>
 
-        h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-
-        p {
-            margin-bottom: 15px;
-            color: #666;
-        }
-
-        .order-info {
-            background-color: #f8f8f8;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-
-        .order-info p {
-            margin-bottom: 10px;
-        }
-
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-
-        .items-table th {
-            background-color: #f0f0f0;
-            padding: 12px;
-            text-align: left;
-            border-bottom: 2px solid #ddd;
-        }
-
-        .items-table td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .total {
-            font-size: 18px;
-            font-weight: bold;
-            text-align: right;
-            margin-top: 20px;
-        }
-
-        .button {
-            display: inline-block;
-            padding: 12px 30px;
-
-            background-color: {
-                    {
-                    tenant.primaryColor
-                }
-            }
-
-            ;
-            color: #ffffff !important;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 20px 0;
-            font-weight: bold;
-        }
-
-        .footer {
-            background-color: #f8f8f8;
-            padding: 20px 30px;
-            text-align: center;
-            font-size: 12px;
-            color: #999;
-        }
-
-        .footer a {
-            color: {
-                    {
-                    tenant.primaryColor
-                }
-            }
-
-            ;
-            text-decoration: none;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <div class="header">
-            {{#if tenant.tenantLogo}}
-            <img src="{{tenant.tenantLogo}}" alt="{{tenant.tenantName}}" class="logo">
-            {{else}}
-            <h2 style="color: #fff; margin: 0;">{{tenant.tenantName}}</h2>
-            {{/if}}
-        </div>
-
-        <div class="content">
-            <h1>Order Confirmation</h1>
-
-            <p>Thank you for your order! We're processing it and will notify you once it ships.</p>
-
-            <div class="order-info">
-                <p><strong>Order Number:</strong> #{{order.id}}</p>
-                <p><strong>Order Date:</strong> {{order.createdAt}}</p>
-                <p><strong>Status:</strong> {{order.status}}</p>
-            </div>
-
-            <h2 style="font-size: 18px; margin: 30px 0 15px;">Order Details</h2>
-
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th>Quantity</th>
-                        <th>Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{#each order.items}}
-                    <tr>
-                        <td>{{this.productName}}</td>
-                        <td>{{this.quantity}}</td>
-                        <td>${{this.price}}</td>
-                    </tr>
-                    {{/each}}
-                </tbody>
-            </table>
-
-            <div class="total">
-                <p>Total: ${{order.total}}</p>
-            </div>
-
-            <a href="{{tenant.websiteUrl}}/orders/{{order.id}}" class="button">View Order Details</a>
-
-            <p>If you have any questions about your order, please don't hesitate to contact us.</p>
-
-            <p><strong>The {{tenant.tenantName}} Team</strong></p>
-        </div>
-
-        <div class="footer">
-            <p>© 2025 {{tenant.tenantName}}. All rights reserved.</p>
-            <p>
-                <a href="{{tenant.websiteUrl}}">Visit our website</a> |
-                <a href="mailto:{{tenant.supportEmail}}">Contact Support</a>
-            </p>
-        </div>
-    </div>
-</body>
-
-</html>
+<p><strong>El equipo de {{tenant.tenantName}}</strong></p>

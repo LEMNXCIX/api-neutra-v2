@@ -6,11 +6,11 @@ import { Category, CreateCategoryDTO, UpdateCategoryDTO, CategoryType } from '@/
  * Tenant-Aware Category Repository
  */
 export class PrismaCategoryRepository implements ICategoryRepository {
-    async findAll(tenantId: string, page?: number, limit?: number, type?: CategoryType): Promise<{ categories: Category[]; total: number }> {
+    async findAll(tenantId: string | undefined, page?: number, limit?: number, type?: CategoryType): Promise<{ categories: Category[]; total: number }> {
         const skip = page && limit ? (page - 1) * limit : undefined;
         const take = limit;
         const where = {
-            tenantId,
+            ...(tenantId && { tenantId }),
             ...(type && { type })
         };
 

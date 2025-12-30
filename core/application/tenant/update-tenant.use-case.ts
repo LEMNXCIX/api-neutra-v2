@@ -31,6 +31,27 @@ export class UpdateTenantUseCase {
                 }
             }
 
+            // Merge config if present
+            if (data.config) {
+                data.config = {
+                    ...existing.config,
+                    ...(data.config || {}),
+                    // Deep merge for sections if they exist in both
+                    branding: {
+                        ...(existing.config?.branding || {}),
+                        ...(data.config?.branding || {})
+                    },
+                    settings: {
+                        ...(existing.config?.settings || {}),
+                        ...(data.config?.settings || {})
+                    },
+                    features: {
+                        ...(existing.config?.features || {}),
+                        ...(data.config?.features || {})
+                    }
+                };
+            }
+
             const updated = await this.tenantRepository.update(id, data);
 
             return {

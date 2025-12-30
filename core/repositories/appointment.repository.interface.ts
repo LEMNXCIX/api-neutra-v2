@@ -7,7 +7,7 @@ import { Appointment, CreateAppointmentDTO, UpdateAppointmentDTO, AppointmentFil
 export interface IAppointmentRepository {
     create(tenantId: string, data: CreateAppointmentDTO): Promise<Appointment>;
     findById(tenantId: string, id: string, includeRelations?: boolean): Promise<Appointment | null>;
-    findAll(tenantId: string, filters?: AppointmentFilters): Promise<Appointment[]>;
+    findAll(tenantId: string | undefined, filters?: AppointmentFilters): Promise<Appointment[]>;
     findByUser(tenantId: string, userId: string): Promise<Appointment[]>;
     findByStaff(tenantId: string, staffId: string, startDate?: Date, endDate?: Date): Promise<Appointment[]>;
     update(tenantId: string, id: string, data: UpdateAppointmentDTO): Promise<Appointment>;

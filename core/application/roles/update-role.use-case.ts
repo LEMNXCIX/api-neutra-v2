@@ -41,15 +41,13 @@ export class UpdateRoleUseCase {
 
         // Invalidate cache for all users with this role
         // This is necessary because permissions might have changed
-        const users = await this.userRepository.findByRoleId(tenantId, id);
+        if (tenantId) {
+            const users = await this.userRepository.findByRoleId(tenantId, id);
 
-        if (users.length > 0) {
-            const pipeline = this.redis['client'].multi(); // Accessing client directly for pipeline if available, or just loop
-            // RedisProvider wrapper doesn't expose multi/pipeline yet, let's just loop for now or add pipeline support.
-            // Looping is fine for now unless we have thousands of users.
-
-            for (const user of users) {
-                await this.redis.del(`user:permissions:${user.id}`);
+            if (users.length > 0) {
+                for (const user of users) {
+                    await this.redis.del(`user:permissions:${user.id}:${tenantId}`);
+                }
             }
         }
 

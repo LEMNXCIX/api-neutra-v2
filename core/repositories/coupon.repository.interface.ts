@@ -4,11 +4,11 @@ import { Coupon, CreateCouponDTO, UpdateCouponDTO } from '@/core/entities/coupon
  * Coupon Repository Interface - Tenant-Scoped
  */
 export interface ICouponRepository {
-    findAll(tenantId: string): Promise<Coupon[]>;
+    findAll(tenantId: string | undefined): Promise<Coupon[]>;
     findById(tenantId: string, id: string): Promise<Coupon | null>;
     findByCode(tenantId: string, code: string): Promise<Coupon | null>;
-    findActive(tenantId: string): Promise<Coupon[]>;
-    findAllPaginated(tenantId: string, options: {
+    findActive(tenantId: string | undefined): Promise<Coupon[]>;
+    findAllPaginated(tenantId: string | undefined, options: {
         search?: string;
         type?: string;
         status?: 'active' | 'expired' | 'used' | 'unused' | 'all';

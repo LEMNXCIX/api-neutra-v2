@@ -31,10 +31,10 @@ export class PrismaServiceRepository implements IServiceRepository {
         return service ? this.mapToEntity(service) : null;
     }
 
-    async findAll(tenantId: string, activeOnly: boolean = false): Promise<Service[]> {
+    async findAll(tenantId: string | undefined, activeOnly: boolean = false): Promise<Service[]> {
         const services = await prisma.service.findMany({
             where: {
-                tenantId,
+                ...(tenantId && { tenantId }),
                 ...(activeOnly && { active: true }),
             },
             include: { category: true },

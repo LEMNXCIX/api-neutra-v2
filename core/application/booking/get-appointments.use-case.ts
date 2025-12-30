@@ -8,7 +8,7 @@ export class GetAppointmentsUseCase {
         private logger: ILogger
     ) { }
 
-    async execute(tenantId: string, filters?: AppointmentFilters) {
+    async execute(tenantId: string | undefined, filters?: AppointmentFilters) {
         try {
             const appointments = await this.appointmentRepository.findAll(tenantId, filters);
 

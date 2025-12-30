@@ -31,6 +31,11 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 endTime,
                 notes: data.notes,
                 status: 'PENDING',
+                // Coupon Data
+                couponId: (data as any).couponId,
+                discountAmount: (data as any).discountAmount || 0,
+                subtotal: (data as any).subtotal || 0,
+                total: (data as any).total || 0,
             },
         });
 
@@ -44,16 +49,17 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 user: true,
                 service: true,
                 staff: true,
+                coupon: true,
             } : undefined,
         });
 
         return appointment ? this.mapToEntity(appointment) : null;
     }
 
-    async findAll(tenantId: string, filters?: AppointmentFilters): Promise<Appointment[]> {
+    async findAll(tenantId: string | undefined, filters?: AppointmentFilters): Promise<Appointment[]> {
         const appointments = await prisma.appointment.findMany({
             where: {
-                tenantId,
+                ...(tenantId && { tenantId }),
                 ...(filters?.userId && { userId: filters.userId }),
                 ...(filters?.staffId && { staffId: filters.staffId }),
                 ...(filters?.serviceId && { serviceId: filters.serviceId }),
@@ -69,6 +75,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 user: true,
                 service: true,
                 staff: true,
+                coupon: true,
             },
             orderBy: { startTime: 'asc' },
         });
@@ -125,6 +132,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         const appointment = await prisma.appointment.update({
             where: { id, tenantId },
             data: updateData,
+            include: { coupon: true }
         });
 
         return this.mapToEntity(appointment);
@@ -134,6 +142,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         const appointment = await prisma.appointment.update({
             where: { id, tenantId },
             data: { status },
+            include: { coupon: true }
         });
 
         return this.mapToEntity(appointment);
@@ -210,6 +219,12 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             user: appointment.user,
             service: appointment.service,
             staff: appointment.staff,
+            // Coupon Data
+            couponId: appointment.couponId,
+            discountAmount: appointment.discountAmount || 0,
+            subtotal: appointment.subtotal || 0,
+            total: appointment.total || 0,
+            coupon: appointment.coupon
         };
     }
 }

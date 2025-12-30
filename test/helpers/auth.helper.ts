@@ -28,7 +28,8 @@ export const getAuthToken = async (
 
     // Set permissions in Redis as the middleware expects
     const redis = RedisProvider.getInstance();
-    await redis.set(`user:permissions:${userId}`, JSON.stringify(permissions), 3600);
+    const tenantId = 'test-tenant-id'; // Matching default tenant ID used in tests
+    await redis.set(`user:permissions:${userId}:${tenantId}`, JSON.stringify(permissions), 3600);
 
     return jwt.sign(payload, config.jwtSecret || 'test_secret', {
         expiresIn: '1h'

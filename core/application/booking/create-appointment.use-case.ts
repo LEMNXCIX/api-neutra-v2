@@ -1,24 +1,26 @@
 import { IAppointmentRepository } from '@/core/repositories/appointment.repository.interface';
 import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
 import { IServiceRepository } from '@/core/repositories/service.repository.interface';
+import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
 import { CreateAppointmentDTO } from '@/core/entities/appointment.entity';
 import { ILogger } from '@/core/providers/logger.interface';
+import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 import { ValidationErrorCodes, BusinessErrorCodes } from '@/types/error-codes';
-import { AppointmentNotificationService } from '@/infrastructure/services/appointment-notification.service';
+import { ValidateCouponUseCase } from '@/core/application/coupons/validate-coupon.use-case';
+import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
 
 export class CreateAppointmentUseCase {
     constructor(
         private appointmentRepository: IAppointmentRepository,
         private staffRepository: IStaffRepository,
         private serviceRepository: IServiceRepository,
-        private logger: ILogger
-    ) {
-        this.notificationService = new AppointmentNotificationService(appointmentRepository, logger);
-    }
+        private couponRepository: ICouponRepository,
+        private logger: ILogger,
+        private queueProvider: IQueueProvider,
+        private featureRepository: IFeatureRepository
+    ) { }
 
-    private notificationService: AppointmentNotificationService;
-
-    async execute(tenantId: string, data: CreateAppointmentDTO) {
+    async execute(tenantId: string, data: CreateAppointmentDTO, origin?: string) {
         // Validation
         if (!data.userId || !data.serviceId || !data.staffId || !data.startTime) {
             this.logger.warn('CreateAppointment failed: missing required fields', { data });
@@ -101,23 +103,74 @@ export class CreateAppointmentUseCase {
                 };
             }
 
+            // Coupon Logic
+            let couponId = undefined;
+            let discountAmount = 0;
+            let subtotal = service.price;
+            let total = service.price;
+
+            if (data.couponCode) {
+                const validateCouponUseCase = new ValidateCouponUseCase(this.couponRepository);
+                const validationResult = await validateCouponUseCase.execute(tenantId, {
+                    code: data.couponCode,
+                    orderTotal: service.price,
+                    serviceIds: [service.id]
+                });
+
+                if (!validationResult.valid) {
+                    return {
+                        success: false,
+                        code: 400,
+                        message: validationResult.message || 'Invalid coupon',
+                        errors: [{
+                            code: 'INVALID_COUPON',
+                            message: validationResult.message || 'The provided coupon is invalid',
+                        }],
+                    };
+                }
+
+                couponId = validationResult.coupon!.id;
+                discountAmount = validationResult.discountAmount || 0;
+                total = subtotal - discountAmount;
+                if (total < 0) total = 0;
+
+                await this.couponRepository.incrementUsage(tenantId, couponId);
+            }
+
             // Create appointment
-            const appointment = await this.appointmentRepository.create(tenantId, data);
+            // We need to pass the calculated values
+            // data doesn't have these fields, we need to extend what we pass to repo
+            const appointmentData = {
+                ...data,
+                couponId,
+                discountAmount,
+                subtotal,
+                total
+            };
+
+            const appointment = await this.appointmentRepository.create(tenantId, appointmentData);
 
             this.logger.info('Appointment created successfully', { appointmentId: appointment.id });
 
-            // Send confirmation email (async, non-blocking)
-            this.notificationService.sendConfirmationEmail(tenantId, appointment.id).catch(err => {
-                this.logger.error('Failed to send appointment confirmation email', {
+            // 2. Check if EMAIL_NOTIFICATIONS feature is enabled
+            const features = await this.featureRepository.getTenantFeatureStatus(tenantId);
+            if (features['EMAIL_NOTIFICATIONS']) {
+                // Enqueue notification job to notify STAFF (not user) about pending appointment
+                // User will be notified when staff approves/rejects
+                await this.queueProvider.enqueue('notifications', {
+                    type: 'PENDING_APPROVAL',
                     appointmentId: appointment.id,
-                    error: err.message
+                    tenantId: tenantId,
+                    origin: origin // Pass origin for correct links in email
                 });
-            });
+            } else {
+                this.logger.info('Skipping email notification: EMAIL_NOTIFICATIONS feature disabled', { tenantId });
+            }
 
             return {
                 success: true,
                 code: 201,
-                message: 'Appointment created successfully',
+                message: 'Appointment created successfully. Awaiting staff approval.',
                 data: appointment,
             };
         } catch (error: any) {
@@ -133,5 +186,4 @@ export class CreateAppointmentUseCase {
             };
         }
     }
-
 }
