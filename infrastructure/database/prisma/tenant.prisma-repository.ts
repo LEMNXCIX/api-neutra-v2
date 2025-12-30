@@ -1,7 +1,7 @@
 
 import { PrismaClient, Tenant as PrismaTenant } from '@prisma/client';
 import { ITenantRepository } from '@/core/repositories/tenant.repository.interface';
-import { Tenant, TenantType } from '@/core/entities/tenant.entity';
+import { Tenant, TenantType, TenantConfig } from '@/core/entities/tenant.entity';
 
 export class TenantPrismaRepository implements ITenantRepository {
     private prisma: PrismaClient;
@@ -17,6 +17,7 @@ export class TenantPrismaRepository implements ITenantRepository {
             data.slug,
             data.type as TenantType,
             data.active,
+            (data.config as unknown as TenantConfig) || {},
             data.createdAt,
             data.updatedAt
         );
@@ -49,6 +50,7 @@ export class TenantPrismaRepository implements ITenantRepository {
                 name: data.name!,
                 slug: data.slug!,
                 type: data.type || TenantType.STORE,
+                config: (data.config || {}) as any,
                 active: data.active ?? true,
             },
         });
@@ -62,6 +64,7 @@ export class TenantPrismaRepository implements ITenantRepository {
                 name: data.name,
                 slug: data.slug,
                 type: data.type,
+                config: data.config as any,
                 active: data.active,
             },
         });

@@ -5,7 +5,7 @@ export class GetUserByEmailUseCase {
 
     async execute(tenantId: string | undefined, email: string, includePassword: boolean = false) {
         try {
-            const user = await this.userRepository.findByEmail(tenantId, email);
+            const user = await this.userRepository.findByEmail(email, { includeRole: true });
 
             if (!user) {
                 return {
@@ -14,6 +14,19 @@ export class GetUserByEmailUseCase {
                     message: "",
                     data: null
                 };
+            }
+
+            // If tenantId is provided, ensure user belongs to it
+            if (tenantId) {
+                const belongsToTenant = user.tenants?.some(ut => ut.tenantId === tenantId || ut.tenant?.slug === tenantId);
+                if (!belongsToTenant) {
+                    return {
+                        success: true,
+                        code: 200,
+                        message: "User not found in this tenant",
+                        data: null
+                    };
+                }
             }
 
             // If password should not be included, remove it

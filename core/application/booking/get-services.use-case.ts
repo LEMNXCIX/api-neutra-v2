@@ -7,7 +7,7 @@ export class GetServicesUseCase {
         private logger: ILogger
     ) { }
 
-    async execute(tenantId: string, activeOnly: boolean = true) {
+    async execute(tenantId: string | undefined, activeOnly: boolean = true) {
         try {
             const services = await this.serviceRepository.findAll(tenantId, activeOnly);
 

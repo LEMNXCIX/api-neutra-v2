@@ -9,22 +9,21 @@ import { Cart, CartItem } from '@/core/entities/cart.entity';
 export class PrismaCartRepository implements ICartRepository {
 
     private async validateCartTenant(tenantId: string | undefined, cartId: string): Promise<void> {
-        if (!tenantId) return; // Super Admin global access
-
+        // Since Cart is unique per user and linked to a User record, 
+        // we just verify the cart exists. Higher level use cases 
+        // ensure the cart belongs to the authenticated user.
         const count = await prisma.cart.count({
             where: {
                 id: cartId,
-                user: { tenantId }
             }
         });
         if (count === 0) {
-            throw new Error('Cart not found or does not belong to this tenant');
+            throw new Error('Cart not found');
         }
     }
 
     async findByUserId(tenantId: string | undefined, userId: string): Promise<Cart | null> {
         const where: any = { userId };
-        if (tenantId) where.user = { tenantId };
 
         const cart = await prisma.cart.findFirst({
             where,
@@ -42,7 +41,6 @@ export class PrismaCartRepository implements ICartRepository {
 
     async findByUserIdSimple(tenantId: string | undefined, userId: string): Promise<Cart | null> {
         const where: any = { userId };
-        if (tenantId) where.user = { tenantId };
 
         const cart = await prisma.cart.findFirst({
             where,
@@ -53,16 +51,13 @@ export class PrismaCartRepository implements ICartRepository {
     }
 
     async create(tenantId: string | undefined, userId: string): Promise<Cart> {
-        // Verify user exists (and belongs to tenant if specified)
-        const where: any = { id: userId };
-        if (tenantId) where.tenantId = tenantId;
-
-        const user = await prisma.user.findFirst({
-            where
+        // Verify user exists
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
         });
 
         if (!user) {
-            throw new Error(tenantId ? 'User not found in this tenant' : 'User not found');
+            throw new Error('User not found');
         }
 
         const cart = await prisma.cart.create({

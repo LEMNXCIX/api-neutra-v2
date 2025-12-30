@@ -3,7 +3,7 @@ import { IBannerRepository } from '@/core/repositories/banner.repository.interfa
 export class GetBannersUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async execute(tenantId: string, activeOnly: boolean = false) {
+    async execute(tenantId: string | undefined, activeOnly: boolean = false) {
         try {
 
             const banners = activeOnly

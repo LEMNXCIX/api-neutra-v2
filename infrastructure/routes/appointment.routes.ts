@@ -5,21 +5,31 @@ import { AppointmentController } from '@/interface-adapters/controllers/appointm
 import { PrismaAppointmentRepository } from '@/infrastructure/database/prisma/appointment.prisma-repository';
 import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.prisma-repository';
 import { PrismaServiceRepository } from '@/infrastructure/database/prisma/service.prisma-repository';
+import { PrismaCouponRepository } from '@/infrastructure/database/prisma/coupon.prisma-repository';
 import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
+import { BullMQQueueProvider } from '@/infrastructure/providers/bullmq-queue.provider';
+import { PrismaFeatureRepository } from '@/infrastructure/database/prisma/feature.prisma-repository';
 
 function appointments(app: Application) {
     const router = Router();
     const appointmentRepository = new PrismaAppointmentRepository();
     const staffRepository = new PrismaStaffRepository();
     const serviceRepository = new PrismaServiceRepository();
+    const couponRepository = new PrismaCouponRepository();
     const logger = new PinoLoggerProvider();
+    const queueProvider = new BullMQQueueProvider();
+    const featureRepository = new PrismaFeatureRepository();
 
     const appointmentController = new AppointmentController(
         appointmentRepository,
         staffRepository,
         serviceRepository,
-        logger
+        couponRepository,
+        logger,
+        queueProvider,
+        featureRepository
     );
+
 
     app.use('/api/appointments', router);
 
@@ -85,6 +95,12 @@ function appointments(app: Application) {
         '/:id/status',
         authenticate,
         (req, res) => appointmentController.updateStatus(req, res)
+    );
+
+    router.delete(
+        '/:id',
+        authenticate,
+        (req, res) => appointmentController.delete(req, res)
     );
 }
 

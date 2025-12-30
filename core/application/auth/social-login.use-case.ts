@@ -1,7 +1,8 @@
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { ITokenGenerator } from '@/core/providers/auth-providers.interface';
-import { CreateUserDTO } from '@/core/entities/user.entity';
+import { CreateUserDTO, User } from '@/core/entities/user.entity';
 import * as uuid from 'uuid';
+import { prisma } from '@/config/db.config';
 
 export class SocialLoginUseCase {
     constructor(
@@ -24,56 +25,85 @@ export class SocialLoginUseCase {
             };
         }
 
-        let user = await this.userRepository.findByProvider(tenantId, providerField, providerId);
+        // Check if user exists by provider globally
+        let user = await this.userRepository.findByProvider(providerField, providerId);
 
         if (!user) {
-            // Check if email exists to link
-            user = await this.userRepository.findByEmail(tenantId, email);
+            // Check if email exists globally to link
+            user = await this.userRepository.findByEmail(email);
 
             if (user) {
-                // Link account
-                user = await this.userRepository.update(tenantId, user.id, {
+                // Link account provider field
+                user = await this.userRepository.update(user.id, {
                     [providerField]: providerId,
                     profilePic: data.photos && data.photos[0] ? data.photos[0].value : user.profilePic
                 });
             } else {
-                // Create new user
-                const newUser: CreateUserDTO = {
+                // Create new user globally
+                const newUserDTO: CreateUserDTO = {
                     name: data.displayName || 'User',
                     email: email,
                     password: uuid.v4(), // Random password
                     [providerField]: providerId,
-                    // roleId is optional - repository will assign default USER role
                     profilePic: data.photos && data.photos[0] ? data.photos[0].value : undefined
                 };
-                user = await this.userRepository.create(tenantId, newUser);
+                user = await this.userRepository.create(newUserDTO);
             }
         }
 
-        // Fetch user with role and permissions for JWT
-        const userWithRole = await this.userRepository.findById(tenantId, user.id, {
-            includeRole: true,
-            includePermissions: true
-        });
+        // Ensure user is associated with the target tenant
+        const alreadyInTenant = user.tenants?.some(ut => ut.tenantId === tenantId || ut.tenant?.slug === tenantId);
 
-        if (!userWithRole) {
+        if (!alreadyInTenant) {
+            // Add user to the tenant with 'USER' role
+            // We need the roleId. Simple fix: find role by name and tenantId
+            // Actually, I'll use the prisma client directly for help if I don't have RoleRepository
+            // Better would be to have a RoleRepository, but for now let's use the DB config
+            const { prisma } = await import('@/config/db.config');
+            const role = await prisma.role.findFirst({
+                where: { name: 'USER', tenantId: tenantId }
+            });
+
+            if (!role) {
+                throw new Error(`Default role 'USER' not found for tenant ${tenantId}`);
+            }
+
+            await this.userRepository.addTenant(user.id, tenantId, role.id);
+
+            // Re-fetch user to get the new tenant relation
+            user = await this.userRepository.findById(user.id, {
+                includeRole: true,
+                includePermissions: true
+            }) as User;
+        }
+
+        // Resolve userTenant for the current context
+        const userTenant = user.tenants?.find(ut => ut.tenantId === tenantId || ut.tenant?.slug === tenantId);
+
+        if (!userTenant || !userTenant.role) {
             return {
                 success: false,
-                code: 500,
-                message: "Error retrieving user data",
-                errors: ["Failed to retrieve user with role information"]
+                code: 403,
+                message: "User not authorized for this tenant",
+                errors: ["Failed to resolve role in target tenant"]
             };
         }
 
         const token = this.tokenGenerator.generate({
-            id: userWithRole.id,
-            email: userWithRole.email,
-            name: userWithRole.name,
-            role: userWithRole.role,  // Includes permissions
-            tenantId: tenantId
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: {
+                id: userTenant.role.id,
+                name: userTenant.role.name,
+                level: userTenant.role.level
+            },
+            tenantId: userTenant.tenantId
         });
 
-        const { password: _, ...safeUser } = userWithRole;
+        if (!user) throw new Error('Social login user resolution failed');
+
+        const { password: _, ...safeUser } = user;
 
         return {
             success: true,

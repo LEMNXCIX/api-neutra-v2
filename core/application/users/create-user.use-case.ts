@@ -10,10 +10,22 @@ export class CreateUserUseCase {
 
     async execute(tenantId: string | undefined, data: CreateUserDTO) {
         try {
-            const user = await this.userRepository.create(tenantId, data);
+            const user = await this.userRepository.create(data);
 
-            // Create cart for new user
-            await this.cartRepository.create(tenantId, user.id);
+            // If tenantId provided, associate user with tenant
+            if (tenantId) {
+                const { prisma } = await import('@/config/db.config');
+                const role = await prisma.role.findFirst({
+                    where: { name: 'USER', tenantId: tenantId }
+                });
+
+                if (role) {
+                    await this.userRepository.addTenant(user.id, tenantId, role.id);
+                }
+
+                // Create cart for new user in this tenant context
+                await this.cartRepository.create(tenantId, user.id);
+            }
 
             return {
                 success: true,

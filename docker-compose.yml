@@ -13,6 +13,7 @@ services:
       - SESSION_SECRET=${SESSION_SECRET}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - TZ=America/Bogota
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     depends_on:
@@ -37,7 +38,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ecommerce}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ecommerce}" ]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -4,9 +4,9 @@ import { Banner, CreateBannerDTO, UpdateBannerDTO } from '@/core/entities/banner
  * Banner Repository Interface - Tenant-Scoped
  */
 export interface IBannerRepository {
-    findAll(tenantId: string): Promise<Banner[]>;
+    findAll(tenantId: string | undefined): Promise<Banner[]>;
     findById(tenantId: string, id: string): Promise<Banner | null>;
-    findActive(tenantId: string): Promise<Banner[]>;
+    findActive(tenantId: string | undefined): Promise<Banner[]>;
     create(tenantId: string, data: CreateBannerDTO): Promise<Banner>;
     update(tenantId: string, id: string, data: UpdateBannerDTO): Promise<Banner>;
     delete(tenantId: string, id: string): Promise<void>;

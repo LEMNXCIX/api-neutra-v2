@@ -19,6 +19,7 @@ export interface Coupon {
     expiresAt: Date;
     applicableProducts: string[];
     applicableCategories: string[];
+    applicableServices: string[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -35,6 +36,8 @@ export interface CreateCouponDTO {
     expiresAt: Date | string;
     applicableProducts?: string[];
     applicableCategories?: string[];
+    applicableServices?: string[];
+
 }
 
 export interface UpdateCouponDTO {
@@ -56,6 +59,7 @@ export interface ValidateCouponDTO {
     orderTotal: number;
     productIds?: string[];
     categoryIds?: string[];
+    serviceIds?: string[];
 }
 
 export interface CouponValidationResult {

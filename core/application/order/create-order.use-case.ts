@@ -6,8 +6,10 @@ import { BusinessErrorCodes } from '@/types/error-codes';
 import { IProductRepository } from '@/core/repositories/product.repository.interface';
 import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
 import { ILogger } from '@/core/providers/logger.interface';
-import { emailService } from '@/infrastructure/services/email.service';
+import { IEmailService } from '@/core/ports/email.port';
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { UseCaseResult } from '@/core/utils/use-case-result';
+import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
 
 export class CreateOrderUseCase {
     constructor(
@@ -17,10 +19,12 @@ export class CreateOrderUseCase {
         private productRepository: IProductRepository,
         private couponRepository: ICouponRepository,
         private userRepository: IUserRepository,
-        private logger: ILogger
+        private logger: ILogger,
+        private emailService: IEmailService,
+        private featureRepository: IFeatureRepository
     ) { }
 
-    async execute(tenantId: string, userId: string, couponId?: string) {
+    async execute(tenantId: string, userId: string, couponId?: string): Promise<UseCaseResult> {
         this.logger.info('CreateOrder - Executing', { userId, couponId });
 
         const cartResponse = await this.getCartUseCase.execute(tenantId, userId);
@@ -108,14 +112,21 @@ export class CreateOrderUseCase {
      */
     private async sendOrderConfirmation(tenantId: string, userId: string, order: any): Promise<void> {
         try {
+            // Check if EMAIL_NOTIFICATIONS feature is enabled
+            const features = await this.featureRepository.getTenantFeatureStatus(tenantId);
+            if (!features['EMAIL_NOTIFICATIONS']) {
+                this.logger.info('Skipping order confirmation email: EMAIL_NOTIFICATIONS feature disabled', { tenantId });
+                return;
+            }
+
             // Fetch user to get email
-            const user = await this.userRepository.findById(tenantId, userId);
+            const user = await this.userRepository.findById(userId);
             if (!user || !user.email) {
                 this.logger.warn('Cannot send order confirmation: user email not found', { userId });
                 return;
             }
 
-            await emailService.sendOrderConfirmation(user.email, order, {
+            await this.emailService.sendOrderConfirmation(user.email, order, {
                 tenantName: 'Neutra', // TODO: Get from tenant configuration
                 supportEmail: process.env.SMTP_FROM || 'support@neutra.com',
                 websiteUrl: process.env.FRONTEND_URL || 'http://localhost:3000',

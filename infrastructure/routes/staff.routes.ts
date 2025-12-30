@@ -3,15 +3,28 @@ import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { StaffController } from '@/interface-adapters/controllers/staff.controller';
 import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.prisma-repository';
+import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
 import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
 
 function staff(app: Application) {
     const router = Router();
     const staffRepository = new PrismaStaffRepository();
+    const userRepository = new PrismaUserRepository();
     const logger = new PinoLoggerProvider();
-    const staffController = new StaffController(staffRepository, logger);
+    const staffController = new StaffController(staffRepository, userRepository, logger);
 
     app.use('/api/staff', router);
+
+    /**
+     * @route GET /api/staff/me
+     * @desc Get current user's staff profile
+     * @access Authenticated
+     */
+    router.get(
+        '/me',
+        authenticate,
+        (req, res) => staffController.getMe(req, res)
+    );
 
     /**
      * @route POST /api/staff
@@ -29,10 +42,11 @@ function staff(app: Application) {
      * @route GET /api/staff
      * @desc Get all staff members
      * @query activeOnly - Filter by active status (default: true)
-     * @access Public
+     * @access Authenticated (Public for regular users, all tenants for SUPER_ADMIN)
      */
     router.get(
         '/',
+        authenticate,
         (req, res) => staffController.getAll(req, res)
     );
 
@@ -46,6 +60,18 @@ function staff(app: Application) {
         authenticate,
         requirePermission('staff:write'),
         (req, res) => staffController.assignService(req, res)
+    );
+
+    /**
+     * @route PUT /api/staff/:staffId/services
+     * @desc Sync all services for a staff member
+     * @access Admin only
+     */
+    router.put(
+        '/:staffId/services',
+        authenticate,
+        requirePermission('staff:write'),
+        (req, res) => staffController.syncServices(req, res)
     );
 
     /**

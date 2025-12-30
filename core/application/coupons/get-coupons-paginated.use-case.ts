@@ -3,7 +3,7 @@ import { ICouponRepository } from '@/core/repositories/coupon.repository.interfa
 export class GetCouponsPaginatedUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(tenantId: string, options: {
+    async execute(tenantId: string | undefined, options: {
         search?: string;
         type?: string;
         status?: 'active' | 'expired' | 'used' | 'unused' | 'all';

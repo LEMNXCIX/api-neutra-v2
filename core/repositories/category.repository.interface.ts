@@ -4,7 +4,7 @@ import { Category, CreateCategoryDTO, UpdateCategoryDTO, CategoryType } from '@/
  * Category Repository Interface - Tenant-Scoped
  */
 export interface ICategoryRepository {
-    findAll(tenantId: string, page?: number, limit?: number, type?: CategoryType): Promise<{ categories: Category[]; total: number }>;
+    findAll(tenantId: string | undefined, page?: number, limit?: number, type?: CategoryType): Promise<{ categories: Category[]; total: number }>;
     findById(tenantId: string, id: string): Promise<Category | null>;
     findByName(tenantId: string, name: string, type?: CategoryType): Promise<Category | null>;
     create(tenantId: string, data: CreateCategoryDTO): Promise<Category>;

@@ -5,7 +5,7 @@ export class UpdateUserUseCase {
     constructor(private userRepository: IUserRepository) { }
 
     async execute(tenantId: string | undefined, id: string, data: Partial<User>) {
-        const existingUser = await this.userRepository.findById(tenantId, id);
+        const existingUser = await this.userRepository.findById(id);
 
         if (!existingUser) {
             return {
@@ -16,7 +16,7 @@ export class UpdateUserUseCase {
             };
         }
 
-        const updatedUser = await this.userRepository.update(tenantId, id, data);
+        const updatedUser = await this.userRepository.update(id, data);
 
         return {
             success: true,

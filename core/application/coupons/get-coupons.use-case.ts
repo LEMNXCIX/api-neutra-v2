@@ -3,7 +3,7 @@ import { ICouponRepository } from '@/core/repositories/coupon.repository.interfa
 export class GetCouponsUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(tenantId: string, activeOnly: boolean = false) {
+    async execute(tenantId: string | undefined, activeOnly: boolean = false) {
         try {
             const coupons = activeOnly
                 ? await this.couponRepository.findActive(tenantId)

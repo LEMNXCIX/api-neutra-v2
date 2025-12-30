@@ -36,7 +36,7 @@ export class NodemailerProvider implements IEmailService {
         attachments?: any[]
     ): Promise<boolean> {
         try {
-            // Load and compile template
+            // 1. Load and compile specific template (Content)
             const templatePath = path.join(this.templatesPath, `${template}.hbs`);
 
             if (!fs.existsSync(templatePath)) {
@@ -47,20 +47,39 @@ export class NodemailerProvider implements IEmailService {
             const templateContent = fs.readFileSync(templatePath, 'utf-8');
             const compiledTemplate = handlebars.compile(templateContent);
 
-            // Merge tenant config with data
+            // Merge tenant config with data and add year
             const emailData = {
                 ...data,
+                year: new Date().getFullYear(),
                 tenant: tenantConfig || this.getDefaultTenantConfig(),
             };
 
-            const html = compiledTemplate(emailData);
+            // Render specific content
+            const contentHtml = compiledTemplate(emailData);
+
+            // 2. Load and compile Base Layout
+            const layoutPath = path.join(this.templatesPath, 'base-layout.hbs');
+            let finalHtml = contentHtml;
+
+            if (fs.existsSync(layoutPath)) {
+                const layoutContent = fs.readFileSync(layoutPath, 'utf-8');
+                const compiledLayout = handlebars.compile(layoutContent);
+
+                // Render layout with content injected
+                finalHtml = compiledLayout({
+                    ...emailData,
+                    content: contentHtml,
+                });
+            } else {
+                console.warn('Base layout not found, sending content only');
+            }
 
             // Send email
             const info = await this.transporter.sendMail({
                 from: process.env.SMTP_FROM || process.env.SMTP_USER,
                 to,
                 subject,
-                html,
+                html: finalHtml,
                 attachments,
             });
 

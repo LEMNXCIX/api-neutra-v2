@@ -3,7 +3,7 @@ import { IProductRepository } from '@/core/repositories/product.repository.inter
 export class GetAllProductsUseCase {
     constructor(private productRepository: IProductRepository) { }
 
-    async execute(tenantId: string) {
+    async execute(tenantId: string | undefined) {
         const products = await this.productRepository.findAll(tenantId);
         return {
             success: true,

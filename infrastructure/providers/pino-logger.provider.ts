@@ -1,6 +1,8 @@
 import { ILogger, LogLevel, LogOptions } from '@/core/providers/logger.interface';
 import logger from '@/helpers/logger.helpers'; // Existing Pino wrapper
 import config from '@/config/index.config';
+import { RequestContext } from '@/infrastructure/context/request-context';
+import { SECURITY_CONSTANTS } from '@/core/domain/constants';
 
 export class PinoLoggerProvider implements ILogger {
     private readonly logPayloads: boolean;
@@ -58,6 +60,11 @@ export class PinoLoggerProvider implements ILogger {
         if (errorObj) logPayload.error = errorObj;
         if (finalMetadata) Object.assign(logPayload, this.sanitize(finalMetadata));
 
+        // Almacenar en RequestContext para persistencia consolidada en logs de DB
+        if (errorObj) {
+            RequestContext.setError(errorObj);
+        }
+
         logger.error(logPayload);
     }
 
@@ -100,6 +107,26 @@ export class PinoLoggerProvider implements ILogger {
             statusCode: res.statusCode
         };
 
+        // For error responses (4xx, 5xx), extract error message if available
+        if (res.statusCode >= 400 && res.body) {
+            try {
+                const body = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+                if (body.errors && Array.isArray(body.errors) && body.errors.length > 0) {
+                    metadata.message = body.errors[0].message;
+
+                    // Si también hay un body.message, lo concatenamos
+                    if (body.message) {
+                        metadata.message += ` | ${body.message}`;
+                        // O alternativamente: metadata.message = `${body.errors[0].message} - ${body.message}`;
+                    }
+                } else if (body.message) {
+                    metadata.message = body.message;
+                }
+            } catch (e) {
+                // Ignore parsing errors
+            }
+        }
+
         if (this.logResponses && res.body) {
             metadata.body = this.sanitize(res.body);
         }
@@ -131,7 +158,7 @@ export class PinoLoggerProvider implements ILogger {
         }
 
         // Lista de campos sensibles a remover
-        const sensitiveFields = ['password', 'token', 'accessToken', 'refreshToken', 'secret', 'apiKey', 'creditCard', 'cvv'];
+        const sensitiveFields = SECURITY_CONSTANTS.SENSITIVE_FIELDS;
 
         const sanitizeObject = (obj: any): any => {
             if (typeof obj !== 'object' || obj === null) return obj;
@@ -141,7 +168,7 @@ export class PinoLoggerProvider implements ILogger {
             }
 
             for (const key in obj) {
-                if (sensitiveFields.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+                if (sensitiveFields.some(field => key.toLowerCase() === field.toLowerCase())) {
                     obj[key] = '[REDACTED]';
                 } else if (typeof obj[key] === 'object') {
                     obj[key] = sanitizeObject(obj[key]);
@@ -156,7 +183,7 @@ export class PinoLoggerProvider implements ILogger {
     private sanitizeHeaders(headers: any): any {
         const sanitized = { ...headers };
         // Remover headers sensibles
-        const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
+        const sensitiveHeaders = SECURITY_CONSTANTS.SENSITIVE_HEADERS;
         sensitiveHeaders.forEach(header => {
             // Case insensitive check for headers
             const key = Object.keys(sanitized).find(k => k.toLowerCase() === header);

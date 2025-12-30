@@ -7,202 +7,138 @@ import { User, CreateUserDTO } from '@/core/entities/user.entity';
  */
 export class PrismaUserRepository implements IUserRepository {
     async findAll(tenantId?: string): Promise<User[]> {
-        const where = tenantId ? { tenantId } : {};
+        const where = tenantId ? {
+            tenants: {
+                some: { tenantId }
+            }
+        } : {};
+
         const users = await prisma.user.findMany({
             where,
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                roleId: true,
-                role: {
-                    select: {
-                        id: true,
-                        name: true,
-                        level: true
-                    }
-                },
-                profilePic: true,
-                active: true,
-                googleId: true,
-                facebookId: true,
-                twitterId: true,
-                githubId: true,
-                createdAt: true,
-                updatedAt: true,
-                tenantId: true,
-                tenant: {
-                    select: {
-                        id: true,
-                        name: true,
-                        slug: true
+            include: {
+                tenants: {
+                    where: tenantId ? { tenantId } : {},
+                    include: {
+                        tenant: true,
+                        role: true
                     }
                 }
-                // password excluded for security
             },
             orderBy: { createdAt: 'desc' }
         });
-        return users as any[];
+
+        return users.map(user => this.mapToEntity(user));
     }
 
-    async findByEmail(tenantId?: string, email?: string, options?: FindUserOptions): Promise<User | null> {
-        const where: any = { email };
-        if (tenantId) where.tenantId = tenantId;
-
-        const user = await prisma.user.findFirst({
-            where,
+    async findByEmail(email: string, options?: FindUserOptions): Promise<User | null> {
+        const user = await prisma.user.findUnique({
+            where: { email },
             include: {
-                role: options?.includeRole ? {
+                tenants: {
                     include: {
-                        permissions: options?.includePermissions ? {
+                        role: options?.includeRole ? {
                             include: {
-                                permission: true
+                                permissions: options?.includePermissions ? {
+                                    include: {
+                                        permission: true
+                                    }
+                                } : false
                             }
-                        } : false
+                        } : true,
+                        tenant: true
                     }
-                } : false
+                }
             }
         });
 
         if (!user) return null;
-
-        // Transform permissions if included
-        if (options?.includePermissions && user.role) {
-            const transformedUser = {
-                ...user,
-                role: {
-                    id: user.role.id,
-                    name: user.role.name,
-                    level: user.role.level,
-                    permissions: (user.role as any).permissions?.map((rp: any) => rp.permission) || []
-                }
-            };
-            return transformedUser as any;
-        }
-
-        return user as any;
+        return this.mapToEntity(user);
     }
 
-    async findById(tenantId: string | undefined, id: string, options?: FindUserOptions): Promise<User | null> {
-        const where: any = { id };
-        if (tenantId) where.tenantId = tenantId;
-
-        const user = await prisma.user.findFirst({
-            where,
+    async findById(id: string, options?: FindUserOptions): Promise<User | null> {
+        const user = await prisma.user.findUnique({
+            where: { id },
             include: {
-                role: options?.includeRole ? {
+                tenants: {
                     include: {
-                        permissions: options?.includePermissions ? {
+                        role: options?.includeRole ? {
                             include: {
-                                permission: true
+                                permissions: options?.includePermissions ? {
+                                    include: {
+                                        permission: true
+                                    }
+                                } : false
                             }
-                        } : false
+                        } : true,
+                        tenant: true
                     }
-                } : false
+                }
             }
         });
 
         if (!user) return null;
-
-        // Transform permissions if included
-        if (options?.includePermissions && user.role) {
-            const transformedUser = {
-                ...user,
-                role: {
-                    id: user.role.id,
-                    name: user.role.name,
-                    level: user.role.level,
-                    permissions: (user.role as any).permissions?.map((rp: any) => rp.permission) || []
-                }
-            };
-            return transformedUser as any;
-        }
-
-        return user as any;
+        return this.mapToEntity(user);
     }
 
-    async create(tenantId: string | undefined, data: CreateUserDTO): Promise<User> {
-        // Get default USER role if no role specified
-        let roleId = data.roleId;
-        const targetTenantId = tenantId || (data as any).tenantId;
-
-        if (!targetTenantId) {
-            throw new Error('tenantId is required to create a user');
-        }
-
-        if (!roleId) {
-            // Find 'USER' role: try tenant specific first, then global
-            const defaultRole = await prisma.role.findFirst({
-                where: {
-                    name: 'USER',
-                    OR: [
-                        { tenantId: targetTenantId },
-                        { tenantId: null }
-                    ]
-                },
-                orderBy: { tenantId: 'desc' } // Prefer tenant specific (if UUID) over null
-            });
-            roleId = defaultRole?.id;
-        }
-
-        if (!roleId) {
-            throw new Error('Unable to assign role: USER role not found in database');
-        }
-
+    async create(data: CreateUserDTO): Promise<User> {
         const user = await prisma.user.create({
             data: {
                 name: data.name,
                 email: data.email,
                 password: data.password!,
-                roleId: roleId,
-                tenantId: targetTenantId, // Assign tenant
                 profilePic: data.profilePic,
+                phone: data.phone,
+                pushToken: data.pushToken,
                 googleId: data.googleId,
                 facebookId: data.facebookId,
-                githubId: data.githubId
+                githubId: data.githubId,
+                active: data.active !== undefined ? data.active : true
             },
             include: {
-                role: true
+                tenants: {
+                    include: {
+                        role: true,
+                        tenant: true
+                    }
+                }
             }
         });
-        return user as any;
+        return this.mapToEntity(user);
     }
 
-    async update(tenantId: string | undefined, id: string, data: Partial<User>): Promise<User> {
-        const updateData: any = { ...data };
-
-        // Remove nested role object if present, we only want roleId
-        if (updateData.role) {
-            delete updateData.role;
-        }
-
-        const where: any = { id };
-        if (tenantId) where.tenantId = tenantId;
-
+    async update(id: string, data: Partial<User>): Promise<User> {
+        const { tenants, ...userData } = data as any;
         const user = await prisma.user.update({
-            where,
-            data: updateData,
+            where: { id },
+            data: userData,
             include: {
-                role: true
+                tenants: {
+                    include: {
+                        role: true,
+                        tenant: true
+                    }
+                }
             }
         });
-        return user as any;
+        return this.mapToEntity(user);
     }
 
-    async findByProvider(tenantId: string | undefined, providerField: string, providerId: string): Promise<User | null> {
-        const where: any = { [providerField]: providerId };
-        if (tenantId) where.tenantId = tenantId;
-
+    async findByProvider(providerField: string, providerId: string): Promise<User | null> {
         const user = await prisma.user.findFirst({
-            where,
+            where: { [providerField]: providerId },
             include: {
-                role: true
+                tenants: {
+                    include: {
+                        role: true,
+                        tenant: true
+                    }
+                }
             }
         });
-        return user as any;
+        return user ? this.mapToEntity(user) : null;
     }
 
-    async linkProvider(tenantId: string | undefined, email: string, providerField: string, providerId: string, profilePic?: string): Promise<User> {
+    async linkProvider(email: string, providerField: string, providerId: string, profilePic?: string): Promise<User> {
         const updateData: any = {
             [providerField]: providerId
         };
@@ -211,48 +147,58 @@ export class PrismaUserRepository implements IUserRepository {
             updateData.profilePic = profilePic;
         }
 
-        const where: any = { email };
-        if (tenantId) where.tenantId = tenantId;
-
-        const user = await prisma.user.updateMany({
-            where,
+        await prisma.user.update({
+            where: { email },
             data: updateData
         });
 
-        // Fetch updated user since updateMany doesn't return the record
-        const updatedUser = await this.findByEmail(tenantId, email, { includeRole: true });
+        const updatedUser = await this.findByEmail(email, { includeRole: true });
         if (!updatedUser) throw new Error('User not found after update');
 
         return updatedUser;
     }
 
     async getUsersStats(tenantId?: string): Promise<{ yearMonth: string; total: number }[]> {
-        const tenantFilter = tenantId ? prisma.$queryRaw`AND "tenantId" = ${tenantId}` : prisma.$queryRaw``;
+        const where = tenantId ? {
+            tenants: {
+                some: { tenantId }
+            }
+        } : {};
 
-        const result: any[] = await prisma.$queryRaw`
-            SELECT to_char("createdAt", 'YYYY-MM') as "yearMonth", COUNT(*)::int as total
-            FROM users
-            WHERE "createdAt" >= NOW() - INTERVAL '1 year'
-            ${tenantFilter}
-            GROUP BY "yearMonth"
-            ORDER BY "yearMonth" ASC
-        `;
+        const users = await prisma.user.findMany({
+            where,
+            select: { createdAt: true }
+        });
 
-        return result.map(r => ({
-            yearMonth: r.yearMonth,
-            total: r.total
-        }));
+        // Group by month manually as queryRaw is tenant-dependent
+        const stats: Record<string, number> = {};
+        users.forEach(u => {
+            const ym = u.createdAt.toISOString().slice(0, 7);
+            stats[ym] = (stats[ym] || 0) + 1;
+        });
+
+        return Object.entries(stats).map(([yearMonth, total]) => ({ yearMonth, total })).sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
     }
 
     async getSummaryStats(tenantId?: string): Promise<{ totalUsers: number; adminUsers: number; regularUsers: number }> {
-        const where: any = tenantId ? { tenantId } : {};
+        const where = tenantId ? {
+            tenants: {
+                some: { tenantId }
+            }
+        } : {};
+
         const [totalUsers, adminUsers] = await Promise.all([
             prisma.user.count({ where }),
             prisma.user.count({
                 where: {
                     ...where,
-                    role: {
-                        name: { in: ['ADMIN', 'SUPER_ADMIN'] }
+                    tenants: {
+                        some: {
+                            ...(tenantId && { tenantId }),
+                            role: {
+                                name: { in: ['ADMIN', 'SUPER_ADMIN'] }
+                            }
+                        }
                     }
                 }
             })
@@ -265,39 +211,114 @@ export class PrismaUserRepository implements IUserRepository {
         };
     }
 
-    async findByRoleId(tenantId: string | undefined, roleId: string): Promise<User[]> {
-        const where: any = { roleId };
-        if (tenantId) where.tenantId = tenantId;
-
+    async findByRoleId(tenantId: string, roleId: string): Promise<User[]> {
         const users = await prisma.user.findMany({
-            where,
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                roleId: true,
-                role: {
-                    select: {
-                        id: true,
-                        name: true,
-                        level: true
-                    }
-                },
-                profilePic: true,
-                active: true,
-                createdAt: true,
-                updatedAt: true
+            where: {
+                tenants: {
+                    some: { tenantId, roleId }
+                }
+            },
+            include: {
+                tenants: {
+                    where: { tenantId },
+                    include: { role: true }
+                }
             }
         });
-        return users as any[];
+        return users.map(user => this.mapToEntity(user));
     }
 
-    async delete(tenantId: string | undefined, id: string): Promise<void> {
-        const where: any = { id };
-        if (tenantId) where.tenantId = tenantId;
-
-        await prisma.user.delete({
-            where
+    async findByResetToken(token: string): Promise<User | null> {
+        const user = await prisma.user.findFirst({
+            where: {
+                resetPasswordToken: token,
+                resetPasswordExpires: {
+                    gt: new Date()
+                }
+            },
+            include: {
+                tenants: {
+                    include: { role: true, tenant: true }
+                }
+            }
         });
+        return user ? this.mapToEntity(user) : null;
+    }
+
+    async delete(id: string): Promise<void> {
+        await prisma.user.delete({
+            where: { id }
+        });
+    }
+
+    // Multi-tenant relations
+    async addTenant(userId: string, tenantId: string, roleId: string): Promise<void> {
+        await prisma.userTenant.upsert({
+            where: {
+                userId_tenantId: { userId, tenantId }
+            },
+            update: { roleId },
+            create: { userId, tenantId, roleId }
+        });
+    }
+
+    async removeTenant(userId: string, tenantId: string): Promise<void> {
+        await prisma.userTenant.delete({
+            where: {
+                userId_tenantId: { userId, tenantId }
+            }
+        });
+    }
+
+    async getUserTenants(userId: string): Promise<any[]> {
+        return prisma.userTenant.findMany({
+            where: { userId },
+            include: { role: true, tenant: true }
+        });
+    }
+
+    private mapToEntity(prismaUser: any): User {
+        const { tenants, roles, role: r, ...userData } = prismaUser;
+
+        // Map UserTenants to entity structure
+        const mappedTenants = tenants?.map((ut: any) => ({
+            id: ut.id,
+            userId: ut.userId,
+            tenantId: ut.tenantId,
+            roleId: ut.roleId,
+            role: ut.role ? {
+                id: ut.role.id,
+                name: ut.role.name,
+                level: ut.role.level,
+                permissions: ut.role.permissions?.map((rp: any) => rp.permission) || []
+            } : undefined,
+            tenant: ut.tenant ? {
+                id: ut.tenant.id,
+                name: ut.tenant.name,
+                slug: ut.tenant.slug
+            } : undefined
+        }));
+
+        // If there's only one tenant mapped (usually because we filtered by it),
+        // promote its role and tenant to top level for convenience.
+        // Otherwise, if we have multiple, take the first one as a fallback.
+        let role = r;
+        let tenant = undefined;
+
+        if (mappedTenants && mappedTenants.length > 0) {
+            // Priority 1: If only one tenant, use it
+            // Priority 2: If we have multiple but current role is still undefined, use the first one
+            if (mappedTenants.length === 1 || !role) {
+                role = mappedTenants[0].role;
+                tenant = mappedTenants[0].tenant;
+            }
+        }
+
+        return {
+            ...userData,
+            role,
+            tenant,
+            tenants: mappedTenants
+        };
     }
 }

@@ -21,7 +21,8 @@ export function requirePermission(permission: string) {
             });
         }
 
-        // Super Admin bypass
+        // Super Admin bypass - allow SUPER_ADMIN role to access everything
+        // This includes SUPER_ADMIN from the 'superadmin' tenant accessing other tenants
         if (user.role.name === 'SUPER_ADMIN') {
             return next();
         }

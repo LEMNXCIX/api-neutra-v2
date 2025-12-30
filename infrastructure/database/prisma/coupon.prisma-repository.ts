@@ -6,9 +6,9 @@ import { Coupon, CreateCouponDTO, UpdateCouponDTO } from '@/core/entities/coupon
  * Tenant-Aware Coupon Repository
  */
 export class PrismaCouponRepository implements ICouponRepository {
-    async findAll(tenantId: string): Promise<Coupon[]> {
+    async findAll(tenantId: string | undefined): Promise<Coupon[]> {
         const coupons = await prisma.coupon.findMany({
-            where: { tenantId },
+            where: { ...(tenantId && { tenantId }) },
             orderBy: { createdAt: 'desc' }
         });
         return coupons as Coupon[];
@@ -31,11 +31,11 @@ export class PrismaCouponRepository implements ICouponRepository {
         return coupon as Coupon | null;
     }
 
-    async findActive(tenantId: string): Promise<Coupon[]> {
+    async findActive(tenantId: string | undefined): Promise<Coupon[]> {
         const now = new Date();
         const coupons = await prisma.coupon.findMany({
             where: {
-                tenantId,
+                ...(tenantId && { tenantId }),
                 active: true,
                 expiresAt: { gte: now }
             },
@@ -58,7 +58,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         const now = new Date();
 
         // Build where clause
-        const where: any = { tenantId };
+        const where: any = { ...(tenantId && { tenantId }) };
 
         // Search filter (case-insensitive search on code)
         if (search) {
@@ -123,7 +123,8 @@ export class PrismaCouponRepository implements ICouponRepository {
                 active: data.active ?? true,
                 expiresAt: new Date(data.expiresAt),
                 applicableProducts: data.applicableProducts || [],
-                applicableCategories: data.applicableCategories || []
+                applicableCategories: data.applicableCategories || [],
+                applicableServices: data.applicableServices || []
             }
         });
         return coupon as Coupon;

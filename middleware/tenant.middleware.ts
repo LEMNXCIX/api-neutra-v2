@@ -37,6 +37,20 @@ export const tenantMiddleware = async (
         let tenantId: string | undefined;
         let tenantSlug: string | undefined;
 
+        // Check if this is a management route that might require global scope
+        const normalizedPath = req.originalUrl.split('?')[0];
+        const isManagementRoute =
+            normalizedPath.startsWith('/api/users') ||
+            normalizedPath.startsWith('/api/roles') ||
+            normalizedPath.startsWith('/api/permissions') ||
+            normalizedPath.startsWith('/api/tenants') ||
+            normalizedPath.startsWith('/api/admin/stats') ||
+            normalizedPath.startsWith('/api/auth/login') || // allow global login
+            normalizedPath.startsWith('/api/auth/signup') || // allow global signup
+            normalizedPath.startsWith('/api/auth/forgot-password') ||
+            normalizedPath.startsWith('/api/auth/reset-password') ||
+            normalizedPath.startsWith('/api/auth/validate'); // allow session check
+
         // Strategy 1: Explicit tenant ID from header
         const headerTenantId = req.headers['x-tenant-id'] as string;
         if (headerTenantId) {
@@ -73,26 +87,12 @@ export const tenantMiddleware = async (
             }
         }
 
-        // Strategy 4: Fallback to default (development only)
+        // Strategy 4: Fallback to default
         if (!tenantId && !tenantSlug) {
-            // Check if this is a management route that might require global scope
-            const isManagementRoute =
-                req.path.startsWith('/api/users') ||
-                req.path.startsWith('/api/roles') ||
-                req.path.startsWith('/api/permissions') ||
-                req.path.startsWith('/api/tenants') ||
-                req.path.startsWith('/api/admin/stats') ||
-                req.path.startsWith('/api/auth/login'); // allow global login
-
-            if (isManagementRoute) {
-                // Allow proceeding to authentication/authorization where global access 
-                // will be verified based on user permissions.
-                return next();
-            }
-
+            // For management routes or development, default to 'superadmin'
             const nodeEnv = process.env.NODE_ENV || 'development';
-            if (nodeEnv === 'development') {
-                tenantSlug = 'default';
+            if (isManagementRoute || nodeEnv === 'development') {
+                tenantSlug = 'superadmin';
             }
         }
 
@@ -139,6 +139,12 @@ export const tenantMiddleware = async (
 
         // Validate tenant exists and is active
         if (!tenant) {
+            if (isManagementRoute) {
+                // If it's a management route, we allow proceeding even if tenant is not found
+                // (e.g. Global Admin operations, or Login)
+                return next();
+            }
+
             res.status(404).json({
                 success: false,
                 message: 'Tenant not found',
@@ -189,7 +195,17 @@ function extractSubdomain(host: string): string | null {
     const parts = host.split('.');
 
     // localhost or IP address
-    if (parts.length < 2 || host.includes('localhost') || /^\d+\.\d+/.test(host)) {
+    if (parts.length < 2 || /^\d+\.\d+/.test(host)) {
+        return null;
+    }
+
+    // Support for subdomain.localhost
+    if (host.includes('localhost')) {
+        const hostname = host.split(':')[0];
+        const hParts = hostname.split('.');
+        if (hParts.length > 1 && hParts[hParts.length - 1] === 'localhost') {
+            return hParts[0];
+        }
         return null;
     }
 

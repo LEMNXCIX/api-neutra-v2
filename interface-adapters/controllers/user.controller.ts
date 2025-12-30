@@ -12,12 +12,15 @@ import { UpdateUserUseCase } from '@/core/application/users/update-user.use-case
 import { DeleteUserUseCase } from '@/core/application/users/delete-user.use-case';
 import { AssignRoleToUserUseCase } from '@/core/application/users/assign-role.use-case';
 import { IRoleRepository } from '@/core/repositories/role.repository.interface';
+import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
+import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.prisma-repository';
 
 export class UserController {
     constructor(
         private userRepository: IUserRepository,
         private cartRepository: ICartRepository,
-        private roleRepository: IRoleRepository
+        private roleRepository: IRoleRepository,
+        private staffRepository: IStaffRepository
     ) { }
 
     getAll = async (req: Request, res: Response) => {
@@ -88,7 +91,7 @@ export class UserController {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
         const { roleId } = req.body;
-        const useCase = new AssignRoleToUserUseCase(this.userRepository, this.roleRepository); // Need roleRepository
+        const useCase = new AssignRoleToUserUseCase(this.userRepository, this.roleRepository, this.staffRepository); // Need staffRepository
         const result = await useCase.execute(tenantId, id, roleId);
         return res.status(result.code).json(result);
     }

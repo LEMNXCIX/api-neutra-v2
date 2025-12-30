@@ -48,6 +48,7 @@ model Feature {
   name        String
   description String?
   category    String? // MODULE, INTEGRATION, CUSTOMIZATION
+  price       Float   @default(0)
 
   tenantFeatures TenantFeature[]
 
@@ -72,6 +73,46 @@ model TenantFeature {
   @@unique([tenantId, featureId])
   @@index([tenantId])
   @@map("tenant_features")
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  FATAL
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  level     LogLevel @default(INFO)
+  
+  // Contexto HTTP
+  method     String
+  url        String
+  statusCode Int
+  duration   Int      // en milisegundos
+  
+  // Identidad
+  tenantId   String?
+  userId     String?
+  
+  // Cliente
+  ip         String?
+  userAgent  String?
+  
+  // Contenido
+  message    String
+  metadata   Json?    // Datos extra estructurados
+  error      Json?    // Detalles del error (stack trace, etc.)
+  traceId    String?  @unique
+  
+  @@index([timestamp])
+  @@index([level])
+  @@index([tenantId])
+  @@index([traceId])
+  @@map("logs")
 }
 
 model AuditLog {
@@ -105,7 +146,7 @@ model Tenant {
   plan   Plan?   @relation(fields: [planId], references: [id])
 
   // Relations
-  users          User[]
+  users          UserTenant[]
   products       Product[]
   categories     Category[]
   orders         Order[]
@@ -120,6 +161,7 @@ model Tenant {
   services       Service[]       @relation("TenantServices")
   staff          Staff[]         @relation("TenantStaff")
   appointments   Appointment[]   @relation("TenantAppointments")
+  whatsappConfig WhatsAppConfig?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -131,7 +173,7 @@ model Tenant {
 // RBAC Models
 model Role {
   id          String  @id @default(uuid())
-  name        String  @unique // "ADMIN", "MANAGER", "USER"
+  name        String  // "ADMIN", "MANAGER", "USER"
   description String?
   level       Int     @default(0) // For backward compatibility
   active      Boolean @default(true)
@@ -141,11 +183,12 @@ model Role {
   tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
   permissions RolePermission[]
-  users       User[]
+  users       UserTenant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, name])
   @@index([tenantId])
   @@map("roles")
 }
@@ -192,14 +235,13 @@ model User {
   name       String
   email      String  @unique
   password   String
-  roleId     String
-  role       Role    @relation(fields: [roleId], references: [id])
   profilePic String?
+  phone      String?
+  pushToken  String?
   active     Boolean @default(true)
 
   // Multi-tenancy
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenants    UserTenant[]
 
   // Provider IDs
   googleId   String?
@@ -207,17 +249,38 @@ model User {
   twitterId  String?
   githubId   String?
 
+  // Password Reset
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
   // Relations
   products Product[]
   cart     Cart?
   orders   Order[]
   appointments Appointment[] @relation("UserAppointments")
+  staff        Staff[]       @relation("UserAsStaff")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([tenantId])
   @@map("users")
+}
+
+model UserTenant {
+  id       String @id @default(uuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  roleId   String
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+  @@map("user_tenants")
 }
 
 model Product {
@@ -426,12 +489,14 @@ model Coupon {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  // Optional: Limit to specific products/categories
+  // Optional: Limit to specific products/categories/services
   applicableProducts   String[] // Array of product IDs
   applicableCategories String[] // Array of category IDs
+  applicableServices   String[] // Array of service IDs
 
   // Relations
-  orders Order[] @relation("CouponOrders")
+  orders       Order[]       @relation("CouponOrders")
+  appointments Appointment[] @relation("CouponAppointments")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -483,6 +548,11 @@ model Service {
 
 model Staff {
   id          String   @id @default(uuid())
+  
+  // Link to User
+  userId      String?
+  user        User?    @relation("UserAsStaff", fields: [userId], references: [id])
+
   name        String
   email       String?
   phone       String?
@@ -505,6 +575,7 @@ model Staff {
   updatedAt   DateTime @updatedAt
   
   @@index([tenantId])
+  @@index([userId])
   @@index([tenantId, active])
   @@map("staff")
 }
@@ -525,6 +596,7 @@ model StaffService {
   @@index([tenantId])
   @@map("staff_services")
 }
+
 
 model Appointment {
   id              String   @id @default(uuid())
@@ -552,6 +624,15 @@ model Appointment {
   notes           String?
   cancellationReason String?
   
+  // Coupon relation
+  couponId       String?
+  coupon         Coupon? @relation("CouponAppointments", fields: [couponId], references: [id])
+  discountAmount Float   @default(0)
+  
+  // Pricing
+  subtotal Float @default(0)
+  total    Float @default(0)
+  
   // Email tracking
   confirmationSent Boolean @default(false)
   reminderSent     Boolean @default(false)
@@ -568,4 +649,87 @@ model Appointment {
   @@index([tenantId, staffId, startTime])
   @@index([tenantId, status])
   @@map("appointments")
+}
+
+// ============================================
+// WHATSAPP INTEGRATION MODULE
+// ============================================
+
+model WhatsAppConfig {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  // Meta Credentials
+  phoneNumberId         String
+  businessAccountId     String
+  accessToken           String   // Encrypted
+  webhookVerifyToken    String   // Encrypted
+  
+  // Configuration
+  enabled               Boolean  @default(false)
+  notificationsEnabled  Boolean  @default(true)
+  botEnabled            Boolean  @default(false)
+  
+  // Approved Templates
+  templates             Json?    // Array of approved templates
+  
+  // Bot Configuration
+  botConfig             Json?    // Conversation flows, auto-responses
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@map("whatsapp_configs")
+}
+
+model WhatsAppMessage {
+  id                String   @id @default(uuid())
+  tenantId          String
+  
+  // WhatsApp Identifiers
+  waMessageId       String   @unique
+  waConversationId  String?
+  
+  // Message Info
+  from              String   // Sender number
+  to                String   // Recipient number
+  type              String   // text, image, template, etc.
+  content           Json     // Message content structure
+  
+  // Status
+  status            String   // sent, delivered, read, failed
+  direction         String   // inbound, outbound
+  
+  // Optional Relations
+  userId            String?
+  appointmentId     String?
+  orderId           String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@map("whatsapp_messages")
+  @@index([tenantId, from])
+  @@index([tenantId, waConversationId])
+}
+
+model WhatsAppConversation {
+  id                String   @id @default(uuid())
+  tenantId          String
+  
+  waConversationId  String   @unique
+  phoneNumber       String
+  userId            String?
+  
+  // Session State
+  status            String   // active, waiting, completed
+  context           Json?    // Current bot context/step
+  
+  lastMessageAt     DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@map("whatsapp_conversations")
+  @@index([tenantId, phoneNumber])
 }
