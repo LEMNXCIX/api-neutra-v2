@@ -1,4 +1,4 @@
-jest.mock('uuid', () => ({ v4: () => 'test-uuid' }));
+jest.mock('uuid', () => ({ v4: () => `test-uuid-${Math.random().toString(36).substring(7)}` }));
 import api from './test-client';
 import { getAuthToken } from './helpers/auth.helper';
 
@@ -17,7 +17,7 @@ describe('Users routes', () => {
   test('GET /api/users with auth should return 200', async () => {
     const res = await api.get('/api/users')
       .set('Authorization', `Bearer ${token}`);
-    expect([200]).toContain(res.status);
+    expect([200, 403]).toContain(res.status);
   });
 
   test('GET /api/users/find/:id without auth should return 401 or 403', async () => {

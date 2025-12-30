@@ -76,7 +76,7 @@ function sanitize(body: any): any {
     const sensitiveFields = SECURITY_CONSTANTS.SENSITIVE_FIELDS;
 
     for (const key of Object.keys(sanitized)) {
-        if (sensitiveFields.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+        if (sensitiveFields.some(field => key.toLowerCase() === field.toLowerCase())) {
             sanitized[key] = '[REDACTED]';
         }
     }

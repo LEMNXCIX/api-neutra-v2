@@ -168,7 +168,7 @@ export class PinoLoggerProvider implements ILogger {
             }
 
             for (const key in obj) {
-                if (sensitiveFields.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+                if (sensitiveFields.some(field => key.toLowerCase() === field.toLowerCase())) {
                     obj[key] = '[REDACTED]';
                 } else if (typeof obj[key] === 'object') {
                     obj[key] = sanitizeObject(obj[key]);
