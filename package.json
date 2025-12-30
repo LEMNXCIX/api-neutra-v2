@@ -20,6 +20,7 @@
     "@prisma/client": "^6.19.0",
     "@scalar/express-api-reference": "^0.8.25",
     "@types/redis": "^4.0.10",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.66.2",
     "class-transformer": "^0.5.1",

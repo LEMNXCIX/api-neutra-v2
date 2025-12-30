@@ -75,6 +75,46 @@ model TenantFeature {
   @@map("tenant_features")
 }
 
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  FATAL
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  level     LogLevel @default(INFO)
+  
+  // Contexto HTTP
+  method     String
+  url        String
+  statusCode Int
+  duration   Int      // en milisegundos
+  
+  // Identidad
+  tenantId   String?
+  userId     String?
+  
+  // Cliente
+  ip         String?
+  userAgent  String?
+  
+  // Contenido
+  message    String
+  metadata   Json?    // Datos extra estructurados
+  error      Json?    // Detalles del error (stack trace, etc.)
+  traceId    String?  @unique
+  
+  @@index([timestamp])
+  @@index([level])
+  @@index([tenantId])
+  @@index([traceId])
+  @@map("logs")
+}
+
 model AuditLog {
   id     String @id @default(uuid())
   action String // IMPERSONATE, TENANT_TOGGLE, FEATURE_CHANGE
@@ -121,6 +161,7 @@ model Tenant {
   services       Service[]       @relation("TenantServices")
   staff          Staff[]         @relation("TenantStaff")
   appointments   Appointment[]   @relation("TenantAppointments")
+  whatsappConfig WhatsAppConfig?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -556,6 +597,7 @@ model StaffService {
   @@map("staff_services")
 }
 
+
 model Appointment {
   id              String   @id @default(uuid())
   
@@ -607,4 +649,87 @@ model Appointment {
   @@index([tenantId, staffId, startTime])
   @@index([tenantId, status])
   @@map("appointments")
+}
+
+// ============================================
+// WHATSAPP INTEGRATION MODULE
+// ============================================
+
+model WhatsAppConfig {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  // Meta Credentials
+  phoneNumberId         String
+  businessAccountId     String
+  accessToken           String   // Encrypted
+  webhookVerifyToken    String   // Encrypted
+  
+  // Configuration
+  enabled               Boolean  @default(false)
+  notificationsEnabled  Boolean  @default(true)
+  botEnabled            Boolean  @default(false)
+  
+  // Approved Templates
+  templates             Json?    // Array of approved templates
+  
+  // Bot Configuration
+  botConfig             Json?    // Conversation flows, auto-responses
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@map("whatsapp_configs")
+}
+
+model WhatsAppMessage {
+  id                String   @id @default(uuid())
+  tenantId          String
+  
+  // WhatsApp Identifiers
+  waMessageId       String   @unique
+  waConversationId  String?
+  
+  // Message Info
+  from              String   // Sender number
+  to                String   // Recipient number
+  type              String   // text, image, template, etc.
+  content           Json     // Message content structure
+  
+  // Status
+  status            String   // sent, delivered, read, failed
+  direction         String   // inbound, outbound
+  
+  // Optional Relations
+  userId            String?
+  appointmentId     String?
+  orderId           String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@map("whatsapp_messages")
+  @@index([tenantId, from])
+  @@index([tenantId, waConversationId])
+}
+
+model WhatsAppConversation {
+  id                String   @id @default(uuid())
+  tenantId          String
+  
+  waConversationId  String   @unique
+  phoneNumber       String
+  userId            String?
+  
+  // Session State
+  status            String   // active, waiting, completed
+  context           Json?    // Current bot context/step
+  
+  lastMessageAt     DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@map("whatsapp_conversations")
+  @@index([tenantId, phoneNumber])
 }

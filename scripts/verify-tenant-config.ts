@@ -4,6 +4,7 @@ import { CreateTenantUseCase } from '../core/application/tenant/create-tenant.us
 import { UpdateTenantUseCase } from '../core/application/tenant/update-tenant.use-case';
 import { TenantType } from '../core/entities/tenant.entity';
 import { ILogger } from '../core/providers/logger.interface';
+import { IUserRepository } from '../core/repositories/user.repository.interface';
 
 // Mock Logger
 const mockLogger: ILogger = {
@@ -15,9 +16,28 @@ const mockLogger: ILogger = {
     logResponse: () => { },
 };
 
+// Mock User Repository
+const mockUserRepository: IUserRepository = {
+    findAll: async () => [],
+    findByEmail: async () => null,
+    findById: async () => null,
+    findByProvider: async () => null,
+    create: async () => ({ success: false } as any),
+    update: async () => ({ success: false } as any),
+    linkProvider: async () => ({ success: false } as any),
+    getUsersStats: async () => [],
+    getSummaryStats: async () => ({ totalUsers: 0, adminUsers: 0, regularUsers: 0 }),
+    findByRoleId: async () => [],
+    findByResetToken: async () => null,
+    delete: async () => {},
+    addTenant: async () => {},
+    removeTenant: async () => {},
+    getUserTenants: async () => [],
+} as any;
+
 async function verify() {
     const repository = new TenantPrismaRepository();
-    const createUseCase = new CreateTenantUseCase(repository, mockLogger);
+    const createUseCase = new CreateTenantUseCase(repository, mockUserRepository, mockLogger);
     const updateUseCase = new UpdateTenantUseCase(repository, mockLogger);
 
     const slug = `test-tenant-${Date.now()}`;
@@ -38,7 +58,7 @@ async function verify() {
                 currency: 'USD',
             }
         }
-    });
+    }, 'mock-creator-id');
 
     if (!createResult.success || !createResult.data) {
         console.error('Failed to create tenant:', createResult);

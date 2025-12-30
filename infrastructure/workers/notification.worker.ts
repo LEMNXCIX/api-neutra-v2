@@ -137,16 +137,16 @@ export const notificationWorker = new Worker(
                     }
 
                     // 2. WhatsApp (Optional - if phone exists)
-                    // TODO: Add channel verification when WhatsApp is implemented
-                    // if (isChannelEnabled('whatsapp', 'appointmentConfirmed')) { ... }
                     const userPhone = (appointment.user as any)?.phone;
-                    if (userPhone) {
+                    if (userPhone && isChannelEnabled('whatsapp', 'appointmentConfirmed')) {
                         await notificationService.notify(
                             ['WHATSAPP'],
                             { WHATSAPP: userPhone },
                             {
-                                body: `Hola ${userName}, tu cita para ${serviceName} con ${staffName} el ${appointment.startTime.toLocaleDateString()} a las ${appointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ha sido CONFIRMADA.`
-                            }
+                                body: `Hola ${userName}, tu cita para ${serviceName} con ${staffName} el ${appointment.startTime.toLocaleDateString()} a las ${appointment.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ha sido CONFIRMADA.`,
+                                templateId: 'appointment_confirmed' // Example template name, fallback to body text if not found/configured
+                            },
+                            { tenantId }
                         );
                     }
 
@@ -190,8 +190,10 @@ export const notificationWorker = new Worker(
                             ['WHATSAPP'],
                             { WHATSAPP: userPhone },
                             {
-                                body: `Hola ${userName}, lamentamos informarte que tu cita para ${serviceName} el ${appointment.startTime.toLocaleDateString()} ha sido CANCELADA. Razón: ${reason || 'Administrativa'}.`
-                            }
+                                body: `Hola ${userName}, lamentamos informarte que tu cita para ${serviceName} el ${appointment.startTime.toLocaleDateString()} ha sido CANCELADA. Razón: ${reason || 'Administrativa'}.`,
+                                templateId: 'appointment_cancelled'
+                            },
+                            { tenantId }
                         );
                     }
 

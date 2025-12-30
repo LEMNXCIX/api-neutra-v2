@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { ILogger } from '@/core/providers/logger.interface';
 import { IQueueProvider } from '@/core/providers/queue-provider.interface';
-import { AUTH_PASSWORD_RESET_TOKEN_BYTES, AUTH_PASSWORD_RESET_EXPIRATION_MS } from '@/config/constants.config';
+import { AUTH_CONSTANTS } from '@/core/domain/constants';
 
 export class ForgotPasswordUseCase {
     constructor(
@@ -35,8 +35,8 @@ export class ForgotPasswordUseCase {
             }
 
             // Generate token
-            const resetToken = crypto.randomBytes(AUTH_PASSWORD_RESET_TOKEN_BYTES).toString('hex');
-            const resetExpires = new Date(Date.now() + AUTH_PASSWORD_RESET_EXPIRATION_MS);
+            const resetToken = crypto.randomBytes(AUTH_CONSTANTS.PASSWORD_RESET_TOKEN_BYTES).toString('hex');
+            const resetExpires = new Date(Date.now() + AUTH_CONSTANTS.PASSWORD_RESET_EXPIRATION_MS);
 
             // Update user with reset info
             await this.userRepository.update(user.id, {

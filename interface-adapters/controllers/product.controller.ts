@@ -9,7 +9,7 @@ import { SearchProductsUseCase } from '@/core/application/products/search-produc
 import { GetProductStatsUseCase } from '@/core/application/products/get-product-stats.use-case';
 import { GetProductSummaryStatsUseCase } from '@/core/application/products/get-product-summary-stats.use-case';
 
-import { MAX_IMAGE_SIZE_BYTES } from '@/config/constants.config';
+import { VALIDATION_CONSTANTS } from '@/core/domain/constants';
 
 export class ProductController {
     private getAllProductsUseCase: GetAllProductsUseCase;
@@ -72,7 +72,7 @@ export class ProductController {
         const base64 = base64String.split(',')[1] || base64String;
         // Calculate size: each character is 6 bits (3/4 byte). Padding '='
         const sizeInBytes = (base64.length * 3) / 4 - (base64.indexOf('=') > 0 ? (base64.length - base64.indexOf('=')) : 0);
-        return sizeInBytes <= MAX_IMAGE_SIZE_BYTES;
+        return sizeInBytes <= VALIDATION_CONSTANTS.MAX_IMAGE_SIZE_BYTES;
     }
 
     async create(req: Request, res: Response) {

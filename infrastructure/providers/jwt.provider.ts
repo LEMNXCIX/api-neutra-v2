@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import config from '@/config/index.config';
 import { ITokenGenerator } from '@/core/providers/auth-providers.interface';
 import { JWTPayload } from '@/types/rbac';
-import { JWT_EXPIRATION, JWT_ALGORITHM } from '@/config/constants.config';
+import { JWT_CONSTANTS } from '@/core/domain/constants';
 
 export class JwtProvider implements ITokenGenerator {
     private secret: string;
@@ -28,14 +28,14 @@ export class JwtProvider implements ITokenGenerator {
         };
 
         return jwt.sign(tokenPayload, this.secret, {
-            expiresIn: JWT_EXPIRATION,
-            algorithm: JWT_ALGORITHM
+            expiresIn: JWT_CONSTANTS.EXPIRATION,
+            algorithm: JWT_CONSTANTS.ALGORITHM
         });
     }
 
     verify(token: string): JWTPayload {
         return jwt.verify(token, this.secret, {
-            algorithms: [JWT_ALGORITHM]
+            algorithms: [JWT_CONSTANTS.ALGORITHM]
         }) as JWTPayload;
     }
 }

@@ -153,7 +153,26 @@ const ROLES = [
     },
 ];
 
+// Features
+const FEATURES = [
+    { key: 'APPOINTMENTS', name: 'Booking System', description: 'Enable booking system', category: 'MODULE', price: 0 },
+    { key: 'BANNERS', name: 'Marketing Banners', description: 'Enable marketing banners', category: 'MODULE', price: 0 },
+    { key: 'COUPONS', name: 'Coupons Management', description: 'Permite la gestion de cupones', category: 'MODULE', price: 0.5 },
+    { key: 'EMAIL_NOTIFICATIONS', name: 'Email Notifications', description: 'Enable email notifications', category: 'INTEGRATION', price: 0 },
+    { key: 'ORDERS', name: 'Order Management', description: 'Enable order management', category: 'MODULE', price: 0 },
+    { key: 'WHATSAPP_API', name: 'WhatsApp API Integration', description: 'Integración con la API de WhatsApp', category: 'INTEGRATION', price: 5 },
+];
+
 async function main() {
+    // 0. Crear Features
+    for (const feature of FEATURES) {
+        await prisma.feature.upsert({
+            where: { key: feature.key },
+            update: {},
+            create: feature
+        });
+    }
+
     // 1. Crear permisos
     for (const permission of PERMISSIONS) {
         await prisma.permission.upsert({
@@ -179,7 +198,8 @@ async function main() {
                     coupons: true,
                     appointmentCoupons: true,
                     banners: true,
-                    orders: true
+                    orders: true,
+                    emailNotifications: true
                 }
             }
         },

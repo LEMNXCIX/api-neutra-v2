@@ -19,6 +19,7 @@ import { GetOrderStatsUseCase } from '@/core/application/order/get-order-stats.u
 import { ILogger } from '@/core/providers/logger.interface';
 import { IEmailService } from '@/core/ports/email.port';
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
 
 export class OrderController {
     private createOrderUseCase: CreateOrderUseCase;
@@ -36,6 +37,7 @@ export class OrderController {
         couponRepository: ICouponRepository,
         userRepository: IUserRepository,
         emailService: IEmailService,
+        private featureRepository: IFeatureRepository,
         private logger: ILogger
     ) {
         const getCartUseCase = new GetCartUseCase(cartRepository);
@@ -49,7 +51,8 @@ export class OrderController {
             couponRepository,
             userRepository,
             logger,
-            emailService
+            emailService,
+            featureRepository
         );
         this.getOrderUseCase = new GetOrderUseCase(orderRepository);
         this.getUserOrdersUseCase = new GetUserOrdersUseCase(orderRepository);

@@ -21,7 +21,8 @@ export class NotificationService {
     async notify(
         channels: string[],
         recipientMap: Record<string, string>,
-        message: NotificationMessage
+        message: NotificationMessage,
+        options?: any
     ): Promise<void> {
 
         const promises = channels.map(channel => {
@@ -29,7 +30,7 @@ export class NotificationService {
             const recipient = recipientMap[channel];
 
             if (provider && recipient) {
-                return provider.send(recipient, message);
+                return provider.send(recipient, message, options);
             } else {
                 console.warn(`[NotificationService] Skipping channel ${channel}: Provider not found or no recipient provided.`);
                 return Promise.resolve(false);

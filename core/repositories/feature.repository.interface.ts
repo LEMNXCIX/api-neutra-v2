@@ -7,4 +7,6 @@ export interface IFeatureRepository {
     create(data: CreateFeatureDTO): Promise<Feature>;
     update(id: string, data: Partial<Feature>): Promise<Feature>;
     delete(id: string): Promise<void>;
+    getTenantFeatureStatus(tenantId: string): Promise<Record<string, boolean>>;
+    updateTenantFeatures(tenantId: string, features: Record<string, boolean>): Promise<void>;
 }

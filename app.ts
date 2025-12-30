@@ -11,6 +11,7 @@ import { connection } from "@/config/db.config";
 import rateLimiter from "@/middleware/rateLimit.middleware";
 import responseMiddleware from "@/middleware/response.middleware";
 import logger from "@/helpers/logger.helpers";
+import { AUTH_CONSTANTS, CORS_CONSTANTS, isProduction as checkProduction } from "@/core/domain/constants";
 
 // Rutas
 import auth from "@/infrastructure/routes/auth.routes";
@@ -26,6 +27,8 @@ import banner from "@/infrastructure/routes/banner.routes";
 import coupon from "@/infrastructure/routes/coupon.routes";
 import tenants from "@/infrastructure/routes/tenant.routes";
 import features from "@/infrastructure/routes/feature.routes";
+import whatsappRoutes from "@/infrastructure/routes/whatsapp.routes";
+import logRoutes from "@/infrastructure/routes/log.routes";
 import { swaggerSpec } from "@/infrastructure/config/swagger.config";
 import { apiReference } from "@scalar/express-api-reference";
 
@@ -41,6 +44,9 @@ const { port, sesionSecret, ENVIRONMENT } = config;
 
 const app = express();
 
+// Trust proxy settings (required for express-rate-limit behind Docker/Proxies)
+app.set('trust proxy', 1);
+
 // DB connection solo si directo
 // In TypeScript/ESM, require.main === module is tricky. 
 // Since we compile to CommonJS, this might still work if we declare require.
@@ -52,8 +58,12 @@ if (require.main === module) {
 
 
 import requestMiddleware from "@/middleware/request.middleware";
+import wideLogMiddleware from "@/middleware/wide-log.middleware";
+import { contextMiddleware } from "@/middleware/context.middleware";
 
-// Middlewares (orden funcional: logging > parsing > security > custom)
+// Middlewares (orden funcional: contexto > logging > parsing > security > custom)
+app.use(contextMiddleware);
+app.use(wideLogMiddleware);
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(requestMiddleware);
@@ -87,7 +97,7 @@ const allowedOriginsProd = [
   "https://admin.neutra.ec",
 ];
 
-const isProduction = ENVIRONMENT === "prod" || ENVIRONMENT === "production";
+const isProduction = checkProduction(ENVIRONMENT);
 const whitelist = isProduction ? allowedOriginsProd : allowedOriginsDev;
 
 // Helper function to validate origin
@@ -110,7 +120,8 @@ const isOriginAllowed = (origin: string | undefined): boolean => {
 
   // In development, allow localhost and local network IPs
   if (!isProduction) {
-    const localhostPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+    // Modified regex to allow subdomains of localhost (e.g., superadmin.localhost)
+    const localhostPattern = /^https?:\/\/((.+\.)?localhost|127\.0\.0\.1)(:\d+)?$/;
     const localNetworkPattern = /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
 
     return localhostPattern.test(origin) || localNetworkPattern.test(origin);
@@ -132,18 +143,10 @@ app.use(
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-      "X-Requested-With",
-      "Origin",
-      "x-tenant-id",
-      "x-tenant-slug"
-    ],
+    methods: CORS_CONSTANTS.METHODS,
+    allowedHeaders: CORS_CONSTANTS.ALLOWED_HEADERS,
     exposedHeaders: ["Set-Cookie"],
-    maxAge: 86400, // 24 hours - cache preflight requests
+    maxAge: CORS_CONSTANTS.MAX_AGE_SECONDS, // 24 hours - cache preflight requests
   })
 );
 
@@ -167,13 +170,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.method === "OPTIONS") {
     res.setHeader(
       "Access-Control-Allow-Methods",
-      "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+      CORS_CONSTANTS.METHODS.join(", ")
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, Accept, X-Requested-With, Origin, x-tenant-id, x-tenant-slug"
+      CORS_CONSTANTS.ALLOWED_HEADERS.join(", ")
     );
-    res.setHeader("Access-Control-Max-Age", "86400");
+    res.setHeader("Access-Control-Max-Age", String(CORS_CONSTANTS.MAX_AGE_SECONDS));
     return res.status(204).end();
   }
 
@@ -187,13 +190,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     if (host && host.includes('.localhost')) {
       // Re-set the cookie with the correct domain if it's missing or set to the specific host
       // This is a safety measure to ensure the token remains shared
-      res.cookie('token', req.cookies.token, {
-        domain: '.localhost',
+      res.cookie(AUTH_CONSTANTS.COOKIE_NAME, req.cookies.token, {
+        domain: AUTH_CONSTANTS.LOCAL_DOMAIN,
         path: '/',
         httpOnly: true,
         secure: false,
         sameSite: 'lax',
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        expires: new Date(Date.now() + AUTH_CONSTANTS.COOKIE_EXPIRES_MS)
       });
     }
   }
@@ -228,6 +231,8 @@ appointmentRoutes(app);
 banner(app);
 coupon(app);
 features(app);
+whatsappRoutes(app);
+logRoutes(app);
 
 // Ruta raíz
 app.get("/", (req: Request, res: Response) => {

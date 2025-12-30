@@ -11,6 +11,7 @@ import { DeleteAppointmentUseCase } from '@/core/application/booking/delete-appo
 import { AppointmentStatus } from '@/core/entities/appointment.entity';
 import { ILogger } from '@/core/providers/logger.interface';
 import { IQueueProvider } from '@/core/providers/queue-provider.interface';
+import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
 
 export class AppointmentController {
     private createAppointmentUseCase: CreateAppointmentUseCase;
@@ -25,7 +26,8 @@ export class AppointmentController {
         private serviceRepository: IServiceRepository,
         private couponRepository: ICouponRepository,
         private logger: ILogger,
-        private queueProvider: IQueueProvider
+        private queueProvider: IQueueProvider,
+        private featureRepository: IFeatureRepository
     ) {
         this.createAppointmentUseCase = new CreateAppointmentUseCase(
             appointmentRepository,
@@ -33,7 +35,8 @@ export class AppointmentController {
             serviceRepository,
             couponRepository,
             logger,
-            queueProvider
+            queueProvider,
+            featureRepository
         );
         this.getAppointmentsUseCase = new GetAppointmentsUseCase(appointmentRepository, logger);
         this.getAvailabilityUseCase = new GetAvailabilityUseCase(
@@ -42,7 +45,7 @@ export class AppointmentController {
             serviceRepository,
             logger
         );
-        this.updateAppointmentStatusUseCase = new UpdateAppointmentStatusUseCase(appointmentRepository, logger, queueProvider);
+        this.updateAppointmentStatusUseCase = new UpdateAppointmentStatusUseCase(appointmentRepository, logger, queueProvider, featureRepository);
         this.deleteAppointmentUseCase = new DeleteAppointmentUseCase(appointmentRepository, logger);
     }
 
@@ -124,13 +127,19 @@ export class AppointmentController {
                 cancellationReason: reason,
             });
 
-            // Enqueue notification
-            await this.queueProvider.enqueue('notifications', {
-                type: 'CANCELLED',
-                appointmentId: id,
-                tenantId: tenantId,
-                reason: reason
-            });
+            // 2. Check if EMAIL_NOTIFICATIONS feature is enabled
+            const features = await this.featureRepository.getTenantFeatureStatus(tenantId);
+            if (features['EMAIL_NOTIFICATIONS']) {
+                // Enqueue notification
+                await this.queueProvider.enqueue('notifications', {
+                    type: 'CANCELLED',
+                    appointmentId: id,
+                    tenantId: tenantId,
+                    reason: reason
+                });
+            } else {
+                this.logger.info('Skipping email notification: EMAIL_NOTIFICATIONS feature disabled', { tenantId });
+            }
 
             return res.status(200).json({
                 success: true,

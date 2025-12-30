@@ -9,6 +9,7 @@ import { ILogger } from '@/core/providers/logger.interface';
 import { IEmailService } from '@/core/ports/email.port';
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { UseCaseResult } from '@/core/utils/use-case-result';
+import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
 
 export class CreateOrderUseCase {
     constructor(
@@ -19,7 +20,8 @@ export class CreateOrderUseCase {
         private couponRepository: ICouponRepository,
         private userRepository: IUserRepository,
         private logger: ILogger,
-        private emailService: IEmailService
+        private emailService: IEmailService,
+        private featureRepository: IFeatureRepository
     ) { }
 
     async execute(tenantId: string, userId: string, couponId?: string): Promise<UseCaseResult> {
@@ -110,6 +112,13 @@ export class CreateOrderUseCase {
      */
     private async sendOrderConfirmation(tenantId: string, userId: string, order: any): Promise<void> {
         try {
+            // Check if EMAIL_NOTIFICATIONS feature is enabled
+            const features = await this.featureRepository.getTenantFeatureStatus(tenantId);
+            if (!features['EMAIL_NOTIFICATIONS']) {
+                this.logger.info('Skipping order confirmation email: EMAIL_NOTIFICATIONS feature disabled', { tenantId });
+                return;
+            }
+
             // Fetch user to get email
             const user = await this.userRepository.findById(userId);
             if (!user || !user.email) {

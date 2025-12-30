@@ -1,5 +1,6 @@
 import { Response, Request, CookieOptions } from 'express';
 import config from '@/config/index.config';
+import { AUTH_CONSTANTS, DOMAIN_CONSTANTS, isProduction, isDevelopment } from '@/core/domain/constants';
 
 const production: boolean = config.production;
 const ENVIRONMENT: string = config.ENVIRONMENT;
@@ -13,19 +14,19 @@ function getCookieDomain(req: Request): string | undefined {
   const domain = host.split(':')[0];
 
   // For local development with subdomains
-  if (domain.endsWith('.localhost')) {
-    return '.localhost';
+  if (domain.endsWith(DOMAIN_CONSTANTS.LOCAL_LOCALHOST)) {
+    return DOMAIN_CONSTANTS.LOCAL_LOCALHOST;
   }
 
   // For nip.io development (e.g. 172.27.16.1.nip.io)
-  if (domain.endsWith('.nip.io')) {
+  if (domain.endsWith(DOMAIN_CONSTANTS.LOCAL_NIPIO)) {
     const parts = domain.split('.');
     // nip.io with IP: [a,b,c,d,nip,io] -> 6 parts
     // We want the last 6 parts to cover any subdomain of that IP nip.io address
-    if (parts.length >= 6) {
-      return '.' + parts.slice(-6).join('.');
+    if (parts.length >= DOMAIN_CONSTANTS.NIPIO_PARTS) {
+      return '.' + parts.slice(-DOMAIN_CONSTANTS.NIPIO_PARTS).join('.');
     }
-    return '.nip.io';
+    return DOMAIN_CONSTANTS.LOCAL_NIPIO;
   }
 
   // For production - can be configured or derived
@@ -61,7 +62,7 @@ export function authResponse(req: Request, res: Response, result: any, statusCod
 
   if (result && result.success) {
     const opts = Object.assign({}, cookieOptions(req), {
-      expires: new Date(new Date().setDate(new Date().getDate() + 7)),
+      expires: new Date(Date.now() + AUTH_CONSTANTS.COOKIE_EXPIRES_MS),
     });
 
     // Extract token from result data
@@ -82,7 +83,7 @@ export function authResponse(req: Request, res: Response, result: any, statusCod
     }
 
     if (token) {
-      res.cookie('token', token, opts);
+      res.cookie(AUTH_CONSTANTS.COOKIE_NAME, token, opts);
     }
 
     return res.apiSuccess(data, result.message, code);
@@ -101,16 +102,16 @@ export function providerResponse(req: Request, res: Response, result: any, statu
 
   if (result && result.success) {
     const opts = Object.assign({}, cookieOptions(req), {
-      expires: new Date(new Date().setDate(new Date().getDate() + 7)),
+      expires: new Date(Date.now() + AUTH_CONSTANTS.COOKIE_EXPIRES_MS),
     });
 
     const redirectTo =
-      ENVIRONMENT === 'prod' || ENVIRONMENT === 'production'
+      isProduction(ENVIRONMENT)
         ? callbackURL || 'https://neutra.ec'
         : callbackURLDev || 'http://localhost:3000';
 
     if (token) {
-      res.cookie('token', token, opts);
+      res.cookie(AUTH_CONSTANTS.COOKIE_NAME, token, opts);
     }
 
     return res.redirect(redirectTo);
@@ -122,7 +123,7 @@ export function providerResponse(req: Request, res: Response, result: any, statu
 export function deleteCookie(req: Request, res: Response) {
   return res
     .cookie(
-      'token',
+      AUTH_CONSTANTS.COOKIE_NAME,
       '',
       Object.assign({}, cookieOptions(req), {
         expires: new Date(),

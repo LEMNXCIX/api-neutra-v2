@@ -2,7 +2,7 @@ import { INotificationProvider, NotificationMessage } from '@/core/ports/notific
 import { emailService } from '@/infrastructure/services/email.service';
 
 export class EmailProvider implements INotificationProvider {
-    async send(recipient: string, message: NotificationMessage): Promise<boolean> {
+    async send(recipient: string, message: NotificationMessage, options?: any): Promise<boolean> {
         try {
             // Use existing emailService
             // Mapping generic NotificationMessage to emailService parameters

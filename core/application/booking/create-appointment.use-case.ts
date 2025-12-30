@@ -7,6 +7,7 @@ import { ILogger } from '@/core/providers/logger.interface';
 import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 import { ValidationErrorCodes, BusinessErrorCodes } from '@/types/error-codes';
 import { ValidateCouponUseCase } from '@/core/application/coupons/validate-coupon.use-case';
+import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
 
 export class CreateAppointmentUseCase {
     constructor(
@@ -15,7 +16,8 @@ export class CreateAppointmentUseCase {
         private serviceRepository: IServiceRepository,
         private couponRepository: ICouponRepository,
         private logger: ILogger,
-        private queueProvider: IQueueProvider
+        private queueProvider: IQueueProvider,
+        private featureRepository: IFeatureRepository
     ) { }
 
     async execute(tenantId: string, data: CreateAppointmentDTO, origin?: string) {
@@ -150,14 +152,20 @@ export class CreateAppointmentUseCase {
 
             this.logger.info('Appointment created successfully', { appointmentId: appointment.id });
 
-            // Enqueue notification job to notify STAFF (not user) about pending appointment
-            // User will be notified when staff approves/rejects
-            await this.queueProvider.enqueue('notifications', {
-                type: 'PENDING_APPROVAL',
-                appointmentId: appointment.id,
-                tenantId: tenantId,
-                origin: origin // Pass origin for correct links in email
-            });
+            // 2. Check if EMAIL_NOTIFICATIONS feature is enabled
+            const features = await this.featureRepository.getTenantFeatureStatus(tenantId);
+            if (features['EMAIL_NOTIFICATIONS']) {
+                // Enqueue notification job to notify STAFF (not user) about pending appointment
+                // User will be notified when staff approves/rejects
+                await this.queueProvider.enqueue('notifications', {
+                    type: 'PENDING_APPROVAL',
+                    appointmentId: appointment.id,
+                    tenantId: tenantId,
+                    origin: origin // Pass origin for correct links in email
+                });
+            } else {
+                this.logger.info('Skipping email notification: EMAIL_NOTIFICATIONS feature disabled', { tenantId });
+            }
 
             return {
                 success: true,

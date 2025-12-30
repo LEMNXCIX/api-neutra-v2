@@ -68,4 +68,41 @@ export class PrismaFeatureRepository implements IFeatureRepository {
             where: { id }
         });
     }
+
+    async getTenantFeatureStatus(tenantId: string): Promise<Record<string, boolean>> {
+        const tenantFeatures = await prisma.tenantFeature.findMany({
+            where: { tenantId },
+            include: { feature: true }
+        });
+
+        const statusMap: Record<string, boolean> = {};
+        tenantFeatures.forEach(tf => {
+            statusMap[tf.feature.key] = tf.enabled;
+        });
+
+        return statusMap;
+    }
+
+    async updateTenantFeatures(tenantId: string, features: Record<string, boolean>): Promise<void> {
+        const updates = Object.entries(features).map(([featureId, enabled]) => {
+            return prisma.tenantFeature.upsert({
+                where: {
+                    tenantId_featureId: {
+                        tenantId,
+                        featureId
+                    }
+                },
+                update: { enabled },
+                create: {
+                    tenantId,
+                    featureId,
+                    enabled
+                }
+            });
+        });
+
+        if (updates.length > 0) {
+            await prisma.$transaction(updates);
+        }
+    }
 }
