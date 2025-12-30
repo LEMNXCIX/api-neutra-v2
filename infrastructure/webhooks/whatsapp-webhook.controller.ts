@@ -32,7 +32,7 @@ export class WhatsAppWebhookController {
         try {
             const mode = req.query['hub.mode'];
             const token = req.query['hub.verify_token'];
-            const challenge = req.query['hub.challenge'];
+            const challengeRaw = req.query['hub.challenge'];
 
             // Check if mode and token exist
             if (!mode || !token) {
@@ -40,10 +40,15 @@ export class WhatsAppWebhookController {
             }
 
             const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+            const challenge = Number(challengeRaw);
+
+            if (!Number.isFinite(challenge)) {
+                return res.status(400).json({ error: 'Invalid challenge parameter' });
+            }
 
             if (mode === 'subscribe' && token === verifyToken) {
                 console.log('WEBHOOK_VERIFIED');
-                return res.status(200).send(challenge);
+                return res.status(200).send(String(challenge));
             } else {
                 return res.status(403).json({ error: 'Verification failed' });
             }
