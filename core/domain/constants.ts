@@ -25,7 +25,8 @@ export const AUTH_CONSTANTS = {
 } as const;
 
 export const SECURITY_CONSTANTS = {
-    SENSITIVE_FIELDS: ['password', 'token', 'accessToken', 'refreshToken', 'secret', 'apiKey', 'creditCard', 'cvv'],
+    // Only redact specific sensitive credentials/tokens
+    SENSITIVE_FIELDS: ['password', 'token', 'accessToken', 'refreshToken', 'secret', 'apiKey', 'creditCard', 'cvv', 'auth', 'credentials'],
     SENSITIVE_HEADERS: ['authorization', 'cookie', 'x-api-key'],
 } as const;
 
