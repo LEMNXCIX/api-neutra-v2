@@ -4,8 +4,8 @@ import { UpdateCategoryDTO } from '@/core/entities/category.entity';
 export class UpdateCategoryUseCase {
     constructor(private categoryRepository: ICategoryRepository) { }
 
-    async execute(id: string, data: UpdateCategoryDTO) {
-        const existingCategory = await this.categoryRepository.findById(id);
+    async execute(tenantId: string, id: string, data: UpdateCategoryDTO) {
+        const existingCategory = await this.categoryRepository.findById(tenantId, id);
 
         if (!existingCategory) {
             return {
@@ -17,7 +17,7 @@ export class UpdateCategoryUseCase {
         }
 
         if (data.name) {
-            const categoryWithSameName = await this.categoryRepository.findByName(data.name);
+            const categoryWithSameName = await this.categoryRepository.findByName(tenantId, data.name);
             if (categoryWithSameName && categoryWithSameName.id !== id) {
                 return {
                     success: false,
@@ -28,7 +28,7 @@ export class UpdateCategoryUseCase {
             }
         }
 
-        const updatedCategory = await this.categoryRepository.update(id, data);
+        const updatedCategory = await this.categoryRepository.update(tenantId, id, data);
 
         return {
             success: true,

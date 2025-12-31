@@ -3,8 +3,8 @@ import { IPermissionRepository } from '@/core/repositories/permission.repository
 export class DeletePermissionUseCase {
     constructor(private permissionRepository: IPermissionRepository) { }
 
-    async execute(id: string) {
-        const existingPermission = await this.permissionRepository.findById(id);
+    async execute(tenantId: string | undefined, id: string) {
+        const existingPermission = await this.permissionRepository.findById(tenantId, id);
 
         if (!existingPermission) {
             return {
@@ -15,7 +15,7 @@ export class DeletePermissionUseCase {
             };
         }
 
-        await this.permissionRepository.delete(id);
+        await this.permissionRepository.delete(tenantId, id);
 
         return {
             success: true,

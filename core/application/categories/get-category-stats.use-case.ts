@@ -3,9 +3,9 @@ import { ICategoryRepository } from '@/core/repositories/category.repository.int
 export class GetCategoryStatsUseCase {
     constructor(private categoryRepository: ICategoryRepository) { }
 
-    async execute() {
+    async execute(tenantId: string) {
         try {
-            const stats = await this.categoryRepository.getStats();
+            const stats = await this.categoryRepository.getStats(tenantId);
             return {
                 success: true,
                 code: 200,

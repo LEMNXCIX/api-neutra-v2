@@ -3,8 +3,8 @@ import { IRoleRepository } from '@/core/repositories/role.repository.interface';
 export class GetRolesUseCase {
     constructor(private roleRepository: IRoleRepository) { }
 
-    async execute() {
-        const roles = await this.roleRepository.findAll();
+    async execute(tenantId: string | undefined) {
+        const roles = await this.roleRepository.findAll(tenantId);
         return {
             success: true,
             code: 200,
@@ -13,8 +13,8 @@ export class GetRolesUseCase {
         };
     }
 
-    async executeById(id: string) {
-        const role = await this.roleRepository.findById(id);
+    async executeById(tenantId: string | undefined, id: string) {
+        const role = await this.roleRepository.findById(tenantId, id);
 
         if (!role) {
             return {

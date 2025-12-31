@@ -1,25 +1,29 @@
 import rateLimit from 'express-rate-limit';
 import config from '@/config/index.config';
-import { MINUTE_MS } from '@/config/constants.config';
+import {
+  TIME_CONSTANTS,
+  RATE_LIMIT_CONSTANTS,
+  isDevelopment,
+} from '@/core/domain/constants';
 
 const ENVIRONMENT: string = config.ENVIRONMENT;
 
-const isDev = ENVIRONMENT === 'dev' || ENVIRONMENT === 'development';
+const isDev = isDevelopment(ENVIRONMENT);
 
 const defaultLimiter = rateLimit({
-  windowMs: 15 * MINUTE_MS,
-  max: 100,
+  windowMs: RATE_LIMIT_CONSTANTS.WINDOW_MINUTES * TIME_CONSTANTS.MINUTE_MS,
+  max: RATE_LIMIT_CONSTANTS.MAX_PRODUCTION,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
 });
 
 const devLimiter = rateLimit({
-  windowMs: 15 * MINUTE_MS,
-  max: 1000,
+  windowMs: RATE_LIMIT_CONSTANTS.WINDOW_MINUTES * TIME_CONSTANTS.MINUTE_MS,
+  max: RATE_LIMIT_CONSTANTS.MAX_DEVELOPMENT,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' }, // Added message for consistency
+  message: { error: 'Too many requests, please try again later.' },
 });
 
 export default function rateLimiter() {

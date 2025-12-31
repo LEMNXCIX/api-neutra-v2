@@ -3,9 +3,9 @@ import { IOrderRepository } from '@/core/repositories/order.repository.interface
 export class GetOrderUseCase {
     constructor(private orderRepository: IOrderRepository) { }
 
-    async execute(id: string) {
+    async execute(tenantId: string, id: string) {
         try {
-            const order = await this.orderRepository.findById(id);
+            const order = await this.orderRepository.findById(tenantId, id);
             return order;
         } catch (error: any) {
             return {

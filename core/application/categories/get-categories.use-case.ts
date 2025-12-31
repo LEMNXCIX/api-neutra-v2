@@ -1,10 +1,11 @@
 import { ICategoryRepository } from '@/core/repositories/category.repository.interface';
+import { CategoryType } from '@/core/entities/category.entity';
 
 export class GetCategoriesUseCase {
     constructor(private categoryRepository: ICategoryRepository) { }
 
-    async execute(page?: number, limit?: number) {
-        const result = await this.categoryRepository.findAll(page, limit);
+    async execute(tenantId: string | undefined, page?: number, limit?: number, type?: CategoryType) {
+        const result = await this.categoryRepository.findAll(tenantId, page, limit, type);
         return {
             success: true,
             code: 200,
@@ -19,8 +20,8 @@ export class GetCategoriesUseCase {
         };
     }
 
-    async executeById(id: string) {
-        const category = await this.categoryRepository.findById(id);
+    async executeById(tenantId: string, id: string) {
+        const category = await this.categoryRepository.findById(tenantId, id);
 
         if (!category) {
             return {

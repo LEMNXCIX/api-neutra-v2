@@ -3,9 +3,9 @@ import { IOrderRepository } from '@/core/repositories/order.repository.interface
 export class GetOrderStatsUseCase {
     constructor(private orderRepository: IOrderRepository) { }
 
-    async execute() {
+    async execute(tenantId: string, startDate?: Date, endDate?: Date) {
         try {
-            const stats = await this.orderRepository.getStats();
+            const stats = await this.orderRepository.getStats(tenantId, startDate, endDate);
             return {
                 success: true,
                 code: 200,

@@ -1,0 +1,50 @@
+<h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">✓ ¡Cita Confirmada!</h1>
+
+<p>Hola {{userName}},</p>
+
+<p>Tu cita ha sido programada exitosamente. ¡Esperamos verte pronto!</p>
+
+<div class="appointment-card">
+    <div class="detail-row">
+        <span class="label">Servicio:</span>
+        <span class="value">{{serviceName}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Staff:</span>
+        <span class="value">{{staffName}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Fecha:</span>
+        <span class="value">{{appointmentDate}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Hora:</span>
+        <span class="value">{{appointmentTime}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Duración:</span>
+        <span class="value">{{duration}} minutos</span>
+    </div>
+    {{#if notes}}
+    <div class="detail-row">
+        <span class="label">Notas:</span>
+        <span class="value">{{notes}}</span>
+    </div>
+    {{/if}}
+</div>
+
+<div style="text-align: center;">
+    <a href="{{calendarLink}}" class="button">Agregar al Calendario</a>
+    <br>
+    <a href="{{tenant.websiteUrl}}/appointments/{{appointmentId}}"
+        style="color: #666; font-size: 14px; text-decoration: underline;">Ver Detalles</a>
+</div>
+
+<p style="margin-top: 30px;"><strong>Importante:</strong></p>
+<ul style="margin-left: 20px; margin-bottom: 20px; color: #666;">
+    <li>Por favor llega 5-10 minutos antes de tu hora programada.</li>
+    <li>Si necesitas cancelar o reagendar, por favor hazlo con al menos 24 horas de anticipación.</li>
+</ul>
+
+<p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
+<p><strong>El equipo de {{tenant.tenantName}}</strong></p>

@@ -3,8 +3,11 @@ import { IOrderRepository } from '@/core/repositories/order.repository.interface
 import { Order, CreateOrderDTO, OrderStatus } from '@/core/entities/order.entity';
 import { OrderStatus as PrismaOrderStatus } from '@prisma/client';
 
+/**
+ * Tenant-Aware Order Repository
+ */
 export class PrismaOrderRepository implements IOrderRepository {
-    async create(data: CreateOrderDTO): Promise<Order> {
+    async create(tenantId: string, data: CreateOrderDTO): Promise<Order> {
         const subtotal = data.items.reduce((sum, item) => sum + (item.price * item.amount), 0);
         const discountAmount = 0;
         const total = subtotal - discountAmount;
@@ -12,6 +15,7 @@ export class PrismaOrderRepository implements IOrderRepository {
         const order = await prisma.order.create({
             data: {
                 userId: data.userId,
+                tenantId, // Assign tenant
                 status: 'PENDIENTE',
                 couponId: data.couponId,
                 subtotal,
@@ -42,9 +46,9 @@ export class PrismaOrderRepository implements IOrderRepository {
         return this.mapToEntity(order);
     }
 
-    async findById(id: string): Promise<Order | null> {
-        const order = await prisma.order.findUnique({
-            where: { id },
+    async findById(tenantId: string, id: string): Promise<Order | null> {
+        const order = await prisma.order.findFirst({
+            where: { id, tenantId },
             include: {
                 items: {
                     include: {
@@ -62,8 +66,8 @@ export class PrismaOrderRepository implements IOrderRepository {
         return order ? this.mapToEntity(order) : null;
     }
 
-    async findByUserId(userId: string, status?: OrderStatus): Promise<Order[]> {
-        const whereClause: any = { userId };
+    async findByUserId(tenantId: string, userId: string, status?: OrderStatus): Promise<Order[]> {
+        const whereClause: any = { userId, tenantId };
         if (status) {
             whereClause.status = status;
         }
@@ -88,8 +92,9 @@ export class PrismaOrderRepository implements IOrderRepository {
         return orders.map(this.mapToEntity);
     }
 
-    async findAll(): Promise<Order[]> {
+    async findAll(tenantId: string): Promise<Order[]> {
         const orders = await prisma.order.findMany({
+            where: { tenantId },
             include: {
                 items: {
                     include: {
@@ -108,21 +113,23 @@ export class PrismaOrderRepository implements IOrderRepository {
         return orders.map(this.mapToEntity);
     }
 
-    async findAllPaginated(options: {
+    async findAllPaginated(tenantId: string, options: {
         search?: string;
         status?: string;
         page: number;
         limit: number;
+        startDate?: Date;
+        endDate?: Date;
     }): Promise<{
         orders: Order[];
         total: number;
     }> {
-        const { search, status, page, limit } = options;
+        const { search, status, page, limit, startDate, endDate } = options;
 
-        // Build where clause
-        const where: any = {};
+        // Build where clause with tenant filter
+        const where: any = { tenantId };
 
-        // Search filter (search in order ID, user name, or user email)
+        // Search filter
         if (search) {
             where.OR = [
                 { id: { contains: search, mode: 'insensitive' } },
@@ -134,6 +141,14 @@ export class PrismaOrderRepository implements IOrderRepository {
         // Status filter
         if (status && status !== 'all') {
             where.status = status;
+        }
+
+        // Date filter
+        if (startDate && endDate) {
+            where.createdAt = {
+                gte: startDate,
+                lte: endDate
+            };
         }
 
         // Execute queries in parallel
@@ -166,10 +181,12 @@ export class PrismaOrderRepository implements IOrderRepository {
         };
     }
 
-    async updateStatus(id: string, status: OrderStatus): Promise<Order> {
-
+    async updateStatus(tenantId: string, id: string, status: OrderStatus): Promise<Order> {
         const order = await prisma.order.update({
-            where: { id },
+            where: {
+                id,
+                tenantId // Ensure ownership
+            },
             data: { status: status as PrismaOrderStatus },
             include: {
                 items: {
@@ -188,10 +205,12 @@ export class PrismaOrderRepository implements IOrderRepository {
         return this.mapToEntity(order);
     }
 
-    async update(id: string, data: any): Promise<Order> {
-
+    async update(tenantId: string, id: string, data: any): Promise<Order> {
         const order = await prisma.order.update({
-            where: { id },
+            where: {
+                id,
+                tenantId // Ensure ownership
+            },
             data: {
                 status: data.status ? (data.status as PrismaOrderStatus) : undefined,
                 trackingNumber: data.trackingNumber
@@ -213,10 +232,18 @@ export class PrismaOrderRepository implements IOrderRepository {
         return this.mapToEntity(order);
     }
 
-    async getStats(): Promise<{ totalOrders: number; totalRevenue: number; statusCounts: Record<string, number> }> {
+    async getStats(tenantId: string, startDate?: Date, endDate?: Date): Promise<{ totalOrders: number; totalRevenue: number; statusCounts: Record<string, number> }> {
+        const where: any = { tenantId };
+        if (startDate && endDate) {
+            where.createdAt = {
+                gte: startDate,
+                lte: endDate
+            };
+        }
 
         const [aggregations, allOrders] = await Promise.all([
             prisma.order.aggregate({
+                where,
                 _count: {
                     id: true
                 },
@@ -225,6 +252,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                 }
             }),
             prisma.order.findMany({
+                where,
                 select: {
                     status: true
                 }

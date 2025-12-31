@@ -6,6 +6,7 @@ import { UserController } from '@/interface-adapters/controllers/user.controller
 import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
 import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
 import { PrismaRoleRepository } from '@/infrastructure/database/prisma/role.prisma-repository';
+import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.prisma-repository';
 
 function users(app: Application) {
     const router = Router();
@@ -15,7 +16,8 @@ function users(app: Application) {
     const userRepository = new PrismaUserRepository();
     const cartRepository = new PrismaCartRepository();
     const roleRepository = new PrismaRoleRepository();
-    const userController = new UserController(userRepository, cartRepository, roleRepository);
+    const staffRepository = new PrismaStaffRepository();
+    const userController = new UserController(userRepository, cartRepository, roleRepository, staffRepository);
 
     /**
      * @swagger

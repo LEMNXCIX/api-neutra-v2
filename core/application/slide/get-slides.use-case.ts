@@ -3,9 +3,9 @@ import { ISlideRepository } from '@/core/repositories/slide.repository.interface
 export class GetSlidesUseCase {
     constructor(private slideRepository: ISlideRepository) { }
 
-    async execute() {
+    async execute(tenantId: string | undefined) {
         try {
-            const slides = await this.slideRepository.findAll();
+            const slides = await this.slideRepository.findAll(tenantId);
             return {
                 success: true,
                 code: 200,
@@ -22,9 +22,9 @@ export class GetSlidesUseCase {
         }
     }
 
-    async executeById(id: string) {
+    async executeById(tenantId: string, id: string) {
         try {
-            const slide = await this.slideRepository.findById(id);
+            const slide = await this.slideRepository.findById(tenantId, id);
             if (!slide) {
                 return {
                     success: false,

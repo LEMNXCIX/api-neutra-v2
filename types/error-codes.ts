@@ -12,6 +12,11 @@ export enum AuthErrorCodes {
     UNAUTHORIZED = 'AUTH_UNAUTHORIZED',
     FORBIDDEN = 'AUTH_FORBIDDEN',
     SESSION_EXPIRED = 'AUTH_SESSION_EXPIRED',
+    // Added from middleware consolidation
+    MISSING_TOKEN = 'AUTH_MISSING_TOKEN',
+    INSUFFICIENT_PERMISSIONS = 'AUTH_INSUFFICIENT_PERMISSIONS',
+    PERMISSION_DENIED = 'AUTH_PERMISSION_DENIED',
+    ACCOUNT_INACTIVE = 'AUTH_ACCOUNT_INACTIVE',
 }
 
 // Validation Errors (VALIDATION_*)
@@ -22,6 +27,7 @@ export enum ValidationErrorCodes {
     INVALID_FORMAT = 'VALIDATION_INVALID_FORMAT',
     INVALID_LENGTH = 'VALIDATION_INVALID_LENGTH',
     INVALID_ENUM_VALUE = 'VALIDATION_INVALID_ENUM_VALUE',
+    INVALID_DATA_TYPE = 'VALIDATION_INVALID_DATA_TYPE',
 }
 
 // Resource Errors (RESOURCE_*)
@@ -33,6 +39,14 @@ export enum ResourceErrorCodes {
     GONE = 'RESOURCE_GONE',
 }
 
+// Tenant Errors (TENANT_*)
+export enum TenantErrorCodes {
+    TENANT_NOT_FOUND = 'TENANT_NOT_FOUND',
+    TENANT_INACTIVE = 'TENANT_INACTIVE',
+    TENANT_SLUG_EXISTS = 'TENANT_SLUG_EXISTS',
+    FEATURE_NOT_ENABLED = 'TENANT_FEATURE_NOT_ENABLED',
+}
+
 // Business Logic Errors (BUSINESS_*)
 export enum BusinessErrorCodes {
     CART_EMPTY = 'BUSINESS_CART_EMPTY',
@@ -41,6 +55,11 @@ export enum BusinessErrorCodes {
     ORDER_ALREADY_PROCESSED = 'BUSINESS_ORDER_ALREADY_PROCESSED',
     PAYMENT_FAILED = 'BUSINESS_PAYMENT_FAILED',
     INVALID_STATUS_TRANSITION = 'BUSINESS_INVALID_STATUS_TRANSITION',
+
+    // Booking errors
+    RESOURCE_NOT_FOUND = 'BUSINESS_RESOURCE_NOT_FOUND',
+    RESOURCE_CONFLICT = 'BUSINESS_RESOURCE_CONFLICT',
+    BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION',
 }
 
 // Database Errors (DB_*)
@@ -82,6 +101,7 @@ export type ErrorCode =
     | AuthErrorCodes
     | ValidationErrorCodes
     | ResourceErrorCodes
+    | TenantErrorCodes
     | BusinessErrorCodes
     | DatabaseErrorCodes
     | ExternalServiceErrorCodes
@@ -96,6 +116,7 @@ export const ErrorCodes = {
     ...AuthErrorCodes,
     ...ValidationErrorCodes,
     ...ResourceErrorCodes,
+    ...TenantErrorCodes,
     ...BusinessErrorCodes,
     ...DatabaseErrorCodes,
     ...ExternalServiceErrorCodes,
@@ -125,6 +146,13 @@ export function getHttpStatusFromErrorCode(errorCode: ErrorCode): number {
         if (errorCode === ResourceErrorCodes.ALREADY_EXISTS) return 409;
         if (errorCode === ResourceErrorCodes.CONFLICT) return 409;
         if (errorCode === ResourceErrorCodes.GONE) return 410;
+        return 400;
+    }
+
+    // Tenant errors
+    if (errorCode.startsWith('TENANT_')) {
+        if (errorCode === 'TENANT_NOT_FOUND') return 404;
+        if (errorCode === 'TENANT_INACTIVE') return 403;
         return 400;
     }
 

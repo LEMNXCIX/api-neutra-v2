@@ -7,16 +7,16 @@ export class AddToCartUseCase {
         private productRepository: IProductRepository
     ) { }
 
-    async execute(userId: string, productId: string, amount: number) {
-        let cart = await this.cartRepository.findByUserIdSimple(userId);
+    async execute(tenantId: string, userId: string, productId: string, amount: number) {
+        let cart = await this.cartRepository.findByUserIdSimple(tenantId, userId);
 
         if (!cart) {
             // Lazy creation: Create cart if it doesn't exist
-            cart = await this.cartRepository.create(userId);
+            cart = await this.cartRepository.create(tenantId, userId);
         }
 
-        // Check if product exists and has sufficient stock
-        const product = await this.productRepository.findById(productId);
+        // Check if product exists and get stock information
+        const product = await this.productRepository.findById(tenantId, productId);
         if (!product) {
             return {
                 success: false,
@@ -26,35 +26,43 @@ export class AddToCartUseCase {
             };
         }
 
-        if (product.stock < amount) {
+        // Check if product already exists in cart
+        const existingItem = cart.items.find(item => item.productId === productId);
+        const currentQty = existingItem?.amount || 0;
+        const newTotalQty = currentQty + amount;
+
+        // Validate total quantity against available stock
+        if (product.stock < newTotalQty) {
+            const availableToAdd = Math.max(0, product.stock - currentQty);
             return {
                 success: false,
                 code: 400,
-                message: `Insufficient stock. Available: ${product.stock}`,
-                data: null
+                message: currentQty > 0
+                    ? `Cannot add ${amount} items. Only ${availableToAdd} more available (${product.stock} total stock, ${currentQty} already in cart)`
+                    : `Insufficient stock. Only ${product.stock} items available`,
+                data: {
+                    availableToAdd,
+                    totalStock: product.stock,
+                    currentInCart: currentQty
+                }
             };
         }
 
-        const productExists = cart.items.some(item => item.productId === productId);
-
-        if (productExists) {
-            return {
-                success: false,
-                code: 409,
-                message: "Product already exists in cart",
-                data: null
-            };
+        if (existingItem) {
+            // Update existing item quantity by adding the new amount
+            await this.cartRepository.updateItemAmount(tenantId, cart.id, productId, newTotalQty);
+        } else {
+            // Add new item with specified quantity
+            await this.cartRepository.addItem(tenantId, cart.id, productId, amount);
         }
 
-        await this.cartRepository.addItem(cart.id, productId, amount);
-
-        // Reuse GetCart logic or return simple success
-        // For now, let's just return success to avoid circular dependency or duplication
-        // Ideally, we call GetCartUseCase here, but let's keep it simple.
         return {
             success: true,
             code: 200,
-            message: "Item added successfully"
+            message: existingItem
+                ? `Updated quantity to ${newTotalQty} items`
+                : `Added ${amount} item(s) to cart`,
+            data: { totalQuantity: newTotalQty }
         };
     }
 }

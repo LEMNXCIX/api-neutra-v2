@@ -5,7 +5,7 @@ import { ResourceErrorCodes, ValidationErrorCodes } from '@/types/error-codes';
 export class CreateCouponUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(data: CreateCouponDTO) {
+    async execute(tenantId: string, data: CreateCouponDTO) {
         // Validate coupon code format
         if (!data.code || data.code.trim().length < 3) {
             return {
@@ -89,7 +89,7 @@ export class CreateCouponUseCase {
         }
 
         // Check if code already exists
-        const existingCoupon = await this.couponRepository.findByCode(data.code);
+        const existingCoupon = await this.couponRepository.findByCode(tenantId, data.code);
         if (existingCoupon) {
             return {
                 success: false,
@@ -104,7 +104,7 @@ export class CreateCouponUseCase {
         }
 
         try {
-            const coupon = await this.couponRepository.create(data);
+            const coupon = await this.couponRepository.create(tenantId, data);
 
             return {
                 success: true,

@@ -4,7 +4,7 @@ import { User } from '@/core/entities/user.entity';
 export class UpdateUserUseCase {
     constructor(private userRepository: IUserRepository) { }
 
-    async execute(id: string, data: Partial<User>) {
+    async execute(tenantId: string | undefined, id: string, data: Partial<User>) {
         const existingUser = await this.userRepository.findById(id);
 
         if (!existingUser) {

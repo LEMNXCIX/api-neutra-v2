@@ -3,7 +3,7 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 export class DeleteUserUseCase {
     constructor(private userRepository: IUserRepository) { }
 
-    async execute(id: string) {
+    async execute(tenantId: string | undefined, id: string) {
         const existingUser = await this.userRepository.findById(id);
 
         if (!existingUser) {

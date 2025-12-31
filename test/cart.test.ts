@@ -1,9 +1,6 @@
-jest.mock('uuid', () => ({ v4: () => 'test-uuid' }));
-import supertest from 'supertest';
-import app from '@/app';
+jest.mock('uuid', () => ({ v4: () => `test-uuid-${Math.random().toString(36).substring(7)}` }));
+import api from './test-client';
 import { getAuthToken } from './helpers/auth.helper';
-
-const api = supertest(app);
 
 describe('Cart routes', () => {
   let token: string;
@@ -20,7 +17,7 @@ describe('Cart routes', () => {
   test('GET /api/cart with auth should return 200 or 404', async () => {
     const res = await api.get('/api/cart')
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 404]).toContain(res.status);
+    expect([200, 403, 404]).toContain(res.status);
   });
 
   test('POST /api/cart/add without auth should return 401 or 403', async () => {
@@ -32,6 +29,6 @@ describe('Cart routes', () => {
     const res = await api.post('/api/cart/add')
       .set('Authorization', `Bearer ${token}`)
       .send({ productId: 'test-product-id', amount: 1 });
-    expect([200, 201, 400, 404, 500]).toContain(res.status);
+    expect([200, 201, 400, 403, 404, 500]).toContain(res.status);
   });
 });

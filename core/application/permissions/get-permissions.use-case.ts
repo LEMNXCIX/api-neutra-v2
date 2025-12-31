@@ -3,8 +3,8 @@ import { IPermissionRepository } from '@/core/repositories/permission.repository
 export class GetPermissionsUseCase {
     constructor(private permissionRepository: IPermissionRepository) { }
 
-    async execute() {
-        const permissions = await this.permissionRepository.findAll();
+    async execute(tenantId: string | undefined) {
+        const permissions = await this.permissionRepository.findAll(tenantId);
         return {
             success: true,
             code: 200,
@@ -13,8 +13,8 @@ export class GetPermissionsUseCase {
         };
     }
 
-    async executeById(id: string) {
-        const permission = await this.permissionRepository.findById(id);
+    async executeById(tenantId: string | undefined, id: string) {
+        const permission = await this.permissionRepository.findById(tenantId, id);
 
         if (!permission) {
             return {

@@ -3,9 +3,9 @@ import { IProductRepository } from '@/core/repositories/product.repository.inter
 export class DeleteProductUseCase {
     constructor(private productRepository: IProductRepository) { }
 
-    async execute(id: string, userId: string) {
+    async execute(tenantId: string, id: string, userId: string) {
         try {
-            const product = await this.productRepository.findFirst({ id, ownerId: userId });
+            const product = await this.productRepository.findFirst(tenantId, { id, ownerId: userId });
 
             if (!product) {
                 return {
@@ -16,7 +16,7 @@ export class DeleteProductUseCase {
                 };
             }
 
-            await this.productRepository.delete(id);
+            await this.productRepository.delete(tenantId, id);
 
             return {
                 success: true,

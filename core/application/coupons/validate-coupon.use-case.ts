@@ -4,10 +4,10 @@ import { ValidateCouponDTO, CouponValidationResult, CouponType } from '@/core/en
 export class ValidateCouponUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(data: ValidateCouponDTO): Promise<CouponValidationResult> {
+    async execute(tenantId: string, data: ValidateCouponDTO): Promise<CouponValidationResult> {
         try {
             // Find coupon by code
-            const coupon = await this.couponRepository.findByCode(data.code);
+            const coupon = await this.couponRepository.findByCode(tenantId, data.code);
 
             if (!coupon) {
                 return {
@@ -49,7 +49,7 @@ export class ValidateCouponUseCase {
             }
 
             // Check applicable products
-            if (coupon.applicableProducts.length > 0 && data.productIds) {
+            if (coupon.applicableProducts.length > 0 && data.productIds && data.productIds.length > 0) {
                 const hasApplicableProduct = data.productIds.some(id =>
                     coupon.applicableProducts.includes(id)
                 );
@@ -62,7 +62,7 @@ export class ValidateCouponUseCase {
             }
 
             // Check applicable categories
-            if (coupon.applicableCategories.length > 0 && data.categoryIds) {
+            if (coupon.applicableCategories.length > 0 && data.categoryIds && data.categoryIds.length > 0) {
                 const hasApplicableCategory = data.categoryIds.some(id =>
                     coupon.applicableCategories.includes(id)
                 );
@@ -70,6 +70,34 @@ export class ValidateCouponUseCase {
                     return {
                         valid: false,
                         message: 'Coupon not applicable to product categories in cart'
+                    };
+                }
+            }
+
+            // Check applicable services (for appointments)
+            if (coupon.applicableServices && coupon.applicableServices.length > 0 && data.serviceIds && data.serviceIds.length > 0) {
+                const hasApplicableService = data.serviceIds.some(id =>
+                    coupon.applicableServices.includes(id)
+                );
+                if (!hasApplicableService) {
+                    return {
+                        valid: false,
+                        message: 'Coupon not applicable to this service'
+                    };
+                }
+            } else if (coupon.applicableServices && coupon.applicableServices.length > 0 && (!data.serviceIds || data.serviceIds.length === 0)) {
+                // If coupon is restricted to services but we are validating an order (no services), fail?
+                // Or if we are validating an appointment and haven't passed serviceIds?
+
+                // Logic: If coupon is ONLY for services, and we are validating products, it should fail.
+                // If coupon is for Mixed, check what we are validating.
+
+                // If we are validating a cart (productIds present) and coupon has ONLY applicableServices, it should fail
+                if ((data.productIds && data.productIds.length > 0) &&
+                    (coupon.applicableProducts.length === 0 && coupon.applicableCategories.length === 0)) {
+                    return {
+                        valid: false,
+                        message: 'Coupon is only applicable to services'
                     };
                 }
             }

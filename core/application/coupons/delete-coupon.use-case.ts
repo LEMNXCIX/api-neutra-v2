@@ -3,9 +3,9 @@ import { ICouponRepository } from '@/core/repositories/coupon.repository.interfa
 export class DeleteCouponUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(id: string) {
+    async execute(tenantId: string, id: string) {
         try {
-            const coupon = await this.couponRepository.findById(id);
+            const coupon = await this.couponRepository.findById(tenantId, id);
 
             if (!coupon) {
                 return {
@@ -16,7 +16,7 @@ export class DeleteCouponUseCase {
                 };
             }
 
-            await this.couponRepository.delete(id);
+            await this.couponRepository.delete(tenantId, id);
 
             return {
                 success: true,

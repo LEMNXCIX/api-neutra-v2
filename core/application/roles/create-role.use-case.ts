@@ -4,8 +4,8 @@ import { CreateRoleDTO } from '@/core/entities/role.entity';
 export class CreateRoleUseCase {
     constructor(private roleRepository: IRoleRepository) { }
 
-    async execute(data: CreateRoleDTO) {
-        const existingRole = await this.roleRepository.findByName(data.name);
+    async execute(tenantId: string | undefined, data: CreateRoleDTO) {
+        const existingRole = await this.roleRepository.findByName(tenantId, data.name);
 
         if (existingRole) {
             return {
@@ -16,7 +16,7 @@ export class CreateRoleUseCase {
             };
         }
 
-        const role = await this.roleRepository.create(data);
+        const role = await this.roleRepository.create(tenantId, data);
 
         return {
             success: true,

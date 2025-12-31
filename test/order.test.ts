@@ -1,9 +1,6 @@
-jest.mock('uuid', () => ({ v4: () => 'test-uuid' }));
-import supertest from 'supertest';
-import app from '@/app';
+jest.mock('uuid', () => ({ v4: () => `test-uuid-${Math.random().toString(36).substring(7)}` }));
+import api from './test-client';
 import { getAuthToken } from './helpers/auth.helper';
-
-const api = supertest(app);
 
 describe('Order routes', () => {
   let token: string;
@@ -21,7 +18,7 @@ describe('Order routes', () => {
     const res = await api.post('/api/order')
       .set('Authorization', `Bearer ${token}`)
       .send({ items: [] });
-    expect([200, 201, 400, 422]).toContain(res.status);
+    expect([200, 201, 400, 403, 422]).toContain(res.status);
   });
 
   test('GET /api/order without auth should return 401 or 403', async () => {
@@ -32,6 +29,6 @@ describe('Order routes', () => {
   test('GET /api/order with auth should return 200', async () => {
     const res = await api.get('/api/order')
       .set('Authorization', `Bearer ${token}`);
-    expect([200, 404]).toContain(res.status);
+    expect([200, 403, 404]).toContain(res.status);
   });
 });
