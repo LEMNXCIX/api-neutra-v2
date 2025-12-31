@@ -4,9 +4,9 @@ import { UpdateCouponDTO } from '@/core/entities/coupon.entity';
 export class UpdateCouponUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(id: string, data: UpdateCouponDTO) {
+    async execute(tenantId: string, id: string, data: UpdateCouponDTO) {
         try {
-            const existingCoupon = await this.couponRepository.findById(id);
+            const existingCoupon = await this.couponRepository.findById(tenantId, id);
 
             if (!existingCoupon) {
                 return {
@@ -17,7 +17,7 @@ export class UpdateCouponUseCase {
                 };
             }
 
-            const updatedCoupon = await this.couponRepository.update(id, data);
+            const updatedCoupon = await this.couponRepository.update(tenantId, id, data);
 
             return {
                 success: true,

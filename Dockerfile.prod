@@ -12,15 +12,11 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Generate Prisma Client
+# Generate Prisma Client, build, and prune dev dependencies
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
-RUN npx prisma generate
-
-# Build the application
-RUN npm run build
-
-# Remove development dependencies to reduce image size
-RUN npm prune --production
+RUN npx prisma generate && \
+    npm run build && \
+    npm prune --production
 
 # Stage 2: Runner
 FROM node:lts-alpine AS runner
@@ -30,8 +26,8 @@ WORKDIR /usr/src/app
 ENV NODE_ENV=production
 
 # Don't run as root
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 appuser
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 appuser
 
 # Copy necessary files from builder
 COPY --from=builder /usr/src/app/package.json ./package.json

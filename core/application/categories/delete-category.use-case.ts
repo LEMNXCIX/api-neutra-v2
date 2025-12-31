@@ -3,8 +3,8 @@ import { ICategoryRepository } from '@/core/repositories/category.repository.int
 export class DeleteCategoryUseCase {
     constructor(private categoryRepository: ICategoryRepository) { }
 
-    async execute(id: string) {
-        const existingCategory = await this.categoryRepository.findById(id);
+    async execute(tenantId: string, id: string) {
+        const existingCategory = await this.categoryRepository.findById(tenantId, id);
 
         if (!existingCategory) {
             return {
@@ -15,7 +15,7 @@ export class DeleteCategoryUseCase {
             };
         }
 
-        await this.categoryRepository.delete(id);
+        await this.categoryRepository.delete(tenantId, id);
 
         return {
             success: true,

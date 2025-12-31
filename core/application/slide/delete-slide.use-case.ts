@@ -3,9 +3,9 @@ import { ISlideRepository } from '@/core/repositories/slide.repository.interface
 export class DeleteSlideUseCase {
     constructor(private slideRepository: ISlideRepository) { }
 
-    async execute(id: string) {
+    async execute(tenantId: string, id: string) {
         try {
-            await this.slideRepository.delete(id);
+            await this.slideRepository.delete(tenantId, id);
             return {
                 success: true,
                 code: 200,

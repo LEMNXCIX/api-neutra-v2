@@ -54,6 +54,22 @@ const PERMISSIONS = [
     { name: 'coupons:read', description: 'View coupons' },
     { name: 'coupons:write', description: 'Create and update coupons' },
     { name: 'coupons:delete', description: 'Delete coupons' },
+
+    // Features (Super Admin)
+    { name: 'features:read', description: 'View available features' },
+    { name: 'features:write', description: 'Create and update features' },
+    { name: 'features:delete', description: 'Delete features' },
+
+    // Booking Module
+    { name: 'services:read', description: 'View services' },
+    { name: 'services:write', description: 'Create and update services' },
+    { name: 'services:delete', description: 'Delete services' },
+    { name: 'staff:read', description: 'View staff' },
+    { name: 'staff:write', description: 'Create and update staff' },
+    { name: 'staff:delete', description: 'Delete staff' },
+    { name: 'appointments:read', description: 'View appointments' },
+    { name: 'appointments:write', description: 'Create and update appointments' },
+    { name: 'appointments:delete', description: 'Delete appointments' },
 ];
 
 // Roles predefinidos con sus permisos
@@ -85,6 +101,11 @@ const ROLES = [
             'cart:read',
             'categories:read',
             'categories:write',
+            'categories:delete',
+            'services:read',
+            'staff:read',
+            'appointments:read',
+            'appointments:write',
         ],
     },
     {
@@ -116,11 +137,41 @@ const ROLES = [
             'coupons:read',
             'coupons:write',
             'coupons:delete',
+            'features:read',
+            'features:write',
+            'features:delete',
+            'services:read',
+            'services:write',
+            'services:delete',
+            'staff:read',
+            'staff:write',
+            'staff:delete',
+            'appointments:read',
+            'appointments:write',
+            'appointments:delete',
         ],
     },
 ];
 
+// Features
+const FEATURES = [
+    { key: 'APPOINTMENTS', name: 'Booking System', description: 'Enable booking system', category: 'MODULE', price: 0 },
+    { key: 'BANNERS', name: 'Marketing Banners', description: 'Enable marketing banners', category: 'MODULE', price: 0 },
+    { key: 'COUPONS', name: 'Coupons Management', description: 'Permite la gestion de cupones', category: 'MODULE', price: 0.5 },
+    { key: 'EMAIL_NOTIFICATIONS', name: 'Email Notifications', description: 'Enable email notifications', category: 'INTEGRATION', price: 0 },
+    { key: 'ORDERS', name: 'Order Management', description: 'Enable order management', category: 'MODULE', price: 0 },
+    { key: 'WHATSAPP_API', name: 'WhatsApp API Integration', description: 'Integración con la API de WhatsApp', category: 'INTEGRATION', price: 5 },
+];
+
 async function main() {
+    // 0. Crear Features
+    for (const feature of FEATURES) {
+        await prisma.feature.upsert({
+            where: { key: feature.key },
+            update: {},
+            create: feature
+        });
+    }
 
     // 1. Crear permisos
     for (const permission of PERMISSIONS) {
@@ -131,18 +182,49 @@ async function main() {
         });
     }
 
-    // 2. Crear roles con sus permisos
+    // 2. Crear Tenant Específico (SuperAdmin Tenant)
+    const specificTenantId = '13acd170-dab5-4f0e-aee6-a8f302eabde2';
+    const superAdminTenant = await prisma.tenant.upsert({
+        where: { id: specificTenantId },
+        update: {},
+        create: {
+            id: specificTenantId,
+            name: 'Neutra SuperAdmin',
+            slug: 'superadmin',
+            type: 'HYBRID',
+            active: true,
+            config: {
+                features: {
+                    coupons: true,
+                    appointmentCoupons: true,
+                    banners: true,
+                    orders: true,
+                    emailNotifications: true
+                }
+            }
+        },
+    });
+
+    // 3. Crear roles estándar para el SuperAdmin Tenant
     for (const roleData of ROLES) {
         const { permissions: permissionNames, ...roleInfo } = roleData;
 
-        // Crear rol
+        // Crear rol para el tenant específico
         const role = await prisma.role.upsert({
-            where: { name: roleInfo.name },
+            where: {
+                tenantId_name: {
+                    tenantId: superAdminTenant.id,
+                    name: roleInfo.name
+                }
+            },
             update: {
                 description: roleInfo.description,
                 level: roleInfo.level,
             },
-            create: roleInfo,
+            create: {
+                ...roleInfo,
+                tenantId: superAdminTenant.id
+            },
         });
 
         // Obtener IDs de permisos
@@ -170,6 +252,63 @@ async function main() {
         }
     }
 
+    // 4. Crear Role Específico (SUPER_ADMIN) para el tenant superadmin
+    const superAdminRoleId = 'fd3d55d4-c564-4404-b59c-59f4ba429a5a';
+    const superAdminRole = await prisma.role.upsert({
+        where: { id: superAdminRoleId },
+        update: {},
+        create: {
+            id: superAdminRoleId,
+            name: 'SUPER_ADMIN',
+            description: 'Full system access',
+            level: 100,
+            active: true,
+            tenantId: specificTenantId,
+        },
+    });
+
+    // 5. Crear Usuario Específico (Leonardo)
+    const leonardoUserId = 'ebd39837-ed6f-4f24-b0cb-77150ed18b86';
+    const user = await (prisma as any).user.upsert({
+        where: { id: leonardoUserId },
+        update: {},
+        create: {
+            id: leonardoUserId,
+            name: 'Leonardo',
+            email: 'fake@mail.com',
+            password: '$2b$10$ft6tc04llemqzUkua8qa1e7WsghWN0DF4e8QKPe6NDUtbogvTE8k6',
+            profilePic: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABIAAAAKICAYAAAAIK4ENAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAABEzSURBVHhe7dgxDQAwDMCw8oc7Au0/CJEPP4GQ2TcLAAAAQNf8AQAAAIAWAwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDOAAAAAAOIMIAAAAIA4AwgAAAAgzgACAAAAiDsEUrX6+VgFogAAAABJRU5ErkJggg==',
+            active: true,
+        },
+    });
+
+    // 6. Vincular Usuario al Tenant con el Rol SuperAdmin
+    // Note: If Prisma generated the name differently, check model name or use (prisma as any)
+    await (prisma as any).userTenant.upsert({
+        where: {
+            userId_tenantId: {
+                userId: user.id,
+                tenantId: specificTenantId
+            }
+        },
+        update: {
+            roleId: superAdminRole.id
+        },
+        create: {
+            userId: user.id,
+            tenantId: specificTenantId,
+            roleId: superAdminRole.id
+        }
+    });
+
+    // 7. Crear Cart para el usuario Leonardo
+    await prisma.cart.upsert({
+        where: { userId: leonardoUserId },
+        update: {},
+        create: {
+            userId: leonardoUserId,
+        },
+    });
 }
 
 main()

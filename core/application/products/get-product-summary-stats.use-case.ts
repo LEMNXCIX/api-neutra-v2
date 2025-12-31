@@ -3,9 +3,9 @@ import { IProductRepository } from '@/core/repositories/product.repository.inter
 export class GetProductSummaryStatsUseCase {
     constructor(private productRepository: IProductRepository) { }
 
-    async execute() {
+    async execute(tenantId: string) {
         try {
-            const stats = await this.productRepository.getSummaryStats();
+            const stats = await this.productRepository.getSummaryStats(tenantId);
             return {
                 success: true,
                 code: 200,

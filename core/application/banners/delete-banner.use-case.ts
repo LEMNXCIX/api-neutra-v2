@@ -3,9 +3,9 @@ import { IBannerRepository } from '@/core/repositories/banner.repository.interfa
 export class DeleteBannerUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async execute(id: string) {
+    async execute(tenantId: string, id: string) {
         try {
-            const banner = await this.bannerRepository.findById(id);
+            const banner = await this.bannerRepository.findById(tenantId, id);
 
             if (!banner) {
                 return {
@@ -16,7 +16,7 @@ export class DeleteBannerUseCase {
                 };
             }
 
-            await this.bannerRepository.delete(id);
+            await this.bannerRepository.delete(tenantId, id);
 
             return {
                 success: true,

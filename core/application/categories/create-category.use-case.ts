@@ -4,8 +4,8 @@ import { CreateCategoryDTO } from '@/core/entities/category.entity';
 export class CreateCategoryUseCase {
     constructor(private categoryRepository: ICategoryRepository) { }
 
-    async execute(data: CreateCategoryDTO) {
-        const existingCategory = await this.categoryRepository.findByName(data.name);
+    async execute(tenantId: string, data: CreateCategoryDTO) {
+        const existingCategory = await this.categoryRepository.findByName(tenantId, data.name);
 
         if (existingCategory) {
             return {
@@ -16,7 +16,7 @@ export class CreateCategoryUseCase {
             };
         }
 
-        const category = await this.categoryRepository.create(data);
+        const category = await this.categoryRepository.create(tenantId, data);
 
         return {
             success: true,

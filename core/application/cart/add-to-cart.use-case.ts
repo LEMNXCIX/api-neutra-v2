@@ -7,16 +7,16 @@ export class AddToCartUseCase {
         private productRepository: IProductRepository
     ) { }
 
-    async execute(userId: string, productId: string, amount: number) {
-        let cart = await this.cartRepository.findByUserIdSimple(userId);
+    async execute(tenantId: string, userId: string, productId: string, amount: number) {
+        let cart = await this.cartRepository.findByUserIdSimple(tenantId, userId);
 
         if (!cart) {
             // Lazy creation: Create cart if it doesn't exist
-            cart = await this.cartRepository.create(userId);
+            cart = await this.cartRepository.create(tenantId, userId);
         }
 
         // Check if product exists and get stock information
-        const product = await this.productRepository.findById(productId);
+        const product = await this.productRepository.findById(tenantId, productId);
         if (!product) {
             return {
                 success: false,
@@ -50,10 +50,10 @@ export class AddToCartUseCase {
 
         if (existingItem) {
             // Update existing item quantity by adding the new amount
-            await this.cartRepository.updateItemAmount(cart.id, productId, newTotalQty);
+            await this.cartRepository.updateItemAmount(tenantId, cart.id, productId, newTotalQty);
         } else {
             // Add new item with specified quantity
-            await this.cartRepository.addItem(cart.id, productId, amount);
+            await this.cartRepository.addItem(tenantId, cart.id, productId, amount);
         }
 
         return {

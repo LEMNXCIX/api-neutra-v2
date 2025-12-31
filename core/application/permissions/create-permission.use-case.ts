@@ -4,8 +4,8 @@ import { CreatePermissionDTO } from '@/core/entities/permission.entity';
 export class CreatePermissionUseCase {
     constructor(private permissionRepository: IPermissionRepository) { }
 
-    async execute(data: CreatePermissionDTO) {
-        const existingPermission = await this.permissionRepository.findByName(data.name);
+    async execute(tenantId: string | undefined, data: CreatePermissionDTO) {
+        const existingPermission = await this.permissionRepository.findByName(tenantId, data.name);
 
         if (existingPermission) {
             return {
@@ -16,7 +16,7 @@ export class CreatePermissionUseCase {
             };
         }
 
-        const permission = await this.permissionRepository.create(data);
+        const permission = await this.permissionRepository.create(tenantId, data);
 
         return {
             success: true,

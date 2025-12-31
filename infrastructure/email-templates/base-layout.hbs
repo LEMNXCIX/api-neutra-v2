@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{subject}}</title>
+    <style>
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+
+            background-color: {
+                    {
+                    #if tenant.primaryColor
+                }
+            }
+
+                {
+                    {
+                    tenant.primaryColor
+                }
+            }
+
+                {
+                    {
+                    else
+                }
+            }
+
+            #667eea {
+                    {
+                    /if
+                }
+            }
+
+            ;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .appointment-card {
+            background-color: #f8f9fa;
+
+            border-left: 4px solid {
+                    {
+                    #if tenant.primaryColor
+                }
+            }
+
+                {
+                    {
+                    tenant.primaryColor
+                }
+            }
+
+                {
+                    {
+                    else
+                }
+            }
+
+            #667eea {
+                    {
+                    /if
+                }
+            }
+
+            ;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .detail-row {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            width: 120px;
+        }
+
+        .value {
+            color: #333;
+        }
+    </style>
+</head>
+
+<body
+    style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table role="presentation"
+                    style="width: 600px; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td
+                            style="padding: 40px 40px 30px; text-align: center; background: {{#if tenant.primaryColor}}{{tenant.primaryColor}}{{else}}linear-gradient(135deg, #667eea 0%, #764ba2 100%){{/if}};">
+                            {{#if tenant.tenantLogo}}
+                            <img src="{{tenant.tenantLogo}}" alt="{{tenant.tenantName}}"
+                                style="max-width: 150px; height: auto; margin-bottom: 10px;">
+                            {{else}}
+                            <h2 style="margin: 0 0 10px; color: #ffffff; font-size: 24px; font-weight: 700;">
+                                {{tenant.tenantName}}
+                            </h2>
+                            {{/if}}
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            {{{content}}}
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td
+                            style="padding: 30px 40px; background-color: #f8f9fa; text-align: center; border-top: 1px solid #e0e0e0;">
+                            <p style="margin: 0 0 10px; font-size: 14px; color: #666666;">
+                                {{tenant.tenantName}}
+                            </p>
+                            <p style="margin: 0 0 10px; font-size: 12px; color: #999999;">
+                                © {{year}} {{tenant.tenantName}}. Todos los derechos reservados.
+                            </p>
+                            {{#if tenant.websiteUrl}}
+                            <p style="margin: 5px 0 0; font-size: 12px;">
+                                <a href="{{tenant.websiteUrl}}"
+                                    style="color: {{#if tenant.primaryColor}}{{tenant.primaryColor}}{{else}}#667eea{{/if}}; text-decoration: none;">Visitar
+                                    sitio web</a>
+                                {{#if tenant.supportEmail}}
+                                | <a href="mailto:{{tenant.supportEmail}}"
+                                    style="color: {{#if tenant.primaryColor}}{{tenant.primaryColor}}{{else}}#667eea{{/if}}; text-decoration: none;">Contactar
+                                    soporte</a>
+                                {{/if}}
+                            </p>
+                            {{/if}}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

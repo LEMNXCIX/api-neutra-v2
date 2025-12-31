@@ -1,0 +1,45 @@
+<h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Confirmación de Pedido</h1>
+
+<p>¡Gracias por tu pedido! Lo estamos procesando y te notificaremos cuando se envíe.</p>
+
+<div style="background-color: #f8f8f8; padding: 20px; border-radius: 5px; margin: 20px 0;">
+    <p style="margin-bottom: 10px;"><strong>Número de Pedido:</strong> #{{order.id}}</p>
+    <p style="margin-bottom: 10px;"><strong>Fecha del Pedido:</strong> {{order.createdAt}}</p>
+    <p style="margin-bottom: 0;"><strong>Estado:</strong> {{order.status}}</p>
+</div>
+
+<h2 style="font-size: 18px; margin: 30px 0 15px;">Detalles del Pedido</h2>
+
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <thead>
+        <tr>
+            <th style="background-color: #f0f0f0; padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                Producto</th>
+            <th style="background-color: #f0f0f0; padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                Cantidad</th>
+            <th style="background-color: #f0f0f0; padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                Precio</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each order.items}}
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">{{this.productName}}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">{{this.quantity}}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">${{this.price}}</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
+
+<div style="font-size: 18px; font-weight: bold; text-align: right; margin-top: 20px;">
+    <p>Total: ${{order.total}}</p>
+</div>
+
+<div style="text-align: center; margin-top: 30px;">
+    <a href="{{tenant.websiteUrl}}/orders/{{order.id}}" class="button">Ver Detalles del Pedido</a>
+</div>
+
+<p style="margin-top: 30px;">Si tienes alguna pregunta sobre tu pedido, por favor contáctanos.</p>
+
+<p><strong>El equipo de {{tenant.tenantName}}</strong></p>

@@ -3,8 +3,8 @@ import { IRoleRepository } from '@/core/repositories/role.repository.interface';
 export class DeleteRoleUseCase {
     constructor(private roleRepository: IRoleRepository) { }
 
-    async execute(id: string) {
-        const existingRole = await this.roleRepository.findById(id);
+    async execute(tenantId: string | undefined, id: string) {
+        const existingRole = await this.roleRepository.findById(tenantId, id);
 
         if (!existingRole) {
             return {
@@ -29,7 +29,7 @@ export class DeleteRoleUseCase {
             }
         }
 
-        await this.roleRepository.delete(id);
+        await this.roleRepository.delete(tenantId, id);
 
         return {
             success: true,

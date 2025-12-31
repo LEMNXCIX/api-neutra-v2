@@ -1,14 +1,22 @@
 import { prisma } from '@/config/db.config';
 import { ICategoryRepository } from '@/core/repositories/category.repository.interface';
-import { Category, CreateCategoryDTO, UpdateCategoryDTO } from '@/core/entities/category.entity';
+import { Category, CreateCategoryDTO, UpdateCategoryDTO, CategoryType } from '@/core/entities/category.entity';
 
+/**
+ * Tenant-Aware Category Repository
+ */
 export class PrismaCategoryRepository implements ICategoryRepository {
-    async findAll(page?: number, limit?: number): Promise<{ categories: Category[]; total: number }> {
+    async findAll(tenantId: string | undefined, page?: number, limit?: number, type?: CategoryType): Promise<{ categories: Category[]; total: number }> {
         const skip = page && limit ? (page - 1) * limit : undefined;
         const take = limit;
+        const where = {
+            ...(tenantId && { tenantId }),
+            ...(type && { type })
+        };
 
         const [categories, total] = await Promise.all([
             prisma.category.findMany({
+                where,
                 orderBy: { name: 'asc' },
                 skip,
                 take,
@@ -18,7 +26,7 @@ export class PrismaCategoryRepository implements ICategoryRepository {
                     }
                 }
             }),
-            prisma.category.count()
+            prisma.category.count({ where })
         ]);
 
         return {
@@ -30,46 +38,62 @@ export class PrismaCategoryRepository implements ICategoryRepository {
         };
     }
 
-    async findById(id: string): Promise<Category | null> {
-        const category = await prisma.category.findUnique({
-            where: { id }
+    async findById(tenantId: string, id: string): Promise<Category | null> {
+        const category = await prisma.category.findFirst({
+            where: { id, tenantId }
         });
-        return category;
+        return category ? this.mapToEntity(category) : null;
     }
 
-    async findByName(name: string): Promise<Category | null> {
-        const category = await prisma.category.findUnique({
-            where: { name }
+    async findByName(tenantId: string, name: string, type?: CategoryType): Promise<Category | null> {
+        const category = await prisma.category.findFirst({
+            where: {
+                name,
+                tenantId,
+                ...(type && { type })
+            }
         });
-        return category;
+        return category ? this.mapToEntity(category) : null;
     }
 
-    async create(data: CreateCategoryDTO): Promise<Category> {
+    async create(tenantId: string, data: CreateCategoryDTO): Promise<Category> {
         const category = await prisma.category.create({
-            data
+            data: {
+                ...data,
+                tenantId,
+                type: data.type || CategoryType.PRODUCT
+            }
         });
-        return category;
+        return this.mapToEntity(category);
     }
 
-    async update(id: string, data: UpdateCategoryDTO): Promise<Category> {
+    async update(tenantId: string, id: string, data: UpdateCategoryDTO): Promise<Category> {
         const category = await prisma.category.update({
-            where: { id },
+            where: {
+                id,
+                tenantId
+            },
             data
         });
-        return category;
+        return this.mapToEntity(category);
     }
 
-    async delete(id: string): Promise<void> {
+    async delete(tenantId: string, id: string): Promise<void> {
         await prisma.category.delete({
-            where: { id }
+            where: {
+                id,
+                tenantId
+            }
         });
     }
 
-    async getStats(): Promise<{ totalCategories: number; avgProductsPerCategory: number }> {
-        const totalCategories = await prisma.category.count();
+    async getStats(tenantId: string): Promise<{ totalCategories: number; avgProductsPerCategory: number }> {
+        const where = { tenantId };
+        const totalCategories = await prisma.category.count({ where });
 
         // Get product counts per category
         const categoriesWithProducts = await prisma.category.findMany({
+            where,
             select: {
                 _count: {
                     select: {
@@ -89,5 +113,19 @@ export class PrismaCategoryRepository implements ICategoryRepository {
             totalCategories,
             avgProductsPerCategory
         };
+    }
+
+    private mapToEntity(category: any): Category {
+        return {
+            id: category.id,
+            name: category.name,
+            description: category.description,
+            type: category.type as CategoryType,
+            active: category.active,
+            tenantId: category.tenantId,
+            createdAt: category.createdAt,
+            updatedAt: category.updatedAt,
+            productCount: category._count?.products
+        } as any;
     }
 }

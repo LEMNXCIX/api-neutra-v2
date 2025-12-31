@@ -3,9 +3,9 @@ import { IBannerRepository } from '@/core/repositories/banner.repository.interfa
 export class TrackBannerAnalyticsUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async trackImpression(id: string) {
+    async trackImpression(tenantId: string, id: string) {
         try {
-            const banner = await this.bannerRepository.findById(id);
+            const banner = await this.bannerRepository.findById(tenantId, id);
 
             if (!banner) {
                 return {
@@ -16,7 +16,7 @@ export class TrackBannerAnalyticsUseCase {
                 };
             }
 
-            await this.bannerRepository.incrementImpressions(id);
+            await this.bannerRepository.incrementImpressions(tenantId, id);
 
             return {
                 success: true,
@@ -37,9 +37,9 @@ export class TrackBannerAnalyticsUseCase {
         }
     }
 
-    async trackClick(id: string) {
+    async trackClick(tenantId: string, id: string) {
         try {
-            const banner = await this.bannerRepository.findById(id);
+            const banner = await this.bannerRepository.findById(tenantId, id);
 
             if (!banner) {
                 return {
@@ -50,7 +50,7 @@ export class TrackBannerAnalyticsUseCase {
                 };
             }
 
-            await this.bannerRepository.incrementClicks(id);
+            await this.bannerRepository.incrementClicks(tenantId, id);
 
             return {
                 success: true,

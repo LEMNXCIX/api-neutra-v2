@@ -3,9 +3,9 @@ import { ISlideRepository } from '@/core/repositories/slide.repository.interface
 export class GetSliderStatsUseCase {
     constructor(private slideRepository: ISlideRepository) { }
 
-    async execute() {
+    async execute(tenantId: string) {
         try {
-            const stats = await this.slideRepository.getStats();
+            const stats = await this.slideRepository.getStats(tenantId);
             return {
                 success: true,
                 code: 200,

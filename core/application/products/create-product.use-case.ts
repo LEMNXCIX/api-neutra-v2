@@ -4,7 +4,7 @@ import { CreateProductDTO } from '@/core/entities/product.entity';
 export class CreateProductUseCase {
     constructor(private productRepository: IProductRepository) { }
 
-    async execute(data: any) {
+    async execute(tenantId: string, data: any) {
         try {
             const newProduct: CreateProductDTO = {
                 name: data.name,
@@ -15,7 +15,7 @@ export class CreateProductUseCase {
                 ownerId: data.owner
             };
 
-            const product = await this.productRepository.create(newProduct);
+            const product = await this.productRepository.create(tenantId, newProduct);
             return {
                 success: true,
                 code: 201,

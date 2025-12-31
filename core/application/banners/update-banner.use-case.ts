@@ -5,7 +5,7 @@ import { ValidationErrorCodes } from '@/types/error-codes';
 export class UpdateBannerUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async execute(id: string, data: UpdateBannerDTO) {
+    async execute(tenantId: string, id: string, data: UpdateBannerDTO) {
         // Validate dates if both are provided
         if (data.startsAt && data.endsAt) {
             const startsAt = new Date(data.startsAt);
@@ -26,7 +26,7 @@ export class UpdateBannerUseCase {
         }
 
         try {
-            const existingBanner = await this.bannerRepository.findById(id);
+            const existingBanner = await this.bannerRepository.findById(tenantId, id);
 
             if (!existingBanner) {
                 return {
@@ -37,7 +37,7 @@ export class UpdateBannerUseCase {
                 };
             }
 
-            const updatedBanner = await this.bannerRepository.update(id, data);
+            const updatedBanner = await this.bannerRepository.update(tenantId, id, data);
 
             return {
                 success: true,

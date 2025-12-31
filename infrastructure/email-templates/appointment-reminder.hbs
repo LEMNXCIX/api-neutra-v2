@@ -1,0 +1,48 @@
+<h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">🔔 Recordatorio de Cita</h1>
+
+<p>Hola {{userName}},</p>
+
+<div
+    style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 5px;">
+    <p style="margin: 0;"><strong>Este es un recordatorio amistoso</strong> sobre tu próxima cita.</p>
+</div>
+
+<div class="appointment-card">
+    <div class="detail-row">
+        <span class="label">Servicio:</span>
+        <span class="value">{{serviceName}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Staff:</span>
+        <span class="value">{{staffName}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Fecha:</span>
+        <span class="value">{{appointmentDate}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Hora:</span>
+        <span class="value">{{appointmentTime}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Duración:</span>
+        <span class="value">{{duration}} minutos</span>
+    </div>
+</div>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{tenant.websiteUrl}}/appointments/{{appointmentId}}" class="button" style="margin-right: 10px;">Ver
+        Detalles</a>
+    <a href="{{tenant.websiteUrl}}/appointments/{{appointmentId}}/cancel" class="button"
+        style="background-color: #dc3545; margin-left: 10px;">Cancelar Cita</a>
+</div>
+
+<p style="margin-top: 30px;"><strong>Por favor recuerda:</strong></p>
+<ul style="margin-left: 20px; margin-bottom: 20px; color: #666;">
+    <li>Llegar 5-10 minutos antes</li>
+    <li>Traer cualquier documento necesario</li>
+    <li>Cancelar con al menos 24 horas de anticipación si no puedes asistir</li>
+</ul>
+
+<p>¡Esperamos verte pronto!</p>
+<p><strong>El equipo de {{tenant.tenantName}}</strong></p>

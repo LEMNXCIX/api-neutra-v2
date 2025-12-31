@@ -3,9 +3,9 @@ import { IBannerRepository } from '@/core/repositories/banner.repository.interfa
 export class GetBannerStatsUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async execute() {
+    async execute(tenantId: string) {
         try {
-            const stats = await this.bannerRepository.getStats();
+            const stats = await this.bannerRepository.getStats(tenantId);
             return {
                 success: true,
                 code: 200,

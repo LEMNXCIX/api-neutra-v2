@@ -3,7 +3,7 @@ import { ICartRepository } from '@/core/repositories/cart.repository.interface';
 export class ChangeAmountUseCase {
     constructor(private cartRepository: ICartRepository) { }
 
-    async execute(userId: string, productId: string, amount: number) {
+    async execute(tenantId: string, userId: string, productId: string, amount: number) {
         if (typeof amount !== 'number' || amount < 1) {
             return {
                 success: false,
@@ -13,7 +13,7 @@ export class ChangeAmountUseCase {
             };
         }
 
-        const cart = await this.cartRepository.findByUserIdSimple(userId);
+        const cart = await this.cartRepository.findByUserIdSimple(tenantId, userId);
 
         if (!cart) {
             return {
@@ -25,7 +25,7 @@ export class ChangeAmountUseCase {
         }
 
         try {
-            await this.cartRepository.updateItemAmount(cart.id, productId, amount);
+            await this.cartRepository.updateItemAmount(tenantId, cart.id, productId, amount);
         } catch (error: any) {
             return {
                 success: false,

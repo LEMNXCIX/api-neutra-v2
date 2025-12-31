@@ -3,9 +3,9 @@ import { IProductRepository } from '@/core/repositories/product.repository.inter
 export class SearchProductsUseCase {
     constructor(private productRepository: IProductRepository) { }
 
-    async execute(name: string) {
+    async execute(tenantId: string, name: string) {
         try {
-            const products = await this.productRepository.searchByName(name);
+            const products = await this.productRepository.searchByName(tenantId, name);
             return {
                 success: true,
                 code: 200,

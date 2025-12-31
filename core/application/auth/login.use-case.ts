@@ -16,7 +16,7 @@ export class LoginUseCase {
         this.redis = RedisProvider.getInstance();
     }
 
-    async execute(data: any) {
+    async execute(tenantId: string | undefined, data: any) {
         const { email, password } = data;
 
         if (!email || !password) {
@@ -35,6 +35,7 @@ export class LoginUseCase {
 
         try {
             // Fetch user with role and permissions
+            // findByEmail signature changed: (email, options)
             const user = await this.userRepository.findByEmail(email, {
                 includeRole: true,
                 includePermissions: true
@@ -68,35 +69,62 @@ export class LoginUseCase {
                 };
             }
 
-            if (!user.role) {
-                this.logger.warn('Login attempt failed: user has no role', { email });
+            // Debug: Log user tenants to see structure
+            this.logger.info('User tenants loaded', {
+                email,
+                tenantCount: user.tenants?.length || 0,
+                tenants: user.tenants?.map(ut => ({
+                    tenantId: ut.tenantId,
+                    roleName: ut.role?.name,
+                    tenantSlug: ut.tenant?.slug
+                }))
+            });
+
+            // Resolve role for the requested tenant
+            let userTenant = user.tenants?.find(ut => ut.tenantId === tenantId || ut.tenant?.slug === tenantId);
+
+            // Check if user has SUPER_ADMIN role in the 'superadmin' tenant
+            const globalSuperAdmin = user.tenants?.find(ut =>
+                ut.tenant?.slug === 'superadmin' && ut.role?.name === 'SUPER_ADMIN'
+            );
+
+            // If user is SUPER_ADMIN in superadmin tenant and doesn't have a role in this tenant,
+            // allow access with SUPER_ADMIN privileges
+            if (!userTenant && globalSuperAdmin) {
+                this.logger.info('Global SUPER_ADMIN accessing tenant', { email, tenantId });
+                userTenant = globalSuperAdmin;
+            }
+
+            if (!userTenant || !userTenant.role) {
+                this.logger.warn('Login attempt failed: user has no role in this tenant', { email, tenantId });
                 return {
                     success: false,
                     code: 403,
-                    message: "User has no role assigned",
+                    message: "User is not authorized for this tenant",
                     errors: [{
                         code: AuthErrorCodes.FORBIDDEN,
-                        message: "User has no role assigned"
+                        message: "User has no role in this tenant"
                     }]
                 };
             }
 
             // Extract permissions
-            const permissions = user.role.permissions.map((p) => p.name);
+            const permissions = userTenant.role.permissions.map((p: any) => p.name);
 
-            // Save permissions to Redis (TTL: 1 hour)
-            await this.redis.set(`user:permissions:${user.id}`, JSON.stringify(permissions), 3600);
+            // Save permissions to Redis (TTL: 1 hour) for this specific user:tenant context
+            await this.redis.set(`user:permissions:${user.id}:${tenantId}`, JSON.stringify(permissions), 3600);
 
-            // Generate token with lighter payload (no permissions)
+            // Generate token with lighter payload
             const token = this.tokenGenerator.generate({
                 id: user.id,
                 email: user.email,
                 name: user.name,
                 role: {
-                    id: user.role.id,
-                    name: user.role.name,
-                    level: user.role.level
-                }
+                    id: userTenant.role.id,
+                    name: userTenant.role.name,
+                    level: userTenant.role.level
+                },
+                tenantId: userTenant.tenantId
             });
 
             // Sanitize user for response
@@ -108,7 +136,13 @@ export class LoginUseCase {
                 success: true,
                 code: 200,
                 message: "Login successful",
-                data: { ...safeUser, token }
+                data: {
+                    ...safeUser,
+                    token,
+                    // Include current tenant's role at top level for frontend compatibility
+                    role: userTenant.role,
+                    roleId: userTenant.roleId
+                }
             };
         } catch (error: any) {
             this.logger.error('Login error', { email, error: error.message, stack: error.stack });

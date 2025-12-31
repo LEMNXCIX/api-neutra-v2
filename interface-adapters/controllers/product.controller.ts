@@ -9,6 +9,8 @@ import { SearchProductsUseCase } from '@/core/application/products/search-produc
 import { GetProductStatsUseCase } from '@/core/application/products/get-product-stats.use-case';
 import { GetProductSummaryStatsUseCase } from '@/core/application/products/get-product-summary-stats.use-case';
 
+import { VALIDATION_CONSTANTS } from '@/core/domain/constants';
+
 export class ProductController {
     private getAllProductsUseCase: GetAllProductsUseCase;
     private getProductUseCase: GetProductUseCase;
@@ -41,18 +43,55 @@ export class ProductController {
     }
 
     async getAll(req: Request, res: Response) {
-        const result = await this.getAllProductsUseCase.execute();
+        let tenantId = (req as any).tenantId;
+        const user = (req as any).user;
+
+        // Super Admin Bypass
+        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+            if (req.query.tenantId) {
+                tenantId = req.query.tenantId as string;
+                if (tenantId === 'all') tenantId = undefined;
+            }
+        } else if (!tenantId) {
+            return res.status(400).json({ success: false, message: "Tenant ID required" });
+        }
+
+        const result = await this.getAllProductsUseCase.execute(tenantId);
         return res.json(result);
     }
 
     async getOne(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const id = req.params.id;
-        const result = await this.getProductUseCase.execute(id);
+        const result = await this.getProductUseCase.execute(tenantId, id);
         return res.json(result);
     }
 
+    private validateImageSize(base64String: string): boolean {
+        // Remove header if present (e.g., "data:image/jpeg;base64,")
+        const base64 = base64String.split(',')[1] || base64String;
+        // Calculate size: each character is 6 bits (3/4 byte). Padding '='
+        const sizeInBytes = (base64.length * 3) / 4 - (base64.indexOf('=') > 0 ? (base64.length - base64.indexOf('=')) : 0);
+        return sizeInBytes <= VALIDATION_CONSTANTS.MAX_IMAGE_SIZE_BYTES;
+    }
+
     async create(req: Request, res: Response) {
-        const result = await this.createProductUseCase.execute({
+        const tenantId = (req as any).tenantId;
+        if (req.body.price < 0 || req.body.stock < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se permiten valores negativos para precio o stock.'
+            });
+        }
+
+        if (req.body.image && !this.validateImageSize(req.body.image)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La imagen excede el tamaño máximo permitido de 5MB.'
+            });
+        }
+
+        const result = await this.createProductUseCase.execute(tenantId, {
             ...req.body,
             owner: (req as any).user.id
         });
@@ -60,32 +99,51 @@ export class ProductController {
     }
 
     async update(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
+        if ((req.body.price !== undefined && req.body.price < 0) || (req.body.stock !== undefined && req.body.stock < 0)) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se permiten valores negativos para precio o stock.'
+            });
+        }
+
+        if (req.body.image && !this.validateImageSize(req.body.image)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La imagen excede el tamaño máximo permitido de 5MB.'
+            });
+        }
+
         const id = req.params.id;
-        const result = await this.updateProductUseCase.execute(id, req.body);
+        const result = await this.updateProductUseCase.execute(tenantId, id, req.body);
         return res.json(result);
     }
 
     async delete(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const id = req.params.id;
         const userId = (req as any).user.id;
-        const result = await this.deleteProductUseCase.execute(id, userId);
+        const result = await this.deleteProductUseCase.execute(tenantId, id, userId);
         return res.json(result);
     }
 
     async search(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const name = req.body.name;
-        const result = await this.searchProductsUseCase.execute(name);
+        const result = await this.searchProductsUseCase.execute(tenantId, name);
         return res.json(result);
     }
 
     async getStats(req: Request, res: Response) {
-        const result = await this.getProductStatsUseCase.execute();
+        const tenantId = (req as any).tenantId;
+        const result = await this.getProductStatsUseCase.execute(tenantId);
         return res.json(result);
     }
 
     async getSummaryStats(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
         const useCase = new GetProductSummaryStatsUseCase(this.productRepository);
-        const result = await useCase.execute();
+        const result = await useCase.execute(tenantId);
         return res.json(result);
     }
 }

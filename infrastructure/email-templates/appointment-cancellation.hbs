@@ -1,0 +1,45 @@
+<h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Cita Cancelada</h1>
+
+<p>Hola {{userName}},</p>
+
+<div
+    style="background-color: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; margin: 20px 0; border-radius: 5px;">
+    <p style="margin: 0; color: #721c24;"><strong>Tu cita ha sido cancelada.</strong></p>
+</div>
+
+<p>Se ha cancelado la siguiente cita:</p>
+
+<div class="appointment-card">
+    <div class="detail-row">
+        <span class="label">Servicio:</span>
+        <span class="value">{{serviceName}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Staff:</span>
+        <span class="value">{{staffName}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Fecha:</span>
+        <span class="value">{{appointmentDate}}</span>
+    </div>
+    <div class="detail-row">
+        <span class="label">Hora:</span>
+        <span class="value">{{appointmentTime}}</span>
+    </div>
+    {{#if cancellationReason}}
+    <div class="detail-row">
+        <span class="label">Motivo:</span>
+        <span class="value">{{cancellationReason}}</span>
+    </div>
+    {{/if}}
+</div>
+
+<p>¿Te gustaría agendar una nueva cita?</p>
+
+<div style="text-align: center;">
+    <a href="{{tenant.websiteUrl}}/book" class="button">Agendar Nueva Cita</a>
+</div>
+
+<p style="margin-top: 30px;">Si tienes preguntas o inquietudes, por favor contáctanos.</p>
+
+<p><strong>El equipo de {{tenant.tenantName}}</strong></p>

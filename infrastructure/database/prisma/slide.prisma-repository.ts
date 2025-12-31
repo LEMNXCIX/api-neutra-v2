@@ -2,10 +2,14 @@ import { prisma } from '@/config/db.config';
 import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
 import { Slideshow, CreateSlideshowDTO, UpdateSlideshowDTO } from '@/core/entities/slide.entity';
 
+/**
+ * Tenant-Aware Slideshow Repository
+ */
 export class PrismaSlideRepository implements ISlideRepository {
-    async create(data: CreateSlideshowDTO): Promise<Slideshow> {
+    async create(tenantId: string, data: CreateSlideshowDTO): Promise<Slideshow> {
         const slide = await prisma.slideshow.create({
             data: {
+                tenantId, // Assign tenant
                 title: data.title,
                 img: data.img,
                 desc: data.desc,
@@ -15,9 +19,12 @@ export class PrismaSlideRepository implements ISlideRepository {
         return this.mapToEntity(slide);
     }
 
-    async update(id: string, data: UpdateSlideshowDTO): Promise<Slideshow> {
+    async update(tenantId: string, id: string, data: UpdateSlideshowDTO): Promise<Slideshow> {
         const slide = await prisma.slideshow.update({
-            where: { id },
+            where: {
+                id,
+                tenantId // Ensure ownership
+            },
             data: {
                 title: data.title,
                 img: data.img,
@@ -28,29 +35,34 @@ export class PrismaSlideRepository implements ISlideRepository {
         return this.mapToEntity(slide);
     }
 
-    async findAll(): Promise<Slideshow[]> {
-        const slides = await prisma.slideshow.findMany();
+    async findAll(tenantId: string | undefined): Promise<Slideshow[]> {
+        const slides = await prisma.slideshow.findMany({
+            where: { ...(tenantId && { tenantId }) }
+        });
         return slides.map(this.mapToEntity);
     }
 
-    async delete(id: string): Promise<void> {
+    async delete(tenantId: string, id: string): Promise<void> {
         await prisma.slideshow.delete({
-            where: { id }
+            where: {
+                id,
+                tenantId
+            }
         });
     }
 
-    async findById(id: string): Promise<Slideshow | null> {
-        const slide = await prisma.slideshow.findUnique({
-            where: { id }
+    async findById(tenantId: string, id: string): Promise<Slideshow | null> {
+        const slide = await prisma.slideshow.findFirst({
+            where: { id, tenantId }
         });
         return slide ? this.mapToEntity(slide) : null;
     }
 
-    async getStats(): Promise<{ totalSliders: number; activeSliders: number; withImages: number }> {
+    async getStats(tenantId: string): Promise<{ totalSliders: number; activeSliders: number; withImages: number }> {
         const [totalSliders, activeSliders, withImages] = await Promise.all([
-            prisma.slideshow.count(),
-            prisma.slideshow.count({ where: { active: true } }),
-            prisma.slideshow.count({ where: { img: { not: '' } } })
+            prisma.slideshow.count({ where: { tenantId } }),
+            prisma.slideshow.count({ where: { tenantId, active: true } }),
+            prisma.slideshow.count({ where: { tenantId, img: { not: '' } } })
         ]);
 
         return {
