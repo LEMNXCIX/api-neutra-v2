@@ -1,6 +1,6 @@
 export enum CategoryType {
-    PRODUCT = 'PRODUCT',
-    SERVICE = 'SERVICE'
+    PRODUCT = "PRODUCT",
+    SERVICE = "SERVICE",
 }
 
 export interface Category {

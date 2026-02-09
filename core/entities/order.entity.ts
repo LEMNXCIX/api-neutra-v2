@@ -1,6 +1,6 @@
-import { Product } from '@/core/entities/product.entity';
+import { Product } from "@/core/entities/product.entity";
 
-export type OrderStatus = 'PENDIENTE' | 'PAGADO' | 'ENVIADO' | 'ENTREGADO'; // Matches Prisma Enum
+export type OrderStatus = "PENDIENTE" | "PAGADO" | "ENVIADO" | "ENTREGADO"; // Matches Prisma Enum
 
 export interface OrderItem {
     id: string;

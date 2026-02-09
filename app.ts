@@ -11,7 +11,11 @@ import { connection } from "@/config/db.config";
 import rateLimiter from "@/middleware/rateLimit.middleware";
 import responseMiddleware from "@/middleware/response.middleware";
 import logger from "@/helpers/logger.helpers";
-import { AUTH_CONSTANTS, CORS_CONSTANTS, isProduction as checkProduction } from "@/core/domain/constants";
+import {
+  AUTH_CONSTANTS,
+  CORS_CONSTANTS,
+  isProduction as checkProduction,
+} from "@/core/domain/constants";
 
 // Rutas
 import auth from "@/infrastructure/routes/auth.routes";
@@ -33,29 +37,28 @@ import { swaggerSpec } from "@/infrastructure/config/swagger.config";
 import { apiReference } from "@scalar/express-api-reference";
 
 // Booking Module Routes
-import serviceRoutes from '@/infrastructure/routes/service.routes';
-import staffRoutes from '@/infrastructure/routes/staff.routes';
-import appointmentRoutes from '@/infrastructure/routes/appointment.routes';
+import serviceRoutes from "@/infrastructure/routes/service.routes";
+import staffRoutes from "@/infrastructure/routes/staff.routes";
+import appointmentRoutes from "@/infrastructure/routes/appointment.routes";
 
 // Initialize Background Workers
-import '@/infrastructure/workers/notification.worker';
+import "@/infrastructure/workers/notification.worker";
 
 const { port, sesionSecret, ENVIRONMENT } = config;
 
 const app = express();
-
+//SAS
 // Trust proxy settings (required for express-rate-limit behind Docker/Proxies)
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 // DB connection solo si directo
-// In TypeScript/ESM, require.main === module is tricky. 
+// In TypeScript/ESM, require.main === module is tricky.
 // Since we compile to CommonJS, this might still work if we declare require.
 // But better to rely on a separate server file or just run connection if not imported.
 // For now, we'll assume this file is the entry point if run directly.
 if (require.main === module) {
   connection();
 }
-
 
 import requestMiddleware from "@/middleware/request.middleware";
 import wideLogMiddleware from "@/middleware/wide-log.middleware";
@@ -109,7 +112,9 @@ const isOriginAllowed = (origin: string | undefined): boolean => {
 
   // Check environment variable ALLOWED_ORIGINS
   if (process.env.ALLOWED_ORIGINS) {
-    const envOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+    const envOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) =>
+      o.trim(),
+    );
     if (envOrigins.includes(origin)) return true;
   }
 
@@ -121,8 +126,10 @@ const isOriginAllowed = (origin: string | undefined): boolean => {
   // In development, allow localhost and local network IPs
   if (!isProduction) {
     // Modified regex to allow subdomains of localhost (e.g., superadmin.localhost)
-    const localhostPattern = /^https?:\/\/((.+\.)?localhost|127\.0\.0\.1)(:\d+)?$/;
-    const localNetworkPattern = /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+    const localhostPattern =
+      /^https?:\/\/((.+\.)?localhost|127\.0\.0\.1)(:\d+)?$/;
+    const localNetworkPattern =
+      /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
 
     return localhostPattern.test(origin) || localNetworkPattern.test(origin);
   }
@@ -132,14 +139,23 @@ const isOriginAllowed = (origin: string | undefined): boolean => {
 
 app.use(
   cors({
-    origin: (origin: any, callback: (err: Error | null, allow?: boolean) => void) => {
+    origin: (
+      origin: any,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
       const allowed = isOriginAllowed(origin);
 
       if (allowed) {
         callback(null, true);
       } else {
-        logger.warn(`CORS blocked request from origin: ${origin || 'undefined'}`);
-        callback(new Error(`Origin ${origin || 'undefined'} not allowed by CORS policy`));
+        logger.warn(
+          `CORS blocked request from origin: ${origin || "undefined"}`,
+        );
+        callback(
+          new Error(
+            `Origin ${origin || "undefined"} not allowed by CORS policy`,
+          ),
+        );
       }
     },
     credentials: true,
@@ -147,7 +163,7 @@ app.use(
     allowedHeaders: CORS_CONSTANTS.ALLOWED_HEADERS,
     exposedHeaders: ["Set-Cookie"],
     maxAge: CORS_CONSTANTS.MAX_AGE_SECONDS, // 24 hours - cache preflight requests
-  })
+  }),
 );
 
 // Additional CORS headers for enhanced compatibility
@@ -170,13 +186,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.method === "OPTIONS") {
     res.setHeader(
       "Access-Control-Allow-Methods",
-      CORS_CONSTANTS.METHODS.join(", ")
+      CORS_CONSTANTS.METHODS.join(", "),
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
-      CORS_CONSTANTS.ALLOWED_HEADERS.join(", ")
+      CORS_CONSTANTS.ALLOWED_HEADERS.join(", "),
     );
-    res.setHeader("Access-Control-Max-Age", String(CORS_CONSTANTS.MAX_AGE_SECONDS));
+    res.setHeader(
+      "Access-Control-Max-Age",
+      String(CORS_CONSTANTS.MAX_AGE_SECONDS),
+    );
     return res.status(204).end();
   }
 
@@ -186,17 +205,17 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Token cookie domain middleware for development
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (!isProduction && req.cookies.token) {
-    const host = req.get('host');
-    if (host && host.includes('.localhost')) {
+    const host = req.get("host");
+    if (host && host.includes(".localhost")) {
       // Re-set the cookie with the correct domain if it's missing or set to the specific host
       // This is a safety measure to ensure the token remains shared
       res.cookie(AUTH_CONSTANTS.COOKIE_NAME, req.cookies.token, {
         domain: AUTH_CONSTANTS.LOCAL_DOMAIN,
-        path: '/',
+        path: "/",
         httpOnly: true,
         secure: false,
-        sameSite: 'lax',
-        expires: new Date(Date.now() + AUTH_CONSTANTS.COOKIE_EXPIRES_MS)
+        sameSite: "lax",
+        expires: new Date(Date.now() + AUTH_CONSTANTS.COOKIE_EXPIRES_MS),
       });
     }
   }
@@ -246,18 +265,17 @@ app.use(
     spec: {
       content: swaggerSpec,
     },
-    theme: 'purple',
-  })
+    theme: "purple",
+  }),
 );
-
 
 // 404 Handler - Must be after all routes
 app.use(notFoundHandlerEnhanced);
 
 // Server lift
 if (require.main === module) {
-  const portNumber = typeof port === 'string' ? parseInt(port, 10) : port;
-  app.listen(portNumber, '0.0.0.0', () => {
+  const portNumber = typeof port === "string" ? parseInt(port, 10) : port;
+  app.listen(portNumber, "0.0.0.0", () => {
     console.log(`Server started successfully!`);
     console.log(`Local: http://localhost:${portNumber}`);
     console.log(`Network: http://192.168.68.105:${portNumber}`);

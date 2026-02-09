@@ -1,8 +1,8 @@
 // Coupon Entity and DTOs
 
 export enum CouponType {
-    PERCENT = 'PERCENT',
-    FIXED = 'FIXED'
+    PERCENT = "PERCENT",
+    FIXED = "FIXED",
 }
 
 export interface Coupon {
@@ -37,7 +37,6 @@ export interface CreateCouponDTO {
     applicableProducts?: string[];
     applicableCategories?: string[];
     applicableServices?: string[];
-
 }
 
 export interface UpdateCouponDTO {

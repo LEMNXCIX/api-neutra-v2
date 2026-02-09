@@ -16,31 +16,42 @@ export const TIME_CONSTANTS = {
 // Authentication & Security
 // ============================================================================
 export const AUTH_CONSTANTS = {
-    COOKIE_NAME: 'token',
+    COOKIE_NAME: "token",
     COOKIE_EXPIRES_DAYS: 7,
     COOKIE_EXPIRES_MS: 7 * TIME_CONSTANTS.DAY_MS, // 7 days
-    LOCAL_DOMAIN: '.localhost',
+    LOCAL_DOMAIN: ".localhost",
     PASSWORD_RESET_TOKEN_BYTES: 32,
     PASSWORD_RESET_EXPIRATION_MS: TIME_CONSTANTS.HOUR_MS, // 1 hour
 } as const;
 
 export const SECURITY_CONSTANTS = {
     // Only redact specific sensitive credentials/tokens
-    SENSITIVE_FIELDS: ['password', 'token', 'accessToken', 'refreshToken', 'secret', 'apiKey', 'creditCard', 'cvv', 'auth', 'credentials'],
-    SENSITIVE_HEADERS: ['authorization', 'cookie', 'x-api-key'],
+    SENSITIVE_FIELDS: [
+        "password",
+        "token",
+        "accessToken",
+        "refreshToken",
+        "secret",
+        "apiKey",
+        "creditCard",
+        "cvv",
+        "auth",
+        "credentials",
+    ],
+    SENSITIVE_HEADERS: ["authorization", "cookie", "x-api-key"],
 } as const;
 
 export const JWT_CONSTANTS = {
-    EXPIRATION: '7d',
-    ALGORITHM: 'HS256',
+    EXPIRATION: "7d",
+    ALGORITHM: "HS256",
 } as const;
 
 // ============================================================================
 // Network & Infra (CORS, Proxy, Domains)
 // ============================================================================
 export const DOMAIN_CONSTANTS = {
-    LOCAL_LOCALHOST: '.localhost',
-    LOCAL_NIPIO: '.nip.io',
+    LOCAL_LOCALHOST: ".localhost",
+    LOCAL_NIPIO: ".nip.io",
     NIPIO_PARTS: 6,
 } as const;
 
@@ -58,7 +69,7 @@ export const CORS_CONSTANTS: {
         "X-Requested-With",
         "Origin",
         "x-tenant-id",
-        "x-tenant-slug"
+        "x-tenant-slug",
     ],
 };
 
@@ -75,7 +86,7 @@ export const RATE_LIMIT_CONSTANTS = {
 // Multi-Tenancy
 // ============================================================================
 export const TENANT_CONSTANTS = {
-    DEFAULT_SLUG: 'main',
+    DEFAULT_SLUG: "main",
 } as const;
 
 // ============================================================================
@@ -90,9 +101,9 @@ export const VALIDATION_CONSTANTS = {
 // Environment Identifiers & Helpers
 // ============================================================================
 export const ENV_CONSTANTS = {
-    PRODUCTION: 'production',
-    DEVELOPMENT: 'development',
-    DEV: 'dev',
+    PRODUCTION: "production",
+    DEVELOPMENT: "development",
+    DEV: "dev",
 } as const;
 
 /**
