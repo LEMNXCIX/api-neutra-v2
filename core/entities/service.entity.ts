@@ -3,7 +3,7 @@
  * Represents a service offering in the booking system
  */
 
-import { Category } from './category.entity';
+import { Category } from "./category.entity";
 
 export interface Service {
     id: string;
