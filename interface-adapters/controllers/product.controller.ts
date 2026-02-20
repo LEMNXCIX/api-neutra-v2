@@ -61,7 +61,22 @@ export class ProductController {
     }
 
     async getOne(req: Request, res: Response) {
-        const tenantId = (req as any).tenantId;
+        let tenantId = (req as any).tenantId;
+        const user = (req as any).user;
+
+        // Super Admin Bypass
+        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+            if (req.query.tenantId) {
+                tenantId = req.query.tenantId as string;
+                if (tenantId === 'all') tenantId = undefined;
+            }
+        } else if (!tenantId) {
+            return res.status(400).json({
+                success: false,
+                message: "Tenant context required. Use x-tenant-id or x-tenant-slug header."
+            });
+        }
+
         const id = req.params.id;
         const result = await this.getProductUseCase.execute(tenantId, id);
         return res.json(result);

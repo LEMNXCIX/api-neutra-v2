@@ -24,7 +24,7 @@ export class UserController {
     ) { }
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId;
+        const tenantId = (req as any).tenantId;
         const useCase = new GetAllUsersUseCase(this.userRepository);
         const result = await useCase.execute(tenantId);
         return res.status(result.code).json(result);

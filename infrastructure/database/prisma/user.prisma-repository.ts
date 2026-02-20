@@ -8,9 +8,11 @@ import { User, CreateUserDTO } from '@/core/entities/user.entity';
 export class PrismaUserRepository implements IUserRepository {
     async findAll(tenantId?: string): Promise<User[]> {
         const where = tenantId ? {
-            tenants: {
-                some: { tenantId }
-            }
+            OR: [
+                { tenants: { some: { tenantId } } },
+                { products: { some: { tenantId } } },
+                { orders: { some: { tenantId } } }
+            ]
         } : {};
 
         const users = await prisma.user.findMany({
@@ -160,9 +162,11 @@ export class PrismaUserRepository implements IUserRepository {
 
     async getUsersStats(tenantId?: string): Promise<{ yearMonth: string; total: number }[]> {
         const where = tenantId ? {
-            tenants: {
-                some: { tenantId }
-            }
+            OR: [
+                { tenants: { some: { tenantId } } },
+                { products: { some: { tenantId } } },
+                { orders: { some: { tenantId } } }
+            ]
         } : {};
 
         const users = await prisma.user.findMany({
@@ -182,9 +186,11 @@ export class PrismaUserRepository implements IUserRepository {
 
     async getSummaryStats(tenantId?: string): Promise<{ totalUsers: number; adminUsers: number; regularUsers: number }> {
         const where = tenantId ? {
-            tenants: {
-                some: { tenantId }
-            }
+            OR: [
+                { tenants: { some: { tenantId } } },
+                { products: { some: { tenantId } } },
+                { orders: { some: { tenantId } } }
+            ]
         } : {};
 
         const [totalUsers, adminUsers] = await Promise.all([

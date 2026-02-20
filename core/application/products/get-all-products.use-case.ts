@@ -5,11 +5,22 @@ export class GetAllProductsUseCase {
 
     async execute(tenantId: string | undefined) {
         const products = await this.productRepository.findAll(tenantId);
+        const stats = await this.productRepository.getSummaryStats(tenantId);
+
         return {
             success: true,
             code: 200,
             message: "Products listed successfully",
-            data: products
+            data: {
+                products,
+                stats,
+                pagination: {
+                    currentPage: 1,
+                    totalPages: 1,
+                    totalItems: products.length,
+                    itemsPerPage: products.length
+                }
+            }
         };
     }
 }

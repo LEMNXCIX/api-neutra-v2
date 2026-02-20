@@ -1,5 +1,6 @@
 import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
+import { optionalAuthenticate } from '@/middleware/optional-authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { ServiceController } from '@/interface-adapters/controllers/service.controller';
 import { PrismaServiceRepository } from '@/infrastructure/database/prisma/service.prisma-repository';
@@ -35,7 +36,7 @@ function services(app: Application) {
      */
     router.get(
         '/',
-        authenticate,
+        optionalAuthenticate,
         (req, res) => serviceController.getAll(req, res)
     );
 

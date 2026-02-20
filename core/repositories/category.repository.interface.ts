@@ -10,5 +10,5 @@ export interface ICategoryRepository {
     create(tenantId: string, data: CreateCategoryDTO): Promise<Category>;
     update(tenantId: string, id: string, data: UpdateCategoryDTO): Promise<Category>;
     delete(tenantId: string, id: string): Promise<void>;
-    getStats(tenantId: string): Promise<{ totalCategories: number; avgProductsPerCategory: number }>;
+    getStats(tenantId: string | undefined): Promise<{ totalCategories: number; avgProductsPerCategory: number }>;
 }

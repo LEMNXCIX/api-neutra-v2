@@ -9,10 +9,14 @@ describe('Products routes', () => {
     token = await getAuthToken();
   });
 
-  test('GET /api/products should respond with json', async () => {
+  test('GET /api/products should respond with structured data', async () => {
     const res = await api.get('/api/products');
-    expect(res.headers['content-type']).toMatch(/application\/(json|json;)/);
-    expect([200, 400]).toContain(res.status);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveProperty('products');
+    expect(res.body.data).toHaveProperty('stats');
+    expect(res.body.data).toHaveProperty('pagination');
+    expect(Array.isArray(res.body.data.products)).toBe(true);
   });
 
   test('POST /api/products without auth should return 401 or 403', async () => {
