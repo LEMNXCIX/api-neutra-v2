@@ -2,13 +2,9 @@ import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { CouponController } from '@/interface-adapters/controllers/coupon.controller';
-import { PrismaCouponRepository } from '@/infrastructure/database/prisma/coupon.prisma-repository';
 
-function couponRoutes(app: Application) {
+function couponRoutes(app: Application, couponController: CouponController) {
     const router = Router();
-    const couponRepository = new PrismaCouponRepository();
-    const couponController = new CouponController(couponRepository);
-
     app.use('/api/coupons', router);
 
     /**

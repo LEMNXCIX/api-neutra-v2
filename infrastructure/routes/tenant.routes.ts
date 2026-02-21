@@ -1,19 +1,10 @@
 
 import { Application, Router } from 'express';
 import { TenantController } from '../../interface-adapters/controllers/tenant.controller';
-import { TenantPrismaRepository } from '../database/prisma/tenant.prisma-repository';
-import { PrismaUserRepository } from '../database/prisma/user.prisma-repository';
-import { PrismaFeatureRepository } from '../database/prisma/feature.prisma-repository';
-import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
 import { authenticate } from '@/middleware/authenticate.middleware';
 
-function tenants(app: Application) {
+function tenants(app: Application, tenantController: TenantController) {
     const router = Router();
-    const logger = new PinoLoggerProvider();
-    const tenantRepository = new TenantPrismaRepository();
-    const userRepository = new PrismaUserRepository();
-    const featureRepository = new PrismaFeatureRepository();
-    const tenantController = new TenantController(tenantRepository, userRepository, logger, featureRepository);
 
     // Debug route
     router.get('/test-debug', (req, res) => res.json({ message: 'Tenants router is working' }));

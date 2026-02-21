@@ -3,17 +3,9 @@ import { authenticate } from '@/middleware/authenticate.middleware';
 import { optionalAuthenticate } from '@/middleware/optional-authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { ServiceController } from '@/interface-adapters/controllers/service.controller';
-import { PrismaServiceRepository } from '@/infrastructure/database/prisma/service.prisma-repository';
-import { PrismaCategoryRepository } from '@/infrastructure/database/prisma/category.prisma-repository';
-import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
 
-function services(app: Application) {
+function services(app: Application, serviceController: ServiceController) {
     const router = Router();
-    const serviceRepository = new PrismaServiceRepository();
-    const categoryRepository = new PrismaCategoryRepository();
-    const logger = new PinoLoggerProvider();
-    const serviceController = new ServiceController(serviceRepository, categoryRepository, logger);
-
     app.use('/api/services', router);
 
     /**

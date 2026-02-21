@@ -1,32 +1,11 @@
 import { IPermissionRepository } from '@/core/repositories/permission.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
 
 export class GetPermissionsPaginatedUseCase {
     constructor(private permissionRepository: IPermissionRepository) { }
 
-    async execute(tenantId: string | undefined, page: number = 1, limit: number = 10, search?: string) {
-        try {
-            const { permissions, total } = await this.permissionRepository.findAllPaginated(tenantId, page, limit, search);
-            const totalPages = Math.ceil(total / limit);
-
-            return {
-                success: true,
-                code: 200,
-                message: "Permissions retrieved successfully",
-                data: permissions,
-                pagination: {
-                    total,
-                    page,
-                    limit,
-                    totalPages
-                }
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: "Error retrieving permissions",
-                errors: error.message || error
-            };
-        }
+    async execute(tenantId: string | undefined, page: number = 1, limit: number = 10, search?: string): Promise<UseCaseResult> {
+        const { permissions, total } = await this.permissionRepository.findAllPaginated(tenantId, page, limit, search);
+        return Success(permissions, "Permissions retrieved successfully");
     }
 }

@@ -3,23 +3,10 @@ import { Application, Router } from 'express';
 import passport from 'passport';
 import { AuthController } from '@/interface-adapters/controllers/auth.controller';
 import { authenticate } from '@/middleware/authenticate.middleware';
-import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
-import { BcryptProvider } from '@/infrastructure/providers/bcrypt.provider';
-import { JwtProvider } from '@/infrastructure/providers/jwt.provider';
-import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
-import { BullMQQueueProvider } from '@/infrastructure/providers/bullmq-queue.provider';
 
-function auth(app: Application) {
+function auth(app: Application, authController: AuthController) {
     const router = Router();
     app.use('/api/auth', router);
-
-    // Dependency Injection
-    const userRepository = new PrismaUserRepository();
-    const passwordHasher = new BcryptProvider();
-    const tokenGenerator = new JwtProvider();
-    const logger = new PinoLoggerProvider();
-    const queueProvider = new BullMQQueueProvider();
-    const authController = new AuthController(userRepository, passwordHasher, tokenGenerator, logger, queueProvider);
 
     /**
      * @swagger

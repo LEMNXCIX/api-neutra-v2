@@ -2,36 +2,9 @@ import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { OrderController } from '@/interface-adapters/controllers/order.controller';
-import { PrismaOrderRepository } from '@/infrastructure/database/prisma/order.prisma-repository';
-import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
-import { PrismaProductRepository } from '@/infrastructure/database/prisma/product.prisma-repository';
-import { PrismaCouponRepository } from '@/infrastructure/database/prisma/coupon.prisma-repository';
-import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
-import { PrismaFeatureRepository } from '@/infrastructure/database/prisma/feature.prisma-repository';
-import { emailService } from '@/infrastructure/services/email.service';
 
-import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
-
-function order(app: Application) {
+function order(app: Application, orderController: OrderController) {
     const router = Router();
-    const orderRepository = new PrismaOrderRepository();
-    const cartRepository = new PrismaCartRepository();
-    const productRepository = new PrismaProductRepository();
-    const couponRepository = new PrismaCouponRepository();
-    const userRepository = new PrismaUserRepository();
-    const logger = new PinoLoggerProvider();
-    const featureRepository = new PrismaFeatureRepository();
-    const orderController = new OrderController(
-        orderRepository,
-        cartRepository,
-        productRepository,
-        couponRepository,
-        userRepository,
-        emailService,
-        featureRepository,
-        logger
-    );
-
     app.use('/api/order', router);
 
     /**

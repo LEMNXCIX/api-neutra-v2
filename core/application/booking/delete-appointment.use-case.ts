@@ -1,5 +1,8 @@
 import { IAppointmentRepository } from '@/core/repositories/appointment.repository.interface';
 import { ILogger } from '@/core/providers/logger.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes } from '@/types/error-codes';
 
 export class DeleteAppointmentUseCase {
     constructor(
@@ -7,34 +10,17 @@ export class DeleteAppointmentUseCase {
         private logger: ILogger
     ) { }
 
-    async execute(tenantId: string, id: string): Promise<{ success: boolean; code: number; message?: string }> {
-        try {
-            const appointment = await this.appointmentRepository.findById(tenantId, id);
+    async execute(tenantId: string, id: string): Promise<UseCaseResult> {
+        const appointment = await this.appointmentRepository.findById(tenantId, id);
 
-            if (!appointment) {
-                return {
-                    success: false,
-                    code: 404,
-                    message: "Appointment not found"
-                };
-            }
-
-            await this.appointmentRepository.delete(tenantId, id);
-
-            this.logger.info(`Appointment deleted successfully: ${id}`, { tenantId, appointmentId: id });
-
-            return {
-                success: true,
-                code: 200,
-                message: "Appointment deleted successfully"
-            };
-        } catch (error: any) {
-            this.logger.error("Error deleting appointment", {
-                tenantId,
-                appointmentId: id,
-                error: error.message
-            });
-            throw error;
+        if (!appointment) {
+            throw new AppError("Appointment not found", 404, ResourceErrorCodes.NOT_FOUND);
         }
+
+        await this.appointmentRepository.delete(tenantId, id);
+
+        this.logger.info(`Appointment deleted successfully: ${id}`, { tenantId, appointmentId: id });
+
+        return Success(null, "Appointment deleted successfully");
     }
 }

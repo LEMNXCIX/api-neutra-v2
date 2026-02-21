@@ -2,6 +2,9 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { IRoleRepository } from '@/core/repositories/role.repository.interface';
 import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
 import { RedisProvider } from '@/infrastructure/providers/redis.provider';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes, ValidationErrorCodes } from '@/types/error-codes';
 
 export class AssignRoleToUserUseCase {
     private redis: RedisProvider;
@@ -14,33 +17,19 @@ export class AssignRoleToUserUseCase {
         this.redis = RedisProvider.getInstance();
     }
 
-    async execute(tenantId: string | undefined, userId: string, roleId: string) {
+    async execute(tenantId: string | undefined, userId: string, roleId: string): Promise<UseCaseResult> {
         if (!tenantId) {
-            return {
-                success: false,
-                code: 400,
-                message: 'TenantId is required for role assignment'
-            };
+            throw new AppError('TenantId is required for role assignment', 400, ValidationErrorCodes.MISSING_REQUIRED_FIELDS);
         }
 
         const user = await this.userRepository.findById(userId);
         if (!user) {
-            return {
-                success: false,
-                code: 404,
-                message: 'User not found',
-                data: null
-            };
+            throw new AppError('User not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
 
         const role = await this.roleRepository.findById(tenantId, roleId);
         if (!role) {
-            return {
-                success: false,
-                code: 404,
-                message: 'Role not found',
-                data: null
-            };
+            throw new AppError('Role not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
 
         // Add/Update user-tenant relation with new roleId
@@ -61,9 +50,6 @@ export class AssignRoleToUserUseCase {
                 await this.staffRepository.update(tenantId, existingStaff.id, { active: true });
             }
         }
-        // If changing FROM staff to something else, maybe deactivate staff?
-        // (This gets tricky if we don't know the PREVIOUS role here)
-        // But we can check if a staff record exists and deactivate it if new role is NOT staff
         else {
             const existingStaff = await this.staffRepository.findByUserId(tenantId, userId);
             if (existingStaff && existingStaff.active) {
@@ -77,11 +63,6 @@ export class AssignRoleToUserUseCase {
         // Invalidate user permissions cache for this specific tenant context
         await this.redis.del(`user:permissions:${userId}:${tenantId}`);
 
-        return {
-            success: true,
-            code: 200,
-            message: 'Role assigned successfully',
-            data: updatedUser
-        };
+        return Success(updatedUser, 'Role assigned successfully');
     }
 }

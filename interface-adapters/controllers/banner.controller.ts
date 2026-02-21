@@ -8,13 +8,19 @@ import { TrackBannerAnalyticsUseCase } from '@/core/application/banners/track-ba
 import { GetBannerStatsUseCase } from '@/core/application/banners/get-banner-stats.use-case';
 
 export class BannerController {
-    constructor(private bannerRepository: IBannerRepository) { }
+    constructor(
+        private createBannerUseCase: CreateBannerUseCase,
+        private getBannersUseCase: GetBannersUseCase,
+        private updateBannerUseCase: UpdateBannerUseCase,
+        private deleteBannerUseCase: DeleteBannerUseCase,
+        private trackBannerAnalyticsUseCase: TrackBannerAnalyticsUseCase,
+        private getBannerStatsUseCase: GetBannerStatsUseCase
+    ) { }
 
     create = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new CreateBannerUseCase(this.bannerRepository);
-        const result = await useCase.execute(tenantId, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.createBannerUseCase.execute(tenantId, req.body);
+        return res.status(201).json(result);
     }
 
     getAll = async (req: Request, res: Response) => {
@@ -31,62 +37,54 @@ export class BannerController {
             return res.status(400).json({ success: false, message: "Tenant ID required" });
         }
 
-        const useCase = new GetBannersUseCase(this.bannerRepository);
-        const result = await useCase.execute(tenantId, false); // Get all banners
-        return res.status(result.code).json(result);
+        const result = await this.getBannersUseCase.execute(tenantId, false); // Get all banners
+        return res.json(result);
     }
 
     getActive = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new GetBannersUseCase(this.bannerRepository);
-        const result = await useCase.execute(tenantId, true); // Get only active banners
-        return res.status(result.code).json(result);
+        const result = await this.getBannersUseCase.execute(tenantId, true); // Get only active banners
+        return res.json(result);
     }
 
     getById = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new GetBannersUseCase(this.bannerRepository);
-        const result = await useCase.executeById(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.getBannersUseCase.executeById(tenantId, id);
+        return res.json(result);
     }
 
     update = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new UpdateBannerUseCase(this.bannerRepository);
-        const result = await useCase.execute(tenantId, id, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.updateBannerUseCase.execute(tenantId, id, req.body);
+        return res.json(result);
     }
 
     delete = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new DeleteBannerUseCase(this.bannerRepository);
-        const result = await useCase.execute(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.deleteBannerUseCase.execute(tenantId, id);
+        return res.json(result);
     }
 
     trackImpression = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new TrackBannerAnalyticsUseCase(this.bannerRepository);
-        const result = await useCase.trackImpression(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.trackBannerAnalyticsUseCase.trackImpression(tenantId, id);
+        return res.json(result);
     }
 
     trackClick = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new TrackBannerAnalyticsUseCase(this.bannerRepository);
-        const result = await useCase.trackClick(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.trackBannerAnalyticsUseCase.trackClick(tenantId, id);
+        return res.json(result);
     }
 
     getStats = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new GetBannerStatsUseCase(this.bannerRepository);
-        const result = await useCase.execute(tenantId);
-        return res.status(result.code).json(result);
+        const result = await this.getBannerStatsUseCase.execute(tenantId);
+        return res.json(result);
     }
 }

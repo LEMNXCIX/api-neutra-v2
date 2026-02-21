@@ -13,32 +13,16 @@ import { UpdateTenantFeaturesUseCase } from '@/core/application/tenant/update-te
 import { ILogger } from '@/core/providers/logger.interface';
 
 export class TenantController {
-    private createTenantUseCase: CreateTenantUseCase;
-    private getTenantsUseCase: GetTenantsUseCase;
-    private getTenantByIdUseCase: GetTenantByIdUseCase;
-    private getTenantBySlugUseCase: GetTenantBySlugUseCase;
-    private updateTenantUseCase: UpdateTenantUseCase;
-    private deleteTenantUseCase: DeleteTenantUseCase;
-    private getTenantFeaturesUseCase: GetTenantFeaturesUseCase;
-    private updateTenantFeaturesUseCase: UpdateTenantFeaturesUseCase;
-
     constructor(
-        private tenantRepository: ITenantRepository,
-        private userRepository: IUserRepository,
-        private logger: ILogger,
-        private featureRepository: IFeatureRepository
-    ) {
-        this.createTenantUseCase = new CreateTenantUseCase(tenantRepository, userRepository, logger);
-        this.getTenantsUseCase = new GetTenantsUseCase(tenantRepository, logger);
-        this.getTenantByIdUseCase = new GetTenantByIdUseCase(tenantRepository, logger);
-        this.getTenantBySlugUseCase = new GetTenantBySlugUseCase(tenantRepository, logger);
-        this.updateTenantUseCase = new UpdateTenantUseCase(tenantRepository, logger);
-        this.deleteTenantUseCase = new DeleteTenantUseCase(tenantRepository, logger);
-
-        // Feature Use Cases
-        this.getTenantFeaturesUseCase = new GetTenantFeaturesUseCase(featureRepository);
-        this.updateTenantFeaturesUseCase = new UpdateTenantFeaturesUseCase(featureRepository);
-    }
+        private createTenantUseCase: CreateTenantUseCase,
+        private getTenantsUseCase: GetTenantsUseCase,
+        private getTenantByIdUseCase: GetTenantByIdUseCase,
+        private getTenantBySlugUseCase: GetTenantBySlugUseCase,
+        private updateTenantUseCase: UpdateTenantUseCase,
+        private deleteTenantUseCase: DeleteTenantUseCase,
+        private getTenantFeaturesUseCase: GetTenantFeaturesUseCase,
+        private updateTenantFeaturesUseCase: UpdateTenantFeaturesUseCase
+    ) { }
 
     async create(req: Request, res: Response) {
         const creatorId = (req as any).user?.id;
@@ -46,27 +30,27 @@ export class TenantController {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
         const result = await this.createTenantUseCase.execute(req.body, creatorId);
-        return res.status(result.code).json(result);
+        return res.status(201).json(result);
     }
 
     async getAll(req: Request, res: Response) {
         const result = await this.getTenantsUseCase.execute();
-        return res.status(result.code).json(result);
+        return res.json(result);
     }
 
     async getById(req: Request, res: Response) {
         const result = await this.getTenantByIdUseCase.execute(req.params.id);
-        return res.status(result.code).json(result);
+        return res.json(result);
     }
 
     async getBySlug(req: Request, res: Response) {
         const result = await this.getTenantBySlugUseCase.execute(req.params.slug);
-        return res.status(result.code).json(result);
+        return res.json(result);
     }
 
     async update(req: Request, res: Response) {
         const result = await this.updateTenantUseCase.execute(req.params.id, req.body);
-        return res.status(result.code).json(result);
+        return res.json(result);
     }
 
     async getFeatures(req: Request, res: Response) {
@@ -105,6 +89,6 @@ export class TenantController {
 
     async delete(req: Request, res: Response) {
         const result = await this.deleteTenantUseCase.execute(req.params.id);
-        return res.status(result.code).json(result);
+        return res.json(result);
     }
 }

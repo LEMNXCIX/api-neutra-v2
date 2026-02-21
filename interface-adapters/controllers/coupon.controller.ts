@@ -9,13 +9,20 @@ import { ValidateCouponUseCase } from '@/core/application/coupons/validate-coupo
 import { GetCouponStatsUseCase } from '@/core/application/coupons/get-coupon-stats.use-case';
 
 export class CouponController {
-    constructor(private couponRepository: ICouponRepository) { }
+    constructor(
+        private createCouponUseCase: CreateCouponUseCase,
+        private getCouponsUseCase: GetCouponsUseCase,
+        private getCouponsPaginatedUseCase: GetCouponsPaginatedUseCase,
+        private updateCouponUseCase: UpdateCouponUseCase,
+        private deleteCouponUseCase: DeleteCouponUseCase,
+        private validateCouponUseCase: ValidateCouponUseCase,
+        private getCouponStatsUseCase: GetCouponStatsUseCase
+    ) { }
 
     create = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new CreateCouponUseCase(this.couponRepository);
-        const result = await useCase.execute(tenantId, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.createCouponUseCase.execute(tenantId, req.body);
+        return res.status(201).json(result);
     }
 
     getAll = async (req: Request, res: Response) => {
@@ -26,63 +33,56 @@ export class CouponController {
 
         if (page || limit || search || type || status) {
             // Use paginated endpoint
-            const useCase = new GetCouponsPaginatedUseCase(this.couponRepository);
-            const result = await useCase.execute(tenantId, {
+            const result = await this.getCouponsPaginatedUseCase.execute(tenantId, {
                 search: search as string,
                 type: type as string,
                 status: status as any,
                 page: page ? parseInt(page as string) : undefined,
                 limit: limit ? parseInt(limit as string) : undefined
             });
-            return res.status(result.code).json(result);
+            return res.json(result);
         } else {
             // Use original endpoint for backward compatibility
-            const useCase = new GetCouponsUseCase(this.couponRepository);
-            const result = await useCase.execute(tenantId, false);
-            return res.status(result.code).json(result);
+            const result = await this.getCouponsUseCase.execute(tenantId, false);
+            return res.json(result);
         }
     }
 
     getById = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new GetCouponsUseCase(this.couponRepository);
-        const result = await useCase.executeById(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.getCouponsUseCase.executeById(tenantId, id);
+        return res.json(result);
     }
 
     getByCode = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { code } = req.params;
-        const useCase = new GetCouponsUseCase(this.couponRepository);
-        const result = await useCase.executeByCode(tenantId, code);
-        return res.status(result.code).json(result);
+        const result = await this.getCouponsUseCase.executeByCode(tenantId, code);
+        return res.json(result);
     }
 
     update = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new UpdateCouponUseCase(this.couponRepository);
-        const result = await useCase.execute(tenantId, id, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.updateCouponUseCase.execute(tenantId, id, req.body);
+        return res.json(result);
     }
 
     delete = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new DeleteCouponUseCase(this.couponRepository);
-        const result = await useCase.execute(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.deleteCouponUseCase.execute(tenantId, id);
+        return res.json(result);
     }
 
     validate = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new ValidateCouponUseCase(this.couponRepository);
-        const result = await useCase.execute(tenantId, req.body);
+        const result = await this.validateCouponUseCase.execute(tenantId, req.body);
 
-        return res.status(result.valid ? 200 : 400).json({
+        return res.json({
             success: result.valid,
-            code: result.valid ? 200 : 400,
+            code: 200,
             message: result.message,
             data: result.valid ? {
                 coupon: result.coupon,
@@ -94,8 +94,7 @@ export class CouponController {
     getStats = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
 
-        const useCase = new GetCouponStatsUseCase(this.couponRepository);
-        const result = await useCase.execute(tenantId);
-        return res.status(result.code).json(result);
+        const result = await this.getCouponStatsUseCase.execute(tenantId);
+        return res.json(result);
     }
 }

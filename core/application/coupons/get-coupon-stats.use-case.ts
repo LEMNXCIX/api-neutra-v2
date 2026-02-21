@@ -1,25 +1,11 @@
 import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
 
 export class GetCouponStatsUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(tenantId: string) {
-        try {
-            const stats = await this.couponRepository.getStats(tenantId);
-            return {
-                success: true,
-                code: 200,
-                message: 'Coupon stats retrieved successfully',
-                data: stats
-            };
-        } catch (error: any) {
-            console.error('Error getting coupon stats:', error);
-            return {
-                success: false,
-                code: 500,
-                message: 'Internal server error',
-                data: null
-            };
-        }
+    async execute(tenantId: string): Promise<UseCaseResult> {
+        const stats = await this.couponRepository.getStats(tenantId);
+        return Success(stats, 'Coupon stats retrieved successfully');
     }
 }

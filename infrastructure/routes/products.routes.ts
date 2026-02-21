@@ -2,15 +2,11 @@ import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { ProductController } from '@/interface-adapters/controllers/product.controller';
-import { PrismaProductRepository } from '@/infrastructure/database/prisma/product.prisma-repository';
 
 import { optionalAuthenticate } from '@/middleware/optional-authenticate.middleware';
 
-function products(app: Application) {
+function products(app: Application, productController: ProductController) {
     const router = Router();
-    const productRepository = new PrismaProductRepository();
-    const productController = new ProductController(productRepository);
-
     app.use('/api/products', router);
 
     /**

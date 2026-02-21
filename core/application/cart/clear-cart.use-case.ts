@@ -1,27 +1,20 @@
 import { ICartRepository } from '@/core/repositories/cart.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes } from '@/types/error-codes';
 
 export class ClearCartUseCase {
     constructor(private cartRepository: ICartRepository) { }
 
-    async execute(tenantId: string, userId: string) {
+    async execute(tenantId: string, userId: string): Promise<UseCaseResult> {
         const cart = await this.cartRepository.findByUserIdSimple(tenantId, userId);
 
         if (!cart) {
-            return {
-                success: false,
-                code: 404,
-                message: "Cart not found",
-                data: null
-            };
+            throw new AppError("Cart not found", 404, ResourceErrorCodes.NOT_FOUND);
         }
 
         await this.cartRepository.clearItems(tenantId, cart.id);
 
-        return {
-            success: true,
-            code: 200,
-            message: "Cart cleared successfully",
-            data: { ...cart, items: [] }
-        };
+        return Success({ ...cart, items: [] }, "Cart cleared successfully");
     }
 }

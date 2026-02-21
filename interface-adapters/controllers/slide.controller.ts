@@ -7,19 +7,13 @@ import { DeleteSlideUseCase } from '@/core/application/slide/delete-slide.use-ca
 import { GetSliderStatsUseCase } from '@/core/application/slide/get-slider-stats.use-case';
 
 export class SlideController {
-    private createSlideUseCase: CreateSlideUseCase;
-    private updateSlideUseCase: UpdateSlideUseCase;
-    private getSlidesUseCase: GetSlidesUseCase;
-    private deleteSlideUseCase: DeleteSlideUseCase;
-    private getSliderStatsUseCase: GetSliderStatsUseCase;
-
-    constructor(slideRepository: ISlideRepository) {
-        this.createSlideUseCase = new CreateSlideUseCase(slideRepository);
-        this.updateSlideUseCase = new UpdateSlideUseCase(slideRepository);
-        this.getSlidesUseCase = new GetSlidesUseCase(slideRepository);
-        this.deleteSlideUseCase = new DeleteSlideUseCase(slideRepository);
-        this.getSliderStatsUseCase = new GetSliderStatsUseCase(slideRepository);
-
+    constructor(
+        private createSlideUseCase: CreateSlideUseCase,
+        private updateSlideUseCase: UpdateSlideUseCase,
+        private getSlidesUseCase: GetSlidesUseCase,
+        private deleteSlideUseCase: DeleteSlideUseCase,
+        private getSliderStatsUseCase: GetSliderStatsUseCase
+    ) {
         // Bind methods
         this.create = this.create.bind(this);
         this.update = this.update.bind(this);
@@ -33,38 +27,26 @@ export class SlideController {
         const tenantId = (req as any).tenantId;
         const id = req.params.id;
         const result = await this.getSlidesUseCase.executeById(tenantId, id);
-        if (result.success) {
-            return res.apiSuccess(result.data, result.message, result.code);
-        }
-        return res.apiError(result.errors, result.message, result.code);
+        return res.json(result);
     }
 
     async getStats(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
         const result = await this.getSliderStatsUseCase.execute(tenantId);
-        if (result.success) {
-            return res.apiSuccess(result.data, result.message, result.code);
-        }
-        return res.apiError(null, result.message, result.code);
+        return res.json(result);
     }
 
     async create(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
         const result = await this.createSlideUseCase.execute(tenantId, req.body);
-        if (result.success) {
-            return res.apiSuccess(result.data, result.message, result.code);
-        }
-        return res.apiError(result.errors, result.message, result.code);
+        return res.status(201).json(result);
     }
 
     async update(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
         const id = req.params.id;
         const result = await this.updateSlideUseCase.execute(tenantId, id, req.body);
-        if (result.success) {
-            return res.apiSuccess(result.data, result.message, result.code);
-        }
-        return res.apiError(result.errors, result.message, result.code);
+        return res.json(result);
     }
 
     async getAll(req: Request, res: Response) {
@@ -82,19 +64,13 @@ export class SlideController {
         }
 
         const result = await this.getSlidesUseCase.execute(tenantId);
-        if (result.success) {
-            return res.apiSuccess(result.data, result.message, result.code);
-        }
-        return res.apiError(result.errors, result.message, result.code);
+        return res.json(result);
     }
 
     async delete(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
         const id = req.params.id;
         const result = await this.deleteSlideUseCase.execute(tenantId, id);
-        if (result.success) {
-            return res.apiSuccess(result.data, result.message, result.code);
-        }
-        return res.apiError(result.errors, result.message, result.code);
+        return res.json(result);
     }
 }

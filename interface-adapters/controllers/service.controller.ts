@@ -8,21 +8,12 @@ import { DeleteServiceUseCase } from '@/core/application/booking/delete-service.
 import { ILogger } from '@/core/providers/logger.interface';
 
 export class ServiceController {
-    private createServiceUseCase: CreateServiceUseCase;
-    private getServicesUseCase: GetServicesUseCase;
-    private updateServiceUseCase: UpdateServiceUseCase;
-    private deleteServiceUseCase: DeleteServiceUseCase;
-
     constructor(
-        serviceRepository: IServiceRepository,
-        categoryRepository: ICategoryRepository,
-        private logger: ILogger
-    ) {
-        this.createServiceUseCase = new CreateServiceUseCase(serviceRepository, categoryRepository, logger);
-        this.getServicesUseCase = new GetServicesUseCase(serviceRepository, logger);
-        this.updateServiceUseCase = new UpdateServiceUseCase(serviceRepository, categoryRepository, logger);
-        this.deleteServiceUseCase = new DeleteServiceUseCase(serviceRepository, logger);
-    }
+        private createServiceUseCase: CreateServiceUseCase,
+        private getServicesUseCase: GetServicesUseCase,
+        private updateServiceUseCase: UpdateServiceUseCase,
+        private deleteServiceUseCase: DeleteServiceUseCase
+    ) { }
 
     async create(req: Request, res: Response) {
         const tenantId = req.tenantId!;

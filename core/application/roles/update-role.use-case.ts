@@ -2,6 +2,9 @@ import { IRoleRepository } from '@/core/repositories/role.repository.interface';
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { UpdateRoleDTO } from '@/core/entities/role.entity';
 import { RedisProvider } from '@/infrastructure/providers/redis.provider';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes } from '@/types/error-codes';
 
 export class UpdateRoleUseCase {
     private redis: RedisProvider;
@@ -13,34 +16,22 @@ export class UpdateRoleUseCase {
         this.redis = RedisProvider.getInstance();
     }
 
-    async execute(tenantId: string | undefined, id: string, data: UpdateRoleDTO) {
+    async execute(tenantId: string | undefined, id: string, data: UpdateRoleDTO): Promise<UseCaseResult> {
         const existingRole = await this.roleRepository.findById(tenantId, id);
 
         if (!existingRole) {
-            return {
-                success: false,
-                code: 404,
-                message: 'Role not found',
-                data: null
-            };
+            throw new AppError('Role not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
 
         if (data.name) {
             const roleWithSameName = await this.roleRepository.findByName(tenantId, data.name);
             if (roleWithSameName && roleWithSameName.id !== id) {
-                return {
-                    success: false,
-                    code: 409,
-                    message: 'Role name already in use',
-                    data: null
-                };
+                throw new AppError('Role name already in use', 409, ResourceErrorCodes.ALREADY_EXISTS);
             }
         }
 
         const updatedRole = await this.roleRepository.update(tenantId, id, data);
 
-        // Invalidate cache for all users with this role
-        // This is necessary because permissions might have changed
         if (tenantId) {
             const users = await this.userRepository.findByRoleId(tenantId, id);
 
@@ -51,11 +42,6 @@ export class UpdateRoleUseCase {
             }
         }
 
-        return {
-            success: true,
-            code: 200,
-            message: 'Role updated successfully',
-            data: updatedRole
-        };
+        return Success(updatedRole, 'Role updated successfully');
     }
 }

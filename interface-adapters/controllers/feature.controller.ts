@@ -7,20 +7,13 @@ import { DeleteFeatureUseCase } from '@/core/application/feature/delete-feature.
 import { ILogger } from '@/core/providers/logger.interface';
 
 export class FeatureController {
-    private getFeaturesUseCase: GetFeaturesUseCase;
-    private createFeatureUseCase: CreateFeatureUseCase;
-    private updateFeatureUseCase: UpdateFeatureUseCase;
-    private deleteFeatureUseCase: DeleteFeatureUseCase;
-
     constructor(
-        private featureRepository: IFeatureRepository,
+        private getFeaturesUseCase: GetFeaturesUseCase,
+        private createFeatureUseCase: CreateFeatureUseCase,
+        private updateFeatureUseCase: UpdateFeatureUseCase,
+        private deleteFeatureUseCase: DeleteFeatureUseCase,
         private logger: ILogger
     ) {
-        this.getFeaturesUseCase = new GetFeaturesUseCase(featureRepository);
-        this.createFeatureUseCase = new CreateFeatureUseCase(featureRepository, logger);
-        this.updateFeatureUseCase = new UpdateFeatureUseCase(featureRepository, logger);
-        this.deleteFeatureUseCase = new DeleteFeatureUseCase(featureRepository, logger);
-
         this.getAll = this.getAll.bind(this);
         this.create = this.create.bind(this);
         this.update = this.update.bind(this);

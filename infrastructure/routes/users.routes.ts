@@ -3,21 +3,10 @@ import { Application, Request, Response, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { UserController } from '@/interface-adapters/controllers/user.controller';
-import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
-import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
-import { PrismaRoleRepository } from '@/infrastructure/database/prisma/role.prisma-repository';
-import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.prisma-repository';
 
-function users(app: Application) {
+function users(app: Application, userController: UserController) {
     const router = Router();
     app.use('/api/users', router);
-
-    // Dependency Injection
-    const userRepository = new PrismaUserRepository();
-    const cartRepository = new PrismaCartRepository();
-    const roleRepository = new PrismaRoleRepository();
-    const staffRepository = new PrismaStaffRepository();
-    const userController = new UserController(userRepository, cartRepository, roleRepository, staffRepository);
 
     /**
      * @swagger

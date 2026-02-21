@@ -7,13 +7,18 @@ import { DeletePermissionUseCase } from '@/core/application/permissions/delete-p
 import { GetPermissionsPaginatedUseCase } from '@/core/application/permissions/get-permissions-paginated.use-case';
 
 export class PermissionController {
-    constructor(private permissionRepository: IPermissionRepository) { }
+    constructor(
+        private createPermissionUseCase: CreatePermissionUseCase,
+        private getPermissionsUseCase: GetPermissionsUseCase,
+        private updatePermissionUseCase: UpdatePermissionUseCase,
+        private deletePermissionUseCase: DeletePermissionUseCase,
+        private getPermissionsPaginatedUseCase: GetPermissionsPaginatedUseCase
+    ) { }
 
     create = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new CreatePermissionUseCase(this.permissionRepository);
-        const result = await useCase.execute(tenantId, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.createPermissionUseCase.execute(tenantId, req.body);
+        return res.status(201).json(result);
     }
 
     getAll = async (req: Request, res: Response) => {
@@ -23,37 +28,32 @@ export class PermissionController {
         const search = req.query.search ? (req.query.search as string) : undefined;
 
         if (page || limit || search) {
-            const useCase = new GetPermissionsPaginatedUseCase(this.permissionRepository);
-            const result = await useCase.execute(tenantId, page, limit, search);
-            return res.status(result.code).json(result);
+            const result = await this.getPermissionsPaginatedUseCase.execute(tenantId, page, limit, search);
+            return res.json(result);
         } else {
-            const useCase = new GetPermissionsUseCase(this.permissionRepository);
-            const result = await useCase.execute(tenantId);
-            return res.status(result.code).json(result);
+            const result = await this.getPermissionsUseCase.execute(tenantId);
+            return res.json(result);
         }
     }
 
     getById = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new GetPermissionsUseCase(this.permissionRepository);
-        const result = await useCase.executeById(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.getPermissionsUseCase.executeById(tenantId, id);
+        return res.json(result);
     }
 
     update = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new UpdatePermissionUseCase(this.permissionRepository);
-        const result = await useCase.execute(tenantId, id, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.updatePermissionUseCase.execute(tenantId, id, req.body);
+        return res.json(result);
     }
 
     delete = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new DeletePermissionUseCase(this.permissionRepository);
-        const result = await useCase.execute(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.deletePermissionUseCase.execute(tenantId, id);
+        return res.json(result);
     }
 }

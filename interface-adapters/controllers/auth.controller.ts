@@ -11,25 +11,13 @@ import { ResetPasswordUseCase } from '@/core/application/auth/reset-password.use
 import { authResponse, providerResponse, deleteCookie } from '@/helpers/authResponse.helpers';
 
 export class AuthController {
-    private loginUseCase: LoginUseCase;
-    private registerUseCase: RegisterUseCase;
-    private socialLoginUseCase: SocialLoginUseCase;
-    private forgotPasswordUseCase: ForgotPasswordUseCase;
-    private resetPasswordUseCase: ResetPasswordUseCase;
-
     constructor(
-        userRepository: IUserRepository,
-        passwordHasher: IPasswordHasher,
-        tokenGenerator: ITokenGenerator,
-        logger: ILogger,
-        queueProvider: IQueueProvider
+        private loginUseCase: LoginUseCase,
+        private registerUseCase: RegisterUseCase,
+        private socialLoginUseCase: SocialLoginUseCase,
+        private forgotPasswordUseCase: ForgotPasswordUseCase,
+        private resetPasswordUseCase: ResetPasswordUseCase
     ) {
-        this.loginUseCase = new LoginUseCase(userRepository, passwordHasher, tokenGenerator, logger);
-        this.registerUseCase = new RegisterUseCase(userRepository, passwordHasher, tokenGenerator, logger, queueProvider);
-        this.socialLoginUseCase = new SocialLoginUseCase(userRepository, tokenGenerator);
-        this.forgotPasswordUseCase = new ForgotPasswordUseCase(userRepository, logger, queueProvider);
-        this.resetPasswordUseCase = new ResetPasswordUseCase(userRepository, passwordHasher, logger);
-
         // Bind methods to instance
         this.login = this.login.bind(this);
         this.signup = this.signup.bind(this);

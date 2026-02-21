@@ -10,15 +10,17 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 
 export class RoleController {
     constructor(
-        private roleRepository: IRoleRepository,
-        private userRepository: IUserRepository
+        private createRoleUseCase: CreateRoleUseCase,
+        private getRolesUseCase: GetRolesUseCase,
+        private updateRoleUseCase: UpdateRoleUseCase,
+        private deleteRoleUseCase: DeleteRoleUseCase,
+        private getRolesPaginatedUseCase: GetRolesPaginatedUseCase
     ) { }
 
     create = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new CreateRoleUseCase(this.roleRepository);
-        const result = await useCase.execute(tenantId, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.createRoleUseCase.execute(tenantId, req.body);
+        return res.status(201).json(result);
     }
 
     getAll = async (req: Request, res: Response) => {
@@ -28,37 +30,32 @@ export class RoleController {
         const search = req.query.search ? (req.query.search as string) : undefined;
 
         if (page || limit || search) {
-            const useCase = new GetRolesPaginatedUseCase(this.roleRepository);
-            const result = await useCase.execute(tenantId, page, limit, search);
-            return res.status(result.code).json(result);
+            const result = await this.getRolesPaginatedUseCase.execute(tenantId, page, limit, search);
+            return res.json(result);
         } else {
-            const useCase = new GetRolesUseCase(this.roleRepository);
-            const result = await useCase.execute(tenantId);
-            return res.status(result.code).json(result);
+            const result = await this.getRolesUseCase.execute(tenantId);
+            return res.json(result);
         }
     }
 
     getById = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new GetRolesUseCase(this.roleRepository);
-        const result = await useCase.executeById(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.getRolesUseCase.executeById(tenantId, id);
+        return res.json(result);
     }
 
     update = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new UpdateRoleUseCase(this.roleRepository, this.userRepository);
-        const result = await useCase.execute(tenantId, id, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.updateRoleUseCase.execute(tenantId, id, req.body);
+        return res.json(result);
     }
 
     delete = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new DeleteRoleUseCase(this.roleRepository);
-        const result = await useCase.execute(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.deleteRoleUseCase.execute(tenantId, id);
+        return res.json(result);
     }
 }

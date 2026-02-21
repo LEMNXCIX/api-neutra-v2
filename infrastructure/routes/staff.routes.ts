@@ -2,17 +2,9 @@ import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { StaffController } from '@/interface-adapters/controllers/staff.controller';
-import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.prisma-repository';
-import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
-import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
 
-function staff(app: Application) {
+function staff(app: Application, staffController: StaffController) {
     const router = Router();
-    const staffRepository = new PrismaStaffRepository();
-    const userRepository = new PrismaUserRepository();
-    const logger = new PinoLoggerProvider();
-    const staffController = new StaffController(staffRepository, userRepository, logger);
-
     app.use('/api/staff', router);
 
     /**

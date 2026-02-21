@@ -1,25 +1,11 @@
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
 
 export class GetAllUsersUseCase {
     constructor(private userRepository: IUserRepository) { }
 
-    async execute(tenantId?: string) {
-        try {
-            const users = await this.userRepository.findAll(tenantId);
-
-            return {
-                success: true,
-                code: 200,
-                message: "",
-                data: users
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: "Error fetching users",
-                errors: error
-            };
-        }
+    async execute(tenantId?: string): Promise<UseCaseResult> {
+        const users = await this.userRepository.findAll(tenantId);
+        return Success(users);
     }
 }

@@ -17,90 +17,81 @@ import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.pr
 
 export class UserController {
     constructor(
-        private userRepository: IUserRepository,
-        private cartRepository: ICartRepository,
-        private roleRepository: IRoleRepository,
-        private staffRepository: IStaffRepository
+        private getAllUsersUseCase: GetAllUsersUseCase,
+        private getUserByIdUseCase: GetUserByIdUseCase,
+        private getUserByEmailUseCase: GetUserByEmailUseCase,
+        private getUsersStatsUseCase: GetUsersStatsUseCase,
+        private getUsersSummaryStatsUseCase: GetUsersSummaryStatsUseCase,
+        private createUserUseCase: CreateUserUseCase,
+        private getOrCreateByProviderUseCase: GetOrCreateByProviderUseCase,
+        private updateUserUseCase: UpdateUserUseCase,
+        private deleteUserUseCase: DeleteUserUseCase,
+        private assignRoleToUserUseCase: AssignRoleToUserUseCase
     ) { }
 
     getAll = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new GetAllUsersUseCase(this.userRepository);
-        const result = await useCase.execute(tenantId);
-        return res.status(result.code).json(result);
+        const result = await this.getAllUsersUseCase.execute(tenantId);
+        return res.json(result);
     }
 
     getById = async (req: Request, res: Response) => {
         const tenantId = req.tenantId;
-        if (!tenantId) {
-            // For management routes we might not have a tenantId in context if global,
-            // but findById usually requires one for security unless strictly for super admin.
-            // For now we keep it required for specific user lookups by ID outside of lists.
-        }
         const { id } = req.params;
-        const useCase = new GetUserByIdUseCase(this.userRepository);
-        const result = await useCase.execute(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.getUserByIdUseCase.execute(tenantId, id);
+        return res.json(result);
     }
 
     getByEmail = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { email } = req.params;
-        const useCase = new GetUserByEmailUseCase(this.userRepository);
-        const result = await useCase.execute(tenantId, email, false);
-        return res.status(result.code).json(result);
+        const result = await this.getUserByEmailUseCase.execute(tenantId, email, false);
+        return res.json(result);
     }
 
     create = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new CreateUserUseCase(this.userRepository, this.cartRepository);
-        const result = await useCase.execute(tenantId, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.createUserUseCase.execute(tenantId, req.body);
+        return res.status(201).json(result);
     }
 
     getOrCreateByProvider = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const useCase = new GetOrCreateByProviderUseCase(this.userRepository, this.cartRepository);
-        const result = await useCase.execute(tenantId, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.getOrCreateByProviderUseCase.execute(tenantId, req.body);
+        return res.json(result);
     }
 
     getUsersStats = async (req: Request, res: Response) => {
         const tenantId = req.tenantId;
-        const useCase = new GetUsersStatsUseCase(this.userRepository);
-        const result = await useCase.execute(tenantId);
-        return res.status(result.code).json(result);
+        const result = await this.getUsersStatsUseCase.execute(tenantId);
+        return res.json(result);
     }
 
     getSummaryStats = async (req: Request, res: Response) => {
         const tenantId = req.tenantId;
-        const useCase = new GetUsersSummaryStatsUseCase(this.userRepository);
-        const result = await useCase.execute(tenantId);
-        return res.status(result.code).json(result);
+        const result = await this.getUsersSummaryStatsUseCase.execute(tenantId);
+        return res.json(result);
     }
 
     update = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new UpdateUserUseCase(this.userRepository);
-        const result = await useCase.execute(tenantId, id, req.body);
-        return res.status(result.code).json(result);
+        const result = await this.updateUserUseCase.execute(tenantId, id, req.body);
+        return res.json(result);
     }
 
     assignRole = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
         const { roleId } = req.body;
-        const useCase = new AssignRoleToUserUseCase(this.userRepository, this.roleRepository, this.staffRepository); // Need staffRepository
-        const result = await useCase.execute(tenantId, id, roleId);
-        return res.status(result.code).json(result);
+        const result = await this.assignRoleToUserUseCase.execute(tenantId, id, roleId);
+        return res.json(result);
     }
 
     delete = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const useCase = new DeleteUserUseCase(this.userRepository);
-        const result = await useCase.execute(tenantId, id);
-        return res.status(result.code).json(result);
+        const result = await this.deleteUserUseCase.execute(tenantId, id);
+        return res.json(result);
     }
 }

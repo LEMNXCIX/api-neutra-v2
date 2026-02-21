@@ -2,15 +2,9 @@ import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { RoleController } from '@/interface-adapters/controllers/role.controller';
-import { PrismaRoleRepository } from '@/infrastructure/database/prisma/role.prisma-repository';
-import { PrismaUserRepository } from '@/infrastructure/database/prisma/user.prisma-repository';
 
-function roleRoutes(app: Application) {
+function roleRoutes(app: Application, roleController: RoleController) {
     const router = Router();
-    const roleRepository = new PrismaRoleRepository();
-    const userRepository = new PrismaUserRepository();
-    const roleController = new RoleController(roleRepository, userRepository);
-
     app.use('/api/roles', router);
 
     /**

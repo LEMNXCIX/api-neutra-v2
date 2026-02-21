@@ -1,39 +1,19 @@
 import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes } from '@/types/error-codes';
 
 export class DeleteCouponUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(tenantId: string, id: string) {
-        try {
-            const coupon = await this.couponRepository.findById(tenantId, id);
+    async execute(tenantId: string, id: string): Promise<UseCaseResult> {
+        const coupon = await this.couponRepository.findById(tenantId, id);
 
-            if (!coupon) {
-                return {
-                    success: false,
-                    code: 404,
-                    message: 'Coupon not found',
-                    data: null
-                };
-            }
-
-            await this.couponRepository.delete(tenantId, id);
-
-            return {
-                success: true,
-                code: 200,
-                message: 'Coupon deleted successfully',
-                data: null
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: 'Failed to delete coupon',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message
-                }]
-            };
+        if (!coupon) {
+            throw new AppError('Coupon not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
+
+        await this.couponRepository.delete(tenantId, id);
+        return Success(null, 'Coupon deleted successfully');
     }
 }

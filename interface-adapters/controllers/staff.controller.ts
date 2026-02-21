@@ -8,21 +8,14 @@ import { DeleteStaffUseCase } from '@/core/application/booking/delete-staff.use-
 import { ILogger } from '@/core/providers/logger.interface';
 
 export class StaffController {
-    private createStaffUseCase: CreateStaffUseCase;
-    private getStaffUseCase: GetStaffUseCase;
-    private updateStaffUseCase: UpdateStaffUseCase;
-    private deleteStaffUseCase: DeleteStaffUseCase;
-
     constructor(
+        private createStaffUseCase: CreateStaffUseCase,
+        private getStaffUseCase: GetStaffUseCase,
+        private updateStaffUseCase: UpdateStaffUseCase,
+        private deleteStaffUseCase: DeleteStaffUseCase,
         private staffRepository: IStaffRepository,
-        private userRepository: IUserRepository,
         private logger: ILogger
-    ) {
-        this.createStaffUseCase = new CreateStaffUseCase(staffRepository, userRepository, logger);
-        this.getStaffUseCase = new GetStaffUseCase(staffRepository, logger);
-        this.updateStaffUseCase = new UpdateStaffUseCase(staffRepository, userRepository, logger);
-        this.deleteStaffUseCase = new DeleteStaffUseCase(staffRepository, logger);
-    }
+    ) { }
 
     async create(req: Request, res: Response) {
         const tenantId = req.tenantId!;

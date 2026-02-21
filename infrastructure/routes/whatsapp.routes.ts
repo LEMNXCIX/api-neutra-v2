@@ -4,17 +4,20 @@ import { WhatsAppWebhookController } from "@/infrastructure/webhooks/whatsapp-we
 import { WhatsAppConfigController } from "@/interface-adapters/controllers/whatsapp-config.controller";
 import { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.controller";
 
-const router = Router();
-const whatsappWebhookController = new WhatsAppWebhookController();
-const whatsappConfigController = new WhatsAppConfigController();
-const whatsappController = new WhatsAppController();
+function whatsappRoutes(
+    app: any,
+    whatsappWebhookController: WhatsAppWebhookController,
+    whatsappConfigController: WhatsAppConfigController,
+    whatsappController: WhatsAppController
+) {
+    const router = Router();
 
-/**
- * @swagger
- * tags:
- *   name: WhatsApp
- *   description: WhatsApp Business API Integration
- */
+    /**
+     * @swagger
+     * tags:
+     *   name: WhatsApp
+     *   description: WhatsApp Business API Integration
+     */
 
 // ============================================
 // Internal API Routes
@@ -105,6 +108,7 @@ router.get("/webhooks/whatsapp", (req, res) => whatsappWebhookController.verify(
  */
 router.post("/webhooks/whatsapp", (req, res) => whatsappWebhookController.handleWebhook(req, res));
 
-export default (app: any) => {
     app.use("/api", router);
-};
+}
+
+export default whatsappRoutes;

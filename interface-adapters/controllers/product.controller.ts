@@ -12,25 +12,16 @@ import { GetProductSummaryStatsUseCase } from '@/core/application/products/get-p
 import { VALIDATION_CONSTANTS } from '@/core/domain/constants';
 
 export class ProductController {
-    private getAllProductsUseCase: GetAllProductsUseCase;
-    private getProductUseCase: GetProductUseCase;
-    private createProductUseCase: CreateProductUseCase;
-    private updateProductUseCase: UpdateProductUseCase;
-    private deleteProductUseCase: DeleteProductUseCase;
-    private searchProductsUseCase: SearchProductsUseCase;
-    private getProductStatsUseCase: GetProductStatsUseCase;
-    private productRepository: IProductRepository;
-
-    constructor(productRepository: IProductRepository) {
-        this.productRepository = productRepository;
-        this.getAllProductsUseCase = new GetAllProductsUseCase(productRepository);
-        this.getProductUseCase = new GetProductUseCase(productRepository);
-        this.createProductUseCase = new CreateProductUseCase(productRepository);
-        this.updateProductUseCase = new UpdateProductUseCase(productRepository);
-        this.deleteProductUseCase = new DeleteProductUseCase(productRepository);
-        this.searchProductsUseCase = new SearchProductsUseCase(productRepository);
-        this.getProductStatsUseCase = new GetProductStatsUseCase(productRepository);
-
+    constructor(
+        private getAllProductsUseCase: GetAllProductsUseCase,
+        private getProductUseCase: GetProductUseCase,
+        private createProductUseCase: CreateProductUseCase,
+        private updateProductUseCase: UpdateProductUseCase,
+        private deleteProductUseCase: DeleteProductUseCase,
+        private searchProductsUseCase: SearchProductsUseCase,
+        private getProductStatsUseCase: GetProductStatsUseCase,
+        private getProductSummaryStatsUseCase: GetProductSummaryStatsUseCase
+    ) {
         // Bind methods
         this.getAll = this.getAll.bind(this);
         this.getOne = this.getOne.bind(this);
@@ -82,53 +73,17 @@ export class ProductController {
         return res.json(result);
     }
 
-    private validateImageSize(base64String: string): boolean {
-        // Remove header if present (e.g., "data:image/jpeg;base64,")
-        const base64 = base64String.split(',')[1] || base64String;
-        // Calculate size: each character is 6 bits (3/4 byte). Padding '='
-        const sizeInBytes = (base64.length * 3) / 4 - (base64.indexOf('=') > 0 ? (base64.length - base64.indexOf('=')) : 0);
-        return sizeInBytes <= VALIDATION_CONSTANTS.MAX_IMAGE_SIZE_BYTES;
-    }
-
     async create(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
-        if (req.body.price < 0 || req.body.stock < 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'No se permiten valores negativos para precio o stock.'
-            });
-        }
-
-        if (req.body.image && !this.validateImageSize(req.body.image)) {
-            return res.status(400).json({
-                success: false,
-                message: 'La imagen excede el tamaño máximo permitido de 5MB.'
-            });
-        }
-
         const result = await this.createProductUseCase.execute(tenantId, {
             ...req.body,
-            owner: (req as any).user.id
+            ownerId: (req as any).user.id
         });
-        return res.json(result);
+        return res.status(201).json(result);
     }
 
     async update(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
-        if ((req.body.price !== undefined && req.body.price < 0) || (req.body.stock !== undefined && req.body.stock < 0)) {
-            return res.status(400).json({
-                success: false,
-                message: 'No se permiten valores negativos para precio o stock.'
-            });
-        }
-
-        if (req.body.image && !this.validateImageSize(req.body.image)) {
-            return res.status(400).json({
-                success: false,
-                message: 'La imagen excede el tamaño máximo permitido de 5MB.'
-            });
-        }
-
         const id = req.params.id;
         const result = await this.updateProductUseCase.execute(tenantId, id, req.body);
         return res.json(result);
@@ -157,8 +112,7 @@ export class ProductController {
 
     async getSummaryStats(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
-        const useCase = new GetProductSummaryStatsUseCase(this.productRepository);
-        const result = await useCase.execute(tenantId);
+        const result = await this.getProductSummaryStatsUseCase.execute(tenantId);
         return res.json(result);
     }
 }

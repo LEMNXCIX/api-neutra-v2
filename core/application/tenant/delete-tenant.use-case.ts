@@ -1,6 +1,8 @@
-
 import { ITenantRepository } from '@/core/repositories/tenant.repository.interface';
 import { ILogger } from '@/core/providers/logger.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { TenantErrorCodes } from '@/types/error-codes';
 
 export class DeleteTenantUseCase {
     constructor(
@@ -8,32 +10,15 @@ export class DeleteTenantUseCase {
         private logger: ILogger
     ) { }
 
-    async execute(id: string) {
-        try {
-            const tenant = await this.tenantRepository.findById(id);
-            if (!tenant) {
-                return {
-                    code: 404,
-                    success: false,
-                    message: `Tenant with ID ${id} not found`,
-                };
-            }
-
-            await this.tenantRepository.delete(id);
-            this.logger.info(`Tenant deleted: ${id}`);
-
-            return {
-                code: 200,
-                success: true,
-                message: 'Tenant deleted successfully',
-            };
-        } catch (error: any) {
-            this.logger.error(`Error deleting tenant ${id}: ${error.message}`);
-            return {
-                code: 500,
-                success: false,
-                message: 'Error deleting tenant',
-            };
+    async execute(id: string): Promise<UseCaseResult> {
+        const tenant = await this.tenantRepository.findById(id);
+        if (!tenant) {
+            throw new AppError(`Tenant with ID ${id} not found`, 404, TenantErrorCodes.TENANT_NOT_FOUND);
         }
+
+        await this.tenantRepository.delete(id);
+        this.logger.info(`Tenant deleted: ${id}`);
+
+        return Success(null, 'Tenant deleted successfully');
     }
 }
