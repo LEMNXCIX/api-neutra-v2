@@ -28,7 +28,16 @@ export class CreateOrderUseCase {
     async execute(tenantId: string, userId: string, couponId?: string): Promise<UseCaseResult> {
         this.logger.info('CreateOrder - Executing', { userId, couponId });
 
-        const cartResponse = await this.getCartUseCase.execute(tenantId, userId);
+        let cartResponse;
+        try {
+            cartResponse = await this.getCartUseCase.execute(tenantId, userId);
+        } catch (error: any) {
+            if (error instanceof AppError && error.statusCode === 404) {
+                this.logger.warn('CreateOrder - Cart not found (empty)', { userId });
+                throw new AppError('Tu carrito esta vacío, no puedes generar una orden.', 422, BusinessErrorCodes.CART_EMPTY);
+            }
+            throw error;
+        }
 
         if (!cartResponse.success || !cartResponse.data || (Array.isArray(cartResponse.data) && cartResponse.data.length === 0)) {
             this.logger.warn('CreateOrder - Cart is empty', { userId });

@@ -228,6 +228,11 @@ import { tenantMiddleware } from "@/middleware/tenant.middleware";
 import { Container } from "@/infrastructure/config/container";
 import { errorMiddleware } from "@/middleware/error.middleware";
 
+// Public / Global routes (No tenant context needed)
+app.get("/", (req: Request, res: Response) => {
+  res.json({ name: "Ecommerce" });
+});
+
 tenants(app, Container.getTenantController());
 
 // Tenant Middleware - MUST be registered AFTER auth, BEFORE routes
@@ -260,11 +265,6 @@ whatsappRoutes(
   Container.getWhatsAppController()
 );
 logRoutes(app, Container.getLogController());
-
-// Ruta raíz
-app.get("/", (req: Request, res: Response) => {
-  res.json({ name: "Ecommerce" });
-});
 
 // Documentation
 app.use(
