@@ -1,5 +1,8 @@
 import { ICartRepository } from '@/core/repositories/cart.repository.interface';
 import { IProductRepository } from '@/core/repositories/product.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes, BusinessErrorCodes } from '@/types/error-codes';
 
 export class AddToCartUseCase {
     constructor(
@@ -7,62 +10,39 @@ export class AddToCartUseCase {
         private productRepository: IProductRepository
     ) { }
 
-    async execute(tenantId: string, userId: string, productId: string, amount: number) {
+    async execute(tenantId: string, userId: string, productId: string, amount: number): Promise<UseCaseResult> {
         let cart = await this.cartRepository.findByUserIdSimple(tenantId, userId);
 
         if (!cart) {
-            // Lazy creation: Create cart if it doesn't exist
             cart = await this.cartRepository.create(tenantId, userId);
         }
 
-        // Check if product exists and get stock information
         const product = await this.productRepository.findById(tenantId, productId);
         if (!product) {
-            return {
-                success: false,
-                code: 404,
-                message: "Product not found",
-                data: null
-            };
+            throw new AppError("Product not found", 404, ResourceErrorCodes.NOT_FOUND);
         }
 
-        // Check if product already exists in cart
         const existingItem = cart.items.find(item => item.productId === productId);
         const currentQty = existingItem?.amount || 0;
         const newTotalQty = currentQty + amount;
 
-        // Validate total quantity against available stock
         if (product.stock < newTotalQty) {
             const availableToAdd = Math.max(0, product.stock - currentQty);
-            return {
-                success: false,
-                code: 400,
-                message: currentQty > 0
-                    ? `Cannot add ${amount} items. Only ${availableToAdd} more available (${product.stock} total stock, ${currentQty} already in cart)`
-                    : `Insufficient stock. Only ${product.stock} items available`,
-                data: {
-                    availableToAdd,
-                    totalStock: product.stock,
-                    currentInCart: currentQty
-                }
-            };
+            const message = currentQty > 0
+                ? `Cannot add ${amount} items. Only ${availableToAdd} more available (${product.stock} total stock, ${currentQty} already in cart)`
+                : `Insufficient stock. Only ${product.stock} items available`;
+            
+            throw new AppError(message, 400, BusinessErrorCodes.INSUFFICIENT_STOCK, [
+                { code: BusinessErrorCodes.INSUFFICIENT_STOCK, message, metadata: { availableToAdd, totalStock: product.stock, currentInCart: currentQty } }
+            ]);
         }
 
         if (existingItem) {
-            // Update existing item quantity by adding the new amount
             await this.cartRepository.updateItemAmount(tenantId, cart.id, productId, newTotalQty);
         } else {
-            // Add new item with specified quantity
             await this.cartRepository.addItem(tenantId, cart.id, productId, amount);
         }
 
-        return {
-            success: true,
-            code: 200,
-            message: existingItem
-                ? `Updated quantity to ${newTotalQty} items`
-                : `Added ${amount} item(s) to cart`,
-            data: { totalQuantity: newTotalQty }
-        };
+        return Success({ totalQuantity: newTotalQty }, existingItem ? `Updated quantity to ${newTotalQty} items` : `Added ${amount} item(s) to cart`);
     }
 }

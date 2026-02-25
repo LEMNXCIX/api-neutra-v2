@@ -1,36 +1,9 @@
 import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
-import { requirePermission } from '@/middleware/authorization.middleware';
 import { AppointmentController } from '@/interface-adapters/controllers/appointment.controller';
-import { PrismaAppointmentRepository } from '@/infrastructure/database/prisma/appointment.prisma-repository';
-import { PrismaStaffRepository } from '@/infrastructure/database/prisma/staff.prisma-repository';
-import { PrismaServiceRepository } from '@/infrastructure/database/prisma/service.prisma-repository';
-import { PrismaCouponRepository } from '@/infrastructure/database/prisma/coupon.prisma-repository';
-import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
-import { BullMQQueueProvider } from '@/infrastructure/providers/bullmq-queue.provider';
-import { PrismaFeatureRepository } from '@/infrastructure/database/prisma/feature.prisma-repository';
 
-function appointments(app: Application) {
+function appointments(app: Application, appointmentController: AppointmentController) {
     const router = Router();
-    const appointmentRepository = new PrismaAppointmentRepository();
-    const staffRepository = new PrismaStaffRepository();
-    const serviceRepository = new PrismaServiceRepository();
-    const couponRepository = new PrismaCouponRepository();
-    const logger = new PinoLoggerProvider();
-    const queueProvider = new BullMQQueueProvider();
-    const featureRepository = new PrismaFeatureRepository();
-
-    const appointmentController = new AppointmentController(
-        appointmentRepository,
-        staffRepository,
-        serviceRepository,
-        couponRepository,
-        logger,
-        queueProvider,
-        featureRepository
-    );
-
-
     app.use('/api/appointments', router);
 
     /**

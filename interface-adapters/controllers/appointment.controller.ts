@@ -14,40 +14,17 @@ import { IQueueProvider } from '@/core/providers/queue-provider.interface';
 import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
 
 export class AppointmentController {
-    private createAppointmentUseCase: CreateAppointmentUseCase;
-    private getAppointmentsUseCase: GetAppointmentsUseCase;
-    private getAvailabilityUseCase: GetAvailabilityUseCase;
-    private updateAppointmentStatusUseCase: UpdateAppointmentStatusUseCase;
-    private deleteAppointmentUseCase: DeleteAppointmentUseCase;
-
     constructor(
+        private createAppointmentUseCase: CreateAppointmentUseCase,
+        private getAppointmentsUseCase: GetAppointmentsUseCase,
+        private getAvailabilityUseCase: GetAvailabilityUseCase,
+        private updateAppointmentStatusUseCase: UpdateAppointmentStatusUseCase,
+        private deleteAppointmentUseCase: DeleteAppointmentUseCase,
         private appointmentRepository: IAppointmentRepository,
-        private staffRepository: IStaffRepository,
-        private serviceRepository: IServiceRepository,
-        private couponRepository: ICouponRepository,
-        private logger: ILogger,
+        private featureRepository: IFeatureRepository,
         private queueProvider: IQueueProvider,
-        private featureRepository: IFeatureRepository
-    ) {
-        this.createAppointmentUseCase = new CreateAppointmentUseCase(
-            appointmentRepository,
-            staffRepository,
-            serviceRepository,
-            couponRepository,
-            logger,
-            queueProvider,
-            featureRepository
-        );
-        this.getAppointmentsUseCase = new GetAppointmentsUseCase(appointmentRepository, logger);
-        this.getAvailabilityUseCase = new GetAvailabilityUseCase(
-            appointmentRepository,
-            staffRepository,
-            serviceRepository,
-            logger
-        );
-        this.updateAppointmentStatusUseCase = new UpdateAppointmentStatusUseCase(appointmentRepository, logger, queueProvider, featureRepository);
-        this.deleteAppointmentUseCase = new DeleteAppointmentUseCase(appointmentRepository, logger);
-    }
+        private logger: ILogger
+    ) { }
 
 
     async create(req: Request, res: Response) {
@@ -59,7 +36,7 @@ export class AppointmentController {
             host: req.get('host')
         });
         const result = await this.createAppointmentUseCase.execute(tenantId, req.body, origin);
-        return res.status(result.code).json(result);
+        return res.status(201).json(result);
     }
 
     async getAll(req: Request, res: Response) {
@@ -86,34 +63,26 @@ export class AppointmentController {
         if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
 
         const result = await this.getAppointmentsUseCase.execute(tenantId!, filters);
-        return res.status(result.code).json(result);
+        return res.json(result);
     }
 
     async getById(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
 
-        try {
-            const appointment = await this.appointmentRepository.findById(tenantId, id, true);
+        const appointment = await this.appointmentRepository.findById(tenantId, id, true);
 
-            if (!appointment) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Appointment not found',
-                });
-            }
-
-            return res.status(200).json({
-                success: true,
-                data: appointment,
-            });
-        } catch (error: any) {
-            this.logger.error('Error retrieving appointment', { error: error.message });
-            return res.status(500).json({
+        if (!appointment) {
+            return res.status(404).json({
                 success: false,
-                message: 'Error retrieving appointment',
+                message: 'Appointment not found',
             });
         }
+
+        return res.json({
+            success: true,
+            data: appointment,
+        });
     }
 
     async cancel(req: Request, res: Response) {
@@ -121,38 +90,30 @@ export class AppointmentController {
         const { id } = req.params;
         const { reason } = req.body;
 
-        try {
-            const appointment = await this.appointmentRepository.update(tenantId, id, {
-                status: AppointmentStatus.CANCELLED,
-                cancellationReason: reason,
-            });
+        const appointment = await this.appointmentRepository.update(tenantId, id, {
+            status: AppointmentStatus.CANCELLED,
+            cancellationReason: reason,
+        });
 
-            // 2. Check if EMAIL_NOTIFICATIONS feature is enabled
-            const features = await this.featureRepository.getTenantFeatureStatus(tenantId);
-            if (features['EMAIL_NOTIFICATIONS']) {
-                // Enqueue notification
-                await this.queueProvider.enqueue('notifications', {
-                    type: 'CANCELLED',
-                    appointmentId: id,
-                    tenantId: tenantId,
-                    reason: reason
-                });
-            } else {
-                this.logger.info('Skipping email notification: EMAIL_NOTIFICATIONS feature disabled', { tenantId });
-            }
-
-            return res.status(200).json({
-                success: true,
-                message: 'Appointment cancelled successfully',
-                data: appointment,
+        // 2. Check if EMAIL_NOTIFICATIONS feature is enabled
+        const features = await this.featureRepository.getTenantFeatureStatus(tenantId);
+        if (features['EMAIL_NOTIFICATIONS']) {
+            // Enqueue notification
+            await this.queueProvider.enqueue('notifications', {
+                type: 'CANCELLED',
+                appointmentId: id,
+                tenantId: tenantId,
+                reason: reason
             });
-        } catch (error: any) {
-            this.logger.error('Error cancelling appointment', { error: error.message });
-            return res.status(500).json({
-                success: false,
-                message: 'Error cancelling appointment',
-            });
+        } else {
+            this.logger.info('Skipping email notification: EMAIL_NOTIFICATIONS feature disabled', { tenantId });
         }
+
+        return res.json({
+            success: true,
+            message: 'Appointment cancelled successfully',
+            data: appointment,
+        });
     }
 
     async updateStatus(req: Request, res: Response) {
@@ -167,27 +128,12 @@ export class AppointmentController {
             });
         }
 
-        try {
-            const origin = (req.headers['x-original-origin'] as string) || req.headers.origin || `${req.protocol}://${req.get('host')}`;
-            const result = await this.updateAppointmentStatusUseCase.execute(tenantId, id, status as AppointmentStatus, origin);
-            return res.status(result.code).json(result);
-        } catch (error: any) {
-            this.logger.error('Error updating appointment status in controller', {
-                tenantId,
-                id,
-                status,
-                error: error.message
-            });
-            return res.status(500).json({
-                success: false,
-                message: 'Error updating appointment status',
-                error: error.message
-            });
-        }
+        const origin = (req.headers['x-original-origin'] as string) || req.headers.origin || `${req.protocol}://${req.get('host')}`;
+        const result = await this.updateAppointmentStatusUseCase.execute(tenantId, id, status as AppointmentStatus, origin);
+        return res.json(result);
     }
+
     async getAvailability(req: Request, res: Response) {
-        // Tenant is handled by middleware but this is public maybe?
-        // If public, we still need tenantId. Middleware gets it from domain.
         const tenantId = req.tenantId!;
         const { staffId, serviceId, date, timezoneOffset } = req.query;
 
@@ -205,27 +151,14 @@ export class AppointmentController {
             timezoneOffset: timezoneOffset as string
         });
 
-        return res.status(result.code).json(result);
+        return res.json(result);
     }
 
     async delete(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
 
-        try {
-            const result = await this.deleteAppointmentUseCase.execute(tenantId, id);
-            return res.status(result.code).json(result);
-        } catch (error: any) {
-            this.logger.error('Error deleting appointment', {
-                tenantId,
-                id,
-                error: error.message
-            });
-            return res.status(500).json({
-                success: false,
-                message: 'Error deleting appointment',
-                error: error.message
-            });
-        }
+        const result = await this.deleteAppointmentUseCase.execute(tenantId, id);
+        return res.json(result);
     }
 }

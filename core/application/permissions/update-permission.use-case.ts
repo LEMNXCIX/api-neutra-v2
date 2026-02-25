@@ -1,40 +1,28 @@
 import { IPermissionRepository } from '@/core/repositories/permission.repository.interface';
 import { UpdatePermissionDTO } from '@/core/entities/permission.entity';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes } from '@/types/error-codes';
 
 export class UpdatePermissionUseCase {
     constructor(private permissionRepository: IPermissionRepository) { }
 
-    async execute(tenantId: string | undefined, id: string, data: UpdatePermissionDTO) {
+    async execute(tenantId: string | undefined, id: string, data: UpdatePermissionDTO): Promise<UseCaseResult> {
         const existingPermission = await this.permissionRepository.findById(tenantId, id);
 
         if (!existingPermission) {
-            return {
-                success: false,
-                code: 404,
-                message: 'Permission not found',
-                data: null
-            };
+            throw new AppError('Permission not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
 
         if (data.name) {
             const permissionWithSameName = await this.permissionRepository.findByName(tenantId, data.name);
             if (permissionWithSameName && permissionWithSameName.id !== id) {
-                return {
-                    success: false,
-                    code: 409,
-                    message: 'Permission name already in use',
-                    data: null
-                };
+                throw new AppError('Permission name already in use', 409, ResourceErrorCodes.ALREADY_EXISTS);
             }
         }
 
         const updatedPermission = await this.permissionRepository.update(tenantId, id, data);
 
-        return {
-            success: true,
-            code: 200,
-            message: 'Permission updated successfully',
-            data: updatedPermission
-        };
+        return Success(updatedPermission, 'Permission updated successfully');
     }
 }

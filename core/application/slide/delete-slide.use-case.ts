@@ -1,24 +1,11 @@
 import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
 
 export class DeleteSlideUseCase {
     constructor(private slideRepository: ISlideRepository) { }
 
-    async execute(tenantId: string, id: string) {
-        try {
-            await this.slideRepository.delete(tenantId, id);
-            return {
-                success: true,
-                code: 200,
-                message: "El producto ha sido eliminado",
-                data: undefined
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: "Ha ocurrido un error al eliminar el Slide",
-                errors: error.message || error
-            };
-        }
+    async execute(tenantId: string, id: string): Promise<UseCaseResult> {
+        await this.slideRepository.delete(tenantId, id);
+        return Success(undefined, "El producto ha sido eliminado");
     }
 }

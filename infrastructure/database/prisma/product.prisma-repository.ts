@@ -26,9 +26,12 @@ export class PrismaProductRepository implements IProductRepository {
         return products.map(this.mapToEntity);
     }
 
-    async findById(tenantId: string, id: string): Promise<Product | null> {
+    async findById(tenantId: string | undefined, id: string): Promise<Product | null> {
         const product = await prisma.product.findFirst({
-            where: { id, tenantId },
+            where: {
+                id,
+                ...(tenantId && { tenantId })
+            },
             include: { categories: true }
         });
         return product ? this.mapToEntity(product) : null;
@@ -94,12 +97,14 @@ export class PrismaProductRepository implements IProductRepository {
         return products.map(this.mapToEntity);
     }
 
-    async getStats(tenantId: string): Promise<any[]> {
+    async getStats(tenantId: string | undefined): Promise<any[]> {
+        const whereClause = tenantId ? prisma.$queryRaw`AND "tenantId" = ${tenantId}` : prisma.$queryRaw``;
+
         const result: any[] = await prisma.$queryRaw`
             SELECT to_char("createdAt", 'YYYY-MM') as "yearMonth", COUNT(*)::int as total
             FROM products
             WHERE "createdAt" >= NOW() - INTERVAL '1 year'
-              AND "tenantId" = ${tenantId}
+              ${whereClause}
             GROUP BY "yearMonth"
             ORDER BY "yearMonth" ASC
         `;
@@ -109,26 +114,28 @@ export class PrismaProductRepository implements IProductRepository {
         }));
     }
 
-    async getSummaryStats(tenantId: string): Promise<{ totalProducts: number; totalValue: number; lowStockCount: number; outOfStockCount: number }> {
+    async getSummaryStats(tenantId: string | undefined): Promise<{ totalProducts: number; totalValue: number; lowStockCount: number; outOfStockCount: number }> {
+        const where: any = { ...(tenantId && { tenantId }) };
+
         const [totalProducts, lowStockCount, outOfStockCount] = await Promise.all([
-            prisma.product.count({ where: { tenantId } }),
+            prisma.product.count({ where }),
             prisma.product.count({
                 where: {
-                    tenantId,
+                    ...where,
                     stock: { lt: 10 }
                 }
             }),
             prisma.product.count({
                 where: {
-                    tenantId,
+                    ...where,
                     stock: 0
                 }
             })
         ]);
 
-        // Calculate total value (price * stock) scoped to tenant
+        // Calculate total value (price * stock) scoped to tenant or global
         const allProducts = await prisma.product.findMany({
-            where: { tenantId },
+            where,
             select: { price: true, stock: true }
         });
         const totalValue = allProducts.reduce((sum, p) => sum + (p.price * p.stock), 0);

@@ -68,7 +68,8 @@ import { contextMiddleware } from "@/middleware/context.middleware";
 app.use(contextMiddleware);
 app.use(wideLogMiddleware);
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(requestMiddleware);
 app.use(cookieParser());
 // CSRF protection only in production
@@ -224,39 +225,46 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
 import { tenantMiddleware } from "@/middleware/tenant.middleware";
+import { Container } from "@/infrastructure/config/container";
+import { errorMiddleware } from "@/middleware/error.middleware";
 
-tenants(app);
+// Public / Global routes (No tenant context needed)
+app.get("/", (req: Request, res: Response) => {
+  res.json({ name: "Ecommerce" });
+});
+
+tenants(app, Container.getTenantController());
 
 // Tenant Middleware - MUST be registered AFTER auth, BEFORE routes
 // This ensures every request has tenant context
 app.use(tenantMiddleware);
 
 // Rutas (composición)
-// Routes are now default exports that take 'app' as argument
-auth(app);
-users(app);
-products(app);
-slide(app);
-cart(app);
-order(app);
-category(app);
-role(app);
-permission(app);
+// Routes are now default exports that take 'app' and their controller as argument
+auth(app, Container.getAuthController());
+users(app, Container.getUserController());
+products(app, Container.getProductController());
+slide(app, Container.getSlideController());
+cart(app, Container.getCartController());
+order(app, Container.getOrderController());
+category(app, Container.getCategoryController());
+role(app, Container.getRoleController());
+permission(app, Container.getPermissionController());
 
 // Booking Module
-serviceRoutes(app);
-staffRoutes(app);
-appointmentRoutes(app);
-banner(app);
-coupon(app);
-features(app);
-whatsappRoutes(app);
-logRoutes(app);
-
-// Ruta raíz
-app.get("/", (req: Request, res: Response) => {
-  res.json({ name: "Ecommerce" });
-});
+serviceRoutes(app, Container.getServiceController());
+staffRoutes(app, Container.getStaffController());
+appointmentRoutes(app, Container.getAppointmentController());
+banner(app, Container.getBannerController());
+coupon(app, Container.getCouponController());
+features(app, Container.getFeatureController());
+whatsappRoutes(
+  app,
+  Container.getWhatsAppWebhookController(),
+  Container.getWhatsAppConfigController(),
+  Container.getWhatsAppController()
+);
+logRoutes(app, Container.getLogController());
 
 // Documentation
 app.use(
@@ -271,6 +279,9 @@ app.use(
 
 // 404 Handler - Must be after all routes
 app.use(notFoundHandlerEnhanced);
+
+// Global Error Handler - MUST be the last middleware
+app.use(errorMiddleware);
 
 // Server lift
 if (require.main === module) {

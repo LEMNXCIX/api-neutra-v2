@@ -1,60 +1,32 @@
 import { IBannerRepository } from '@/core/repositories/banner.repository.interface';
 import { UpdateBannerDTO } from '@/core/entities/banner.entity';
-import { ValidationErrorCodes } from '@/types/error-codes';
+import { ValidationErrorCodes, ResourceErrorCodes } from '@/types/error-codes';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
 
 export class UpdateBannerUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async execute(tenantId: string, id: string, data: UpdateBannerDTO) {
-        // Validate dates if both are provided
+    async execute(tenantId: string, id: string, data: UpdateBannerDTO): Promise<UseCaseResult> {
         if (data.startsAt && data.endsAt) {
             const startsAt = new Date(data.startsAt);
             const endsAt = new Date(data.endsAt);
 
             if (endsAt <= startsAt) {
-                return {
-                    success: false,
-                    code: 400,
+                throw new AppError('End date must be after start date', 400, ValidationErrorCodes.INVALID_FORMAT, [{
+                    code: ValidationErrorCodes.INVALID_FORMAT,
                     message: 'End date must be after start date',
-                    errors: [{
-                        code: ValidationErrorCodes.INVALID_FORMAT,
-                        message: 'End date must be after start date',
-                        field: 'endsAt'
-                    }]
-                };
+                    field: 'endsAt'
+                }]);
             }
         }
 
-        try {
-            const existingBanner = await this.bannerRepository.findById(tenantId, id);
-
-            if (!existingBanner) {
-                return {
-                    success: false,
-                    code: 404,
-                    message: 'Banner not found',
-                    data: null
-                };
-            }
-
-            const updatedBanner = await this.bannerRepository.update(tenantId, id, data);
-
-            return {
-                success: true,
-                code: 200,
-                message: 'Banner updated successfully',
-                data: updatedBanner
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: 'Failed to update banner',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message
-                }]
-            };
+        const existingBanner = await this.bannerRepository.findById(tenantId, id);
+        if (!existingBanner) {
+            throw new AppError('Banner not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
+
+        const updatedBanner = await this.bannerRepository.update(tenantId, id, data);
+        return Success(updatedBanner, 'Banner updated successfully');
     }
 }

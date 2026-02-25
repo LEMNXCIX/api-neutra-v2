@@ -1,44 +1,28 @@
 import { ICartRepository } from '@/core/repositories/cart.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes, ValidationErrorCodes } from '@/types/error-codes';
 
 export class ChangeAmountUseCase {
     constructor(private cartRepository: ICartRepository) { }
 
-    async execute(tenantId: string, userId: string, productId: string, amount: number) {
+    async execute(tenantId: string, userId: string, productId: string, amount: number): Promise<UseCaseResult> {
         if (typeof amount !== 'number' || amount < 1) {
-            return {
-                success: false,
-                code: 400,
-                message: "Invalid amount",
-                errors: ["Amount must be a positive number"]
-            };
+            throw new AppError("Amount must be a positive number", 400, ValidationErrorCodes.INVALID_DATA_TYPE);
         }
 
         const cart = await this.cartRepository.findByUserIdSimple(tenantId, userId);
 
         if (!cart) {
-            return {
-                success: false,
-                code: 404,
-                message: "Cart not found",
-                data: null
-            };
+            throw new AppError("Cart not found", 404, ResourceErrorCodes.NOT_FOUND);
         }
 
         try {
             await this.cartRepository.updateItemAmount(tenantId, cart.id, productId, amount);
         } catch (error: any) {
-            return {
-                success: false,
-                code: 404,
-                message: "Item not found in cart",
-                data: null
-            };
+            throw new AppError("Item not found in cart", 404, ResourceErrorCodes.NOT_FOUND);
         }
 
-        return {
-            success: true,
-            code: 200,
-            message: "Amount updated successfully"
-        };
+        return Success(null, "Amount updated successfully");
     }
 }

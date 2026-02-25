@@ -1,73 +1,32 @@
 import { IBannerRepository } from '@/core/repositories/banner.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes } from '@/types/error-codes';
 
 export class TrackBannerAnalyticsUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async trackImpression(tenantId: string, id: string) {
-        try {
-            const banner = await this.bannerRepository.findById(tenantId, id);
+    async trackImpression(tenantId: string, id: string): Promise<UseCaseResult> {
+        const banner = await this.bannerRepository.findById(tenantId, id);
 
-            if (!banner) {
-                return {
-                    success: false,
-                    code: 404,
-                    message: 'Banner not found',
-                    data: null
-                };
-            }
-
-            await this.bannerRepository.incrementImpressions(tenantId, id);
-
-            return {
-                success: true,
-                code: 200,
-                message: 'Impression tracked',
-                data: null
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: 'Failed to track impression',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message
-                }]
-            };
+        if (!banner) {
+            throw new AppError('Banner not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
+
+        await this.bannerRepository.incrementImpressions(tenantId, id);
+
+        return Success(null, 'Impression tracked');
     }
 
-    async trackClick(tenantId: string, id: string) {
-        try {
-            const banner = await this.bannerRepository.findById(tenantId, id);
+    async trackClick(tenantId: string, id: string): Promise<UseCaseResult> {
+        const banner = await this.bannerRepository.findById(tenantId, id);
 
-            if (!banner) {
-                return {
-                    success: false,
-                    code: 404,
-                    message: 'Banner not found',
-                    data: null
-                };
-            }
-
-            await this.bannerRepository.incrementClicks(tenantId, id);
-
-            return {
-                success: true,
-                code: 200,
-                message: 'Click tracked',
-                data: null
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: 'Failed to track click',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message
-                }]
-            };
+        if (!banner) {
+            throw new AppError('Banner not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
+
+        await this.bannerRepository.incrementClicks(tenantId, id);
+
+        return Success(null, 'Click tracked');
     }
 }

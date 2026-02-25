@@ -1,28 +1,20 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { ProcessIncomingMessageUseCase } from '@/core/application/whatsapp/process-incoming-message.use-case';
 import { WhatsAppBotService } from '@/infrastructure/services/whatsapp-bot.service';
 import { WhatsAppService } from '@/infrastructure/services/whatsapp.service';
-import { WhatsAppConfigPrismaRepository } from '@/infrastructure/database/prisma/whatsapp-config.prisma-repository';
-import { WhatsAppMessagePrismaRepository } from '@/infrastructure/database/prisma/whatsapp-message.prisma-repository';
-import { WhatsAppConversationPrismaRepository } from '@/infrastructure/database/prisma/whatsapp-conversation.prisma-repository';
-
-// Instantiate dependencies (Simple Manual DI)
-// In a real production app, use a DI container like InversifyJS or NestJS
-const prisma = new PrismaClient();
-const whatsappConfigRepo = new WhatsAppConfigPrismaRepository(prisma);
-const whatsappMessageRepo = new WhatsAppMessagePrismaRepository(prisma);
-const whatsappConversationRepo = new WhatsAppConversationPrismaRepository(prisma);
-
-const whatsappService = new WhatsAppService(whatsappConfigRepo, whatsappMessageRepo);
-const whatsappBotService = new WhatsAppBotService(whatsappConversationRepo, whatsappMessageRepo, whatsappService);
-const processIncomingMessageUseCase = new ProcessIncomingMessageUseCase(whatsappBotService, whatsappConfigRepo);
+import { IWhatsAppConfigRepository } from '@/core/repositories/whatsapp-config.repository.interface';
+import { IWhatsAppMessageRepository } from '@/core/repositories/whatsapp-message.repository.interface';
+import { IWhatsAppConversationRepository } from '@/core/repositories/whatsapp-conversation.repository.interface';
 
 /**
  * Controller for WhatsApp Webhooks
  * Handles verification requests and notification events from Meta
  */
 export class WhatsAppWebhookController {
+    constructor(
+        private processIncomingMessageUseCase: ProcessIncomingMessageUseCase,
+        private whatsappMessageRepo: IWhatsAppMessageRepository
+    ) { }
 
     /**
      * Verify Webhook (GET)
@@ -87,14 +79,14 @@ export class WhatsAppWebhookController {
                                     metadata: value.metadata // Contains display_phone_number and phone_number_id
                                 };
 
-                                await processIncomingMessageUseCase.execute(messagePayload);
+                                await this.processIncomingMessageUseCase.execute(messagePayload);
                             }
                         } else if (value.statuses) {
                             // Handle status updates (sent, delivered, read)
                             for (const status of value.statuses) {
 
                                 // TODO: Update message status in DB
-                                await whatsappMessageRepo.updateStatus(status.id, status.status);
+                                await this.whatsappMessageRepo.updateStatus(status.id, status.status);
                             }
                         }
                     }

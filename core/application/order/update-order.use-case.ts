@@ -1,6 +1,7 @@
 import { IOrderRepository } from '@/core/repositories/order.repository.interface';
 import { UpdateOrderDTO } from '@/core/entities/order.entity';
 import { ILogger } from '@/core/providers/logger.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
 
 export class UpdateOrderUseCase {
     constructor(
@@ -8,27 +9,12 @@ export class UpdateOrderUseCase {
         private logger: ILogger
     ) { }
 
-    async execute(tenantId: string, id: string, data: UpdateOrderDTO) {
+    async execute(tenantId: string, id: string, data: UpdateOrderDTO): Promise<UseCaseResult> {
         this.logger.info('UpdateOrder - Executing', { id, data }, { includePayload: true });
 
-        try {
-            const order = await this.orderRepository.update(tenantId, id, data);
+        const order = await this.orderRepository.update(tenantId, id, data);
 
-            this.logger.info('UpdateOrder - Success', { id }, { includeResponse: true });
-            return {
-                success: true,
-                code: 200,
-                message: "Order updated successfully",
-                data: order
-            };
-        } catch (error: any) {
-            this.logger.error('Error updating order', error, { id });
-            return {
-                success: false,
-                code: 500,
-                message: "Error updating order",
-                errors: error.message || error
-            };
-        }
+        this.logger.info('UpdateOrder - Success', { id }, { includeResponse: true });
+        return Success(order, "Order updated successfully");
     }
 }

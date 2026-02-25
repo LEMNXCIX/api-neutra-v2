@@ -99,7 +99,7 @@ export class PinoLoggerProvider implements ILogger {
             metadata.headers = this.sanitizeHeaders(req.headers);
         }
 
-        this.info('HTTP Request', metadata);
+        this.info('\n\nHTTP Request', metadata);
     }
 
     logResponse(res: { statusCode: number; body?: any; headers?: any }): void {
@@ -135,7 +135,7 @@ export class PinoLoggerProvider implements ILogger {
             metadata.headers = res.headers;
         }
 
-        this.info('HTTP Response', metadata);
+        this.info('\n\nHTTP Response', metadata);
     }
 
     private shouldLogMetadata(options?: LogOptions): boolean {

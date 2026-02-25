@@ -1,41 +1,26 @@
 import { IRoleRepository } from '@/core/repositories/role.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes, AuthErrorCodes } from '@/types/error-codes';
 
 export class DeleteRoleUseCase {
     constructor(private roleRepository: IRoleRepository) { }
 
-    async execute(tenantId: string | undefined, id: string) {
+    async execute(tenantId: string | undefined, id: string): Promise<UseCaseResult> {
         const existingRole = await this.roleRepository.findById(tenantId, id);
 
         if (!existingRole) {
-            return {
-                success: false,
-                code: 404,
-                message: 'Role not found',
-                data: null
-            };
+            throw new AppError('Role not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
 
-        // Prevent deleting critical roles (optional but recommended)
         if (['ADMIN', 'USER', 'MANAGER'].includes(existingRole.name)) {
-            // For now, let's allow it but maybe warn? Or block system roles.
-            // Let's block 'ADMIN' and 'USER' deletion for safety.
             if (existingRole.name === 'ADMIN' || existingRole.name === 'USER') {
-                return {
-                    success: false,
-                    code: 403,
-                    message: 'Cannot delete system roles',
-                    data: null
-                };
+                throw new AppError('Cannot delete system roles', 403, AuthErrorCodes.FORBIDDEN);
             }
         }
 
         await this.roleRepository.delete(tenantId, id);
 
-        return {
-            success: true,
-            code: 200,
-            message: 'Role deleted successfully',
-            data: null
-        };
+        return Success(null, 'Role deleted successfully');
     }
 }

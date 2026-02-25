@@ -1,47 +1,25 @@
 import { IBannerRepository } from '@/core/repositories/banner.repository.interface';
 import { CreateBannerDTO } from '@/core/entities/banner.entity';
-import { ResourceErrorCodes, ValidationErrorCodes } from '@/types/error-codes';
+import { ValidationErrorCodes } from '@/types/error-codes';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
 
 export class CreateBannerUseCase {
     constructor(private bannerRepository: IBannerRepository) { }
 
-    async execute(tenantId: string, data: CreateBannerDTO) {
-        // Validate dates
+    async execute(tenantId: string, data: CreateBannerDTO): Promise<UseCaseResult> {
         const startsAt = new Date(data.startsAt);
         const endsAt = new Date(data.endsAt);
 
         if (endsAt <= startsAt) {
-            return {
-                success: false,
-                code: 400,
+            throw new AppError('End date must be after start date', 400, ValidationErrorCodes.INVALID_FORMAT, [{
+                code: ValidationErrorCodes.INVALID_FORMAT,
                 message: 'End date must be after start date',
-                errors: [{
-                    code: ValidationErrorCodes.INVALID_FORMAT,
-                    message: 'End date must be after start date',
-                    field: 'endsAt'
-                }]
-            };
+                field: 'endsAt'
+            }]);
         }
 
-        try {
-            const banner = await this.bannerRepository.create(tenantId, data);
-
-            return {
-                success: true,
-                code: 201,
-                message: 'Banner created successfully',
-                data: banner
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: 'Failed to create banner',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message
-                }]
-            };
-        }
+        const banner = await this.bannerRepository.create(tenantId, data);
+        return Success(banner, 'Banner created successfully');
     }
 }

@@ -2,13 +2,9 @@ import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { BannerController } from '@/interface-adapters/controllers/banner.controller';
-import { PrismaBannerRepository } from '@/infrastructure/database/prisma/banner.prisma-repository';
 
-function bannerRoutes(app: Application) {
+function bannerRoutes(app: Application, bannerController: BannerController) {
     const router = Router();
-    const bannerRepository = new PrismaBannerRepository();
-    const bannerController = new BannerController(bannerRepository);
-
     app.use('/api/banners', router);
 
     /**

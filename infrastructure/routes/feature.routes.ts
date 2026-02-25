@@ -2,15 +2,9 @@ import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { FeatureController } from '@/interface-adapters/controllers/feature.controller';
-import { PrismaFeatureRepository } from '@/infrastructure/database/prisma/feature.prisma-repository';
-import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
 
-function featureRoutes(app: Application) {
+function featureRoutes(app: Application, featureController: FeatureController) {
     const router = Router();
-    const featureRepository = new PrismaFeatureRepository();
-    const logger = new PinoLoggerProvider();
-    const featureController = new FeatureController(featureRepository, logger);
-
     app.use('/api/features', router);
 
     /**

@@ -2,13 +2,11 @@ import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { ProductController } from '@/interface-adapters/controllers/product.controller';
-import { PrismaProductRepository } from '@/infrastructure/database/prisma/product.prisma-repository';
 
-function products(app: Application) {
+import { optionalAuthenticate } from '@/middleware/optional-authenticate.middleware';
+
+function products(app: Application, productController: ProductController) {
     const router = Router();
-    const productRepository = new PrismaProductRepository();
-    const productController = new ProductController(productRepository);
-
     app.use('/api/products', router);
 
     /**
@@ -60,7 +58,7 @@ function products(app: Application) {
      *               items:
      *                 $ref: '#/components/schemas/Product'
      */
-    router.get('/', productController.getAll);
+    router.get('/', optionalAuthenticate, productController.getAll);
 
     /**
      * @swagger
@@ -130,7 +128,7 @@ function products(app: Application) {
      *       404:
      *         description: Product not found
      */
-    router.get('/:id', productController.getOne);
+    router.get('/:id', optionalAuthenticate, productController.getOne);
 
     /**
      * @swagger
@@ -154,7 +152,7 @@ function products(app: Application) {
      *       404:
      *         description: Product not found
      */
-    router.get('/one/:id', productController.getOne); // Alias
+    router.get('/one/:id', optionalAuthenticate, productController.getOne); // Alias
 
     // Protected routes with permission-based authorization
     /**

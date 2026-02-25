@@ -1,16 +1,13 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { ConfigureWhatsAppUseCase } from '@/core/application/whatsapp/configure-whatsapp.use-case';
-import { WhatsAppConfigPrismaRepository } from '@/infrastructure/database/prisma/whatsapp-config.prisma-repository';
-import { PrismaFeatureRepository } from '@/infrastructure/database/prisma/feature.prisma-repository';
-
-// Manual DI setup
-const prisma = new PrismaClient();
-const whatsappConfigRepo = new WhatsAppConfigPrismaRepository(prisma);
-const featureRepo = new PrismaFeatureRepository();
-const configureWhatsAppUseCase = new ConfigureWhatsAppUseCase(whatsappConfigRepo, featureRepo);
+import { IWhatsAppConfigRepository } from '@/core/repositories/whatsapp-config.repository.interface';
+import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
 
 export class WhatsAppConfigController {
+    constructor(
+        private configureWhatsAppUseCase: ConfigureWhatsAppUseCase,
+        private whatsappConfigRepo: IWhatsAppConfigRepository
+    ) { }
 
     /**
      * Get Config
@@ -23,7 +20,7 @@ export class WhatsAppConfigController {
                 return res.status(400).json({ error: 'Tenant ID is required' });
             }
 
-            const config = await whatsappConfigRepo.findByTenantId(tenantId);
+            const config = await this.whatsappConfigRepo.findByTenantId(tenantId);
 
             // Mask sensitive data
             if (config) {
@@ -51,7 +48,7 @@ export class WhatsAppConfigController {
                 return res.status(400).json({ error: 'Tenant ID is required' });
             }
 
-            const updatedConfig = await configureWhatsAppUseCase.execute(tenantId, data);
+            const updatedConfig = await this.configureWhatsAppUseCase.execute(tenantId, data);
 
             return res.status(200).json(updatedConfig);
         } catch (error: any) {

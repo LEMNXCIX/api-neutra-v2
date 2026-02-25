@@ -2,15 +2,9 @@ import { Application, Request, Response, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { CartController } from '@/interface-adapters/controllers/cart.controller';
-import { PrismaCartRepository } from '@/infrastructure/database/prisma/cart.prisma-repository';
-import { PrismaProductRepository } from '@/infrastructure/database/prisma/product.prisma-repository';
 
-function cart(app: Application) {
+function cart(app: Application, cartController: CartController) {
     const router = Router();
-    const cartRepository = new PrismaCartRepository();
-    const productRepository = new PrismaProductRepository();
-    const cartController = new CartController(cartRepository, productRepository);
-
     app.use('/api/cart', router);
 
     /**

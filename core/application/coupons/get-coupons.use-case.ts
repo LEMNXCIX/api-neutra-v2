@@ -1,94 +1,36 @@
 import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
+import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import { AppError } from '@/types/api-response';
+import { ResourceErrorCodes } from '@/types/error-codes';
 
 export class GetCouponsUseCase {
     constructor(private couponRepository: ICouponRepository) { }
 
-    async execute(tenantId: string | undefined, activeOnly: boolean = false) {
-        try {
-            const coupons = activeOnly
-                ? await this.couponRepository.findActive(tenantId)
-                : await this.couponRepository.findAll(tenantId);
+    async execute(tenantId: string | undefined, activeOnly: boolean = false): Promise<UseCaseResult> {
+        const coupons = activeOnly
+            ? await this.couponRepository.findActive(tenantId)
+            : await this.couponRepository.findAll(tenantId);
 
-            return {
-                success: true,
-                code: 200,
-                message: 'Coupons retrieved successfully',
-                data: coupons
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: 'Failed to retrieve coupons',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message
-                }]
-            };
-        }
+        return Success(coupons, 'Coupons retrieved successfully');
     }
 
-    async executeById(tenantId: string, id: string) {
-        try {
-            const coupon = await this.couponRepository.findById(tenantId, id);
+    async executeById(tenantId: string, id: string): Promise<UseCaseResult> {
+        const coupon = await this.couponRepository.findById(tenantId, id);
 
-            if (!coupon) {
-                return {
-                    success: false,
-                    code: 404,
-                    message: 'Coupon not found',
-                    data: null
-                };
-            }
-
-            return {
-                success: true,
-                code: 200,
-                message: 'Coupon retrieved successfully',
-                data: coupon
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: 'Failed to retrieve coupon',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message
-                }]
-            };
+        if (!coupon) {
+            throw new AppError('Coupon not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
+
+        return Success(coupon, 'Coupon retrieved successfully');
     }
 
-    async executeByCode(tenantId: string, code: string) {
-        try {
-            const coupon = await this.couponRepository.findByCode(tenantId, code);
+    async executeByCode(tenantId: string, code: string): Promise<UseCaseResult> {
+        const coupon = await this.couponRepository.findByCode(tenantId, code);
 
-            if (!coupon) {
-                return {
-                    success: false,
-                    code: 404,
-                    message: 'Coupon not found',
-                    data: null
-                };
-            }
-
-            return {
-                success: true,
-                code: 200,
-                message: 'Coupon retrieved successfully',
-                data: coupon
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: 'Failed to retrieve coupon',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message
-                }]
-            };
+        if (!coupon) {
+            throw new AppError('Coupon not found', 404, ResourceErrorCodes.NOT_FOUND);
         }
+
+        return Success(coupon, 'Coupon retrieved successfully');
     }
 }

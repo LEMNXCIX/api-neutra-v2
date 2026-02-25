@@ -87,8 +87,8 @@ export class PrismaCategoryRepository implements ICategoryRepository {
         });
     }
 
-    async getStats(tenantId: string): Promise<{ totalCategories: number; avgProductsPerCategory: number }> {
-        const where = { tenantId };
+    async getStats(tenantId: string | undefined): Promise<{ totalCategories: number; avgProductsPerCategory: number }> {
+        const where = { ...(tenantId && { tenantId }) };
         const totalCategories = await prisma.category.count({ where });
 
         // Get product counts per category

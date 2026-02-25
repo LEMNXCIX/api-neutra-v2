@@ -1,14 +1,11 @@
 import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
+import { optionalAuthenticate } from '@/middleware/optional-authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { CategoryController } from '@/interface-adapters/controllers/category.controller';
-import { PrismaCategoryRepository } from '@/infrastructure/database/prisma/category.prisma-repository';
 
-function categoryRoutes(app: Application) {
+function categoryRoutes(app: Application, categoryController: CategoryController) {
     const router = Router();
-    const categoryRepository = new PrismaCategoryRepository();
-    const categoryController = new CategoryController(categoryRepository);
-
     app.use('/api/categories', router);
 
     /**
@@ -62,7 +59,7 @@ function categoryRoutes(app: Application) {
      *               items:
      *                 $ref: '#/components/schemas/Category'
      */
-    router.get('/', categoryController.getAll);
+    router.get('/', optionalAuthenticate, categoryController.getAll);
 
     /**
      * @swagger

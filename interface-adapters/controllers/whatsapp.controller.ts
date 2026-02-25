@@ -1,18 +1,13 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { SendNotificationUseCase } from '@/core/application/whatsapp/send-notification.use-case';
 import { WhatsAppService } from '@/infrastructure/services/whatsapp.service';
-import { WhatsAppConfigPrismaRepository } from '@/infrastructure/database/prisma/whatsapp-config.prisma-repository';
-import { WhatsAppMessagePrismaRepository } from '@/infrastructure/database/prisma/whatsapp-message.prisma-repository';
-
-// Manual DI
-const prisma = new PrismaClient();
-const configRepo = new WhatsAppConfigPrismaRepository(prisma);
-const messageRepo = new WhatsAppMessagePrismaRepository(prisma);
-const whatsappService = new WhatsAppService(configRepo, messageRepo);
-const sendNotificationUseCase = new SendNotificationUseCase(whatsappService);
+import { IWhatsAppConfigRepository } from '@/core/repositories/whatsapp-config.repository.interface';
+import { IWhatsAppMessageRepository } from '@/core/repositories/whatsapp-message.repository.interface';
 
 export class WhatsAppController {
+    constructor(
+        private sendNotificationUseCase: SendNotificationUseCase
+    ) { }
 
     /**
      * Send Template Message
@@ -26,7 +21,7 @@ export class WhatsAppController {
             if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
             if (!to || !templateName) return res.status(400).json({ error: 'Missing required fields' });
 
-            const messageId = await sendNotificationUseCase.execute({
+            const messageId = await this.sendNotificationUseCase.execute({
                 tenantId,
                 to,
                 templateName,

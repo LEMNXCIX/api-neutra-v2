@@ -22,45 +22,18 @@ import { IUserRepository } from '@/core/repositories/user.repository.interface';
 import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
 
 export class OrderController {
-    private createOrderUseCase: CreateOrderUseCase;
-    private getOrderUseCase: GetOrderUseCase;
-    private getUserOrdersUseCase: GetUserOrdersUseCase;
-    private getAllOrdersUseCase: GetAllOrdersUseCase;
-    private changeOrderStatusUseCase: ChangeOrderStatusUseCase;
-    private updateOrderUseCase: UpdateOrderUseCase;
-    private getOrderStatsUseCase: GetOrderStatsUseCase;
-
     constructor(
-        orderRepository: IOrderRepository,
-        cartRepository: ICartRepository,
-        productRepository: IProductRepository,
-        couponRepository: ICouponRepository,
-        userRepository: IUserRepository,
-        emailService: IEmailService,
-        private featureRepository: IFeatureRepository,
+        private createOrderUseCase: CreateOrderUseCase,
+        private getOrderUseCase: GetOrderUseCase,
+        private getUserOrdersUseCase: GetUserOrdersUseCase,
+        private getAllOrdersUseCase: GetAllOrdersUseCase,
+        private getOrdersPaginatedUseCase: GetOrdersPaginatedUseCase,
+        private changeOrderStatusUseCase: ChangeOrderStatusUseCase,
+        private updateOrderUseCase: UpdateOrderUseCase,
+        private getOrderStatusesUseCase: GetOrderStatusesUseCase,
+        private getOrderStatsUseCase: GetOrderStatsUseCase,
         private logger: ILogger
     ) {
-        const getCartUseCase = new GetCartUseCase(cartRepository);
-        const clearCartUseCase = new ClearCartUseCase(cartRepository);
-
-        this.createOrderUseCase = new CreateOrderUseCase(
-            orderRepository,
-            getCartUseCase,
-            clearCartUseCase,
-            productRepository,
-            couponRepository,
-            userRepository,
-            logger,
-            emailService,
-            featureRepository
-        );
-        this.getOrderUseCase = new GetOrderUseCase(orderRepository);
-        this.getUserOrdersUseCase = new GetUserOrdersUseCase(orderRepository);
-        this.getAllOrdersUseCase = new GetAllOrdersUseCase(orderRepository);
-        this.changeOrderStatusUseCase = new ChangeOrderStatusUseCase(orderRepository, logger);
-        this.updateOrderUseCase = new UpdateOrderUseCase(orderRepository, logger);
-        this.getOrderStatsUseCase = new GetOrderStatsUseCase(orderRepository);
-
         // Bind methods
         this.create = this.create.bind(this);
         this.getOne = this.getOne.bind(this);
@@ -87,9 +60,7 @@ export class OrderController {
     async getStatuses(req: Request, res: Response) {
         this.logger.info('Get Order Statuses Request', { userId: (req as any).user?.id });
 
-        const tenantId = (req as any).tenantId;
-        const useCase = new GetOrderStatusesUseCase();
-        const result = useCase.execute(); // Statuses might be static, but good to check if tenant specific later
+        const result = this.getOrderStatusesUseCase.execute(); 
         return res.json(result);
     }
 
@@ -101,7 +72,7 @@ export class OrderController {
         const userId = (req as any).user.id;
         const { couponId } = req.body;
         const result = await this.createOrderUseCase.execute(tenantId, userId, couponId);
-        return res.json(result);
+        return res.status(201).json(result);
     }
 
     async getOne(req: Request, res: Response) {
@@ -141,8 +112,7 @@ export class OrderController {
 
         if (page || limit || search || status) {
             // Use paginated endpoint
-            const useCase = new GetOrdersPaginatedUseCase(this.getAllOrdersUseCase['orderRepository']);
-            const result = await useCase.execute(tenantId, {
+            const result = await this.getOrdersPaginatedUseCase.execute(tenantId, {
                 search: search as string,
                 status: status as string,
                 page: page ? parseInt(page as string) : undefined,
