@@ -1,13 +1,12 @@
-
-import { PrismaClient, Tenant as PrismaTenant } from '@prisma/client';
+import { Tenant as PrismaTenant } from '@prisma/client';
+import { prisma } from '@/config/db.config';
 import { ITenantRepository } from '@/core/repositories/tenant.repository.interface';
 import { Tenant, TenantType, TenantConfig } from '@/core/entities/tenant.entity';
 
 export class TenantPrismaRepository implements ITenantRepository {
-    private prisma: PrismaClient;
+    private prisma = prisma;
 
     constructor() {
-        this.prisma = new PrismaClient();
     }
 
     private toEntity(data: PrismaTenant): Tenant {

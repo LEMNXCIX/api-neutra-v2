@@ -1,6 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/db.config';
 
-const prisma = new PrismaClient();
 
 // Permisos predefinidos
 const PERMISSIONS = [

@@ -1,12 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/config/db.config';
 import { PrismaLogRepository } from '@/infrastructure/database/prisma/log.prisma-repository';
 import { LogLevel } from '@/core/providers/logger.interface';
 import { v4 as uuidv4 } from 'uuid';
 import { RequestContext } from '@/infrastructure/context/request-context';
 import { SECURITY_CONSTANTS } from '@/core/domain/constants';
 
-const prisma = new PrismaClient();
 const logRepository = new PrismaLogRepository(prisma);
 
 export default function wideLogMiddleware(req: Request, res: Response, next: NextFunction) {

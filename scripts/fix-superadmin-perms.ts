@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../config/db.config';
 
 async function main() {
     console.log('--- ASSIGNING ALL PERMISSIONS TO SUPER_ADMIN ---');

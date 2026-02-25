@@ -3,11 +3,10 @@ import { SendNotificationUseCase } from '@/core/application/whatsapp/send-notifi
 import { WhatsAppService } from '@/infrastructure/services/whatsapp.service';
 import { WhatsAppConfigPrismaRepository } from '@/infrastructure/database/prisma/whatsapp-config.prisma-repository';
 import { WhatsAppMessagePrismaRepository } from '@/infrastructure/database/prisma/whatsapp-message.prisma-repository';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/config/db.config';
 import logger from '@/helpers/logger.helpers';
 
 // Manual DI for provider (single instance)
-const prisma = new PrismaClient();
 const configRepo = new WhatsAppConfigPrismaRepository(prisma);
 const messageRepo = new WhatsAppMessagePrismaRepository(prisma);
 const whatsappService = new WhatsAppService(configRepo, messageRepo);

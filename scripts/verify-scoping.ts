@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/db.config';
 import { PrismaUserRepository } from '../infrastructure/database/prisma/user.prisma-repository';
-
-const prisma = new PrismaClient();
 
 async function main() {
     const storeTenantId = 'default-tenant-00000000-0000-0000-0000-000000000001';
