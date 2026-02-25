@@ -6,6 +6,8 @@ WORKDIR /usr/src/app
 
 # Install dependencies
 COPY package*.json ./
+# Provide dummy DATABASE_URL for prisma generate during postinstall
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 # Use npm ci for deterministic installs (requires package-lock.json)
 RUN npm ci
 
@@ -13,7 +15,6 @@ RUN npm ci
 COPY . .
 
 # Generate Prisma Client, build, and prune dev dependencies
-ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate && \
     npm run build && \
     npm prune --production
