@@ -270,9 +270,7 @@ logRoutes(app, Container.getLogController());
 app.use(
   "/reference",
   apiReference({
-    spec: {
-      content: swaggerSpec,
-    },
+    content: swaggerSpec,
     theme: "purple",
   }),
 );
