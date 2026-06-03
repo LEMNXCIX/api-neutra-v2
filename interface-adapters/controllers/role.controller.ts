@@ -7,6 +7,7 @@ import { DeleteRoleUseCase } from '@/core/application/roles/delete-role.use-case
 import { GetRolesPaginatedUseCase } from '@/core/application/roles/get-roles-paginated.use-case';
 
 import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { RolePresenter } from '@/core/presenters/role.presenter';
 
 export class RoleController {
     constructor(
@@ -19,8 +20,11 @@ export class RoleController {
 
     create = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const result = await this.createRoleUseCase.execute(tenantId, req.body);
-        return res.status(201).json(result);
+    const result = await this.createRoleUseCase.execute(tenantId, req.body);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? RolePresenter.toResponseList(result.data) as any : RolePresenter.toResponse(result.data) as any;
+    }
+    return res.status(201).json(result);
     }
 
     getAll = async (req: Request, res: Response) => {
@@ -30,26 +34,38 @@ export class RoleController {
         const search = req.query.search ? (req.query.search as string) : undefined;
 
         if (page || limit || search) {
-            const result = await this.getRolesPaginatedUseCase.execute(tenantId, page, limit, search);
-            return res.json(result);
+      const result = await this.getRolesPaginatedUseCase.execute(tenantId, page, limit, search);
+      if (result.success && result.data) {
+        result.data = Array.isArray(result.data) ? RolePresenter.toResponseList(result.data) as any : RolePresenter.toResponse(result.data) as any;
+      }
+      return res.json(result);
         } else {
-            const result = await this.getRolesUseCase.execute(tenantId);
-            return res.json(result);
+      const result = await this.getRolesUseCase.execute(tenantId);
+      if (result.success && result.data) {
+        result.data = Array.isArray(result.data) ? RolePresenter.toResponseList(result.data) as any : RolePresenter.toResponse(result.data) as any;
+      }
+      return res.json(result);
         }
     }
 
     getById = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const result = await this.getRolesUseCase.executeById(tenantId, id);
-        return res.json(result);
+    const result = await this.getRolesUseCase.executeById(tenantId, id);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? RolePresenter.toResponseList(result.data) as any : RolePresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     update = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const result = await this.updateRoleUseCase.execute(tenantId, id, req.body);
-        return res.json(result);
+    const result = await this.updateRoleUseCase.execute(tenantId, id, req.body);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? RolePresenter.toResponseList(result.data) as any : RolePresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     delete = async (req: Request, res: Response) => {

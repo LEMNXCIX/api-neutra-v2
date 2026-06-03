@@ -1,10 +1,11 @@
-import { Request, Response } from 'express';
-import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
-import { CreateSlideUseCase } from '@/core/application/slide/create-slide.use-case';
-import { UpdateSlideUseCase } from '@/core/application/slide/update-slide.use-case';
-import { GetSlidesUseCase } from '@/core/application/slide/get-slides.use-case';
-import { DeleteSlideUseCase } from '@/core/application/slide/delete-slide.use-case';
-import { GetSliderStatsUseCase } from '@/core/application/slide/get-slider-stats.use-case';
+import { Request, Response } from "express";
+import { ISlideRepository } from "@/core/repositories/slide.repository.interface";
+import { CreateSlideUseCase } from "@/core/application/slide/create-slide.use-case";
+import { UpdateSlideUseCase } from "@/core/application/slide/update-slide.use-case";
+import { GetSlidesUseCase } from "@/core/application/slide/get-slides.use-case";
+import { DeleteSlideUseCase } from "@/core/application/slide/delete-slide.use-case";
+import { GetSliderStatsUseCase } from "@/core/application/slide/get-slider-stats.use-case";
+import { SlidePresenter } from "@/core/presenters/slide.presenter";
 
 export class SlideController {
     constructor(
@@ -12,7 +13,7 @@ export class SlideController {
         private updateSlideUseCase: UpdateSlideUseCase,
         private getSlidesUseCase: GetSlidesUseCase,
         private deleteSlideUseCase: DeleteSlideUseCase,
-        private getSliderStatsUseCase: GetSliderStatsUseCase
+        private getSliderStatsUseCase: GetSliderStatsUseCase,
     ) {
         // Bind methods
         this.create = this.create.bind(this);
@@ -27,6 +28,11 @@ export class SlideController {
         const tenantId = (req as any).tenantId;
         const id = req.params.id;
         const result = await this.getSlidesUseCase.executeById(tenantId, id);
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? SlidePresenter.toResponseList(result.data) as any
+      : SlidePresenter.toResponse(result.data) as any;
+        }
         return res.json(result);
     }
 
@@ -38,14 +44,31 @@ export class SlideController {
 
     async create(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
-        const result = await this.createSlideUseCase.execute(tenantId, req.body);
+        const result = await this.createSlideUseCase.execute(
+            tenantId,
+            req.body,
+        );
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? SlidePresenter.toResponseList(result.data) as any
+      : SlidePresenter.toResponse(result.data) as any;
+        }
         return res.status(201).json(result);
     }
 
     async update(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
         const id = req.params.id;
-        const result = await this.updateSlideUseCase.execute(tenantId, id, req.body);
+        const result = await this.updateSlideUseCase.execute(
+            tenantId,
+            id,
+            req.body,
+        );
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? SlidePresenter.toResponseList(result.data) as any
+      : SlidePresenter.toResponse(result.data) as any;
+        }
         return res.json(result);
     }
 
@@ -54,16 +77,23 @@ export class SlideController {
         const user = (req as any).user;
 
         // Super Admin Bypass
-        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+        if (user && user.role && user.role.name === "SUPER_ADMIN") {
             if (req.query.tenantId) {
                 tenantId = req.query.tenantId as string;
-                if (tenantId === 'all') tenantId = undefined;
+                if (tenantId === "all") tenantId = undefined;
             }
         } else if (!tenantId) {
-            return res.status(400).json({ success: false, message: "Tenant ID required" });
+            return res
+                .status(400)
+                .json({ success: false, message: "Tenant ID required" });
         }
 
         const result = await this.getSlidesUseCase.execute(tenantId);
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? SlidePresenter.toResponseList(result.data) as any
+      : SlidePresenter.toResponse(result.data) as any;
+        }
         return res.json(result);
     }
 

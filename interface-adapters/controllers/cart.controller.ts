@@ -8,6 +8,7 @@ import { ClearCartUseCase } from '@/core/application/cart/clear-cart.use-case';
 import { ChangeAmountUseCase } from '@/core/application/cart/change-amount.use-case';
 import { GetCartStatsUseCase } from '@/core/application/cart/get-cart-stats.use-case';
 import { CreateCartUseCase } from '@/core/application/cart/create-cart.use-case';
+import { CartPresenter } from '@/core/presenters/cart.presenter';
 
 export class CartController {
     constructor(
@@ -23,23 +24,32 @@ export class CartController {
     getItems = async (req: Request, res: Response) => {
         const { id } = (req as any).user;
         const tenantId = (req as any).tenantId;
-        const result = await this.getCartUseCase.execute(tenantId, id);
-        return res.json(result);
+    const result = await this.getCartUseCase.execute(tenantId, id);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? CartPresenter.toResponseList(result.data) as any : CartPresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     addToCart = async (req: Request, res: Response) => {
         const { id } = (req as any).user;
         const tenantId = (req as any).tenantId;
         const { productId, amount } = req.body;
-        const result = await this.addToCartUseCase.execute(tenantId, id, productId, amount);
-        return res.json(result);
+    const result = await this.addToCartUseCase.execute(tenantId, id, productId, amount);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? CartPresenter.toResponseList(result.data) as any : CartPresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     create = async (req: Request, res: Response) => {
         const { id } = (req as any).user;
         const tenantId = (req as any).tenantId;
-        const result = await this.createCartUseCase.execute(tenantId, id);
-        return res.status(201).json(result);
+    const result = await this.createCartUseCase.execute(tenantId, id);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? CartPresenter.toResponseList(result.data) as any : CartPresenter.toResponse(result.data) as any;
+    }
+    return res.status(201).json(result);
     }
 
     removeFromCart = async (req: Request, res: Response) => {

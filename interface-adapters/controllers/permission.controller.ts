@@ -5,6 +5,7 @@ import { GetPermissionsUseCase } from '@/core/application/permissions/get-permis
 import { UpdatePermissionUseCase } from '@/core/application/permissions/update-permission.use-case';
 import { DeletePermissionUseCase } from '@/core/application/permissions/delete-permission.use-case';
 import { GetPermissionsPaginatedUseCase } from '@/core/application/permissions/get-permissions-paginated.use-case';
+import { PermissionPresenter } from '@/core/presenters/permission.presenter';
 
 export class PermissionController {
     constructor(
@@ -17,8 +18,11 @@ export class PermissionController {
 
     create = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
-        const result = await this.createPermissionUseCase.execute(tenantId, req.body);
-        return res.status(201).json(result);
+    const result = await this.createPermissionUseCase.execute(tenantId, req.body);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? PermissionPresenter.toResponseList(result.data) as any : PermissionPresenter.toResponse(result.data) as any;
+    }
+    return res.status(201).json(result);
     }
 
     getAll = async (req: Request, res: Response) => {
@@ -28,26 +32,38 @@ export class PermissionController {
         const search = req.query.search ? (req.query.search as string) : undefined;
 
         if (page || limit || search) {
-            const result = await this.getPermissionsPaginatedUseCase.execute(tenantId, page, limit, search);
-            return res.json(result);
+      const result = await this.getPermissionsPaginatedUseCase.execute(tenantId, page, limit, search);
+      if (result.success && result.data) {
+        result.data = Array.isArray(result.data) ? PermissionPresenter.toResponseList(result.data) as any : PermissionPresenter.toResponse(result.data) as any;
+      }
+      return res.json(result);
         } else {
-            const result = await this.getPermissionsUseCase.execute(tenantId);
-            return res.json(result);
+      const result = await this.getPermissionsUseCase.execute(tenantId);
+      if (result.success && result.data) {
+        result.data = Array.isArray(result.data) ? PermissionPresenter.toResponseList(result.data) as any : PermissionPresenter.toResponse(result.data) as any;
+      }
+      return res.json(result);
         }
     }
 
     getById = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const result = await this.getPermissionsUseCase.executeById(tenantId, id);
-        return res.json(result);
+    const result = await this.getPermissionsUseCase.executeById(tenantId, id);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? PermissionPresenter.toResponseList(result.data) as any : PermissionPresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     update = async (req: Request, res: Response) => {
         const tenantId = (req as any).tenantId;
         const { id } = req.params;
-        const result = await this.updatePermissionUseCase.execute(tenantId, id, req.body);
-        return res.json(result);
+    const result = await this.updatePermissionUseCase.execute(tenantId, id, req.body);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? PermissionPresenter.toResponseList(result.data) as any : PermissionPresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     delete = async (req: Request, res: Response) => {

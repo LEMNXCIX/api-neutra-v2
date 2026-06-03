@@ -11,6 +11,7 @@ import { DeleteTenantUseCase } from '@/core/application/tenant/delete-tenant.use
 import { GetTenantFeaturesUseCase } from '@/core/application/tenant/get-tenant-features.use-case';
 import { UpdateTenantFeaturesUseCase } from '@/core/application/tenant/update-tenant-features.use-case';
 import { ILogger } from '@/core/providers/logger.interface';
+import { TenantPresenter } from '@/core/presenters/tenant.presenter';
 
 export class TenantController {
     constructor(
@@ -29,28 +30,43 @@ export class TenantController {
         if (!creatorId) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        const result = await this.createTenantUseCase.execute(req.body, creatorId);
-        return res.status(201).json(result);
+    const result = await this.createTenantUseCase.execute(req.body, creatorId);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? TenantPresenter.toResponseList(result.data) as any : TenantPresenter.toResponse(result.data) as any;
+    }
+    return res.status(201).json(result);
     }
 
     async getAll(req: Request, res: Response) {
-        const result = await this.getTenantsUseCase.execute();
-        return res.json(result);
+    const result = await this.getTenantsUseCase.execute();
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? TenantPresenter.toResponseList(result.data) as any : TenantPresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     async getById(req: Request, res: Response) {
-        const result = await this.getTenantByIdUseCase.execute(req.params.id);
-        return res.json(result);
+    const result = await this.getTenantByIdUseCase.execute(req.params.id);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? TenantPresenter.toResponseList(result.data) as any : TenantPresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     async getBySlug(req: Request, res: Response) {
-        const result = await this.getTenantBySlugUseCase.execute(req.params.slug);
-        return res.json(result);
+    const result = await this.getTenantBySlugUseCase.execute(req.params.slug);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? TenantPresenter.toResponseList(result.data) as any : TenantPresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     async update(req: Request, res: Response) {
-        const result = await this.updateTenantUseCase.execute(req.params.id, req.body);
-        return res.json(result);
+    const result = await this.updateTenantUseCase.execute(req.params.id, req.body);
+    if (result.success && result.data) {
+      result.data = Array.isArray(result.data) ? TenantPresenter.toResponseList(result.data) as any : TenantPresenter.toResponse(result.data) as any;
+    }
+    return res.json(result);
     }
 
     async getFeatures(req: Request, res: Response) {

@@ -5,6 +5,7 @@ import { CreateFeatureUseCase } from '@/core/application/feature/create-feature.
 import { UpdateFeatureUseCase } from '@/core/application/feature/update-feature.use-case';
 import { DeleteFeatureUseCase } from '@/core/application/feature/delete-feature.use-case';
 import { ILogger } from '@/core/providers/logger.interface';
+import { FeaturePresenter } from '@/core/presenters/feature.presenter';
 
 export class FeatureController {
     constructor(
@@ -23,7 +24,7 @@ export class FeatureController {
     async getAll(req: Request, res: Response) {
         try {
             const features = await this.getFeaturesUseCase.execute();
-            res.json({ success: true, data: features });
+            res.json({ success: true, data: FeaturePresenter.toResponseList(features) });
         } catch (error: any) {
             this.logger.error(`Error getting features: ${error.message}`);
             res.status(500).json({ success: false, message: error.message });
@@ -33,7 +34,7 @@ export class FeatureController {
     async create(req: Request, res: Response) {
         try {
             const feature = await this.createFeatureUseCase.execute(req.body);
-            res.status(201).json({ success: true, data: feature });
+            res.status(201).json({ success: true, data: FeaturePresenter.toResponse(feature) });
         } catch (error: any) {
             this.logger.error(`Error creating feature: ${error.message}`);
             res.status(400).json({ success: false, message: error.message });
@@ -43,7 +44,7 @@ export class FeatureController {
     async update(req: Request, res: Response) {
         try {
             const feature = await this.updateFeatureUseCase.execute(req.params.id, req.body);
-            res.json({ success: true, data: feature });
+            res.json({ success: true, data: FeaturePresenter.toResponse(feature) });
         } catch (error: any) {
             this.logger.error(`Error updating feature: ${error.message}`);
             res.status(400).json({ success: false, message: error.message });

@@ -1,15 +1,16 @@
-import { Request, Response } from 'express';
-import { IProductRepository } from '@/core/repositories/product.repository.interface';
-import { GetAllProductsUseCase } from '@/core/application/products/get-all-products.use-case';
-import { GetProductUseCase } from '@/core/application/products/get-product.use-case';
-import { CreateProductUseCase } from '@/core/application/products/create-product.use-case';
-import { UpdateProductUseCase } from '@/core/application/products/update-product.use-case';
-import { DeleteProductUseCase } from '@/core/application/products/delete-product.use-case';
-import { SearchProductsUseCase } from '@/core/application/products/search-products.use-case';
-import { GetProductStatsUseCase } from '@/core/application/products/get-product-stats.use-case';
-import { GetProductSummaryStatsUseCase } from '@/core/application/products/get-product-summary-stats.use-case';
+import { Request, Response } from "express";
+import { IProductRepository } from "@/core/repositories/product.repository.interface";
+import { GetAllProductsUseCase } from "@/core/application/products/get-all-products.use-case";
+import { GetProductUseCase } from "@/core/application/products/get-product.use-case";
+import { CreateProductUseCase } from "@/core/application/products/create-product.use-case";
+import { UpdateProductUseCase } from "@/core/application/products/update-product.use-case";
+import { DeleteProductUseCase } from "@/core/application/products/delete-product.use-case";
+import { SearchProductsUseCase } from "@/core/application/products/search-products.use-case";
+import { GetProductStatsUseCase } from "@/core/application/products/get-product-stats.use-case";
+import { GetProductSummaryStatsUseCase } from "@/core/application/products/get-product-summary-stats.use-case";
 
-import { VALIDATION_CONSTANTS } from '@/core/domain/constants';
+import { ProductPresenter } from "@/core/presenters/product.presenter";
+import { VALIDATION_CONSTANTS } from "@/core/domain/constants";
 
 export class ProductController {
     constructor(
@@ -20,7 +21,7 @@ export class ProductController {
         private deleteProductUseCase: DeleteProductUseCase,
         private searchProductsUseCase: SearchProductsUseCase,
         private getProductStatsUseCase: GetProductStatsUseCase,
-        private getProductSummaryStatsUseCase: GetProductSummaryStatsUseCase
+        private getProductSummaryStatsUseCase: GetProductSummaryStatsUseCase,
     ) {
         // Bind methods
         this.getAll = this.getAll.bind(this);
@@ -38,16 +39,23 @@ export class ProductController {
         const user = (req as any).user;
 
         // Super Admin Bypass
-        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+        if (user && user.role && user.role.name === "SUPER_ADMIN") {
             if (req.query.tenantId) {
                 tenantId = req.query.tenantId as string;
-                if (tenantId === 'all') tenantId = undefined;
+                if (tenantId === "all") tenantId = undefined;
             }
         } else if (!tenantId) {
-            return res.status(400).json({ success: false, message: "Tenant ID required" });
+            return res
+                .status(400)
+                .json({ success: false, message: "Tenant ID required" });
         }
 
         const result = await this.getAllProductsUseCase.execute(tenantId);
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? ProductPresenter.toResponseList(result.data) as any
+      : ProductPresenter.toResponse(result.data) as any;
+        }
         return res.json(result);
     }
 
@@ -56,20 +64,26 @@ export class ProductController {
         const user = (req as any).user;
 
         // Super Admin Bypass
-        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+        if (user && user.role && user.role.name === "SUPER_ADMIN") {
             if (req.query.tenantId) {
                 tenantId = req.query.tenantId as string;
-                if (tenantId === 'all') tenantId = undefined;
+                if (tenantId === "all") tenantId = undefined;
             }
         } else if (!tenantId) {
             return res.status(400).json({
                 success: false,
-                message: "Tenant context required. Use x-tenant-id or x-tenant-slug header."
+                message:
+                    "Tenant context required. Use x-tenant-id or x-tenant-slug header.",
             });
         }
 
         const id = req.params.id;
         const result = await this.getProductUseCase.execute(tenantId, id);
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? ProductPresenter.toResponseList(result.data) as any
+      : ProductPresenter.toResponse(result.data) as any;
+        }
         return res.json(result);
     }
 
@@ -77,15 +91,29 @@ export class ProductController {
         const tenantId = (req as any).tenantId;
         const result = await this.createProductUseCase.execute(tenantId, {
             ...req.body,
-            ownerId: (req as any).user.id
+            ownerId: (req as any).user.id,
         });
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? ProductPresenter.toResponseList(result.data) as any
+      : ProductPresenter.toResponse(result.data) as any;
+        }
         return res.status(201).json(result);
     }
 
     async update(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
         const id = req.params.id;
-        const result = await this.updateProductUseCase.execute(tenantId, id, req.body);
+        const result = await this.updateProductUseCase.execute(
+            tenantId,
+            id,
+            req.body,
+        );
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? ProductPresenter.toResponseList(result.data) as any
+      : ProductPresenter.toResponse(result.data) as any;
+        }
         return res.json(result);
     }
 
@@ -93,7 +121,11 @@ export class ProductController {
         const tenantId = (req as any).tenantId;
         const id = req.params.id;
         const userId = (req as any).user.id;
-        const result = await this.deleteProductUseCase.execute(tenantId, id, userId);
+        const result = await this.deleteProductUseCase.execute(
+            tenantId,
+            id,
+            userId,
+        );
         return res.json(result);
     }
 
@@ -101,6 +133,11 @@ export class ProductController {
         const tenantId = (req as any).tenantId;
         const name = req.body.name;
         const result = await this.searchProductsUseCase.execute(tenantId, name);
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? ProductPresenter.toResponseList(result.data) as any
+      : ProductPresenter.toResponse(result.data) as any;
+        }
         return res.json(result);
     }
 
@@ -112,7 +149,8 @@ export class ProductController {
 
     async getSummaryStats(req: Request, res: Response) {
         const tenantId = (req as any).tenantId;
-        const result = await this.getProductSummaryStatsUseCase.execute(tenantId);
+        const result =
+            await this.getProductSummaryStatsUseCase.execute(tenantId);
         return res.json(result);
     }
 }

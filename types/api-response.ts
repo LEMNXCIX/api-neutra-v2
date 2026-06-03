@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 export interface ErrorDetail {
     code: string; // Machine readable error code (e.g., AUTH_INVALID_CREDENTIALS)
@@ -13,7 +13,12 @@ export class AppError extends Error {
     public readonly code: string;
     public readonly details?: ErrorDetail[];
 
-    constructor(message: string, statusCode: number = 500, code: string = 'SYSTEM_INTERNAL_ERROR', details?: ErrorDetail[]) {
+    constructor(
+        message: string,
+        statusCode: number = 500,
+        code: string = "SYSTEM_INTERNAL_ERROR",
+        details?: ErrorDetail[],
+    ) {
         super(message);
         this.statusCode = statusCode;
         this.code = code;
@@ -22,7 +27,7 @@ export class AppError extends Error {
     }
 }
 
-export interface StandardResponse<T = any> {
+export interface StandardResponse<T> {
     success: boolean;
     statusCode: number;
     message: string;
@@ -42,7 +47,12 @@ export interface StandardResponse<T = any> {
 }
 
 export class ApiResponse {
-    static success<T>(data: T, message: string = 'OK', statusCode: number = 200, traceId?: string): StandardResponse<T> {
+    static success<T>(
+        data: T,
+        message: string = "OK",
+        statusCode: number = 200,
+        traceId?: string,
+    ): StandardResponse<T> {
         return {
             success: true,
             statusCode,
@@ -55,7 +65,12 @@ export class ApiResponse {
         };
     }
 
-    static error(message: string, errors: ErrorDetail[] = [], statusCode: number = 500, traceId?: string): StandardResponse<null> {
+    static error(
+        message: string,
+        errors: ErrorDetail[] = [],
+        statusCode: number = 500,
+        traceId?: string,
+    ): StandardResponse<null> {
         return {
             success: false,
             statusCode,
@@ -76,7 +91,7 @@ export function createErrorDetail(
     code: string,
     message: string,
     field?: string,
-    metadata?: any
+    metadata?: any,
 ): ErrorDetail {
     return {
         code,
@@ -87,4 +102,4 @@ export function createErrorDetail(
 }
 
 // Re-export error codes for convenience
-export * from '@/types/error-codes';
+export * from "@/types/error-codes";

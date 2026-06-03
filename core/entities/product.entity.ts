@@ -12,18 +12,6 @@ export interface Product {
     categories?: any[]; // Using any[] for now to avoid circular dependency with Category entity
 }
 
-export interface ProductDTO {
-    id: string;
-    name: string;
-    description: string;
-    image: string | null;
-    price: number;
-    stock: number;
-    active: boolean;
-    ownerId: string;
-    categories?: any[]; // Using any[] for now to avoid circular dependency with Category entity
-}
-
 export interface CreateProductDTO {
     name: string;
     description: string;

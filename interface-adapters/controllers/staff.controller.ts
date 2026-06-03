@@ -1,11 +1,13 @@
-import { Request, Response } from 'express';
-import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
-import { CreateStaffUseCase } from '@/core/application/booking/create-staff.use-case';
-import { GetStaffUseCase } from '@/core/application/booking/get-staff.use-case';
-import { UpdateStaffUseCase } from '@/core/application/booking/update-staff.use-case';
-import { DeleteStaffUseCase } from '@/core/application/booking/delete-staff.use-case';
-import { ILogger } from '@/core/providers/logger.interface';
+import { Request, Response } from "express";
+import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { CreateStaffUseCase } from "@/core/application/booking/create-staff.use-case";
+import { GetStaffUseCase } from "@/core/application/booking/get-staff.use-case";
+import { UpdateStaffUseCase } from "@/core/application/booking/update-staff.use-case";
+import { DeleteStaffUseCase } from "@/core/application/booking/delete-staff.use-case";
+import { ILogger } from "@/core/providers/logger.interface";
+import { StaffPresenter } from "@/core/presenters/staff.presenter";
+import { Success } from "@/core/utils/use-case-result";
 
 export class StaffController {
     constructor(
@@ -14,12 +16,20 @@ export class StaffController {
         private updateStaffUseCase: UpdateStaffUseCase,
         private deleteStaffUseCase: DeleteStaffUseCase,
         private staffRepository: IStaffRepository,
-        private logger: ILogger
-    ) { }
+        private logger: ILogger,
+    ) {}
 
     async create(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const result = await this.createStaffUseCase.execute(tenantId, req.body);
+        const result = await this.createStaffUseCase.execute(
+            tenantId,
+            req.body,
+        );
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? StaffPresenter.toResponseList(result.data) as any
+      : StaffPresenter.toResponse(result.data) as any;
+        }
         return res.status(result.code).json(result);
     }
 
@@ -28,24 +38,43 @@ export class StaffController {
         const user = (req as any).user;
 
         // Super Admin Bypass
-        if (user && user.role && user.role.name === 'SUPER_ADMIN') {
+        if (user && user.role && user.role.name === "SUPER_ADMIN") {
             if (req.query.tenantId) {
                 tenantId = req.query.tenantId as string;
-                if (tenantId === 'all') tenantId = undefined;
+                if (tenantId === "all") tenantId = undefined;
             }
         } else if (!tenantId) {
-            return res.status(400).json({ success: false, message: "Tenant ID required" });
+            return res
+                .status(400)
+                .json({ success: false, message: "Tenant ID required" });
         }
 
-        const activeOnly = req.query.activeOnly !== 'false';
-        const result = await this.getStaffUseCase.execute(tenantId!, activeOnly);
+        const activeOnly = req.query.activeOnly !== "false";
+        const result = await this.getStaffUseCase.execute(
+            tenantId!,
+            activeOnly,
+        );
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? StaffPresenter.toResponseList(result.data) as any
+      : StaffPresenter.toResponse(result.data) as any;
+        }
         return res.status(result.code).json(result);
     }
 
     async update(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
-        const result = await this.updateStaffUseCase.execute(tenantId, id, req.body);
+        const result = await this.updateStaffUseCase.execute(
+            tenantId,
+            id,
+            req.body,
+        );
+        if (result.success && result.data) {
+    result.data = Array.isArray(result.data)
+      ? StaffPresenter.toResponseList(result.data) as any
+      : StaffPresenter.toResponse(result.data) as any;
+        }
         return res.status(result.code).json(result);
     }
 
@@ -62,16 +91,22 @@ export class StaffController {
         const { serviceId } = req.body;
 
         try {
-            await this.staffRepository.assignService(tenantId, staffId, serviceId);
+            await this.staffRepository.assignService(
+                tenantId,
+                staffId,
+                serviceId,
+            );
             return res.status(200).json({
                 success: true,
-                message: 'Service assigned to staff successfully',
+                message: "Service assigned to staff successfully",
             });
         } catch (error: any) {
-            this.logger.error('Error assigning service to staff', { error: error.message });
+            this.logger.error("Error assigning service to staff", {
+                error: error.message,
+            });
             return res.status(500).json({
                 success: false,
-                message: 'Error assigning service',
+                message: "Error assigning service",
             });
         }
     }
@@ -84,21 +119,27 @@ export class StaffController {
         if (!Array.isArray(serviceIds)) {
             return res.status(400).json({
                 success: false,
-                message: 'serviceIds must be an array',
+                message: "serviceIds must be an array",
             });
         }
 
         try {
-            await this.staffRepository.syncServices(tenantId, staffId, serviceIds);
+            await this.staffRepository.syncServices(
+                tenantId,
+                staffId,
+                serviceIds,
+            );
             return res.status(200).json({
                 success: true,
-                message: 'Staff services synchronized successfully',
+                message: "Staff services synchronized successfully",
             });
         } catch (error: any) {
-            this.logger.error('Error syncing staff services', { error: error.message });
+            this.logger.error("Error syncing staff services", {
+                error: error.message,
+            });
             return res.status(500).json({
                 success: false,
-                message: 'Error syncing services',
+                message: "Error syncing services",
             });
         }
     }
@@ -106,32 +147,41 @@ export class StaffController {
         const tenantId = req.tenantId!;
         const user = (req as any).user;
 
-        this.logger.info(`[StaffController.getMe] User: ${user?.id}, Tenant: ${tenantId}`);
+        this.logger.info(
+            `[StaffController.getMe] User: ${user?.id}, Tenant: ${tenantId}`,
+        );
 
         if (!user || !user.id) {
-            return res.status(401).json({ success: false, message: 'Unauthorized' });
+            return res
+                .status(401)
+                .json({ success: false, message: "Unauthorized" });
         }
 
         try {
-            const staff = await this.staffRepository.findByUserId(tenantId, user.id);
-            this.logger.info(`[StaffController.getMe] Repository result: ${staff ? staff.id : 'NOT_FOUND'}`);
+            const staff = await this.staffRepository.findByUserId(
+                tenantId,
+                user.id,
+            );
+            this.logger.info(
+                `[StaffController.getMe] Repository result: ${staff ? staff.id : "NOT_FOUND"}`,
+            );
 
             if (!staff) {
                 return res.status(404).json({
                     success: false,
-                    message: 'Staff profile not found for this user',
+                    message: "Staff profile not found for this user",
                 });
             }
 
-            return res.status(200).json({
-                success: true,
-                data: staff,
-            });
+            const data = StaffPresenter.toResponse(staff);
+            return res.status(200).json(Success(data));
         } catch (error: any) {
-            this.logger.error('Error retrieving staff profile', { error: error.message });
+            this.logger.error("Error retrieving staff profile", {
+                error: error.message,
+            });
             return res.status(500).json({
                 success: false,
-                message: 'Error retrieving staff profile',
+                message: "Error retrieving staff profile",
             });
         }
     }
