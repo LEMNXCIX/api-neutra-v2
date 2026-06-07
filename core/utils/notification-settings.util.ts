@@ -35,15 +35,17 @@ export interface NotificationChannels {
  */
 export function isChannelEnabled(
     settings: NotificationSettings | null | undefined,
-    channel: 'email' | 'whatsapp' | 'push',
-    eventType?: string
+    channel: "email" | "whatsapp" | "push",
+    eventType?: string,
 ): boolean {
     // If no settings, default to enabled
     if (!settings) return true;
 
     // Check event-specific settings first
     if (eventType && settings.events) {
-        const eventSettings = (settings.events as any)[eventType];
+        const eventSettings = (
+            settings.events as Record<string, NotificationChannels>
+        )[eventType];
         if (eventSettings && eventSettings[channel] !== undefined) {
             return eventSettings[channel];
         }
@@ -66,18 +68,18 @@ export function isChannelEnabled(
  */
 export function getEnabledChannels(
     settings: NotificationSettings | null | undefined,
-    eventType?: string
-): Array<'email' | 'whatsapp' | 'push'> {
-    const channels: Array<'email' | 'whatsapp' | 'push'> = [];
+    eventType?: string,
+): Array<"email" | "whatsapp" | "push"> {
+    const channels: Array<"email" | "whatsapp" | "push"> = [];
 
-    if (isChannelEnabled(settings, 'email', eventType)) {
-        channels.push('email');
+    if (isChannelEnabled(settings, "email", eventType)) {
+        channels.push("email");
     }
-    if (isChannelEnabled(settings, 'whatsapp', eventType)) {
-        channels.push('whatsapp');
+    if (isChannelEnabled(settings, "whatsapp", eventType)) {
+        channels.push("whatsapp");
     }
-    if (isChannelEnabled(settings, 'push', eventType)) {
-        channels.push('push');
+    if (isChannelEnabled(settings, "push", eventType)) {
+        channels.push("push");
     }
 
     return channels;

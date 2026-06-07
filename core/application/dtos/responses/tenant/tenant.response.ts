@@ -1,28 +1,22 @@
-export enum TenantType {
-    STORE = "STORE",
-    BOOKING = "BOOKING",
-    HYBRID = "HYBRID",
-}
-
-export interface ITenantConfig {
-    branding?: Record<string, any>;
-    settings?: Record<string, any>;
-    features?: Record<string, any>;
-}
+import {
+    Tenant,
+    TenantType,
+    TenantConfig,
+} from "@/core/entities/tenant.entity";
 
 export interface ITenantResponse {
     id: string;
     name: string;
     slug: string;
     type: TenantType;
-    config?: ITenantConfig;
+    config?: TenantConfig;
     active: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
 
 export class TenantResponse {
-    static fromEntity(tenant: any): ITenantResponse {
+    static fromEntity(tenant: Tenant): ITenantResponse {
         return {
             id: tenant.id,
             name: tenant.name,

@@ -1,3 +1,5 @@
+import { Service } from "@/core/entities/service.entity";
+
 export interface ICategoryMinimalResponse {
     id: string;
     name: string;
@@ -18,7 +20,7 @@ export interface IServiceResponse {
 }
 
 export class ServiceResponse {
-    static fromEntity(service: any): IServiceResponse {
+    static fromEntity(service: Service): IServiceResponse {
         return {
             id: service.id,
             name: service.name,

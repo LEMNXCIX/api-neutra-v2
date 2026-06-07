@@ -1,21 +1,26 @@
-import { IRoleRepository } from '@/core/repositories/role.repository.interface';
-import { CreateRoleDTO } from '@/core/entities/role.entity';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { AppError } from '@/types/api-response';
-import { ResourceErrorCodes } from '@/types/error-codes';
+import { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import { CreateRoleDTO } from "@/core/application/dtos/requests/role.request";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
 
 export class CreateRoleUseCase {
-    constructor(private roleRepository: IRoleRepository) { }
+    constructor(private roleRepository: IRoleRepository) {}
 
-    async execute(tenantId: string | undefined, data: CreateRoleDTO): Promise<UseCaseResult> {
-        const existingRole = await this.roleRepository.findByName(tenantId, data.name);
+    async execute(
+        tenantId: string | undefined,
+        data: CreateRoleDTO,
+    ): Promise<UseCaseResult> {
+        const existingRole = await this.roleRepository.findByName(
+            tenantId,
+            data.name,
+        );
 
         if (existingRole) {
-            throw new AppError('Role already exists', 409, ResourceErrorCodes.ALREADY_EXISTS);
+            throw new DuplicateEntityError("Role", "name", data.name);
         }
 
         const role = await this.roleRepository.create(tenantId, data);
 
-        return Success(role, 'Role created successfully');
+        return Success(role, "Role created successfully");
     }
 }

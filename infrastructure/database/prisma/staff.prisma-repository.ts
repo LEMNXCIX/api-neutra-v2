@@ -1,37 +1,85 @@
-import { prisma } from '@/config/db.config';
-import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
-import { Staff, CreateStaffDTO, UpdateStaffDTO } from '@/core/entities/staff.entity';
+import { Staff as PrismaStaff, Prisma } from "@prisma/client";
+import { prisma } from "@/config/db.config";
+import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import { Staff, WorkingHours } from "@/core/entities/staff.entity";
+import {
+    CreateStaffDTO,
+    UpdateStaffDTO,
+} from "@/core/application/dtos/requests/staff.request";
+import {
+    DuplicateEntityError,
+    EntityNotFoundError,
+} from "@/core/domain/errors/domain-errors";
 
-/**
- * Prisma Staff Repository
- * Tenant-aware implementation for Staff persistence
- */
+type StaffWithServices = Prisma.StaffGetPayload<{
+    include: { staffServices: { select: { serviceId: true } } };
+}>;
+
+function parseWorkingHours(
+    value: Prisma.JsonValue | null,
+): WorkingHours | undefined {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === "object" && !Array.isArray(value))
+        return value as WorkingHours;
+    return undefined;
+}
+
 export class PrismaStaffRepository implements IStaffRepository {
+    private mapToEntity(staff: StaffWithServices): Staff {
+        return {
+            id: staff.id,
+            userId: staff.userId ?? undefined,
+            name: staff.name,
+            email: staff.email ?? undefined,
+            phone: staff.phone ?? undefined,
+            avatar: staff.avatar ?? undefined,
+            bio: staff.bio ?? undefined,
+            active: staff.active,
+            workingHours: parseWorkingHours(staff.workingHours),
+            serviceIds: staff.staffServices?.map((ss) => ss.serviceId) || [],
+            tenantId: staff.tenantId,
+            createdAt: staff.createdAt,
+            updatedAt: staff.updatedAt,
+        };
+    }
+
     async create(tenantId: string, data: CreateStaffDTO): Promise<Staff> {
-        const staff = await prisma.staff.create({
-            data: {
-                tenantId,
-                userId: data.userId,
-                name: data.name,
-                email: data.email,
-                phone: data.phone,
-                avatar: data.avatar,
-                bio: data.bio,
-                active: data.active ?? true,
-                workingHours: data.workingHours as any,
-            },
-        });
-        return this.mapToEntity(staff);
+        try {
+            const staff = await prisma.staff.create({
+                data: {
+                    tenantId,
+                    userId: data.userId,
+                    name: data.name,
+                    email: data.email,
+                    phone: data.phone,
+                    avatar: data.avatar,
+                    bio: data.bio,
+                    active: data.active ?? true,
+                    workingHours: data.workingHours as Prisma.InputJsonValue,
+                },
+                include: { staffServices: { select: { serviceId: true } } },
+            });
+            return this.mapToEntity(staff);
+        } catch (error: unknown) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2002"
+            ) {
+                const target = (error.meta?.target as string[])?.[0] ?? "email";
+                throw new DuplicateEntityError(
+                    "Staff",
+                    target,
+                    data.email ?? data.name,
+                );
+            }
+            throw error;
+        }
     }
 
     async findById(tenantId: string, id: string): Promise<Staff | null> {
         const staff = await prisma.staff.findFirst({
             where: { id, tenantId },
-            include: {
-                staffServices: {
-                    select: { serviceId: true }
-                }
-            }
+            include: { staffServices: { select: { serviceId: true } } },
         });
         return staff ? this.mapToEntity(staff) : null;
     }
@@ -39,114 +87,137 @@ export class PrismaStaffRepository implements IStaffRepository {
     async findByEmail(tenantId: string, email: string): Promise<Staff | null> {
         const staff = await prisma.staff.findFirst({
             where: { email, tenantId },
-            include: {
-                staffServices: {
-                    select: { serviceId: true }
-                }
-            }
+            include: { staffServices: { select: { serviceId: true } } },
         });
         return staff ? this.mapToEntity(staff) : null;
     }
 
-    async findByUserId(tenantId: string, userId: string): Promise<Staff | null> {
+    async findByUserId(
+        tenantId: string,
+        userId: string,
+    ): Promise<Staff | null> {
         const staff = await prisma.staff.findFirst({
             where: { userId, tenantId },
-            include: {
-                staffServices: {
-                    select: { serviceId: true }
-                }
-            }
+            include: { staffServices: { select: { serviceId: true } } },
         });
         return staff ? this.mapToEntity(staff) : null;
     }
 
-    async findAll(tenantId: string | undefined, activeOnly: boolean = false): Promise<Staff[]> {
+    async findAll(
+        tenantId: string | undefined,
+        activeOnly: boolean = false,
+    ): Promise<Staff[]> {
         const staffList = await prisma.staff.findMany({
             where: {
                 ...(tenantId && { tenantId }),
                 ...(activeOnly && { active: true }),
             },
-            include: {
-                staffServices: {
-                    select: { serviceId: true }
-                }
-            },
-            orderBy: { name: 'asc' },
+            include: { staffServices: { select: { serviceId: true } } },
+            orderBy: { name: "asc" },
         });
-        return staffList.map(this.mapToEntity);
+        return staffList.map((s) => this.mapToEntity(s));
     }
 
-    async update(tenantId: string, id: string, data: UpdateStaffDTO): Promise<Staff> {
-        const staff = await prisma.staff.update({
-            where: { id, tenantId },
-            data: {
-                userId: data.userId,
-                name: data.name,
-                email: data.email,
-                phone: data.phone,
-                avatar: data.avatar,
-                bio: data.bio,
-                active: data.active,
-                workingHours: data.workingHours as any,
-            },
-        });
-        return this.mapToEntity(staff);
+    async update(
+        tenantId: string,
+        id: string,
+        data: UpdateStaffDTO,
+    ): Promise<Staff> {
+        try {
+            const staff = await prisma.staff.update({
+                where: { id, tenantId },
+                data: {
+                    userId: data.userId,
+                    name: data.name,
+                    email: data.email,
+                    phone: data.phone,
+                    avatar: data.avatar,
+                    bio: data.bio,
+                    active: data.active,
+                    workingHours: data.workingHours as Prisma.InputJsonValue,
+                },
+                include: { staffServices: { select: { serviceId: true } } },
+            });
+            return this.mapToEntity(staff);
+        } catch (error: unknown) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2025"
+            ) {
+                throw new EntityNotFoundError("Staff", id);
+            }
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2002"
+            ) {
+                const target = (error.meta?.target as string[])?.[0] ?? "email";
+                throw new DuplicateEntityError(
+                    "Staff",
+                    target,
+                    data.email ?? "",
+                );
+            }
+            throw error;
+        }
     }
 
     async delete(tenantId: string, id: string): Promise<void> {
-        await prisma.staff.delete({
-            where: { id, tenantId },
-        });
+        try {
+            await prisma.staff.delete({
+                where: { id, tenantId },
+            });
+        } catch (error: unknown) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2025"
+            ) {
+                throw new EntityNotFoundError("Staff", id);
+            }
+            throw error;
+        }
     }
 
-    async assignService(tenantId: string, staffId: string, serviceId: string): Promise<void> {
+    async assignService(
+        tenantId: string,
+        staffId: string,
+        serviceId: string,
+    ): Promise<void> {
         await prisma.staffService.create({
-            data: {
-                tenantId,
-                staffId,
-                serviceId,
-            },
+            data: { tenantId, staffId, serviceId },
         });
     }
 
-    async removeService(tenantId: string, staffId: string, serviceId: string): Promise<void> {
+    async removeService(
+        tenantId: string,
+        staffId: string,
+        serviceId: string,
+    ): Promise<void> {
         await prisma.staffService.delete({
-            where: {
-                staffId_serviceId: {
-                    staffId,
-                    serviceId,
-                },
-            },
+            where: { staffId_serviceId: { staffId, serviceId } },
         });
     }
 
     async getServices(tenantId: string, staffId: string): Promise<string[]> {
         const staffServices = await prisma.staffService.findMany({
-            where: {
-                tenantId,
-                staffId,
-            },
-            select: {
-                serviceId: true,
-            },
+            where: { tenantId, staffId },
+            select: { serviceId: true },
         });
-        return staffServices.map(ss => ss.serviceId);
+        return staffServices.map((ss) => ss.serviceId);
     }
 
-    async syncServices(tenantId: string, staffId: string, serviceIds: string[]): Promise<void> {
+    async syncServices(
+        tenantId: string,
+        staffId: string,
+        serviceIds: string[],
+    ): Promise<void> {
         await prisma.$transaction(async (tx) => {
-            // Remove all existing services for this staff member
             await tx.staffService.deleteMany({
-                where: {
-                    tenantId,
-                    staffId,
-                },
+                where: { tenantId, staffId },
             });
 
-            // Add new services
             if (serviceIds.length > 0) {
                 await tx.staffService.createMany({
-                    data: serviceIds.map(serviceId => ({
+                    data: serviceIds.map((serviceId) => ({
                         tenantId,
                         staffId,
                         serviceId,
@@ -154,23 +225,5 @@ export class PrismaStaffRepository implements IStaffRepository {
                 });
             }
         });
-    }
-
-    private mapToEntity(staff: any): Staff {
-        return {
-            id: staff.id,
-            userId: staff.userId,
-            name: staff.name,
-            email: staff.email,
-            phone: staff.phone,
-            avatar: staff.avatar,
-            bio: staff.bio,
-            active: staff.active,
-            workingHours: staff.workingHours,
-            serviceIds: staff.staffServices?.map((ss: any) => ss.serviceId) || [],
-            tenantId: staff.tenantId,
-            createdAt: staff.createdAt,
-            updatedAt: staff.updatedAt,
-        };
     }
 }

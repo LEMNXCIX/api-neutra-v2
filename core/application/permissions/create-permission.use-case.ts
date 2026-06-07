@@ -1,21 +1,29 @@
-import { IPermissionRepository } from '@/core/repositories/permission.repository.interface';
-import { CreatePermissionDTO } from '@/core/entities/permission.entity';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { AppError } from '@/types/api-response';
-import { ResourceErrorCodes } from '@/types/error-codes';
+import { IPermissionRepository } from "@/core/repositories/permission.repository.interface";
+import { CreatePermissionDTO } from "@/core/application/dtos/requests/permission.request";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
 
 export class CreatePermissionUseCase {
-    constructor(private permissionRepository: IPermissionRepository) { }
+    constructor(private permissionRepository: IPermissionRepository) {}
 
-    async execute(tenantId: string | undefined, data: CreatePermissionDTO): Promise<UseCaseResult> {
-        const existingPermission = await this.permissionRepository.findByName(tenantId, data.name);
+    async execute(
+        tenantId: string | undefined,
+        data: CreatePermissionDTO,
+    ): Promise<UseCaseResult> {
+        const existingPermission = await this.permissionRepository.findByName(
+            tenantId,
+            data.name,
+        );
 
         if (existingPermission) {
-            throw new AppError('Permission already exists', 409, ResourceErrorCodes.ALREADY_EXISTS);
+            throw new DuplicateEntityError("Permission", "name", data.name);
         }
 
-        const permission = await this.permissionRepository.create(tenantId, data);
+        const permission = await this.permissionRepository.create(
+            tenantId,
+            data,
+        );
 
-        return Success(permission, 'Permission created successfully');
+        return Success(permission, "Permission created successfully");
     }
 }

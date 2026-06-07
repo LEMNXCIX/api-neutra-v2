@@ -1,3 +1,4 @@
+import { WhatsAppConfig } from "@/core/entities/whatsapp-config.entity";
 import {
     WhatsAppConfigResponse,
     IWhatsAppConfigResponse,
@@ -5,7 +6,7 @@ import {
 
 export class WhatsAppConfigPresenter {
     static toResponse(
-        config: any,
+        config: WhatsAppConfig,
         maskTokens: boolean = true,
     ): IWhatsAppConfigResponse {
         return WhatsAppConfigResponse.fromEntity(config, maskTokens);

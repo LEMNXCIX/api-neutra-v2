@@ -1,4 +1,8 @@
-import { Order, CreateOrderDTO, UpdateOrderDTO, OrderStatus } from '@/core/entities/order.entity';
+import { Order, OrderStatus } from "@/core/entities/order.entity";
+import {
+    CreateOrderDTO,
+    UpdateOrderDTO,
+} from "@/core/application/dtos/requests/order.request";
 
 /**
  * Order Repository Interface - Tenant-Scoped
@@ -6,22 +10,37 @@ import { Order, CreateOrderDTO, UpdateOrderDTO, OrderStatus } from '@/core/entit
 export interface IOrderRepository {
     create(tenantId: string, data: CreateOrderDTO): Promise<Order>;
     findById(tenantId: string, id: string): Promise<Order | null>;
-    findByUserId(tenantId: string, userId: string, status?: OrderStatus): Promise<Order[]>;
+    findByUserId(
+        tenantId: string,
+        userId: string,
+        status?: OrderStatus,
+    ): Promise<Order[]>;
     findAll(tenantId: string): Promise<Order[]>;
-    findAllPaginated(tenantId: string, options: {
-        search?: string;
-        status?: string;
-        page: number;
-        limit: number;
-        startDate?: Date;
-        endDate?: Date;
-    }): Promise<{
+    findAllPaginated(
+        tenantId: string,
+        options: {
+            search?: string;
+            status?: string;
+            page: number;
+            limit: number;
+            startDate?: Date;
+            endDate?: Date;
+        },
+    ): Promise<{
         orders: Order[];
         total: number;
     }>;
-    updateStatus(tenantId: string, id: string, status: OrderStatus): Promise<Order>;
+    updateStatus(
+        tenantId: string,
+        id: string,
+        status: OrderStatus,
+    ): Promise<Order>;
     update(tenantId: string, id: string, data: UpdateOrderDTO): Promise<Order>;
-    getStats(tenantId: string, startDate?: Date, endDate?: Date): Promise<{
+    getStats(
+        tenantId: string,
+        startDate?: Date,
+        endDate?: Date,
+    ): Promise<{
         totalOrders: number;
         totalRevenue: number;
         statusCounts: Record<string, number>;

@@ -1,21 +1,18 @@
-import { ICartRepository } from '@/core/repositories/cart.repository.interface';
+import { ICartRepository } from "@/core/repositories/cart.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetCartStatsUseCase {
-    constructor(private cartRepository: ICartRepository) { }
+    constructor(private cartRepository: ICartRepository) {}
 
-    async execute(tenantId: string) {
-        const result: any[] = await this.cartRepository.getStats(tenantId);
+    async execute(tenantId: string): Promise<UseCaseResult> {
+        const result: Array<{ yearMonth: string; total: number }> =
+            await this.cartRepository.getStats(tenantId);
 
-        const data = result.map(r => ({
+        const data = result.map((r) => ({
             _id: r.yearMonth,
-            total: r.total
+            total: r.total,
         }));
 
-        return {
-            success: true,
-            code: 200,
-            message: "Cart statistics retrieved successfully",
-            data: data
-        };
+        return Success(data, "Cart statistics retrieved successfully");
     }
 }

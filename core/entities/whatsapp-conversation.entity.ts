@@ -5,7 +5,7 @@ export interface WhatsAppConversation {
     phoneNumber: string;
     userId?: string | null;
     status: string;
-    context?: any;
+    context?: Record<string, unknown>;
     lastMessageAt: Date;
     createdAt: Date;
     updatedAt: Date;

@@ -1,3 +1,5 @@
+import { User } from "@/core/entities/user.entity";
+
 export interface IUserPublicResponse {
     id: string;
     name: string;
@@ -20,7 +22,7 @@ export interface IUserPublicResponse {
 }
 
 export class UserPublicResponse {
-    static fromEntity(user: any): IUserPublicResponse {
+    static fromEntity(user: User): IUserPublicResponse {
         return {
             id: user.id,
             name: user.name,

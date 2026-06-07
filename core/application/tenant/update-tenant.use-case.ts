@@ -1,27 +1,27 @@
-import { ITenantRepository } from '@/core/repositories/tenant.repository.interface';
-import { ILogger } from '@/core/providers/logger.interface';
-import { Tenant } from '@/core/entities/tenant.entity';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { AppError } from '@/types/api-response';
-import { TenantErrorCodes } from '@/types/error-codes';
+import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import {
+    EntityNotFoundError,
+    DuplicateEntityError,
+} from "@/core/domain/errors/domain-errors";
+import { UpdateTenantDTO } from "@/core/application/dtos/requests/tenant.request";
 
 export class UpdateTenantUseCase {
-    constructor(
-        private tenantRepository: ITenantRepository,
-        private logger: ILogger
-    ) { }
+    constructor(private tenantRepository: ITenantRepository) {}
 
-    async execute(id: string, data: Partial<Tenant>): Promise<UseCaseResult> {
+    async execute(id: string, data: UpdateTenantDTO): Promise<UseCaseResult> {
         const existing = await this.tenantRepository.findById(id);
         if (!existing) {
-            throw new AppError('Tenant not found', 404, TenantErrorCodes.TENANT_NOT_FOUND);
+            throw new EntityNotFoundError("Tenant", id);
         }
 
         // If slug is changing, check for duplicates
         if (data.slug && data.slug !== existing.slug) {
-            const slugExists = await this.tenantRepository.findBySlug(data.slug);
+            const slugExists = await this.tenantRepository.findBySlug(
+                data.slug,
+            );
             if (slugExists) {
-                throw new AppError('Tenant with this slug already exists', 400, TenantErrorCodes.TENANT_SLUG_EXISTS);
+                throw new DuplicateEntityError("Tenant", "slug", data.slug);
             }
         }
 
@@ -32,21 +32,21 @@ export class UpdateTenantUseCase {
                 ...(data.config || {}),
                 branding: {
                     ...(existing.config?.branding || {}),
-                    ...(data.config?.branding || {})
+                    ...(data.config?.branding || {}),
                 },
                 settings: {
                     ...(existing.config?.settings || {}),
-                    ...(data.config?.settings || {})
+                    ...(data.config?.settings || {}),
                 },
                 features: {
                     ...(existing.config?.features || {}),
-                    ...(data.config?.features || {})
-                }
+                    ...(data.config?.features || {}),
+                },
             };
         }
 
         const updated = await this.tenantRepository.update(id, data);
 
-        return Success(updated, 'Tenant updated successfully');
+        return Success(updated, "Tenant updated successfully");
     }
 }

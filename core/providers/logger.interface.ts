@@ -1,8 +1,8 @@
 export enum LogLevel {
-    DEBUG = 'debug',
-    INFO = 'info',
-    WARN = 'warn',
-    ERROR = 'error'
+    DEBUG = "debug",
+    INFO = "info",
+    WARN = "warn",
+    ERROR = "error",
 }
 
 export interface LogOptions {
@@ -14,12 +14,36 @@ export interface LogOptions {
 }
 
 export interface ILogger {
-    info(message: string, metadata?: any, options?: LogOptions): void;
-    warn(message: string, metadata?: any, options?: LogOptions): void;
-    error(message: string, error?: Error | unknown, metadata?: any): void;
-    debug(message: string, metadata?: any, options?: LogOptions): void;
+    info(
+        message: string,
+        metadata?: Record<string, unknown>,
+        options?: LogOptions,
+    ): void;
+    warn(
+        message: string,
+        metadata?: Record<string, unknown>,
+        options?: LogOptions,
+    ): void;
+    error(
+        message: string,
+        error?: Error | unknown,
+        metadata?: Record<string, unknown>,
+    ): void;
+    debug(
+        message: string,
+        metadata?: Record<string, unknown>,
+        options?: LogOptions,
+    ): void;
 
-    // Métodos específicos para HTTP logging
-    logRequest(req: { method: string; url: string; body?: any; headers?: any }): void;
-    logResponse(res: { statusCode: number; body?: any; headers?: any }): void;
+    logRequest(req: {
+        method: string;
+        url: string;
+        body?: Record<string, unknown>;
+        headers?: Record<string, string>;
+    }): void;
+    logResponse(res: {
+        statusCode: number;
+        body?: Record<string, unknown>;
+        headers?: Record<string, string>;
+    }): void;
 }

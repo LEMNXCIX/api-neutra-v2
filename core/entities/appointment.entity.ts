@@ -35,35 +35,35 @@ export interface Appointment {
     total: number;
 
     // Populated relations (optional)
-    user?: any;
-    service?: any;
-    staff?: any;
-    coupon?: any;
+    user?: {
+        id: string;
+        name: string;
+        email: string;
+        phone?: string;
+        pushToken?: string;
+    };
+    service?: { id: string; name: string; duration: number; price: number };
+    staff?: { id: string; name: string; email?: string; avatar?: string };
+    coupon?: { id: string; code: string; type: string; value: number };
 }
 
-export interface CreateAppointmentDTO {
-    userId: string;
-    serviceId: string;
-    staffId: string;
-    startTime: Date;
-    notes?: string;
-    couponCode?: string;
+export function isCancellable(status: AppointmentStatus): boolean {
+    return (
+        status === AppointmentStatus.PENDING ||
+        status === AppointmentStatus.CONFIRMED
+    );
 }
 
-export interface UpdateAppointmentDTO {
-    startTime?: Date;
-    serviceId?: string;
-    staffId?: string;
-    status?: AppointmentStatus;
-    notes?: string;
-    cancellationReason?: string;
+export function isModifiable(status: AppointmentStatus): boolean {
+    return (
+        status !== AppointmentStatus.COMPLETED &&
+        status !== AppointmentStatus.CANCELLED
+    );
 }
 
-export interface AppointmentFilters {
-    userId?: string;
-    staffId?: string;
-    serviceId?: string;
-    status?: AppointmentStatus;
-    startDate?: Date;
-    endDate?: Date;
+export function hasStarted(status: AppointmentStatus): boolean {
+    return (
+        status === AppointmentStatus.IN_PROGRESS ||
+        status === AppointmentStatus.COMPLETED
+    );
 }

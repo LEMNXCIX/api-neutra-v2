@@ -1,16 +1,26 @@
-import { IOrderRepository } from '@/core/repositories/order.repository.interface';
-import { GetCartUseCase } from '@/core/application/cart/get-cart.use-case';
-import { ClearCartUseCase } from '@/core/application/cart/clear-cart.use-case';
-import { CreateOrderDTO } from '@/core/entities/order.entity';
-import { BusinessErrorCodes } from '@/types/error-codes';
-import { IProductRepository } from '@/core/repositories/product.repository.interface';
-import { ICouponRepository } from '@/core/repositories/coupon.repository.interface';
-import { ILogger } from '@/core/providers/logger.interface';
-import { IEmailService } from '@/core/ports/email.port';
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
-import { AppError } from '@/types/api-response';
+import { IOrderRepository } from "@/core/repositories/order.repository.interface";
+import { GetCartUseCase } from "@/core/application/cart/get-cart.use-case";
+import { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
+import { CreateOrderDTO } from "@/core/application/dtos/requests/order.request";
+import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import { IProductRepository } from "@/core/repositories/product.repository.interface";
+import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
+import { IEmailService } from "@/core/ports/email.port";
+import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { IConfigProvider } from "@/core/providers/config-provider.interface";
+import { Order } from "@/core/entities/order.entity";
+
+interface CartProductItem {
+    id: string;
+    name: string;
+    price: number;
+    image: string;
+    description?: string;
+    stock: number;
+    amount: number;
+}
 
 export class CreateOrderUseCase {
     constructor(
@@ -20,100 +30,103 @@ export class CreateOrderUseCase {
         private productRepository: IProductRepository,
         private couponRepository: ICouponRepository,
         private userRepository: IUserRepository,
-        private logger: ILogger,
         private emailService: IEmailService,
-        private featureRepository: IFeatureRepository
-    ) { }
+        private featureRepository: IFeatureRepository,
+        private configProvider: IConfigProvider,
+    ) {}
 
-    async execute(tenantId: string, userId: string, couponId?: string): Promise<UseCaseResult> {
-        this.logger.info('CreateOrder - Executing', { userId, couponId });
-
+    async execute(
+        tenantId: string,
+        userId: string,
+        couponId?: string,
+    ): Promise<UseCaseResult> {
         let cartResponse;
         try {
             cartResponse = await this.getCartUseCase.execute(tenantId, userId);
-        } catch (error: any) {
-            if (error instanceof AppError && error.statusCode === 404) {
-                this.logger.warn('CreateOrder - Cart not found (empty)', { userId });
-                throw new AppError('Tu carrito esta vacío, no puedes generar una orden.', 422, BusinessErrorCodes.CART_EMPTY);
+        } catch (error: unknown) {
+            if (
+                error instanceof Error &&
+                "statusCode" in error &&
+                (error as { statusCode: number }).statusCode === 404
+            ) {
+                throw new BusinessRuleViolationError(
+                    "Tu carrito esta vacío, no puedes generar una orden.",
+                    "CART_EMPTY",
+                );
             }
             throw error;
         }
 
-        if (!cartResponse.success || !cartResponse.data || (Array.isArray(cartResponse.data) && cartResponse.data.length === 0)) {
-            this.logger.warn('CreateOrder - Cart is empty', { userId });
-            throw new AppError('Tu carrito esta vacío, no puedes generar una orden.', 422, BusinessErrorCodes.CART_EMPTY);
+        if (
+            !cartResponse.success ||
+            !cartResponse.data ||
+            (Array.isArray(cartResponse.data) && cartResponse.data.length === 0)
+        ) {
+            throw new BusinessRuleViolationError(
+                "Tu carrito esta vacío, no puedes generar una orden.",
+                "CART_EMPTY",
+            );
         }
 
-        const cartItems = cartResponse.data as any[];
-        this.logger.info('CreateOrder - Cart items count', { count: cartItems.length });
+        const cartItems = cartResponse.data as CartProductItem[];
 
         const orderData: CreateOrderDTO = {
             userId,
-            items: cartItems.map((item: any) => ({
+            items: cartItems.map((item: CartProductItem) => ({
                 productId: item.id,
                 amount: item.amount,
-                price: parseFloat(item.price)
+                price: parseFloat(String(item.price)),
             })),
-            couponId
+            couponId,
         };
 
-        this.logger.info('CreateOrder - Creating order', { orderData }, { includePayload: true });
         const order = await this.orderRepository.create(tenantId, orderData);
 
-        // Increment coupon usage if coupon was used
         if (couponId) {
-            this.logger.info('CreateOrder - Incrementing coupon usage', { couponId });
             await this.couponRepository.incrementUsage(tenantId, couponId);
         }
 
-        // Decrement stock for each product in the order
-        this.logger.info('CreateOrder - Updating product stock');
         for (const item of cartItems) {
-            const product = await this.productRepository.findById(tenantId, item.id);
+            const product = await this.productRepository.findById(
+                tenantId,
+                item.id,
+            );
             if (product) {
                 const newStock = product.stock - item.amount;
-                this.logger.debug(`Product ${item.id}: ${product.stock} -> ${newStock}`);
-                await this.productRepository.update(tenantId, item.id, { stock: newStock });
+                await this.productRepository.update(tenantId, item.id, {
+                    stock: newStock,
+                });
             }
         }
 
-        this.logger.info('CreateOrder - Clearing cart', { userId });
         await this.clearCartUseCase.execute(tenantId, userId);
 
-        this.logger.info('CreateOrder - Success', { orderId: order.id }, { includeResponse: true });
+        this.sendOrderConfirmation(tenantId, userId, order).catch(() => {});
 
-        // Send order confirmation email asynchronously
-        this.sendOrderConfirmation(tenantId, userId, order).catch((err: any) => {
-            this.logger.error('Failed to send order confirmation email', { orderId: order.id, error: err.message });
-        });
-
-        return Success(order, 'Se ha generado su orden');
+        return Success(order, "Se ha generado su orden");
     }
 
-    private async sendOrderConfirmation(tenantId: string, userId: string, order: any): Promise<void> {
-        try {
-            const features = await this.featureRepository.getTenantFeatureStatus(tenantId);
-            if (!features['EMAIL_NOTIFICATIONS']) {
-                this.logger.info('Skipping order confirmation email: EMAIL_NOTIFICATIONS feature disabled', { tenantId });
-                return;
-            }
-
-            const user = await this.userRepository.findById(userId);
-            if (!user || !user.email) {
-                this.logger.warn('Cannot send order confirmation: user email not found', { userId });
-                return;
-            }
-
-            await this.emailService.sendOrderConfirmation(user.email, order, {
-                tenantName: 'Neutra', 
-                supportEmail: process.env.SMTP_FROM || 'support@neutra.com',
-                websiteUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
-                primaryColor: '#000000',
-            });
-            this.logger.info('Order confirmation email sent successfully', { orderId: order.id, email: user.email });
-        } catch (error: any) {
-            this.logger.error('Order confirmation email failed', { orderId: order.id, error: error.message });
-            throw error;
+    private async sendOrderConfirmation(
+        tenantId: string,
+        userId: string,
+        order: Order,
+    ): Promise<void> {
+        const features =
+            await this.featureRepository.getTenantFeatureStatus(tenantId);
+        if (!features["EMAIL_NOTIFICATIONS"]) {
+            return;
         }
+
+        const user = await this.userRepository.findById(userId);
+        if (!user || !user.email) {
+            return;
+        }
+
+        await this.emailService.sendOrderConfirmation(user.email, order, {
+            tenantName: "Neutra",
+            supportEmail: this.configProvider.getSmtpFrom(),
+            websiteUrl: this.configProvider.getFrontendUrl(),
+            primaryColor: "#000000",
+        });
     }
 }

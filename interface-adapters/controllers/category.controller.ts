@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
 import { CreateCategoryUseCase } from "@/core/application/categories/create-category.use-case";
 import { GetCategoriesUseCase } from "@/core/application/categories/get-categories.use-case";
 import { UpdateCategoryUseCase } from "@/core/application/categories/update-category.use-case";
@@ -8,6 +7,7 @@ import { GetCategoryStatsUseCase } from "@/core/application/categories/get-categ
 
 import { CategoryType } from "@/core/entities/category.entity";
 import { CategoryPresenter } from "@/core/presenters/category.presenter";
+import { present } from "@/core/utils/use-case-result";
 
 export class CategoryController {
     constructor(
@@ -19,21 +19,18 @@ export class CategoryController {
     ) {}
 
     create = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.createCategoryUseCase.execute(
             tenantId,
             req.body,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? CategoryPresenter.toResponseList(result.data) as any
-      : CategoryPresenter.toResponse(result.data) as any;
-        }
-        return res.status(201).json(result);
+        return res
+            .status(201)
+            .json(present(result, CategoryPresenter.toResponse));
     };
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const page = req.query.page
             ? parseInt(req.query.page as string)
             : undefined;
@@ -48,54 +45,39 @@ export class CategoryController {
             limit,
             type,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? CategoryPresenter.toResponseList(result.data) as any
-      : CategoryPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, CategoryPresenter.toResponseList));
     };
 
     getById = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.getCategoriesUseCase.executeById(
             tenantId,
             id,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? CategoryPresenter.toResponseList(result.data) as any
-      : CategoryPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, CategoryPresenter.toResponse));
     };
 
     update = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.updateCategoryUseCase.execute(
             tenantId,
             id,
             req.body,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? CategoryPresenter.toResponseList(result.data) as any
-      : CategoryPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, CategoryPresenter.toResponse));
     };
 
     delete = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.deleteCategoryUseCase.execute(tenantId, id);
         return res.json(result);
     };
 
     getStats = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.getCategoryStatsUseCase.execute(tenantId);
         return res.json(result);
     };

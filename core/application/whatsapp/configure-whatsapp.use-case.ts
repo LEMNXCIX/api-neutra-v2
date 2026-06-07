@@ -1,44 +1,73 @@
-import { IWhatsAppConfigRepository } from '@/core/repositories/whatsapp-config.repository.interface';
-import { WhatsAppConfig } from '@/core/entities/whatsapp-config.entity';
-import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
+import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
+import { WhatsAppConfig } from "@/core/entities/whatsapp-config.entity";
+import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { UseCaseResult, Success } from "@/core/utils/use-case-result";
+import { ConfigureWhatsAppDTO } from "@/core/application/dtos/requests/whatsapp.request";
+import {
+    ValidationError,
+    ForbiddenError,
+} from "@/core/domain/errors/domain-errors";
 
 export class ConfigureWhatsAppUseCase {
     constructor(
         private whatsappConfigRepository: IWhatsAppConfigRepository,
-        private featureRepository: IFeatureRepository
-    ) { }
+        private featureRepository: IFeatureRepository,
+    ) {}
 
-    async execute(tenantId: string, configData: Partial<WhatsAppConfig>): Promise<WhatsAppConfig> {
-        // Check if tenant has WHATSAPP_NOTIFICATIONS feature enabled
-        const features = await this.featureRepository.getTenantFeatureStatus(tenantId);
-        if (!features['WHATSAPP_NOTIFICATIONS']) {
-            throw new Error('Upgrade required: WHATSAPP_NOTIFICATIONS feature is not enabled for this tenant.');
+    async execute(
+        tenantId: string,
+        configData: ConfigureWhatsAppDTO,
+    ): Promise<UseCaseResult<WhatsAppConfig>> {
+        if (!tenantId) {
+            throw new ValidationError(
+                "Tenant ID is required",
+                "MISSING_REQUIRED_FIELDS",
+            );
+        }
+        const features =
+            await this.featureRepository.getTenantFeatureStatus(tenantId);
+        if (!features["WHATSAPP_NOTIFICATIONS"]) {
+            throw new ForbiddenError(
+                "Upgrade required: WHATSAPP_NOTIFICATIONS feature is not enabled for this tenant.",
+                "FORBIDDEN",
+            );
         }
 
-        const existingConfig = await this.whatsappConfigRepository.findByTenantId(tenantId);
+        const existingConfig =
+            await this.whatsappConfigRepository.findByTenantId(tenantId);
 
         if (existingConfig) {
-            // Update existing
-            return this.whatsappConfigRepository.update(tenantId, configData);
+            const updated = await this.whatsappConfigRepository.update(
+                tenantId,
+                configData,
+            );
+            return Success(updated, "WhatsApp config updated successfully");
         } else {
-            // Create new config
-            // Ensure required fields are present or defaults are handled
-            if (!configData.phoneNumberId || !configData.businessAccountId || !configData.accessToken) {
-                throw new Error("Missing required WhatsApp credentials");
+            if (
+                !configData.phoneNumberId ||
+                !configData.businessAccountId ||
+                !configData.accessToken
+            ) {
+                throw new ValidationError(
+                    "Missing required WhatsApp credentials",
+                    "MISSING_REQUIRED_FIELDS",
+                );
             }
 
-            return this.whatsappConfigRepository.create({
+            const created = await this.whatsappConfigRepository.create({
                 tenantId,
                 phoneNumberId: configData.phoneNumberId!,
                 businessAccountId: configData.businessAccountId!,
                 accessToken: configData.accessToken!,
-                webhookVerifyToken: configData.webhookVerifyToken || 'default_token', // Should be validated
+                webhookVerifyToken:
+                    configData.webhookVerifyToken || "default_token",
                 enabled: configData.enabled ?? false,
                 notificationsEnabled: configData.notificationsEnabled ?? true,
                 botEnabled: configData.botEnabled ?? false,
                 templates: configData.templates,
-                botConfig: configData.botConfig
+                botConfig: configData.botConfig,
             });
+            return Success(created, "WhatsApp config created successfully");
         }
     }
 }

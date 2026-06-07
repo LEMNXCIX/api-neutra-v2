@@ -1,15 +1,17 @@
-import { IProductRepository } from '@/core/repositories/product.repository.interface';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { AppError } from '@/types/api-response';
-import { ResourceErrorCodes } from '@/types/error-codes';
+import { IProductRepository } from "@/core/repositories/product.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 export class GetProductUseCase {
-    constructor(private productRepository: IProductRepository) { }
+    constructor(private productRepository: IProductRepository) {}
 
-    async execute(tenantId: string | undefined, id: string): Promise<UseCaseResult> {
+    async execute(
+        tenantId: string | undefined,
+        id: string,
+    ): Promise<UseCaseResult> {
         const product = await this.productRepository.findById(tenantId, id);
         if (!product) {
-            throw new AppError("Product not found", 404, ResourceErrorCodes.NOT_FOUND);
+            throw new EntityNotFoundError("Product", id);
         }
         return Success(product);
     }

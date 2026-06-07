@@ -1,6 +1,3 @@
-
-import { ErrorCode } from '@/types/error-codes';
-
 /**
  * Clean UseCaseResult without HTTP infrastructure concerns.
  */
@@ -10,7 +7,7 @@ export interface UseCaseResult<T = any> {
     data?: T;
     // For expected validation errors that don't necessarily throw immediately
     errors?: Array<{
-        code: ErrorCode;
+        code: string;
         message: string;
         field?: string;
     }>;
@@ -19,8 +16,23 @@ export interface UseCaseResult<T = any> {
 /**
  * Success helper for Use Cases
  */
-export const Success = <T>(data?: T, message: string = ''): UseCaseResult<T> => ({
+export const Success = <T>(
+    data?: T,
+    message: string = "",
+): UseCaseResult<T> => ({
     success: true,
     message,
-    data
+    data,
+});
+
+export const present = <T, R>(
+    result: UseCaseResult<T>,
+    presenter: (data: T) => R,
+): UseCaseResult<R> => ({
+    success: result.success,
+    message: result.message,
+    ...(result.success && result.data !== undefined
+        ? { data: presenter(result.data) }
+        : {}),
+    ...(!result.success && result.errors ? { errors: result.errors } : {}),
 });

@@ -1,31 +1,24 @@
 import { Request, Response } from "express";
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
-import { IServiceRepository } from "@/core/repositories/service.repository.interface";
-import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
 import { CreateAppointmentUseCase } from "@/core/application/booking/create-appointment.use-case";
 import { GetAppointmentsUseCase } from "@/core/application/booking/get-appointments.use-case";
+import { GetAppointmentByIdUseCase } from "@/core/application/booking/get-appointment-by-id.use-case";
+import { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appointment.use-case";
 import { GetAvailabilityUseCase } from "@/core/application/booking/get-availability.use-case";
 import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
 import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";
 import { AppointmentStatus } from "@/core/entities/appointment.entity";
-import { ILogger } from "@/core/providers/logger.interface";
-import { IQueueProvider } from "@/core/providers/queue-provider.interface";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import { AppointmentPresenter } from "@/core/presenters/appointment.presenter";
-import { Success } from "@/core/utils/use-case-result";
+import { present } from "@/core/utils/use-case-result";
 
 export class AppointmentController {
     constructor(
         private createAppointmentUseCase: CreateAppointmentUseCase,
         private getAppointmentsUseCase: GetAppointmentsUseCase,
+        private getAppointmentByIdUseCase: GetAppointmentByIdUseCase,
+        private cancelAppointmentUseCase: CancelAppointmentUseCase,
         private getAvailabilityUseCase: GetAvailabilityUseCase,
         private updateAppointmentStatusUseCase: UpdateAppointmentStatusUseCase,
         private deleteAppointmentUseCase: DeleteAppointmentUseCase,
-        private appointmentRepository: IAppointmentRepository,
-        private featureRepository: IFeatureRepository,
-        private queueProvider: IQueueProvider,
-        private logger: ILogger,
     ) {}
 
     async create(req: Request, res: Response) {
@@ -34,42 +27,20 @@ export class AppointmentController {
             (req.headers["x-original-origin"] as string) ||
             req.headers.origin ||
             `${req.protocol}://${req.get("host")}`;
-        this.logger.info(
-            `[AppointmentController] Create origin captured: ${origin}`,
-            {
-                xOriginalOrigin: req.headers["x-original-origin"],
-                originHeader: req.headers.origin,
-                host: req.get("host"),
-            },
-        );
         const result = await this.createAppointmentUseCase.execute(
             tenantId,
             req.body,
             origin,
         );
-        if (result.success && result.data) {
-            result.data = AppointmentPresenter.toResponse(result.data) as any;
-        }
-        return res.status(201).json(result);
+        return res
+            .status(201)
+            .json(present(result, AppointmentPresenter.toResponse));
     }
 
     async getAll(req: Request, res: Response) {
-        let tenantId = req.tenantId;
-        const user = req.user as any;
+        const tenantId = req.tenantId;
 
-        // Super Admin Bypass
-        if (user && user.role && user.role.name === "SUPER_ADMIN") {
-            if (req.query.tenantId) {
-                tenantId = req.query.tenantId as string;
-                if (tenantId === "all") tenantId = undefined; // Fetch all tenants
-            }
-        } else if (!tenantId) {
-            return res
-                .status(400)
-                .json({ success: false, message: "Tenant ID required" });
-        }
-
-        const filters: any = {};
+        const filters: Record<string, unknown> = {};
 
         if (req.query.userId) filters.userId = req.query.userId as string;
         if (req.query.staffId) filters.staffId = req.query.staffId as string;
@@ -83,34 +54,21 @@ export class AppointmentController {
             filters.endDate = new Date(req.query.endDate as string);
 
         const result = await this.getAppointmentsUseCase.execute(
-            tenantId!,
+            tenantId,
             filters,
         );
-        if (result.success && result.data) {
-            result.data = AppointmentPresenter.toResponseList(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, AppointmentPresenter.toResponseList));
     }
 
     async getById(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
 
-        const appointment = await this.appointmentRepository.findById(
+        const result = await this.getAppointmentByIdUseCase.execute(
             tenantId,
             id,
-            true,
         );
-
-        if (!appointment) {
-            return res.status(404).json({
-                success: false,
-                message: "Appointment not found",
-            });
-        }
-
-        const data = AppointmentPresenter.toResponse(appointment);
-        return res.json(Success(data, "Appointment retrieved successfully"));
+        return res.json(present(result, AppointmentPresenter.toResponse));
     }
 
     async cancel(req: Request, res: Response) {
@@ -118,48 +76,18 @@ export class AppointmentController {
         const { id } = req.params;
         const { reason } = req.body;
 
-        const appointment = await this.appointmentRepository.update(
+        const result = await this.cancelAppointmentUseCase.execute(
             tenantId,
             id,
-            {
-                status: AppointmentStatus.CANCELLED,
-                cancellationReason: reason,
-            },
+            reason,
         );
-
-        // 2. Check if EMAIL_NOTIFICATIONS feature is enabled
-        const features =
-            await this.featureRepository.getTenantFeatureStatus(tenantId);
-        if (features["EMAIL_NOTIFICATIONS"]) {
-            // Enqueue notification
-            await this.queueProvider.enqueue("notifications", {
-                type: "CANCELLED",
-                appointmentId: id,
-                tenantId: tenantId,
-                reason: reason,
-            });
-        } else {
-            this.logger.info(
-                "Skipping email notification: EMAIL_NOTIFICATIONS feature disabled",
-                { tenantId },
-            );
-        }
-
-        const data = AppointmentPresenter.toResponse(appointment);
-        return res.json(Success(data, "Appointment cancelled successfully"));
+        return res.json(present(result, AppointmentPresenter.toResponse));
     }
 
     async updateStatus(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
         const { status } = req.body;
-
-        if (!status) {
-            return res.status(400).json({
-                success: false,
-                message: "Status is required",
-            });
-        }
 
         const origin =
             (req.headers["x-original-origin"] as string) ||
@@ -171,23 +99,12 @@ export class AppointmentController {
             status as AppointmentStatus,
             origin,
         );
-        if (result.success && result.data) {
-            result.data = AppointmentPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, AppointmentPresenter.toResponse));
     }
 
     async getAvailability(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { staffId, serviceId, date, timezoneOffset } = req.query;
-
-        if (!staffId || !serviceId || !date) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Missing required parameters: staffId, serviceId, date",
-            });
-        }
 
         const result = await this.getAvailabilityUseCase.execute(tenantId, {
             staffId: staffId as string,

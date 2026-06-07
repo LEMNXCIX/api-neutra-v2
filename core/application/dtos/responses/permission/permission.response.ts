@@ -1,3 +1,5 @@
+import { Permission } from "@/core/entities/permission.entity";
+
 export interface IPermissionResponse {
     id: string;
     name: string;
@@ -7,7 +9,7 @@ export interface IPermissionResponse {
 }
 
 export class PermissionResponse {
-    static fromEntity(permission: any): IPermissionResponse {
+    static fromEntity(permission: Permission): IPermissionResponse {
         return {
             id: permission.id,
             name: permission.name,

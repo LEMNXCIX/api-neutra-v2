@@ -1,9 +1,5 @@
 import { Request, Response } from "express";
-import { IOrderRepository } from "@/core/repositories/order.repository.interface";
 import { OrderStatus } from "@/core/entities/order.entity";
-import { ICartRepository } from "@/core/repositories/cart.repository.interface";
-import { IProductRepository } from "@/core/repositories/product.repository.interface";
-import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
 import { CreateOrderUseCase } from "@/core/application/order/create-order.use-case";
 import { GetOrderUseCase } from "@/core/application/order/get-order.use-case";
 import { GetUserOrdersUseCase } from "@/core/application/order/get-user-orders.use-case";
@@ -12,15 +8,9 @@ import { GetOrdersPaginatedUseCase } from "@/core/application/order/get-orders-p
 import { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
 import { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
 import { GetOrderStatusesUseCase } from "@/core/application/order/get-order-statuses.use-case";
-import { GetCartUseCase } from "@/core/application/cart/get-cart.use-case";
-import { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
 import { GetOrderStatsUseCase } from "@/core/application/order/get-order-stats.use-case";
-
-import { ILogger } from "@/core/providers/logger.interface";
-import { IEmailService } from "@/core/ports/email.port";
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import { OrderPresenter } from "@/core/presenters/order.presenter";
+import { present } from "@/core/utils/use-case-result";
 
 export class OrderController {
     constructor(
@@ -33,9 +23,7 @@ export class OrderController {
         private updateOrderUseCase: UpdateOrderUseCase,
         private getOrderStatusesUseCase: GetOrderStatusesUseCase,
         private getOrderStatsUseCase: GetOrderStatsUseCase,
-        private logger: ILogger,
     ) {
-        // Bind methods
         this.create = this.create.bind(this);
         this.getOne = this.getOne.bind(this);
         this.getOneById = this.getOneById.bind(this);
@@ -48,12 +36,7 @@ export class OrderController {
     }
 
     async getStats(req: Request, res: Response) {
-        this.logger.info("Get Order Stats Request", {
-            userId: (req as any).user?.id,
-            query: req.query,
-        });
-
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const startDate = req.query.startDate
             ? new Date(req.query.startDate as string)
             : undefined;
@@ -70,110 +53,53 @@ export class OrderController {
     }
 
     async getStatuses(req: Request, res: Response) {
-        this.logger.info("Get Order Statuses Request", {
-            userId: (req as any).user?.id,
-        });
-
         const result = this.getOrderStatusesUseCase.execute();
         return res.json(result);
     }
 
     async create(req: Request, res: Response) {
-        this.logger.logRequest({
-            method: req.method,
-            url: req.originalUrl,
-            body: req.body,
-            headers: req.headers,
-        });
-        this.logger.info("Create Order Request", {
-            userId: (req as any).user?.id,
-        });
-
-        const tenantId = (req as any).tenantId;
-        const userId = (req as any).user.id;
+        const tenantId = req.tenantId!;
+        const userId = req.user!.id;
         const { couponId } = req.body;
         const result = await this.createOrderUseCase.execute(
             tenantId,
             userId,
             couponId,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? OrderPresenter.toResponseList(result.data) as any
-      : OrderPresenter.toResponse(result.data) as any;
-        }
-        return res.status(201).json(result);
+        return res.status(201).json(present(result, OrderPresenter.toResponse));
     }
 
     async getOne(req: Request, res: Response) {
-        this.logger.info("Get One Order Request", {
-            userId: (req as any).user?.id,
-            body: req.body,
-            query: req.query,
-        });
-
-        const tenantId = (req as any).tenantId;
-        const { orderId } = req.body; // Or params, keeping consistent with old route for now
+        const tenantId = req.tenantId!;
+        const { orderId } = req.body;
         const result = await this.getOrderUseCase.execute(tenantId, orderId);
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? OrderPresenter.toResponseList(result.data) as any
-      : OrderPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, OrderPresenter.toResponse));
     }
 
     async getOneById(req: Request, res: Response) {
-        this.logger.info("Get One Order By ID Request", {
-            userId: (req as any).user?.id,
-            params: req.params,
-        });
-
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.getOrderUseCase.execute(tenantId, id);
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? OrderPresenter.toResponseList(result.data) as any
-      : OrderPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, OrderPresenter.toResponse));
     }
 
     async getByUser(req: Request, res: Response) {
-        this.logger.info("Get User Orders Request", {
-            userId: (req as any).user?.id,
-            query: req.query,
-        });
-
-        const tenantId = (req as any).tenantId;
-        const userId = (req as any).user.id;
+        const tenantId = req.tenantId!;
+        const userId = req.user!.id;
         const status = req.query.status as OrderStatus | undefined;
         const result = await this.getUserOrdersUseCase.execute(
             tenantId,
             userId,
             status,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? OrderPresenter.toResponseList(result.data) as any
-      : OrderPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, OrderPresenter.toResponseList));
     }
 
     async getAll(req: Request, res: Response) {
-        this.logger.info("Get All Orders Request", {
-            userId: (req as any).user?.id,
-            query: req.query,
-        });
-
-        const tenantId = (req as any).tenantId;
-        // Check if pagination/filtering query params are present
+        const tenantId = req.tenantId!;
         const { search, status, page, limit } = req.query;
 
         if (page || limit || search || status) {
-            // Use paginated endpoint
             const result = await this.getOrdersPaginatedUseCase.execute(
                 tenantId,
                 {
@@ -189,69 +115,32 @@ export class OrderController {
                         : undefined,
                 },
             );
-            if (result.success && result.data) {
-      result.data = Array.isArray(result.data)
-        ? OrderPresenter.toResponseList(result.data) as any
-        : OrderPresenter.toResponse(result.data) as any;
-    }
-    return res.json(result);
-  } else {
-    // Use original endpoint for backward compatibility
-    const result = await this.getAllOrdersUseCase.execute(tenantId);
-    if (result.success && result.data) {
-      result.data = Array.isArray(result.data)
-        ? OrderPresenter.toResponseList(result.data) as any
-        : OrderPresenter.toResponse(result.data) as any;
-            }
-            return res.json(result);
+            return res.json(present(result, OrderPresenter.toResponseList));
+        } else {
+            const result = await this.getAllOrdersUseCase.execute(tenantId);
+            return res.json(present(result, OrderPresenter.toResponseList));
         }
     }
 
     async changeStatus(req: Request, res: Response) {
-        this.logger.info("Change Status Request", {
-            userId: (req as any).user?.id,
-            body: req.body,
-            extracted: {
-                idOrder: req.body.idOrder,
-                status: req.body.status,
-            },
-        });
-
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { idOrder, status } = req.body;
         const result = await this.changeOrderStatusUseCase.execute(
             tenantId,
             idOrder,
             status,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? OrderPresenter.toResponseList(result.data) as any
-      : OrderPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, OrderPresenter.toResponse));
     }
 
     async update(req: Request, res: Response) {
-        this.logger.info("Update Order Request", {
-            userId: (req as any).user?.id,
-            params: req.params,
-            body: req.body,
-            orderId: req.params.id,
-        });
-
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.updateOrderUseCase.execute(
             tenantId,
             id,
             req.body,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? OrderPresenter.toResponseList(result.data) as any
-      : OrderPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, OrderPresenter.toResponse));
     }
 }

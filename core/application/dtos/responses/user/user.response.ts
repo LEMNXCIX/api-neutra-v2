@@ -1,3 +1,4 @@
+import { User } from "@/core/entities/user.entity";
 import { IUserPublicResponse } from "./user-public.response";
 
 export interface IUserResponse extends IUserPublicResponse {
@@ -18,7 +19,7 @@ export interface IUserResponse extends IUserPublicResponse {
 }
 
 export class UserResponse {
-    static fromEntity(user: any): IUserResponse {
+    static fromEntity(user: User): IUserResponse {
         return {
             id: user.id,
             name: user.name,
@@ -40,24 +41,26 @@ export class UserResponse {
                       slug: user.tenant.slug,
                   }
                 : undefined,
-            tenants: user.tenants?.map((ut: any) => ({
-                tenantId: ut.tenantId,
-                roleId: ut.roleId,
-                role: ut.role
-                    ? {
-                          id: ut.role.id,
-                          name: ut.role.name,
-                          level: ut.role.level,
-                      }
-                    : undefined,
-                tenant: ut.tenant
-                    ? {
-                          id: ut.tenant.id,
-                          name: ut.tenant.name,
-                          slug: ut.tenant.slug,
-                      }
-                    : undefined,
-            })),
+            tenants: user.tenants?.map(
+                (ut: NonNullable<User["tenants"]>[number]) => ({
+                    tenantId: ut.tenantId,
+                    roleId: ut.roleId,
+                    role: ut.role
+                        ? {
+                              id: ut.role.id,
+                              name: ut.role.name,
+                              level: ut.role.level,
+                          }
+                        : undefined,
+                    tenant: ut.tenant
+                        ? {
+                              id: ut.tenant.id,
+                              name: ut.tenant.name,
+                              slug: ut.tenant.slug,
+                          }
+                        : undefined,
+                }),
+            ),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };

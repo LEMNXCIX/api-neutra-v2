@@ -1,3 +1,5 @@
+import { Product } from "@/core/entities/product.entity";
+
 export interface IProductResponse {
     id: string;
     name: string;
@@ -9,11 +11,11 @@ export interface IProductResponse {
     ownerId: string;
     createdAt?: Date;
     updatedAt?: Date;
-    categories?: any[];
+    categories?: Array<{ id: string; name: string }>;
 }
 
 export class ProductResponse {
-    static fromEntity(product: any): IProductResponse {
+    static fromEntity(product: Product): IProductResponse {
         return {
             id: product.id,
             name: product.name,

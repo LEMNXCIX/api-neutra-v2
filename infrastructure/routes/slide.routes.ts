@@ -1,11 +1,13 @@
-import { Application, Router } from 'express';
-import { authenticate } from '@/middleware/authenticate.middleware';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { SlideController } from '@/interface-adapters/controllers/slide.controller';
+import { Application, Router } from "express";
+import { authenticate } from "@/middleware/authenticate.middleware";
+import { optionalAuthenticate } from "@/middleware/optional-authenticate.middleware";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
+import { SlideController } from "@/interface-adapters/controllers/slide.controller";
 
 function slide(app: Application, slideController: SlideController) {
     const router = Router();
-    app.use('/api/slide', router);
+    app.use("/api/slide", router);
 
     /**
      * @swagger
@@ -65,7 +67,12 @@ function slide(app: Application, slideController: SlideController) {
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('slides:write'), slideController.create);
+    router.post(
+        "/",
+        authenticate,
+        requirePermission("slides:write"),
+        slideController.create,
+    );
 
     /**
      * @swagger
@@ -106,7 +113,12 @@ function slide(app: Application, slideController: SlideController) {
      *       404:
      *         description: Slide not found
      */
-    router.put('/:id', authenticate, requirePermission('slides:write'), slideController.update);
+    router.put(
+        "/:id",
+        authenticate,
+        requirePermission("slides:write"),
+        slideController.update,
+    );
 
     /**
      * @swagger
@@ -124,7 +136,12 @@ function slide(app: Application, slideController: SlideController) {
      *               items:
      *                 $ref: '#/components/schemas/Slide'
      */
-    router.get('/', slideController.getAll);
+    router.get(
+        "/",
+        optionalAuthenticate,
+        resolveSuperAdminTenant,
+        slideController.getAll,
+    );
 
     /**
      * @swagger
@@ -142,7 +159,12 @@ function slide(app: Application, slideController: SlideController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/stats', authenticate, requirePermission('stats:read'), slideController.getStats);
+    router.get(
+        "/stats",
+        authenticate,
+        requirePermission("stats:read"),
+        slideController.getStats,
+    );
 
     /**
      * @swagger
@@ -166,7 +188,7 @@ function slide(app: Application, slideController: SlideController) {
      *       404:
      *         description: Slide not found
      */
-    router.get('/:id', slideController.getById);
+    router.get("/:id", slideController.getById);
 
     /**
      * @swagger
@@ -192,7 +214,12 @@ function slide(app: Application, slideController: SlideController) {
      *       404:
      *         description: Slide not found
      */
-    router.delete('/:id', authenticate, requirePermission('slides:delete'), slideController.delete);
+    router.delete(
+        "/:id",
+        authenticate,
+        requirePermission("slides:delete"),
+        slideController.delete,
+    );
 }
 
 export default slide;

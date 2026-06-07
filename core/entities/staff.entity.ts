@@ -4,46 +4,21 @@
  */
 
 export interface WorkingHours {
-    [day: string]: {
-        start: string; // "09:00"
-        end: string;   // "17:00"
-    } | null; // null = day off
+    [day: string]: { start: string; end: string } | null;
 }
 
 export interface Staff {
     id: string;
-    userId?: string; // Optional link to registered user
+    userId?: string;
     name: string;
     email?: string;
     phone?: string;
     avatar?: string;
     bio?: string;
     active: boolean;
-    workingHours?: any;
-    serviceIds?: string[]; // Array of service IDs this staff can perform
+    workingHours?: WorkingHours;
+    serviceIds?: string[];
     tenantId: string;
     createdAt: Date;
     updatedAt: Date;
-}
-
-export interface CreateStaffDTO {
-    userId?: string;
-    name: string;
-    email?: string;
-    phone?: string;
-    avatar?: string;
-    bio?: string;
-    active?: boolean;
-    workingHours?: WorkingHours;
-}
-
-export interface UpdateStaffDTO {
-    userId?: string;
-    name?: string;
-    email?: string;
-    phone?: string;
-    avatar?: string;
-    bio?: string;
-    active?: boolean;
-    workingHours?: WorkingHours;
 }

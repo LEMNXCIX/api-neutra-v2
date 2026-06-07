@@ -1,11 +1,12 @@
-import { Application, Router } from 'express';
-import { authenticate } from '@/middleware/authenticate.middleware';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { BannerController } from '@/interface-adapters/controllers/banner.controller';
+import { Application, Router } from "express";
+import { authenticate } from "@/middleware/authenticate.middleware";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
+import { BannerController } from "@/interface-adapters/controllers/banner.controller";
 
 function bannerRoutes(app: Application, bannerController: BannerController) {
     const router = Router();
-    app.use('/api/banners', router);
+    app.use("/api/banners", router);
 
     /**
      * @swagger
@@ -56,7 +57,7 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *               items:
      *                 $ref: '#/components/schemas/Banner'
      */
-    router.get('/', bannerController.getActive);
+    router.get("/", bannerController.getActive);
 
     /**
      * @swagger
@@ -80,7 +81,13 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/all/list', authenticate, requirePermission('banners:read'), bannerController.getAll);
+    router.get(
+        "/all/list",
+        authenticate,
+        resolveSuperAdminTenant,
+        requirePermission("banners:read"),
+        bannerController.getAll,
+    );
 
     /**
      * @swagger
@@ -98,7 +105,12 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/stats', authenticate, requirePermission('stats:read'), bannerController.getStats);
+    router.get(
+        "/stats",
+        authenticate,
+        requirePermission("stats:read"),
+        bannerController.getStats,
+    );
 
     /**
      * @swagger
@@ -122,7 +134,7 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       404:
      *         description: Banner not found
      */
-    router.get('/:id', bannerController.getById);
+    router.get("/:id", bannerController.getById);
 
     /**
      * @swagger
@@ -140,7 +152,7 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       200:
      *         description: Impression tracked successfully
      */
-    router.post('/:id/impression', bannerController.trackImpression);
+    router.post("/:id/impression", bannerController.trackImpression);
 
     /**
      * @swagger
@@ -158,7 +170,7 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       200:
      *         description: Click tracked successfully
      */
-    router.post('/:id/click', bannerController.trackClick);
+    router.post("/:id/click", bannerController.trackClick);
 
     /**
      * @swagger
@@ -196,7 +208,12 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('banners:write'), bannerController.create);
+    router.post(
+        "/",
+        authenticate,
+        requirePermission("banners:write"),
+        bannerController.create,
+    );
 
     /**
      * @swagger
@@ -239,7 +256,12 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       404:
      *         description: Banner not found
      */
-    router.put('/:id', authenticate, requirePermission('banners:write'), bannerController.update);
+    router.put(
+        "/:id",
+        authenticate,
+        requirePermission("banners:write"),
+        bannerController.update,
+    );
 
     /**
      * @swagger
@@ -265,7 +287,12 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       404:
      *         description: Banner not found
      */
-    router.delete('/:id', authenticate, requirePermission('banners:delete'), bannerController.delete);
+    router.delete(
+        "/:id",
+        authenticate,
+        requirePermission("banners:delete"),
+        bannerController.delete,
+    );
 }
 
 export default bannerRoutes;

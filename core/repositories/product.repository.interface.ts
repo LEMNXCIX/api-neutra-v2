@@ -1,17 +1,38 @@
-import { Product, CreateProductDTO, UpdateProductDTO } from '@/core/entities/product.entity';
+import { Product } from "@/core/entities/product.entity";
+import {
+    CreateProductDTO,
+    UpdateProductDTO,
+} from "@/core/application/dtos/requests/product.request";
 
 /**
  * Product Repository Interface - Tenant-Scoped
  * All operations are scoped to a specific tenant for data isolation
  */
 export interface IProductRepository {
-    findAll(tenantId: string | undefined, options?: { categoryId?: string }): Promise<Product[]>;
+    findAll(
+        tenantId: string | undefined,
+        options?: { categoryId?: string },
+    ): Promise<Product[]>;
     findById(tenantId: string | undefined, id: string): Promise<Product | null>;
     create(tenantId: string, product: CreateProductDTO): Promise<Product>;
-    update(tenantId: string, id: string, product: UpdateProductDTO): Promise<Product>;
+    update(
+        tenantId: string,
+        id: string,
+        product: UpdateProductDTO,
+    ): Promise<Product>;
     delete(tenantId: string, id: string): Promise<Product>;
     searchByName(tenantId: string, name: string): Promise<Product[]>;
-    getStats(tenantId: string | undefined): Promise<any[]>;
-    getSummaryStats(tenantId: string | undefined): Promise<{ totalProducts: number; totalValue: number; lowStockCount: number; outOfStockCount: number }>;
-    findFirst(tenantId: string, where: Partial<Product>): Promise<Product | null>;
+    getStats(
+        tenantId: string | undefined,
+    ): Promise<{ _id: string; total: number }[]>;
+    getSummaryStats(tenantId: string | undefined): Promise<{
+        totalProducts: number;
+        totalValue: number;
+        lowStockCount: number;
+        outOfStockCount: number;
+    }>;
+    findFirst(
+        tenantId: string,
+        where: Partial<Product>,
+    ): Promise<Product | null>;
 }

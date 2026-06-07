@@ -1,4 +1,4 @@
-import { OrderStatus } from "@/core/entities/order.entity";
+import { Order, OrderItem, OrderStatus } from "@/core/entities/order.entity";
 
 export interface IOrderItemResponse {
     id: string;
@@ -34,12 +34,12 @@ export interface IOrderResponse {
 }
 
 export class OrderResponse {
-    static fromEntity(order: any): IOrderResponse {
+    static fromEntity(order: Order): IOrderResponse {
         return {
             id: order.id,
             userId: order.userId,
             status: order.status,
-            items: order.items?.map((item: any) => ({
+            items: order.items?.map((item: OrderItem) => ({
                 id: item.id,
                 orderId: item.orderId,
                 productId: item.productId,

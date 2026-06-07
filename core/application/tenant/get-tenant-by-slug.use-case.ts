@@ -1,28 +1,26 @@
-import { ITenantRepository } from '@/core/repositories/tenant.repository.interface';
-import { ILogger } from '@/core/providers/logger.interface';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { AppError } from '@/types/api-response';
-import { TenantErrorCodes } from '@/types/error-codes';
+import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 export class GetTenantBySlugUseCase {
-    constructor(
-        private tenantRepository: ITenantRepository,
-        private logger: ILogger
-    ) { }
+    constructor(private tenantRepository: ITenantRepository) {}
 
     async execute(slug: string): Promise<UseCaseResult> {
         const tenant = await this.tenantRepository.findBySlug(slug);
 
         if (!tenant) {
-            throw new AppError('Tenant not found', 404, TenantErrorCodes.TENANT_NOT_FOUND);
+            throw new EntityNotFoundError("Tenant", slug);
         }
 
-        return Success({
-            id: tenant.id,
-            name: tenant.name,
-            slug: tenant.slug,
-            type: tenant.type,
-            active: tenant.active
-        }, 'Tenant found');
+        return Success(
+            {
+                id: tenant.id,
+                name: tenant.name,
+                slug: tenant.slug,
+                type: tenant.type,
+                active: tenant.active,
+            },
+            "Tenant found",
+        );
     }
 }

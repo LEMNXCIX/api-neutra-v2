@@ -1,77 +1,50 @@
-import { IServiceRepository } from '@/core/repositories/service.repository.interface';
-import { ICategoryRepository } from '@/core/repositories/category.repository.interface';
-import { UpdateServiceDTO } from '@/core/entities/service.entity';
-import { ILogger } from '@/core/providers/logger.interface';
-import { ValidationErrorCodes, ResourceErrorCodes } from '@/types/error-codes';
+import { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
+import { UpdateServiceDTO } from "@/core/application/dtos/requests/service.request";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import {
+    EntityNotFoundError,
+    ValidationError,
+    BusinessRuleViolationError,
+} from "@/core/domain/errors/domain-errors";
 
 export class UpdateServiceUseCase {
     constructor(
         private serviceRepository: IServiceRepository,
         private categoryRepository: ICategoryRepository,
-        private logger: ILogger
-    ) { }
+    ) {}
 
-    async execute(tenantId: string, id: string, data: UpdateServiceDTO) {
-        if (data.name === '') {
-            this.logger.warn('UpdateService failed: empty name', { id, data });
-            return {
-                success: false,
-                code: 400,
-                message: 'Name cannot be empty',
-                errors: [{
-                    code: ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
-                    message: 'Service name is required',
-                }],
-            };
+    async execute(
+        tenantId: string,
+        id: string,
+        data: UpdateServiceDTO,
+    ): Promise<UseCaseResult> {
+        if (data.name === "") {
+            throw new ValidationError("Name cannot be empty");
         }
 
-        try {
-            const existingService = await this.serviceRepository.findById(tenantId, id);
-            if (!existingService) {
-                return {
-                    success: false,
-                    code: 404,
-                    message: 'Service not found',
-                };
-            }
-
-            if (data.categoryId) {
-                const category = await this.categoryRepository.findById(tenantId, data.categoryId);
-                if (!category) {
-                    this.logger.warn('UpdateService failed: category not found or does not belong to tenant', { tenantId, id, categoryId: data.categoryId });
-                    return {
-                        success: false,
-                        code: 400,
-                        message: 'Invalid category',
-                        errors: [{
-                            code: ResourceErrorCodes.NOT_FOUND,
-                            message: 'Category not found or does not belong to your account',
-                        }],
-                    };
-                }
-            }
-
-            const service = await this.serviceRepository.update(tenantId, id, data);
-
-            this.logger.info('Service updated successfully', { serviceId: service.id });
-
-            return {
-                success: true,
-                code: 200,
-                message: 'Service updated successfully',
-                data: service,
-            };
-        } catch (error: any) {
-            this.logger.error('Error updating service', { serviceId: id, error: error.message });
-            return {
-                success: false,
-                code: 500,
-                message: 'Error updating service',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message,
-                }],
-            };
+        const existingService = await this.serviceRepository.findById(
+            tenantId,
+            id,
+        );
+        if (!existingService) {
+            throw new EntityNotFoundError("Service", id);
         }
+
+        if (data.categoryId) {
+            const category = await this.categoryRepository.findById(
+                tenantId,
+                data.categoryId,
+            );
+            if (!category) {
+                throw new BusinessRuleViolationError(
+                    "Category not found or does not belong to your account",
+                );
+            }
+        }
+
+        const service = await this.serviceRepository.update(tenantId, id, data);
+
+        return Success(service, "Service updated successfully");
     }
 }

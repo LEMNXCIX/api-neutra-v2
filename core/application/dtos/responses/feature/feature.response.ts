@@ -1,3 +1,5 @@
+import { Feature } from "@/core/entities/feature.entity";
+
 export interface IFeatureResponse {
     id: string;
     key: string;
@@ -9,7 +11,7 @@ export interface IFeatureResponse {
 }
 
 export class FeatureResponse {
-    static fromEntity(feature: any): IFeatureResponse {
+    static fromEntity(feature: Feature): IFeatureResponse {
         return {
             id: feature.id,
             key: feature.key,

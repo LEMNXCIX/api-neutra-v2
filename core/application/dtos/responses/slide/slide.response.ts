@@ -1,3 +1,5 @@
+import { Slideshow } from "@/core/entities/slide.entity";
+
 export interface ISlideResponse {
     id: string;
     title: string;
@@ -9,7 +11,7 @@ export interface ISlideResponse {
 }
 
 export class SlideResponse {
-    static fromEntity(slideshow: any): ISlideResponse {
+    static fromEntity(slideshow: Slideshow): ISlideResponse {
         return {
             id: slideshow.id,
             title: slideshow.title,

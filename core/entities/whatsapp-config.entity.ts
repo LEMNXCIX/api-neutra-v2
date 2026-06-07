@@ -1,3 +1,14 @@
+export interface WhatsAppTemplate {
+    name: string;
+    language: string;
+}
+
+export interface BotConfig {
+    welcomeMessage?: string;
+    awayMessage?: string;
+    businessHours?: { start: string; end: string };
+}
+
 export interface WhatsAppConfig {
     id: string;
     tenantId: string;
@@ -8,8 +19,8 @@ export interface WhatsAppConfig {
     enabled: boolean;
     notificationsEnabled: boolean;
     botEnabled: boolean;
-    templates?: any;
-    botConfig?: any;
+    templates?: WhatsAppTemplate[];
+    botConfig?: BotConfig;
     createdAt: Date;
     updatedAt: Date;
 }

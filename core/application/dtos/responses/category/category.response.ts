@@ -1,4 +1,4 @@
-import { CategoryType } from "@/core/entities/category.entity";
+import { Category, CategoryType } from "@/core/entities/category.entity";
 
 export interface ICategoryResponse {
     id: string;
@@ -12,7 +12,7 @@ export interface ICategoryResponse {
 }
 
 export class CategoryResponse {
-    static fromEntity(category: any): ICategoryResponse {
+    static fromEntity(category: Category): ICategoryResponse {
         return {
             id: category.id,
             name: category.name,

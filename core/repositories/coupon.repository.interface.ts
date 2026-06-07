@@ -1,4 +1,8 @@
-import { Coupon, CreateCouponDTO, UpdateCouponDTO } from '@/core/entities/coupon.entity';
+import { Coupon } from "@/core/entities/coupon.entity";
+import {
+    CreateCouponDTO,
+    UpdateCouponDTO,
+} from "@/core/application/dtos/requests/coupon.request";
 
 /**
  * Coupon Repository Interface - Tenant-Scoped
@@ -8,18 +12,25 @@ export interface ICouponRepository {
     findById(tenantId: string, id: string): Promise<Coupon | null>;
     findByCode(tenantId: string, code: string): Promise<Coupon | null>;
     findActive(tenantId: string | undefined): Promise<Coupon[]>;
-    findAllPaginated(tenantId: string | undefined, options: {
-        search?: string;
-        type?: string;
-        status?: 'active' | 'expired' | 'used' | 'unused' | 'all';
-        page: number;
-        limit: number;
-    }): Promise<{
+    findAllPaginated(
+        tenantId: string | undefined,
+        options: {
+            search?: string;
+            type?: string;
+            status?: "active" | "expired" | "used" | "unused" | "all";
+            page: number;
+            limit: number;
+        },
+    ): Promise<{
         coupons: Coupon[];
         total: number;
     }>;
     create(tenantId: string, data: CreateCouponDTO): Promise<Coupon>;
-    update(tenantId: string, id: string, data: UpdateCouponDTO): Promise<Coupon>;
+    update(
+        tenantId: string,
+        id: string,
+        data: UpdateCouponDTO,
+    ): Promise<Coupon>;
     delete(tenantId: string, id: string): Promise<void>;
     incrementUsage(tenantId: string, id: string): Promise<void>;
     getStats(tenantId: string): Promise<{

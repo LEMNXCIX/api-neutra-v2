@@ -1,3 +1,5 @@
+import { Staff } from "@/core/entities/staff.entity";
+
 export interface IStaffResponse {
     id: string;
     userId?: string;
@@ -7,7 +9,7 @@ export interface IStaffResponse {
     avatar?: string;
     bio?: string;
     active: boolean;
-    workingHours?: any;
+    workingHours?: Record<string, unknown>;
     serviceIds?: string[];
     tenantId: string;
     createdAt: Date;
@@ -15,7 +17,7 @@ export interface IStaffResponse {
 }
 
 export class StaffResponse {
-    static fromEntity(staff: any): IStaffResponse {
+    static fromEntity(staff: Staff): IStaffResponse {
         return {
             id: staff.id,
             userId: staff.userId,

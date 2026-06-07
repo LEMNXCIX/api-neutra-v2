@@ -1,27 +1,41 @@
-import { WhatsAppService } from '@/infrastructure/services/whatsapp.service';
-
-interface SendNotificationDto {
-    tenantId: string;
-    to: string;
-    templateName: string;
-    languageCode?: string;
-    components?: any[];
-}
+import { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { SendNotificationDTO } from "@/core/application/dtos/requests/whatsapp.request";
+import { ValidationError } from "@/core/domain/errors/domain-errors";
 
 export class SendNotificationUseCase {
-    constructor(private whatsappService: WhatsAppService) { }
+    constructor(private whatsappService: IWhatsAppService) {}
 
-    async execute(data: SendNotificationDto): Promise<string> {
-        const { tenantId, to, templateName, languageCode = 'es', components = [] } = data;
+    async execute(data: SendNotificationDTO): Promise<UseCaseResult<string>> {
+        if (!data.tenantId) {
+            throw new ValidationError(
+                "Tenant ID required",
+                "MISSING_REQUIRED_FIELDS",
+            );
+        }
+        if (!data.to || !data.templateName) {
+            throw new ValidationError(
+                "Missing required fields: to, templateName",
+                "MISSING_REQUIRED_FIELDS",
+            );
+        }
 
-        // Delegate to service
-        // In the future, we could add logic here to check preferences, log specific events, etc.
-        return this.whatsappService.sendTemplateMessage(
+        const {
+            tenantId,
+            to,
+            templateName,
+            languageCode = "es",
+            components = [],
+        } = data;
+
+        const messageId = await this.whatsappService.sendTemplateMessage(
             to,
             templateName,
             languageCode,
             components,
-            tenantId
+            tenantId,
         );
+
+        return Success(messageId, "Template message sent successfully");
     }
 }

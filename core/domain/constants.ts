@@ -1,6 +1,7 @@
 /**
  * Application-wide constants organized by domain category.
  * Centralized source of truth for all literal values used across layers.
+ * Infrastructure-only constants (CORS, RATE_LIMIT, DOMAIN) moved to config/infrastructure-constants.ts
  */
 
 // ============================================================================
@@ -18,14 +19,13 @@ export const TIME_CONSTANTS = {
 export const AUTH_CONSTANTS = {
     COOKIE_NAME: "token",
     COOKIE_EXPIRES_DAYS: 7,
-    COOKIE_EXPIRES_MS: 7 * TIME_CONSTANTS.DAY_MS, // 7 days
+    COOKIE_EXPIRES_MS: 7 * TIME_CONSTANTS.DAY_MS,
     LOCAL_DOMAIN: ".localhost",
     PASSWORD_RESET_TOKEN_BYTES: 32,
-    PASSWORD_RESET_EXPIRATION_MS: TIME_CONSTANTS.HOUR_MS, // 1 hour
+    PASSWORD_RESET_EXPIRATION_MS: TIME_CONSTANTS.HOUR_MS,
 } as const;
 
 export const SECURITY_CONSTANTS = {
-    // Only redact specific sensitive credentials/tokens
     SENSITIVE_FIELDS: [
         "password",
         "token",
@@ -47,42 +47,6 @@ export const JWT_CONSTANTS = {
 } as const;
 
 // ============================================================================
-// Network & Infra (CORS, Proxy, Domains)
-// ============================================================================
-export const DOMAIN_CONSTANTS = {
-    LOCAL_LOCALHOST: ".localhost",
-    LOCAL_NIPIO: ".nip.io",
-    NIPIO_PARTS: 6,
-} as const;
-
-export const CORS_CONSTANTS: {
-    MAX_AGE_SECONDS: number;
-    METHODS: string[];
-    ALLOWED_HEADERS: string[];
-} = {
-    MAX_AGE_SECONDS: TIME_CONSTANTS.DAY_MS,
-    METHODS: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
-    ALLOWED_HEADERS: [
-        "Content-Type",
-        "Authorization",
-        "Accept",
-        "X-Requested-With",
-        "Origin",
-        "x-tenant-id",
-        "x-tenant-slug",
-    ],
-};
-
-// ============================================================================
-// Rate Limiting
-// ============================================================================
-export const RATE_LIMIT_CONSTANTS = {
-    WINDOW_MINUTES: 15,
-    MAX_PRODUCTION: 100,
-    MAX_DEVELOPMENT: 1000,
-} as const;
-
-// ============================================================================
 // Multi-Tenancy
 // ============================================================================
 export const TENANT_CONSTANTS = {
@@ -94,7 +58,7 @@ export const TENANT_CONSTANTS = {
 // ============================================================================
 export const VALIDATION_CONSTANTS = {
     EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-    MAX_IMAGE_SIZE_BYTES: 5 * 1024 * 1024, // 5MB
+    MAX_IMAGE_SIZE_BYTES: 5 * 1024 * 1024,
 } as const;
 
 // ============================================================================
@@ -106,16 +70,10 @@ export const ENV_CONSTANTS = {
     DEV: "dev",
 } as const;
 
-/**
- * Check if the given environment is a development environment
- */
 export function isDevelopment(env: string): boolean {
     return env === ENV_CONSTANTS.DEV || env === ENV_CONSTANTS.DEVELOPMENT;
 }
 
-/**
- * Check if the given environment is production
- */
 export function isProduction(env: string): boolean {
     return env === ENV_CONSTANTS.PRODUCTION;
 }

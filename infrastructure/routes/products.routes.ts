@@ -1,13 +1,14 @@
-import { Application, Router } from 'express';
-import { authenticate } from '@/middleware/authenticate.middleware';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { ProductController } from '@/interface-adapters/controllers/product.controller';
+import { Application, Router } from "express";
+import { authenticate } from "@/middleware/authenticate.middleware";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
+import { ProductController } from "@/interface-adapters/controllers/product.controller";
 
-import { optionalAuthenticate } from '@/middleware/optional-authenticate.middleware';
+import { optionalAuthenticate } from "@/middleware/optional-authenticate.middleware";
 
 function products(app: Application, productController: ProductController) {
     const router = Router();
-    app.use('/api/products', router);
+    app.use("/api/products", router);
 
     /**
      * @swagger
@@ -58,7 +59,12 @@ function products(app: Application, productController: ProductController) {
      *               items:
      *                 $ref: '#/components/schemas/Product'
      */
-    router.get('/', optionalAuthenticate, productController.getAll);
+    router.get(
+        "/",
+        optionalAuthenticate,
+        resolveSuperAdminTenant,
+        productController.getAll,
+    );
 
     /**
      * @swagger
@@ -85,7 +91,7 @@ function products(app: Application, productController: ProductController) {
      *               items:
      *                 $ref: '#/components/schemas/Product'
      */
-    router.post('/search/', productController.search);
+    router.post("/search/", productController.search);
 
     /**
      * @swagger
@@ -103,8 +109,35 @@ function products(app: Application, productController: ProductController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/stats', authenticate, requirePermission('stats:read'), productController.getStats);
-    router.get('/stats/summary', authenticate, requirePermission('stats:read'), productController.getSummaryStats);
+    router.get(
+        "/stats",
+        authenticate,
+        requirePermission("stats:read"),
+        productController.getStats,
+    );
+
+    /**
+     * @swagger
+     * /products/stats/summary:
+     *   get:
+     *     summary: Get product summary statistics
+     *     tags: [Products]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Product summary statistics
+     *       401:
+     *         description: Unauthorized
+     *       403:
+     *         description: Forbidden
+     */
+    router.get(
+        "/stats/summary",
+        authenticate,
+        requirePermission("stats:read"),
+        productController.getSummaryStats,
+    );
 
     /**
      * @swagger
@@ -128,7 +161,12 @@ function products(app: Application, productController: ProductController) {
      *       404:
      *         description: Product not found
      */
-    router.get('/:id', optionalAuthenticate, productController.getOne);
+    router.get(
+        "/:id",
+        optionalAuthenticate,
+        resolveSuperAdminTenant,
+        productController.getOne,
+    );
 
     /**
      * @swagger
@@ -152,7 +190,12 @@ function products(app: Application, productController: ProductController) {
      *       404:
      *         description: Product not found
      */
-    router.get('/one/:id', optionalAuthenticate, productController.getOne); // Alias
+    router.get(
+        "/one/:id",
+        optionalAuthenticate,
+        resolveSuperAdminTenant,
+        productController.getOne,
+    );
 
     // Protected routes with permission-based authorization
     /**
@@ -177,7 +220,12 @@ function products(app: Application, productController: ProductController) {
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('products:write'), productController.create);
+    router.post(
+        "/",
+        authenticate,
+        requirePermission("products:write"),
+        productController.create,
+    );
 
     /**
      * @swagger
@@ -209,7 +257,12 @@ function products(app: Application, productController: ProductController) {
      *       404:
      *         description: Product not found
      */
-    router.put('/:id', authenticate, requirePermission('products:write'), productController.update);
+    router.put(
+        "/:id",
+        authenticate,
+        requirePermission("products:write"),
+        productController.update,
+    );
 
     /**
      * @swagger
@@ -235,9 +288,12 @@ function products(app: Application, productController: ProductController) {
      *       404:
      *         description: Product not found
      */
-    router.delete('/:id', authenticate, requirePermission('products:delete'), productController.delete);
-
-
+    router.delete(
+        "/:id",
+        authenticate,
+        requirePermission("products:delete"),
+        productController.delete,
+    );
 }
 
 export default products;

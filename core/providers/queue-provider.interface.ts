@@ -1,3 +1,3 @@
 export interface IQueueProvider {
-    enqueue(queueName: string, data: any): Promise<void>;
+    enqueue(queueName: string, data: Record<string, unknown>): Promise<void>;
 }

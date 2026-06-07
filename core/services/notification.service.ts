@@ -1,11 +1,14 @@
-import { INotificationProvider, NotificationMessage } from '@/core/ports/notification-provider.interface';
+import {
+    INotificationProvider,
+    NotificationMessage,
+} from "@/core/ports/notification-provider.interface";
 
 export class NotificationService {
     private providers: Map<string, INotificationProvider>;
 
     constructor(providers: INotificationProvider[]) {
         this.providers = new Map();
-        providers.forEach(p => this.registerProvider(p));
+        providers.forEach((p) => this.registerProvider(p));
     }
 
     private registerProvider(provider: INotificationProvider) {
@@ -22,17 +25,18 @@ export class NotificationService {
         channels: string[],
         recipientMap: Record<string, string>,
         message: NotificationMessage,
-        options?: any
+        options?: Record<string, unknown>,
     ): Promise<void> {
-
-        const promises = channels.map(channel => {
+        const promises = channels.map((channel) => {
             const provider = this.providers.get(channel);
             const recipient = recipientMap[channel];
 
             if (provider && recipient) {
                 return provider.send(recipient, message, options);
             } else {
-                console.warn(`[NotificationService] Skipping channel ${channel}: Provider not found or no recipient provided.`);
+                console.warn(
+                    `[NotificationService] Skipping channel ${channel}: Provider not found or no recipient provided.`,
+                );
                 return Promise.resolve(false);
             }
         });

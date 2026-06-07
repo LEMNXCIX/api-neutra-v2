@@ -1,3 +1,5 @@
+import { Banner } from "@/core/entities/banner.entity";
+
 export interface IBannerResponse {
     id: string;
     title: string;
@@ -19,7 +21,7 @@ export interface IBannerResponse {
 }
 
 export class BannerResponse {
-    static fromEntity(banner: any): IBannerResponse {
+    static fromEntity(banner: Banner): IBannerResponse {
         return {
             id: banner.id,
             title: banner.title,

@@ -1,4 +1,7 @@
-import { AppointmentStatus } from "@/core/entities/appointment.entity";
+import {
+    Appointment,
+    AppointmentStatus,
+} from "@/core/entities/appointment.entity";
 import { IUserMinimalResponse } from "../shared/user-minimal.response";
 import { IStaffMinimalResponse } from "../shared/staff-minimal.response";
 import { IServiceMinimalResponse } from "../shared/service-minimal.response";
@@ -21,7 +24,7 @@ export interface IAppointmentListResponse {
 }
 
 export class AppointmentListResponse {
-    static fromEntity(appointment: any): IAppointmentListResponse {
+    static fromEntity(appointment: Appointment): IAppointmentListResponse {
         return {
             id: appointment.id,
             startTime: appointment.startTime,

@@ -1,24 +1,11 @@
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetUsersSummaryStatsUseCase {
-    constructor(private userRepository: IUserRepository) { }
+    constructor(private userRepository: IUserRepository) {}
 
-    async execute(tenantId?: string) {
-        try {
-            const stats = await this.userRepository.getSummaryStats(tenantId);
-            return {
-                success: true,
-                code: 200,
-                message: "User summary statistics retrieved successfully",
-                data: stats
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: "Error fetching user summary statistics",
-                errors: error.message || error
-            };
-        }
+    async execute(tenantId?: string): Promise<UseCaseResult> {
+        const stats = await this.userRepository.getSummaryStats(tenantId);
+        return Success(stats, "User summary statistics retrieved successfully");
     }
 }

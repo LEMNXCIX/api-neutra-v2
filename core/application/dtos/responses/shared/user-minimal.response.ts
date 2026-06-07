@@ -7,7 +7,13 @@ export interface IUserMinimalResponse {
 }
 
 export class UserMinimalResponse {
-    static fromEntity(user: any): IUserMinimalResponse {
+    static fromEntity(
+        user: Pick<IUserMinimalResponse, "id" | "name" | "email"> & {
+            phone?: string;
+            profilePic?: string;
+            pushToken?: string;
+        },
+    ): IUserMinimalResponse {
         return {
             id: user.id,
             name: user.name,

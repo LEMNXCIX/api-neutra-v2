@@ -1,3 +1,9 @@
+import {
+    WhatsAppConfig,
+    WhatsAppTemplate,
+    BotConfig,
+} from "@/core/entities/whatsapp-config.entity";
+
 export interface IWhatsAppConfigResponse {
     id: string;
     tenantId: string;
@@ -8,15 +14,15 @@ export interface IWhatsAppConfigResponse {
     enabled: boolean;
     notificationsEnabled: boolean;
     botEnabled: boolean;
-    templates?: Record<string, any> | null;
-    botConfig?: Record<string, any> | null;
+    templates?: WhatsAppTemplate[] | null;
+    botConfig?: BotConfig | null;
     createdAt: Date;
     updatedAt: Date;
 }
 
 export class WhatsAppConfigResponse {
     static fromEntity(
-        config: any,
+        config: WhatsAppConfig,
         maskTokens: boolean = true,
     ): IWhatsAppConfigResponse {
         return {

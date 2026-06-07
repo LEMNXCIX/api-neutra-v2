@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { IBannerRepository } from "@/core/repositories/banner.repository.interface";
 import { CreateBannerUseCase } from "@/core/application/banners/create-banner.use-case";
 import { GetBannersUseCase } from "@/core/application/banners/get-banners.use-case";
 import { UpdateBannerUseCase } from "@/core/application/banners/update-banner.use-case";
@@ -7,6 +6,7 @@ import { DeleteBannerUseCase } from "@/core/application/banners/delete-banner.us
 import { TrackBannerAnalyticsUseCase } from "@/core/application/banners/track-banner-analytics.use-case";
 import { GetBannerStatsUseCase } from "@/core/application/banners/get-banner-stats.use-case";
 import { BannerPresenter } from "@/core/presenters/banner.presenter";
+import { present } from "@/core/utils/use-case-result";
 
 export class BannerController {
     constructor(
@@ -19,92 +19,56 @@ export class BannerController {
     ) {}
 
     create = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.createBannerUseCase.execute(
             tenantId,
             req.body,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? BannerPresenter.toResponseList(result.data) as any
-      : BannerPresenter.toResponse(result.data) as any;
-        }
-        return res.status(201).json(result);
+        return res
+            .status(201)
+            .json(present(result, BannerPresenter.toResponse));
     };
 
     getAll = async (req: Request, res: Response) => {
-        let tenantId = (req as any).tenantId;
-        const user = (req as any).user;
+        const tenantId = req.tenantId!;
 
-        // Super Admin Bypass
-        if (user && user.role && user.role.name === "SUPER_ADMIN") {
-            if (req.query.tenantId) {
-                tenantId = req.query.tenantId as string;
-                if (tenantId === "all") tenantId = undefined;
-            }
-        } else if (!tenantId) {
-            return res
-                .status(400)
-                .json({ success: false, message: "Tenant ID required" });
-        }
-
-        const result = await this.getBannersUseCase.execute(tenantId, false); // Get all banners
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? BannerPresenter.toResponseList(result.data) as any
-      : BannerPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        const result = await this.getBannersUseCase.execute(tenantId, false);
+        return res.json(present(result, BannerPresenter.toResponseList));
     };
 
     getActive = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.getBannersUseCase.execute(tenantId, true); // Get only active banners
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? BannerPresenter.toResponseList(result.data) as any
-      : BannerPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, BannerPresenter.toResponseList));
     };
 
     getById = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.getBannersUseCase.executeById(tenantId, id);
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? BannerPresenter.toResponseList(result.data) as any
-      : BannerPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, BannerPresenter.toResponse));
     };
 
     update = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.updateBannerUseCase.execute(
             tenantId,
             id,
             req.body,
         );
-        if (result.success && result.data) {
-    result.data = Array.isArray(result.data)
-      ? BannerPresenter.toResponseList(result.data) as any
-      : BannerPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, BannerPresenter.toResponse));
     };
 
     delete = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.deleteBannerUseCase.execute(tenantId, id);
         return res.json(result);
     };
 
     trackImpression = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.trackBannerAnalyticsUseCase.trackImpression(
             tenantId,
@@ -114,7 +78,7 @@ export class BannerController {
     };
 
     trackClick = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.trackBannerAnalyticsUseCase.trackClick(
             tenantId,
@@ -124,7 +88,7 @@ export class BannerController {
     };
 
     getStats = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.getBannerStatsUseCase.execute(tenantId);
         return res.json(result);
     };

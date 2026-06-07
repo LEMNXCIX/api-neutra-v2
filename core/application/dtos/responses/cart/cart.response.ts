@@ -1,7 +1,9 @@
+import { Cart, CartItem } from "@/core/entities/cart.entity";
+
 export interface ICartProductResponse {
     name: string;
     price: number;
-    image: string;
+    image: string | null;
     description?: string;
 }
 
@@ -21,11 +23,11 @@ export interface ICartResponse {
 }
 
 export class CartResponse {
-    static fromEntity(cart: any): ICartResponse {
+    static fromEntity(cart: Cart): ICartResponse {
         return {
             id: cart.id,
             userId: cart.userId,
-            items: cart.items?.map((item: any) => ({
+            items: cart.items?.map((item: CartItem) => ({
                 id: item.id,
                 productId: item.productId,
                 amount: item.amount,
@@ -34,7 +36,6 @@ export class CartResponse {
                           name: item.product.name,
                           price: item.product.price,
                           image: item.product.image,
-                          description: item.product.description,
                       }
                     : undefined,
             })),

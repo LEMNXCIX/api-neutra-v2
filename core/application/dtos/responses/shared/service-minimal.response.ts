@@ -6,7 +6,12 @@ export interface IServiceMinimalResponse {
 }
 
 export class ServiceMinimalResponse {
-    static fromEntity(service: any): IServiceMinimalResponse {
+    static fromEntity(
+        service: Pick<
+            IServiceMinimalResponse,
+            "id" | "name" | "duration" | "price"
+        >,
+    ): IServiceMinimalResponse {
         return {
             id: service.id,
             name: service.name,

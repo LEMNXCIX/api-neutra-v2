@@ -9,7 +9,7 @@ import { GetOrCreateByProviderUseCase } from "@/core/application/users/get-or-cr
 import { UpdateUserUseCase } from "@/core/application/users/update-user.use-case";
 import { DeleteUserUseCase } from "@/core/application/users/delete-user.use-case";
 import { AssignRoleToUserUseCase } from "@/core/application/users/assign-role.use-case";
-import { Success } from "@/core/utils/use-case-result";
+import { present } from "@/core/utils/use-case-result";
 import { UserPresenter } from "@/core/presenters/user.presenter";
 
 export class UserController {
@@ -27,63 +27,52 @@ export class UserController {
     ) {}
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.getAllUsersUseCase.execute(tenantId);
-        if (result.success && result.data) {
-            result.data = UserPresenter.toResponseList(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, UserPresenter.toResponseList));
     };
 
-  getById = async (req: Request, res: Response) => {
-    const tenantId = req.tenantId;
-    const { id } = req.params;
-    const result = await this.getUserByIdUseCase.execute(tenantId, id);
-    if (result.success && result.data) {
-      result.data = UserPresenter.toResponse(result.data) as any;
-    }
-    return res.json(result);
-  };
+    getById = async (req: Request, res: Response) => {
+        const tenantId = req.tenantId;
+        const { id } = req.params;
+        const result = await this.getUserByIdUseCase.execute(tenantId, id);
+        return res.json(present(result, UserPresenter.toResponse));
+    };
 
-  getByEmail = async (req: Request, res: Response) => {
-    const tenantId = (req as any).tenantId;
-    const { email } = req.params;
-    const result = await this.getUserByEmailUseCase.execute(
-      tenantId,
-      email,
-      false,
-    );
-    if (result.success && result.data) {
-      result.data = UserPresenter.toPublicResponse(result.data) as any;
-        }
-        return res.json(result);
+    getByEmail = async (req: Request, res: Response) => {
+        const tenantId = req.tenantId!;
+        const { email } = req.params;
+        const result = await this.getUserByEmailUseCase.execute(
+            tenantId,
+            email,
+            false,
+        );
+        return res.json(present(result, UserPresenter.toPublicResponse));
     };
 
     create = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.createUserUseCase.execute(tenantId, req.body);
-        if (result.success && result.data?.user) {
-            result.data = {
-                ...result.data,
-                user: UserPresenter.toResponse(result.data.user) as any,
-            };
-        }
-        return res.status(201).json(result);
+        return res.status(201).json(
+            present(result, (data) => ({
+                ...data,
+                user: UserPresenter.toResponse(data.user),
+            })),
+        );
     };
 
     getOrCreateByProvider = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.getOrCreateByProviderUseCase.execute(
             tenantId,
             req.body,
         );
-        if (result.success && result.data?.user) {
-            result.data = {
-                ...result.data,
-                user: UserPresenter.toResponse(result.data.user) as any,
-            };
-        }
-        return res.json(result);
+        return res.json(
+            present(result, (data) => ({
+                ...data,
+                user: UserPresenter.toResponse(data.user),
+            })),
+        );
     };
 
     getUsersStats = async (req: Request, res: Response) => {
@@ -99,21 +88,18 @@ export class UserController {
     };
 
     update = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.updateUserUseCase.execute(
             tenantId,
             id,
             req.body,
         );
-        if (result.success && result.data) {
-            result.data = UserPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, UserPresenter.toResponse));
     };
 
     assignRole = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const { roleId } = req.body;
         const result = await this.assignRoleToUserUseCase.execute(
@@ -121,14 +107,11 @@ export class UserController {
             id,
             roleId,
         );
-        if (result.success && result.data) {
-            result.data = UserPresenter.toResponse(result.data) as any;
-        }
-        return res.json(result);
+        return res.json(present(result, UserPresenter.toResponse));
     };
 
     delete = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.deleteUserUseCase.execute(tenantId, id);
         return res.json(result);

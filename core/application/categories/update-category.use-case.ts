@@ -1,28 +1,42 @@
-import { ICategoryRepository } from '@/core/repositories/category.repository.interface';
-import { UpdateCategoryDTO } from '@/core/entities/category.entity';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { AppError } from '@/types/api-response';
-import { ResourceErrorCodes } from '@/types/error-codes';
+import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
+import { UpdateCategoryDTO } from "@/core/application/dtos/requests/category.request";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import {
+    EntityNotFoundError,
+    DuplicateEntityError,
+} from "@/core/domain/errors/domain-errors";
 
 export class UpdateCategoryUseCase {
-    constructor(private categoryRepository: ICategoryRepository) { }
+    constructor(private categoryRepository: ICategoryRepository) {}
 
-    async execute(tenantId: string, id: string, data: UpdateCategoryDTO): Promise<UseCaseResult> {
-        const existingCategory = await this.categoryRepository.findById(tenantId, id);
+    async execute(
+        tenantId: string,
+        id: string,
+        data: UpdateCategoryDTO,
+    ): Promise<UseCaseResult> {
+        const existingCategory = await this.categoryRepository.findById(
+            tenantId,
+            id,
+        );
 
         if (!existingCategory) {
-            throw new AppError('Category not found', 404, ResourceErrorCodes.NOT_FOUND);
+            throw new EntityNotFoundError("Category", id);
         }
 
         if (data.name) {
-            const categoryWithSameName = await this.categoryRepository.findByName(tenantId, data.name);
+            const categoryWithSameName =
+                await this.categoryRepository.findByName(tenantId, data.name);
             if (categoryWithSameName && categoryWithSameName.id !== id) {
-                throw new AppError('Category name already in use', 409, ResourceErrorCodes.ALREADY_EXISTS);
+                throw new DuplicateEntityError("Category", "name", data.name);
             }
         }
 
-        const updatedCategory = await this.categoryRepository.update(tenantId, id, data);
+        const updatedCategory = await this.categoryRepository.update(
+            tenantId,
+            id,
+            data,
+        );
 
-        return Success(updatedCategory, 'Category updated successfully');
+        return Success(updatedCategory, "Category updated successfully");
     }
 }

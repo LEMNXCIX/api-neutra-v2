@@ -1,4 +1,8 @@
-import { Banner, CreateBannerDTO, UpdateBannerDTO } from '@/core/entities/banner.entity';
+import { Banner } from "@/core/entities/banner.entity";
+import {
+    CreateBannerDTO,
+    UpdateBannerDTO,
+} from "@/core/application/dtos/requests/banner.request";
 
 /**
  * Banner Repository Interface - Tenant-Scoped
@@ -8,9 +12,15 @@ export interface IBannerRepository {
     findById(tenantId: string, id: string): Promise<Banner | null>;
     findActive(tenantId: string | undefined): Promise<Banner[]>;
     create(tenantId: string, data: CreateBannerDTO): Promise<Banner>;
-    update(tenantId: string, id: string, data: UpdateBannerDTO): Promise<Banner>;
+    update(
+        tenantId: string,
+        id: string,
+        data: UpdateBannerDTO,
+    ): Promise<Banner>;
     delete(tenantId: string, id: string): Promise<void>;
     incrementImpressions(tenantId: string, id: string): Promise<void>;
     incrementClicks(tenantId: string, id: string): Promise<void>;
-    getStats(tenantId: string): Promise<{ totalBanners: number; activeBanners: number }>;
+    getStats(
+        tenantId: string,
+    ): Promise<{ totalBanners: number; activeBanners: number }>;
 }

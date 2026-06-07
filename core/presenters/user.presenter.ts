@@ -1,3 +1,4 @@
+import { User } from "@/core/entities/user.entity";
 import {
     UserResponse,
     IUserResponse,
@@ -12,19 +13,19 @@ import {
 } from "@/core/application/dtos/responses/shared/user-minimal.response";
 
 export class UserPresenter {
-    static toResponse(user: any): IUserResponse {
+    static toResponse(user: User): IUserResponse {
         return UserResponse.fromEntity(user);
     }
 
-    static toPublicResponse(user: any): IUserPublicResponse {
+    static toPublicResponse(user: User): IUserPublicResponse {
         return UserPublicResponse.fromEntity(user);
     }
 
-    static toMinimalResponse(user: any): IUserMinimalResponse {
+    static toMinimalResponse(user: User): IUserMinimalResponse {
         return UserMinimalResponse.fromEntity(user);
     }
 
-    static toResponseList(users: any[]): IUserResponse[] {
+    static toResponseList(users: User[]): IUserResponse[] {
         return users.map((u) => UserResponse.fromEntity(u));
     }
 }

@@ -1,3 +1,6 @@
+import { Permission } from "@/core/entities/permission.entity";
+import { Role } from "@/core/entities/role.entity";
+
 export interface IPermissionMinimalResponse {
     id: string;
     name: string;
@@ -6,7 +9,7 @@ export interface IPermissionMinimalResponse {
 }
 
 export class PermissionMinimalResponse {
-    static fromEntity(permission: any): IPermissionMinimalResponse {
+    static fromEntity(permission: Permission): IPermissionMinimalResponse {
         return {
             id: permission.id,
             name: permission.name,
@@ -28,14 +31,14 @@ export interface IRoleResponse {
 }
 
 export class RoleResponse {
-    static fromEntity(role: any): IRoleResponse {
+    static fromEntity(role: Role): IRoleResponse {
         return {
             id: role.id,
             name: role.name,
             description: role.description ?? null,
             level: role.level,
             active: role.active,
-            permissions: role.permissions?.map((p: any) =>
+            permissions: role.permissions?.map((p: Permission) =>
                 PermissionMinimalResponse.fromEntity(p),
             ),
             createdAt: role.createdAt,

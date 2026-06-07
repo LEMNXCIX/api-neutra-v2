@@ -1,4 +1,4 @@
-import { CouponType } from "@/core/entities/coupon.entity";
+import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 
 export interface ICouponResponse {
     id: string;
@@ -20,7 +20,7 @@ export interface ICouponResponse {
 }
 
 export class CouponResponse {
-    static fromEntity(coupon: any): ICouponResponse {
+    static fromEntity(coupon: Coupon): ICouponResponse {
         return {
             id: coupon.id,
             code: coupon.code,

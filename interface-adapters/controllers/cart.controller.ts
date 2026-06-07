@@ -1,14 +1,13 @@
-import { Request, Response } from 'express';
-import { ICartRepository } from '@/core/repositories/cart.repository.interface';
-import { IProductRepository } from '@/core/repositories/product.repository.interface';
-import { GetCartUseCase } from '@/core/application/cart/get-cart.use-case';
-import { AddToCartUseCase } from '@/core/application/cart/add-to-cart.use-case';
-import { RemoveFromCartUseCase } from '@/core/application/cart/remove-from-cart.use-case';
-import { ClearCartUseCase } from '@/core/application/cart/clear-cart.use-case';
-import { ChangeAmountUseCase } from '@/core/application/cart/change-amount.use-case';
-import { GetCartStatsUseCase } from '@/core/application/cart/get-cart-stats.use-case';
-import { CreateCartUseCase } from '@/core/application/cart/create-cart.use-case';
-import { CartPresenter } from '@/core/presenters/cart.presenter';
+import { Request, Response } from "express";
+import { GetCartUseCase } from "@/core/application/cart/get-cart.use-case";
+import { AddToCartUseCase } from "@/core/application/cart/add-to-cart.use-case";
+import { RemoveFromCartUseCase } from "@/core/application/cart/remove-from-cart.use-case";
+import { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
+import { ChangeAmountUseCase } from "@/core/application/cart/change-amount.use-case";
+import { GetCartStatsUseCase } from "@/core/application/cart/get-cart-stats.use-case";
+import { CreateCartUseCase } from "@/core/application/cart/create-cart.use-case";
+import { CartPresenter } from "@/core/presenters/cart.presenter";
+import { present } from "@/core/utils/use-case-result";
 
 export class CartController {
     constructor(
@@ -18,67 +17,72 @@ export class CartController {
         private removeFromCartUseCase: RemoveFromCartUseCase,
         private changeAmountUseCase: ChangeAmountUseCase,
         private clearCartUseCase: ClearCartUseCase,
-        private getCartStatsUseCase: GetCartStatsUseCase
-    ) { }
+        private getCartStatsUseCase: GetCartStatsUseCase,
+    ) {}
 
     getItems = async (req: Request, res: Response) => {
-        const { id } = (req as any).user;
-        const tenantId = (req as any).tenantId;
-    const result = await this.getCartUseCase.execute(tenantId, id);
-    if (result.success && result.data) {
-      result.data = Array.isArray(result.data) ? CartPresenter.toResponseList(result.data) as any : CartPresenter.toResponse(result.data) as any;
-    }
-    return res.json(result);
-    }
+        const { id } = req.user!;
+        const tenantId = req.tenantId!;
+        const result = await this.getCartUseCase.execute(tenantId, id);
+        return res.json(present(result, CartPresenter.toResponse));
+    };
 
     addToCart = async (req: Request, res: Response) => {
-        const { id } = (req as any).user;
-        const tenantId = (req as any).tenantId;
+        const { id } = req.user!;
+        const tenantId = req.tenantId!;
         const { productId, amount } = req.body;
-    const result = await this.addToCartUseCase.execute(tenantId, id, productId, amount);
-    if (result.success && result.data) {
-      result.data = Array.isArray(result.data) ? CartPresenter.toResponseList(result.data) as any : CartPresenter.toResponse(result.data) as any;
-    }
-    return res.json(result);
-    }
+        const result = await this.addToCartUseCase.execute(
+            tenantId,
+            id,
+            productId,
+            amount,
+        );
+        return res.json(present(result, CartPresenter.toResponse));
+    };
 
     create = async (req: Request, res: Response) => {
-        const { id } = (req as any).user;
-        const tenantId = (req as any).tenantId;
-    const result = await this.createCartUseCase.execute(tenantId, id);
-    if (result.success && result.data) {
-      result.data = Array.isArray(result.data) ? CartPresenter.toResponseList(result.data) as any : CartPresenter.toResponse(result.data) as any;
-    }
-    return res.status(201).json(result);
-    }
+        const { id } = req.user!;
+        const tenantId = req.tenantId!;
+        const result = await this.createCartUseCase.execute(tenantId, id);
+        return res.status(201).json(present(result, CartPresenter.toResponse));
+    };
 
     removeFromCart = async (req: Request, res: Response) => {
-        const { id } = (req as any).user;
-        const tenantId = (req as any).tenantId;
+        const { id } = req.user!;
+        const tenantId = req.tenantId!;
         const { id: idProduct } = req.body; // Assuming body based on previous fix
-        const result = await this.removeFromCartUseCase.execute(tenantId, id, idProduct);
+        const result = await this.removeFromCartUseCase.execute(
+            tenantId,
+            id,
+            idProduct,
+        );
         return res.json(result);
-    }
+    };
 
     changeAmount = async (req: Request, res: Response) => {
-        const { id } = (req as any).user;
-        const tenantId = (req as any).tenantId;
+        const { id } = req.user!;
+        const tenantId = req.tenantId!;
         const { idProduct } = req.params;
         const { amount } = req.body;
-        const result = await this.changeAmountUseCase.execute(tenantId, id, idProduct, amount);
+        const result = await this.changeAmountUseCase.execute(
+            tenantId,
+            id,
+            idProduct,
+            amount,
+        );
         return res.json(result);
-    }
+    };
 
     clearCart = async (req: Request, res: Response) => {
-        const { id } = (req as any).user;
-        const tenantId = (req as any).tenantId;
+        const { id } = req.user!;
+        const tenantId = req.tenantId!;
         const result = await this.clearCartUseCase.execute(tenantId, id);
         return res.json(result);
-    }
+    };
 
     getCartsStats = async (req: Request, res: Response) => {
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.getCartStatsUseCase.execute(tenantId);
         return res.json(result);
-    }
+    };
 }
