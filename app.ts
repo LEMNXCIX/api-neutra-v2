@@ -16,6 +16,13 @@ import {
     isProduction as checkProduction,
 } from "@/core/domain/constants";
 import { CORS_CONSTANTS } from "@/config/infrastructure-constants";
+import requestMiddleware from "@/middleware/request.middleware";
+import wideLogMiddleware from "@/middleware/wide-log.middleware";
+import { contextMiddleware } from "@/middleware/context.middleware";
+import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
+import { tenantMiddleware } from "@/middleware/tenant.middleware";
+import { Container } from "@/infrastructure/config/container";
+import { errorMiddleware } from "@/middleware/error.middleware";
 
 // Rutas
 import auth from "@/infrastructure/routes/auth.routes";
@@ -59,10 +66,6 @@ app.set("trust proxy", 1);
 if (require.main === module) {
     connection();
 }
-
-import requestMiddleware from "@/middleware/request.middleware";
-import wideLogMiddleware from "@/middleware/wide-log.middleware";
-import { contextMiddleware } from "@/middleware/context.middleware";
 
 // Middlewares (orden funcional: contexto > logging > parsing > security > custom)
 app.use(contextMiddleware);
@@ -226,11 +229,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     }
     next();
 });
-
-import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
-import { tenantMiddleware } from "@/middleware/tenant.middleware";
-import { Container } from "@/infrastructure/config/container";
-import { errorMiddleware } from "@/middleware/error.middleware";
 
 // Public / Global routes (No tenant context needed)
 app.get("/", (req: Request, res: Response) => {

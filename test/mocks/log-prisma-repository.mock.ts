@@ -1,4 +1,3 @@
-import { prisma } from "@/config/db.config";
 import {
     ILogRepository,
     LogFilters,
@@ -6,8 +5,6 @@ import {
     LogStats,
 } from "@/core/repositories/log.repository.interface";
 import { CreateLogDTO } from "@/core/application/dtos/requests/log.request";
-
-jest.setTimeout(20000);
 
 class NoOpLogRepository implements ILogRepository {
     async create(_log: CreateLogDTO): Promise<void> {}
@@ -30,33 +27,4 @@ class NoOpLogRepository implements ILogRepository {
     }
 }
 
-jest.mock("@/infrastructure/database/prisma/log.prisma-repository", () => ({
-    PrismaLogRepository: NoOpLogRepository,
-}));
-
-beforeAll(async () => {
-    try {
-        await prisma.$connect();
-    } catch (err) {
-        console.error("Test DB connection failed:", err);
-    }
-});
-
-afterAll(async () => {
-    try {
-        const { RedisProvider } =
-            await import("@/infrastructure/providers/redis.provider");
-        const redis = RedisProvider.getInstance();
-        await redis.quit();
-    } catch {
-        // Redis is mocked in test env, safe to ignore
-    }
-
-    try {
-        await prisma.$disconnect();
-    } catch (err) {
-        console.error("Prisma disconnect error:", err);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
-});
+module.exports = { PrismaLogRepository: NoOpLogRepository };
