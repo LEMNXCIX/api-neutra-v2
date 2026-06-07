@@ -1,35 +1,18 @@
-import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
-import { ILogger } from '@/core/providers/logger.interface';
+import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetStaffUseCase {
-    constructor(
-        private staffRepository: IStaffRepository,
-        private logger: ILogger
-    ) { }
+    constructor(private staffRepository: IStaffRepository) {}
 
-    async execute(tenantId: string | undefined, activeOnly: boolean = true) {
-        try {
-            const staffList = await this.staffRepository.findAll(tenantId, activeOnly);
+    async execute(
+        tenantId: string | undefined,
+        activeOnly: boolean = true,
+    ): Promise<UseCaseResult> {
+        const staffList = await this.staffRepository.findAll(
+            tenantId,
+            activeOnly,
+        );
 
-            this.logger.info('Staff retrieved successfully', { count: staffList.length });
-
-            return {
-                success: true,
-                code: 200,
-                message: 'Staff retrieved successfully',
-                data: staffList,
-            };
-        } catch (error: any) {
-            this.logger.error('Error retrieving staff', { error: error.message });
-            return {
-                success: false,
-                code: 500,
-                message: 'Error retrieving staff',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message,
-                }],
-            };
-        }
+        return Success(staffList, "Staff retrieved successfully");
     }
 }

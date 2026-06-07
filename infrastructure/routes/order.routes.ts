@@ -1,11 +1,11 @@
-import { Application, Router } from 'express';
-import { authenticate } from '@/middleware/authenticate.middleware';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { OrderController } from '@/interface-adapters/controllers/order.controller';
+import { Application, Router } from "express";
+import { authenticate } from "@/middleware/authenticate.middleware";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { OrderController } from "@/interface-adapters/controllers/order.controller";
 
 function order(app: Application, orderController: OrderController) {
     const router = Router();
-    app.use('/api/order', router);
+    app.use("/api/order", router);
 
     /**
      * @swagger
@@ -43,7 +43,28 @@ function order(app: Application, orderController: OrderController) {
      *           items:
      *             $ref: '#/components/schemas/OrderItem'
      */
-    router.get('/statuses', authenticate, orderController.getStatuses);
+    /**
+     * @swagger
+     * /order/statuses:
+     *   get:
+     *     summary: Get available order statuses
+     *     tags: [Orders]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: List of available order statuses
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: array
+     *               items:
+     *                 type: string
+     *                 enum: [PENDIENTE, PAGADO, ENVIADO, ENTREGADO]
+     *       401:
+     *         description: Unauthorized
+     */
+    router.get("/statuses", authenticate, orderController.getStatuses);
 
     /**
      * @swagger
@@ -65,7 +86,7 @@ function order(app: Application, orderController: OrderController) {
      *       401:
      *         description: Unauthorized
      */
-    router.post('/', authenticate, orderController.create);
+    router.post("/", authenticate, orderController.create);
 
     /**
      * @swagger
@@ -96,9 +117,7 @@ function order(app: Application, orderController: OrderController) {
      *       404:
      *         description: Order not found
      */
-    router.get('/getOrder', authenticate, orderController.getOne);
-
-
+    router.get("/getOrder", authenticate, orderController.getOne);
 
     /**
      * @swagger
@@ -125,7 +144,7 @@ function order(app: Application, orderController: OrderController) {
      *               items:
      *                 $ref: '#/components/schemas/Order'
      */
-    router.get('/getOrderByUser', authenticate, orderController.getByUser);
+    router.get("/getOrderByUser", authenticate, orderController.getByUser);
 
     // Admin routes
     /**
@@ -148,8 +167,55 @@ function order(app: Application, orderController: OrderController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/stats', authenticate, requirePermission('stats:read'), orderController.getStats);
-    router.get('/', authenticate, requirePermission('orders:read'), orderController.getAll);
+    /**
+     * @swagger
+     * /order/stats:
+     *   get:
+     *     summary: Get order statistics (Admin)
+     *     tags: [Orders]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Order statistics
+     *       401:
+     *         description: Unauthorized
+     *       403:
+     *         description: Forbidden
+     */
+    router.get(
+        "/stats",
+        authenticate,
+        requirePermission("stats:read"),
+        orderController.getStats,
+    );
+
+    /**
+     * @swagger
+     * /order:
+     *   get:
+     *     summary: Get all orders (Admin)
+     *     tags: [Orders]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: List of all orders
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: array
+     *               items:
+     *                 $ref: '#/components/schemas/Order'
+     *       403:
+     *         description: Forbidden
+     */
+    router.get(
+        "/",
+        authenticate,
+        requirePermission("orders:read"),
+        orderController.getAll,
+    );
 
     /**
      * @swagger
@@ -165,7 +231,12 @@ function order(app: Application, orderController: OrderController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/all', authenticate, requirePermission('orders:read'), orderController.getAll); // Alias
+    router.get(
+        "/all",
+        authenticate,
+        requirePermission("orders:read"),
+        orderController.getAll,
+    ); // Alias
 
     /**
      * @swagger
@@ -195,7 +266,12 @@ function order(app: Application, orderController: OrderController) {
      *       403:
      *         description: Forbidden
      */
-    router.put('/changeStatus', authenticate, requirePermission('orders:write'), orderController.changeStatus);
+    router.put(
+        "/changeStatus",
+        authenticate,
+        requirePermission("orders:write"),
+        orderController.changeStatus,
+    );
 
     /**
      * @swagger
@@ -228,7 +304,12 @@ function order(app: Application, orderController: OrderController) {
      *       403:
      *         description: Forbidden
      */
-    router.put('/:id', authenticate, requirePermission('orders:write'), orderController.update);
+    router.put(
+        "/:id",
+        authenticate,
+        requirePermission("orders:write"),
+        orderController.update,
+    );
 
     /**
      * @swagger
@@ -255,7 +336,7 @@ function order(app: Application, orderController: OrderController) {
      *       404:
      *         description: Order not found
      */
-    router.get('/:id', authenticate, orderController.getOneById);
+    router.get("/:id", authenticate, orderController.getOneById);
 }
 
 export default order;

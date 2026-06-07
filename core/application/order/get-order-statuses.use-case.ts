@@ -1,18 +1,14 @@
-import { OrderStatus } from '@/core/entities/order.entity';
+import { OrderStatus } from "@/core/entities/order.entity";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetOrderStatusesUseCase {
-    execute() {
+    execute(): UseCaseResult {
         const statuses = [
-            { value: 'PENDIENTE', label: 'Pendiente' },
-            { value: 'PAGADO', label: 'Pagado' },
-            { value: 'ENVIADO', label: 'Enviado' },
-            { value: 'ENTREGADO', label: 'Entregado' }
+            { value: "PENDIENTE", label: "Pendiente" },
+            { value: "PAGADO", label: "Pagado" },
+            { value: "ENVIADO", label: "Enviado" },
+            { value: "ENTREGADO", label: "Entregado" },
         ];
-        return {
-            success: true,
-            code: 200,
-            message: "Order statuses retrieved successfully",
-            data: statuses
-        };
+        return Success(statuses, "Order statuses retrieved successfully");
     }
 }

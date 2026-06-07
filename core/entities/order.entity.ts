@@ -1,6 +1,6 @@
 import { Product } from "@/core/entities/product.entity";
 
-export type OrderStatus = "PENDIENTE" | "PAGADO" | "ENVIADO" | "ENTREGADO"; // Matches Prisma Enum
+export type OrderStatus = "PENDIENTE" | "PAGADO" | "ENVIADO" | "ENTREGADO";
 
 export interface OrderItem {
     id: string;
@@ -29,17 +29,19 @@ export interface Order {
     trackingNumber?: string | null;
 }
 
-export interface CreateOrderDTO {
-    userId: string;
-    items: {
-        productId: string;
-        amount: number;
-        price: number;
-    }[];
-    couponId?: string;
+export function canTransitionTo(
+    current: OrderStatus,
+    next: OrderStatus,
+): boolean {
+    const transitions: Record<OrderStatus, OrderStatus[]> = {
+        PENDIENTE: ["PAGADO"],
+        PAGADO: ["ENVIADO"],
+        ENVIADO: ["ENTREGADO"],
+        ENTREGADO: [],
+    };
+    return transitions[current]?.includes(next) ?? false;
 }
 
-export interface UpdateOrderDTO {
-    status?: OrderStatus;
-    trackingNumber?: string;
+export function isPaid(order: Order): boolean {
+    return order.status !== "PENDIENTE";
 }

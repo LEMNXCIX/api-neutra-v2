@@ -1,47 +1,104 @@
-import { prisma } from '@/config/db.config';
-import { IOrderRepository } from '@/core/repositories/order.repository.interface';
-import { Order, CreateOrderDTO, OrderStatus } from '@/core/entities/order.entity';
-import { OrderStatus as PrismaOrderStatus } from '@prisma/client';
+import {
+    Order as PrismaOrder,
+    OrderItem as PrismaOrderItem,
+    OrderStatus as PrismaOrderStatus,
+    Prisma,
+} from "@prisma/client";
+import { prisma } from "@/config/db.config";
+import { IOrderRepository } from "@/core/repositories/order.repository.interface";
+import { Order, OrderStatus, OrderItem } from "@/core/entities/order.entity";
+import { Product } from "@/core/entities/product.entity";
+import {
+    CreateOrderDTO,
+    UpdateOrderDTO,
+} from "@/core/application/dtos/requests/order.request";
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
-/**
- * Tenant-Aware Order Repository
- */
+type OrderWithIncludes = Prisma.OrderGetPayload<{
+    include: {
+        items: { include: { product: true } };
+        user: { select: { name: true; email: true } };
+    };
+}>;
+
+type OrderItemWithProduct = OrderWithIncludes["items"][number];
+
 export class PrismaOrderRepository implements IOrderRepository {
+    private mapOrderItem(item: OrderItemWithProduct): OrderItem {
+        return {
+            id: item.id,
+            orderId: item.orderId,
+            productId: item.productId,
+            amount: item.amount,
+            price: Number(item.price),
+            product: item.product
+                ? ({
+                      id: item.product.id,
+                      name: item.product.name,
+                      description: item.product.description,
+                      image: item.product.image,
+                      price: Number(item.product.price),
+                      ownerId: (item.product as { ownerId: string }).ownerId,
+                  } as Product)
+                : undefined,
+        };
+    }
+
+    private mapToEntity(prismaOrder: OrderWithIncludes): Order {
+        return {
+            id: prismaOrder.id,
+            userId: prismaOrder.userId,
+            status: prismaOrder.status as OrderStatus,
+            trackingNumber: prismaOrder.trackingNumber,
+            subtotal: Number(prismaOrder.subtotal),
+            total: Number(prismaOrder.total),
+            discountAmount: Number(prismaOrder.discountAmount),
+            couponId: prismaOrder.couponId,
+            items: prismaOrder.items.map((item) => this.mapOrderItem(item)),
+            createdAt: prismaOrder.createdAt,
+            updatedAt: prismaOrder.updatedAt,
+            user: prismaOrder.user,
+        };
+    }
+
     async create(tenantId: string, data: CreateOrderDTO): Promise<Order> {
-        const subtotal = data.items.reduce((sum, item) => sum + (item.price * item.amount), 0);
+        const subtotal = data.items.reduce(
+            (sum, item) => sum + item.price * item.amount,
+            0,
+        );
         const discountAmount = 0;
         const total = subtotal - discountAmount;
 
         const order = await prisma.order.create({
             data: {
                 userId: data.userId,
-                tenantId, // Assign tenant
-                status: 'PENDIENTE',
+                tenantId,
+                status: "PENDIENTE" as PrismaOrderStatus,
                 couponId: data.couponId,
                 subtotal,
                 total,
                 discountAmount,
                 items: {
-                    create: data.items.map(item => ({
+                    create: data.items.map((item) => ({
                         productId: item.productId,
                         amount: item.amount,
-                        price: item.price
-                    }))
-                }
+                        price: item.price,
+                    })),
+                },
             },
             include: {
                 items: {
                     include: {
-                        product: true
-                    }
+                        product: true,
+                    },
                 },
                 user: {
                     select: {
                         name: true,
-                        email: true
-                    }
-                }
-            }
+                        email: true,
+                    },
+                },
+            },
         });
         return this.mapToEntity(order);
     }
@@ -52,44 +109,48 @@ export class PrismaOrderRepository implements IOrderRepository {
             include: {
                 items: {
                     include: {
-                        product: true
-                    }
+                        product: true,
+                    },
                 },
                 user: {
                     select: {
                         name: true,
-                        email: true
-                    }
-                }
-            }
+                        email: true,
+                    },
+                },
+            },
         });
         return order ? this.mapToEntity(order) : null;
     }
 
-    async findByUserId(tenantId: string, userId: string, status?: OrderStatus): Promise<Order[]> {
-        const whereClause: any = { userId, tenantId };
+    async findByUserId(
+        tenantId: string,
+        userId: string,
+        status?: OrderStatus,
+    ): Promise<Order[]> {
+        const where: Prisma.OrderWhereInput = { userId, tenantId };
         if (status) {
-            whereClause.status = status;
+            where.status = status as PrismaOrderStatus;
         }
 
         const orders = await prisma.order.findMany({
-            where: whereClause,
+            where,
             include: {
                 items: {
                     include: {
-                        product: true
-                    }
+                        product: true,
+                    },
                 },
                 user: {
                     select: {
                         name: true,
-                        email: true
-                    }
-                }
+                        email: true,
+                    },
+                },
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: "desc" },
         });
-        return orders.map(this.mapToEntity);
+        return orders.map((o) => this.mapToEntity(o));
     }
 
     async findAll(tenantId: string): Promise<Order[]> {
@@ -98,209 +159,205 @@ export class PrismaOrderRepository implements IOrderRepository {
             include: {
                 items: {
                     include: {
-                        product: true
-                    }
+                        product: true,
+                    },
                 },
                 user: {
                     select: {
                         name: true,
-                        email: true
-                    }
-                }
+                        email: true,
+                    },
+                },
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: "desc" },
         });
-        return orders.map(this.mapToEntity);
+        return orders.map((o) => this.mapToEntity(o));
     }
 
-    async findAllPaginated(tenantId: string, options: {
-        search?: string;
-        status?: string;
-        page: number;
-        limit: number;
-        startDate?: Date;
-        endDate?: Date;
-    }): Promise<{
+    async findAllPaginated(
+        tenantId: string,
+        options: {
+            search?: string;
+            status?: string;
+            page: number;
+            limit: number;
+            startDate?: Date;
+            endDate?: Date;
+        },
+    ): Promise<{
         orders: Order[];
         total: number;
     }> {
         const { search, status, page, limit, startDate, endDate } = options;
 
-        // Build where clause with tenant filter
-        const where: any = { tenantId };
+        const where: Prisma.OrderWhereInput = { tenantId };
 
-        // Search filter
         if (search) {
             where.OR = [
-                { id: { contains: search, mode: 'insensitive' } },
-                { user: { name: { contains: search, mode: 'insensitive' } } },
-                { user: { email: { contains: search, mode: 'insensitive' } } }
+                { id: { contains: search, mode: "insensitive" } },
+                { user: { name: { contains: search, mode: "insensitive" } } },
+                { user: { email: { contains: search, mode: "insensitive" } } },
             ];
         }
 
-        // Status filter
-        if (status && status !== 'all') {
-            where.status = status;
+        if (status && status !== "all") {
+            where.status = status as PrismaOrderStatus;
         }
 
-        // Date filter
         if (startDate && endDate) {
             where.createdAt = {
                 gte: startDate,
-                lte: endDate
+                lte: endDate,
             };
         }
 
-        // Execute queries in parallel
         const [orders, total] = await Promise.all([
             prisma.order.findMany({
                 where,
                 include: {
                     items: {
                         include: {
-                            product: true
-                        }
+                            product: true,
+                        },
                     },
                     user: {
                         select: {
                             name: true,
-                            email: true
-                        }
-                    }
+                            email: true,
+                        },
+                    },
                 },
-                orderBy: { createdAt: 'desc' },
+                orderBy: { createdAt: "desc" },
                 skip: (page - 1) * limit,
-                take: limit
+                take: limit,
             }),
-            prisma.order.count({ where })
+            prisma.order.count({ where }),
         ]);
 
         return {
-            orders: orders.map(this.mapToEntity),
-            total
+            orders: orders.map((o) => this.mapToEntity(o)),
+            total,
         };
     }
 
-    async updateStatus(tenantId: string, id: string, status: OrderStatus): Promise<Order> {
-        const order = await prisma.order.update({
-            where: {
-                id,
-                tenantId // Ensure ownership
-            },
-            data: { status: status as PrismaOrderStatus },
-            include: {
-                items: {
-                    include: {
-                        product: true
-                    }
+    async updateStatus(
+        tenantId: string,
+        id: string,
+        status: OrderStatus,
+    ): Promise<Order> {
+        try {
+            const order = await prisma.order.update({
+                where: { id, tenantId },
+                data: { status: status as PrismaOrderStatus },
+                include: {
+                    items: {
+                        include: {
+                            product: true,
+                        },
+                    },
+                    user: {
+                        select: {
+                            name: true,
+                            email: true,
+                        },
+                    },
                 },
-                user: {
-                    select: {
-                        name: true,
-                        email: true
-                    }
-                }
+            });
+            return this.mapToEntity(order);
+        } catch (error: unknown) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2025"
+            ) {
+                throw new EntityNotFoundError("Order", id);
             }
-        });
-        return this.mapToEntity(order);
+            throw error;
+        }
     }
 
-    async update(tenantId: string, id: string, data: any): Promise<Order> {
-        const order = await prisma.order.update({
-            where: {
-                id,
-                tenantId // Ensure ownership
-            },
-            data: {
-                status: data.status ? (data.status as PrismaOrderStatus) : undefined,
-                trackingNumber: data.trackingNumber
-            },
-            include: {
-                items: {
-                    include: {
-                        product: true
-                    }
+    async update(
+        tenantId: string,
+        id: string,
+        data: UpdateOrderDTO,
+    ): Promise<Order> {
+        const updateData: Prisma.OrderUpdateInput = {};
+        if (data.status !== undefined)
+            updateData.status = data.status as PrismaOrderStatus;
+        if (data.trackingNumber !== undefined)
+            updateData.trackingNumber = data.trackingNumber;
+
+        try {
+            const order = await prisma.order.update({
+                where: { id, tenantId },
+                data: updateData,
+                include: {
+                    items: {
+                        include: {
+                            product: true,
+                        },
+                    },
+                    user: {
+                        select: {
+                            name: true,
+                            email: true,
+                        },
+                    },
                 },
-                user: {
-                    select: {
-                        name: true,
-                        email: true
-                    }
-                }
+            });
+            return this.mapToEntity(order);
+        } catch (error: unknown) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2025"
+            ) {
+                throw new EntityNotFoundError("Order", id);
             }
-        });
-        return this.mapToEntity(order);
+            throw error;
+        }
     }
 
-    async getStats(tenantId: string, startDate?: Date, endDate?: Date): Promise<{ totalOrders: number; totalRevenue: number; statusCounts: Record<string, number> }> {
-        const where: any = { tenantId };
+    async getStats(
+        tenantId: string,
+        startDate?: Date,
+        endDate?: Date,
+    ): Promise<{
+        totalOrders: number;
+        totalRevenue: number;
+        statusCounts: Record<string, number>;
+    }> {
+        const where: Prisma.OrderWhereInput = { tenantId };
         if (startDate && endDate) {
             where.createdAt = {
                 gte: startDate,
-                lte: endDate
+                lte: endDate,
             };
         }
 
         const [aggregations, allOrders] = await Promise.all([
             prisma.order.aggregate({
                 where,
-                _count: {
-                    id: true
-                },
-                _sum: {
-                    total: true
-                }
+                _count: { id: true },
+                _sum: { total: true },
             }),
             prisma.order.findMany({
                 where,
-                select: {
-                    status: true
-                }
-            })
+                select: { status: true },
+            }),
         ]);
 
-        // Calculate status counts
-        const statusCounts = allOrders.reduce((acc: Record<string, number>, order) => {
-            const status = order.status;
-            acc[status] = (acc[status] || 0) + 1;
-            return acc;
-        }, {});
+        const statusCounts = allOrders.reduce(
+            (acc: Record<string, number>, order) => {
+                const status = order.status as string;
+                acc[status] = (acc[status] || 0) + 1;
+                return acc;
+            },
+            {},
+        );
 
         return {
             totalOrders: aggregations._count.id,
             totalRevenue: Number(aggregations._sum.total || 0),
-            statusCounts
-        };
-    }
-
-    private mapToEntity(prismaOrder: any): Order {
-        return {
-            id: prismaOrder.id,
-            userId: prismaOrder.userId,
-            status: prismaOrder.status as OrderStatus,
-            trackingNumber: prismaOrder.trackingNumber,
-            subtotal: Number(prismaOrder.subtotal),
-            total: Number(prismaOrder.total),
-            discountAmount: Number(prismaOrder.discountAmount),
-            couponId: prismaOrder.couponId,
-            items: prismaOrder.items.map((item: any) => ({
-                id: item.id,
-                orderId: item.orderId,
-                productId: item.productId,
-                amount: item.amount,
-                price: Number(item.price),
-                product: item.product ? {
-                    id: item.product.id,
-                    name: item.product.name,
-                    description: item.product.description,
-                    image: item.product.image,
-                    price: Number(item.product.price),
-                    ownerId: item.product.ownerId
-                } : undefined
-            })),
-            createdAt: prismaOrder.createdAt,
-            updatedAt: prismaOrder.updatedAt,
-            user: prismaOrder.user
+            statusCounts,
         };
     }
 }

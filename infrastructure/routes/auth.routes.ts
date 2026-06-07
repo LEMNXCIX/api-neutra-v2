@@ -1,12 +1,12 @@
-/// <reference path="../../types/request-dto.d.ts" />
-import { Application, Router } from 'express';
-import passport from 'passport';
-import { AuthController } from '@/interface-adapters/controllers/auth.controller';
-import { authenticate } from '@/middleware/authenticate.middleware';
+/// <reference path="../../types/request-dto.ts" />
+import { Application, Router } from "express";
+import passport from "passport";
+import { AuthController } from "@/interface-adapters/controllers/auth.controller";
+import { authenticate } from "@/middleware/authenticate.middleware";
 
 function auth(app: Application, authController: AuthController) {
     const router = Router();
-    app.use('/api/auth', router);
+    app.use("/api/auth", router);
 
     /**
      * @swagger
@@ -33,7 +33,7 @@ function auth(app: Application, authController: AuthController) {
      *       401:
      *         description: Invalid credentials
      */
-    router.post('/login', authController.login);
+    router.post("/login", authController.login);
 
     /**
      * @swagger
@@ -53,7 +53,7 @@ function auth(app: Application, authController: AuthController) {
      *       400:
      *         description: Bad request
      */
-    router.post('/signup', authController.signup);
+    router.post("/signup", authController.signup);
 
     /**
      * @swagger
@@ -71,8 +71,8 @@ function auth(app: Application, authController: AuthController) {
      *       200:
      *         description: Logout successful
      */
-    router.get('/logout', authController.logout);
-    router.post('/logout', authController.logout);
+    router.get("/logout", authController.logout);
+    router.post("/logout", authController.logout);
 
     /**
      * @swagger
@@ -88,29 +88,144 @@ function auth(app: Application, authController: AuthController) {
      *       401:
      *         description: Unauthorized
      */
-    router.get('/validate', authenticate, authController.validate);
-    router.post('/forgot-password', authController.forgotPassword);
-    router.post('/reset-password', authController.resetPassword);
+    router.get("/validate", authenticate, authController.validate);
 
-    router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
+    /**
+     * @swagger
+     * /auth/forgot-password:
+     *   post:
+     *     summary: Request password reset
+     *     tags: [Auth]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             $ref: '#/components/schemas/ForgotPasswordDto'
+     *     responses:
+     *       200:
+     *         description: Reset email sent if account exists
+     *       400:
+     *         description: Invalid email
+     */
+    router.post("/forgot-password", authController.forgotPassword);
+
+    /**
+     * @swagger
+     * /auth/reset-password:
+     *   post:
+     *     summary: Reset password with token
+     *     tags: [Auth]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             $ref: '#/components/schemas/ResetPasswordDto'
+     *     responses:
+     *       200:
+     *         description: Password reset successfully
+     *       400:
+     *         description: Invalid or expired token
+     */
+    router.post("/reset-password", authController.resetPassword);
+
+    /**
+     * @swagger
+     * /auth/google:
+     *   get:
+     *     summary: Initiate Google OAuth login
+     *     tags: [Auth]
+     *     responses:
+     *       302:
+     *         description: Redirect to Google login
+     */
     router.get(
-        '/google/callback',
-        passport.authenticate('google', { session: false }),
-        authController.socialLogin
+        "/google",
+        passport.authenticate("google", { scope: ["email", "profile"] }),
+    );
+    /**
+     * @swagger
+     * /auth/google/callback:
+     *   get:
+     *     summary: Google OAuth callback
+     *     tags: [Auth]
+     *     responses:
+     *       200:
+     *         description: Google login successful
+     *       401:
+     *         description: Google authentication failed
+     */
+    router.get(
+        "/google/callback",
+        passport.authenticate("google", { session: false }),
+        authController.socialLogin,
     );
 
-    router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));
+    /**
+     * @swagger
+     * /auth/facebook:
+     *   get:
+     *     summary: Initiate Facebook OAuth login
+     *     tags: [Auth]
+     *     responses:
+     *       302:
+     *         description: Redirect to Facebook login
+     */
     router.get(
-        '/facebook/callback',
-        passport.authenticate('facebook', { session: false }),
-        authController.socialLogin
+        "/facebook",
+        passport.authenticate("facebook", { scope: ["email"] }),
     );
 
-    router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
+    /**
+     * @swagger
+     * /auth/facebook/callback:
+     *   get:
+     *     summary: Facebook OAuth callback
+     *     tags: [Auth]
+     *     responses:
+     *       200:
+     *         description: Facebook login successful
+     *       401:
+     *         description: Facebook authentication failed
+     */
     router.get(
-        '/github/callback',
-        passport.authenticate('github', { session: false }),
-        authController.socialLogin
+        "/facebook/callback",
+        passport.authenticate("facebook", { session: false }),
+        authController.socialLogin,
+    );
+
+    /**
+     * @swagger
+     * /auth/github:
+     *   get:
+     *     summary: Initiate GitHub OAuth login
+     *     tags: [Auth]
+     *     responses:
+     *       302:
+     *         description: Redirect to GitHub login
+     */
+    router.get(
+        "/github",
+        passport.authenticate("github", { scope: ["user:email"] }),
+    );
+
+    /**
+     * @swagger
+     * /auth/github/callback:
+     *   get:
+     *     summary: GitHub OAuth callback
+     *     tags: [Auth]
+     *     responses:
+     *       200:
+     *         description: GitHub login successful
+     *       401:
+     *         description: GitHub authentication failed
+     */
+    router.get(
+        "/github/callback",
+        passport.authenticate("github", { session: false }),
+        authController.socialLogin,
     );
 }
 

@@ -1,12 +1,11 @@
-
-import { Application, Request, Response, Router } from 'express';
-import { authenticate } from '@/middleware/authenticate.middleware';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { UserController } from '@/interface-adapters/controllers/user.controller';
+import { Application, Request, Response, Router } from "express";
+import { authenticate } from "@/middleware/authenticate.middleware";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { UserController } from "@/interface-adapters/controllers/user.controller";
 
 function users(app: Application, userController: UserController) {
     const router = Router();
-    app.use('/api/users', router);
+    app.use("/api/users", router);
 
     /**
      * @swagger
@@ -55,7 +54,12 @@ function users(app: Application, userController: UserController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/', authenticate, requirePermission('users:read'), userController.getAll);
+    router.get(
+        "/",
+        authenticate,
+        requirePermission("users:read"),
+        userController.getAll,
+    );
 
     /**
      * @swagger
@@ -81,7 +85,12 @@ function users(app: Application, userController: UserController) {
      *       404:
      *         description: User not found
      */
-    router.get('/find/:id', authenticate, requirePermission('users:read'), userController.getById);
+    router.get(
+        "/find/:id",
+        authenticate,
+        requirePermission("users:read"),
+        userController.getById,
+    );
 
     /**
      * @swagger
@@ -97,8 +106,51 @@ function users(app: Application, userController: UserController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/stats/summary', authenticate, requirePermission('stats:read'), userController.getSummaryStats);
-    router.get('/stats', authenticate, requirePermission('stats:read'), userController.getUsersStats);
+    /**
+     * @swagger
+     * /users/stats/summary:
+     *   get:
+     *     summary: Get user summary statistics
+     *     tags: [Users]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: User summary statistics
+     *       401:
+     *         description: Unauthorized
+     *       403:
+     *         description: Forbidden
+     */
+    router.get(
+        "/stats/summary",
+        authenticate,
+        requirePermission("stats:read"),
+        userController.getSummaryStats,
+    );
+
+    /**
+     * @swagger
+     * /users/stats:
+     *   get:
+     *     summary: Get user statistics
+     *     tags: [Users]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: User statistics
+     *       401:
+     *         description: Unauthorized
+     *       403:
+     *         description: Forbidden
+     */
+    router.get(
+        "/stats",
+        authenticate,
+        requirePermission("stats:read"),
+        userController.getUsersStats,
+    );
 
     // Actualizar usuario
     /**
@@ -136,7 +188,12 @@ function users(app: Application, userController: UserController) {
      *       404:
      *         description: User not found
      */
-    router.put("/:id", authenticate, requirePermission('users:manage'), userController.update);
+    router.put(
+        "/:id",
+        authenticate,
+        requirePermission("users:manage"),
+        userController.update,
+    );
 
     // Asignar rol a usuario
     /**
@@ -172,7 +229,12 @@ function users(app: Application, userController: UserController) {
      *       404:
      *         description: User not found
      */
-    router.put("/:id/role", authenticate, requirePermission('users:manage'), userController.assignRole);
+    router.put(
+        "/:id/role",
+        authenticate,
+        requirePermission("users:manage"),
+        userController.assignRole,
+    );
 
     // Eliminar usuario
     /**
@@ -197,10 +259,19 @@ function users(app: Application, userController: UserController) {
      *       404:
      *         description: User not found
      */
-    router.delete("/:id", authenticate, requirePermission('users:manage'), userController.delete);
+    router.delete(
+        "/:id",
+        authenticate,
+        requirePermission("users:manage"),
+        userController.delete,
+    );
 
     router.use(async (req: Request, res: Response) => {
-        return res.apiError({ message: 'Pagina no encontrada. :|' }, 'Pagina no encontrada', 404);
+        return res.apiError(
+            { message: "Pagina no encontrada. :|" },
+            "Pagina no encontrada",
+            404,
+        );
     });
 }
 

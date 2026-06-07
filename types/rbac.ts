@@ -1,15 +1,15 @@
 // RBAC Type Definitions
 
 // Permission format: "resource:action"
-export type PermissionAction = 'read' | 'write' | 'delete' | 'manage';
+export type PermissionAction = "read" | "write" | "delete" | "manage";
 
 export type PermissionResource =
-    | 'users'
-    | 'products'
-    | 'orders'
-    | 'cart'
-    | 'slides'
-    | 'stats';
+    | "users"
+    | "products"
+    | "orders"
+    | "cart"
+    | "slides"
+    | "stats";
 
 export type PermissionString = `${PermissionResource}:${PermissionAction}`;
 
@@ -36,6 +36,7 @@ export interface JWTPayload {
         name: string;
         level: number;
     };
+    tenantId?: string;
 }
 
 export interface AuthenticatedUser extends JWTPayload {

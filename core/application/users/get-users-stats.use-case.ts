@@ -1,30 +1,20 @@
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
+import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetUsersStatsUseCase {
-    constructor(private userRepository: IUserRepository) { }
+    constructor(private userRepository: IUserRepository) {}
 
-    async execute(tenantId?: string) {
-        try {
-            const stats = await this.userRepository.getUsersStats(tenantId);
+    async execute(tenantId?: string): Promise<UseCaseResult> {
+        const stats = await this.userRepository.getUsersStats(tenantId);
 
-            const data = stats.map(r => ({
-                _id: r.yearMonth,
-                total: r.total
-            }));
+        const data = stats.map((r) => ({
+            _id: r.yearMonth,
+            total: r.total,
+        }));
 
-            return {
-                success: true,
-                code: 200,
-                message: "Se realiza la obtencion de las ultimos usuarios creados.",
-                data: data
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                code: 500,
-                message: "Error fetching user stats",
-                errors: error
-            };
-        }
+        return Success(
+            data,
+            "Se realiza la obtencion de las ultimos usuarios creados.",
+        );
     }
 }

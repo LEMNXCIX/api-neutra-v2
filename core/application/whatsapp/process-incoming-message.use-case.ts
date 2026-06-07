@@ -1,32 +1,51 @@
-import { WhatsAppBotService } from '@/infrastructure/services/whatsapp-bot.service';
-import { IWhatsAppConfigRepository } from '@/core/repositories/whatsapp-config.repository.interface';
+import {
+    IWhatsAppBotService,
+    IncomingWhatsAppMessage,
+} from "@/core/ports/whatsapp-bot-service.interface";
+import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import {
+    ValidationError,
+    EntityNotFoundError,
+} from "@/core/domain/errors/domain-errors";
 
 export class ProcessIncomingMessageUseCase {
     constructor(
-        private whatsappBotService: WhatsAppBotService,
-        private whatsappConfigRepository: IWhatsAppConfigRepository
-    ) { }
+        private whatsappBotService: IWhatsAppBotService,
+        private whatsappConfigRepository: IWhatsAppConfigRepository,
+    ) {}
 
-    async execute(messagePayload: any): Promise<void> {
-        const metadata = messagePayload.metadata;
-        const phoneNumberId = metadata?.phone_number_id;
+    async execute(
+        messagePayload: IncomingWhatsAppMessage,
+    ): Promise<UseCaseResult<void>> {
+        const metadata = messagePayload.metadata as
+            | Record<string, unknown>
+            | undefined;
+        const phoneNumberId = metadata?.phone_number_id as string | undefined;
 
         if (!phoneNumberId) {
-            console.error("Missing phone_number_id in webhook metadata");
-            return;
+            throw new ValidationError(
+                "Missing phone_number_id in webhook metadata",
+                "WHATSAPP_CONFIG_NOT_FOUND",
+            );
         }
 
-        // Resolve Tenant
-        const config = await this.whatsappConfigRepository.findByPhoneNumberId(phoneNumberId);
+        const config =
+            await this.whatsappConfigRepository.findByPhoneNumberId(
+                phoneNumberId,
+            );
 
         if (!config) {
-            console.error(`No WhatsApp config found for phone number ID: ${phoneNumberId}`);
-            return;
+            throw new EntityNotFoundError("WhatsApp config", phoneNumberId);
         }
 
         const tenantId = config.tenantId;
 
-        // Dispatch to bot service
-        await this.whatsappBotService.processIncomingMessage(messagePayload, tenantId);
+        await this.whatsappBotService.processIncomingMessage(
+            messagePayload,
+            tenantId,
+        );
+
+        return Success(undefined, "Message processed successfully");
     }
 }

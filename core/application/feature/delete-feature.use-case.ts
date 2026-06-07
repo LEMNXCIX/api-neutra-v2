@@ -1,19 +1,17 @@
-import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
-import { ILogger } from '@/core/providers/logger.interface';
+import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 export class DeleteFeatureUseCase {
-    constructor(
-        private featureRepository: IFeatureRepository,
-        private logger: ILogger
-    ) { }
+    constructor(private featureRepository: IFeatureRepository) {}
 
-    async execute(id: string): Promise<void> {
+    async execute(id: string): Promise<UseCaseResult> {
         const existing = await this.featureRepository.findById(id);
         if (!existing) {
-            throw new Error('Feature not found');
+            throw new EntityNotFoundError("Feature", id);
         }
 
-        this.logger.warn(`Deleting feature: ${id} (${existing.key})`);
-        return this.featureRepository.delete(id);
+        await this.featureRepository.delete(id);
+        return Success(null, "Feature deleted successfully");
     }
 }

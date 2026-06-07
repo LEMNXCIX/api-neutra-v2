@@ -1,18 +1,11 @@
-export interface Product {
-    id: string;
-    name: string;
-    price: number;
-    image: string;
-    description?: string;
-    stock: number;
-}
+import { Product } from "@/core/entities/product.entity";
 
 export interface CartItem {
     id: string;
     cartId: string;
     productId: string;
     amount: number;
-    product?: Product;
+    product?: Pick<Product, "id" | "name" | "price" | "image" | "stock">;
 }
 
 export interface Cart {

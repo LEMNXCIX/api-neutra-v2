@@ -1,233 +1,137 @@
-import { Request, Response, NextFunction } from 'express';
-import { AuthenticatedUser } from '@/types/rbac';
-import { AuthErrorCodes } from '@/types/error-codes';
+import { Request, Response, NextFunction } from "express";
+import { AuthenticatedUser } from "@/types/rbac";
+import {
+    DomainError,
+    UnauthorizedError,
+    ForbiddenError,
+} from "@/core/domain/errors/domain-errors";
 
-/**
- * Check if user has a specific permission
- * @param permission - Permission string in format "resource:action" (e.g., "users:read")
- */
 export function requirePermission(permission: string) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user as unknown as AuthenticatedUser;
 
         if (!user || !user.role || !user.role.permissions) {
-            return res.status(401).json({
-                success: false,
-                message: 'Authentication required',
-                errors: [{
-                    code: AuthErrorCodes.MISSING_TOKEN,
-                    message: 'You must be logged in to access this resource'
-                }]
-            });
+            throw new UnauthorizedError(
+                "You must be logged in to access this resource",
+            );
         }
 
-        // Super Admin bypass - allow SUPER_ADMIN role to access everything
-        // This includes SUPER_ADMIN from the 'superadmin' tenant accessing other tenants
-        if (user.role.name === 'SUPER_ADMIN') {
+        if (user.role.name === "SUPER_ADMIN") {
             return next();
         }
 
         const hasPermission = user.role.permissions.includes(permission);
 
         if (!hasPermission) {
-            return res.status(403).json({
-                success: false,
-                message: 'Insufficient permissions',
-                errors: [{
-                    code: AuthErrorCodes.INSUFFICIENT_PERMISSIONS,
-                    message: `You need '${permission}' permission to access this resource`,
-                    details: {
-                        required: permission,
-                        userPermissions: user.role.permissions
-                    }
-                }]
-            });
+            throw new ForbiddenError(
+                `You need '${permission}' permission to access this resource`,
+            );
         }
 
         next();
     };
 }
 
-/**
- * Check if user has at least one of the required permissions
- * @param permissions - Array of permission strings
- */
 export function requireAnyPermission(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user as unknown as AuthenticatedUser;
 
         if (!user || !user.role || !user.role.permissions) {
-            return res.status(401).json({
-                success: false,
-                message: 'Authentication required',
-                errors: [{
-                    code: AuthErrorCodes.MISSING_TOKEN,
-                    message: 'You must be logged in'
-                }]
-            });
+            throw new UnauthorizedError("You must be logged in");
         }
 
-        // Super Admin bypass
-        if (user.role.name === 'SUPER_ADMIN') {
+        if (user.role.name === "SUPER_ADMIN") {
             return next();
         }
 
-        const hasAnyPermission = permissions.some(p => user.role.permissions.includes(p));
+        const hasAnyPermission = permissions.some((p) =>
+            user.role.permissions.includes(p),
+        );
 
         if (!hasAnyPermission) {
-            return res.status(403).json({
-                success: false,
-                message: 'Insufficient permissions',
-                errors: [{
-                    code: AuthErrorCodes.INSUFFICIENT_PERMISSIONS,
-                    message: `You need at least one of these permissions: ${permissions.join(', ')}`,
-                    details: {
-                        required: permissions,
-                        userPermissions: user.role.permissions
-                    }
-                }]
-            });
+            throw new ForbiddenError(
+                `You need at least one of these permissions: ${permissions.join(", ")}`,
+            );
         }
 
         next();
     };
 }
 
-/**
- * Check if user has all required permissions
- * @param permissions - Array of permission strings (all required)
- */
 export function requireAllPermissions(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user as unknown as AuthenticatedUser;
 
         if (!user || !user.role || !user.role.permissions) {
-            return res.status(401).json({
-                success: false,
-                message: 'Authentication required',
-                errors: [{
-                    code: AuthErrorCodes.MISSING_TOKEN,
-                    message: 'You must be logged in'
-                }]
-            });
+            throw new UnauthorizedError("You must be logged in");
         }
 
-        // Super Admin bypass
-        if (user.role.name === 'SUPER_ADMIN') {
+        if (user.role.name === "SUPER_ADMIN") {
             return next();
         }
 
-        const hasAllPermissions = permissions.every(p => user.role.permissions.includes(p));
+        const hasAllPermissions = permissions.every((p) =>
+            user.role.permissions.includes(p),
+        );
 
         if (!hasAllPermissions) {
-            const missingPermissions = permissions.filter(p => !user.role.permissions.includes(p));
-
-            return res.status(403).json({
-                success: false,
-                message: 'Insufficient permissions',
-                errors: [{
-                    code: AuthErrorCodes.INSUFFICIENT_PERMISSIONS,
-                    message: `You are missing required permissions: ${missingPermissions.join(', ')}`,
-                    details: {
-                        required: permissions,
-                        missing: missingPermissions,
-                        userPermissions: user.role.permissions
-                    }
-                }]
-            });
+            const missingPermissions = permissions.filter(
+                (p) => !user.role.permissions.includes(p),
+            );
+            throw new ForbiddenError(
+                `You are missing required permissions: ${missingPermissions.join(", ")}`,
+            );
         }
 
         next();
     };
 }
 
-/**
- * Check if user has minimum role level (backward compatibility)
- * @param minLevel - Minimum role level required
- */
 export function requireRole(minLevel: number) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user as unknown as AuthenticatedUser;
 
         if (!user || !user.role) {
-            return res.status(401).json({
-                success: false,
-                message: 'Authentication required',
-                errors: [{
-                    code: AuthErrorCodes.MISSING_TOKEN,
-                    message: 'You must be logged in'
-                }]
-            });
+            throw new UnauthorizedError("You must be logged in");
         }
 
-        // Super Admin bypass
-        if (user.role.name === 'SUPER_ADMIN') {
+        if (user.role.name === "SUPER_ADMIN") {
             return next();
         }
 
         if (user.role.level < minLevel) {
-            return res.status(403).json({
-                success: false,
-                message: 'Insufficient role level',
-                errors: [{
-                    code: AuthErrorCodes.INSUFFICIENT_PERMISSIONS,
-                    message: `You need role level ${minLevel} or higher (current: ${user.role.level})`,
-                    details: {
-                        required: minLevel,
-                        current: user.role.level,
-                        roleName: user.role.name
-                    }
-                }]
-            });
+            throw new ForbiddenError(
+                `You need role level ${minLevel} or higher (current: ${user.role.level})`,
+            );
         }
 
         next();
     };
 }
 
-/**
- * Check if user owns the resource (for self-service operations)
- * Uses a callback to determine ownership
- */
-export function requireOwnership(getResourceOwnerId: (req: Request) => Promise<string | null>) {
+export function requireOwnership(
+    getResourceOwnerId: (req: Request) => Promise<string | null>,
+) {
     return async (req: Request, res: Response, next: NextFunction) => {
         const user = req.user as unknown as AuthenticatedUser;
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Authentication required',
-                errors: [{
-                    code: AuthErrorCodes.MISSING_TOKEN,
-                    message: 'You must be logged in'
-                }]
-            });
+            throw new UnauthorizedError("You must be logged in");
         }
 
         try {
             const ownerId = await getResourceOwnerId(req);
 
             if (ownerId !== user.id) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Access denied',
-                    errors: [{
-                        code: AuthErrorCodes.PERMISSION_DENIED,
-                        message: 'You can only access your own resources'
-                    }]
-                });
+                throw new ForbiddenError(
+                    "You can only access your own resources",
+                );
             }
 
             next();
         } catch (error) {
-            return res.status(500).json({
-                success: false,
-                message: 'Error verifying ownership',
-                errors: [{
-                    code: 'SYS_001',
-                    message: 'Failed to verify resource ownership'
-                }]
-            });
+            if (error instanceof DomainError) throw error;
+            throw new ForbiddenError("Failed to verify resource ownership");
         }
     };
 }

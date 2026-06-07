@@ -1,10 +1,22 @@
-import { JWTPayload } from '@/types/rbac';
+import { AuthenticatedUser } from "@/types/rbac";
 
 declare global {
     namespace Express {
-        // Augment the User interface which Request.user uses
-        interface User extends JWTPayload { }
+        interface User extends AuthenticatedUser {}
+
+        interface Request {
+            tenantId?: string;
+            tenant?: {
+                id: string;
+                name: string;
+                slug: string;
+                type: string;
+                active: boolean;
+            };
+            traceId?: string;
+            validatedBody?: any;
+        }
     }
 }
 
-export { };
+export {};

@@ -1,35 +1,43 @@
-import { IAppointmentRepository } from '@/core/repositories/appointment.repository.interface';
-import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
-import { IServiceRepository } from '@/core/repositories/service.repository.interface';
-import { ILogger } from '@/core/providers/logger.interface';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { AppError } from '@/types/api-response';
-import { ResourceErrorCodes, ValidationErrorCodes } from '@/types/error-codes';
-
-export interface GetAvailabilityDTO {
-    staffId: string;
-    serviceId: string;
-    date: string; 
-    timezoneOffset?: string; 
-}
+import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import {
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
+import { GetAvailabilityDTO } from "@/core/application/dtos/requests/appointment.request";
 
 export class GetAvailabilityUseCase {
     constructor(
         private appointmentRepository: IAppointmentRepository,
         private staffRepository: IStaffRepository,
         private serviceRepository: IServiceRepository,
-        private logger: ILogger
-    ) { }
+    ) {}
 
-    async execute(tenantId: string, data: GetAvailabilityDTO): Promise<UseCaseResult> {
-        const service = await this.serviceRepository.findById(tenantId, data.serviceId);
+    async execute(
+        tenantId: string,
+        data: GetAvailabilityDTO,
+    ): Promise<UseCaseResult> {
+        if (!data.staffId || !data.serviceId || !data.date) {
+            throw new ValidationError(
+                "Missing required parameters: staffId, serviceId, date",
+            );
+        }
+        const service = await this.serviceRepository.findById(
+            tenantId,
+            data.serviceId,
+        );
         if (!service) {
-            throw new AppError('Service not found', 404, ResourceErrorCodes.NOT_FOUND);
+            throw new EntityNotFoundError("Service", data.serviceId);
         }
 
-        const staff = await this.staffRepository.findById(tenantId, data.staffId);
+        const staff = await this.staffRepository.findById(
+            tenantId,
+            data.staffId,
+        );
         if (!staff) {
-            throw new AppError('Staff not found', 404, ResourceErrorCodes.NOT_FOUND);
+            throw new EntityNotFoundError("Staff", data.staffId);
         }
 
         const workStartHour = 9;
@@ -37,7 +45,7 @@ export class GetAvailabilityUseCase {
 
         const targetDate = new Date(data.date);
         if (isNaN(targetDate.getTime())) {
-            throw new AppError('Invalid Date', 400, ValidationErrorCodes.INVALID_FORMAT);
+            throw new ValidationError("Invalid Date");
         }
 
         const startOfDay = new Date(targetDate);
@@ -52,15 +60,15 @@ export class GetAvailabilityUseCase {
             tenantId,
             data.staffId,
             startOfDay,
-            endOfDay
+            endOfDay,
         );
 
         const activeAppointments = appointments.filter(
-            a => a.status !== 'CANCELLED' && a.status !== 'NO_SHOW'
+            (a) => a.status !== "CANCELLED" && a.status !== "NO_SHOW",
         );
 
         const availableSlots: string[] = [];
-        const interval = 30; 
+        const interval = 30;
         const offset = data.timezoneOffset ? Number(data.timezoneOffset) : 0;
 
         const currentSlot = new Date(targetDate);
@@ -71,8 +79,12 @@ export class GetAvailabilityUseCase {
 
         while (currentSlot < endWorkTime) {
             const slotGeneric = new Date(currentSlot);
-            const slotStartUTC = new Date(slotGeneric.getTime() + offset * 60000);
-            const slotEndUTC = new Date(slotStartUTC.getTime() + service.duration * 60000);
+            const slotStartUTC = new Date(
+                slotGeneric.getTime() + offset * 60000,
+            );
+            const slotEndUTC = new Date(
+                slotStartUTC.getTime() + service.duration * 60000,
+            );
 
             const now = new Date();
             if (slotStartUTC < now) {
@@ -80,19 +92,28 @@ export class GetAvailabilityUseCase {
                 continue;
             }
 
-            const slotEndLocal = new Date(slotGeneric.getTime() + service.duration * 60000);
+            const slotEndLocal = new Date(
+                slotGeneric.getTime() + service.duration * 60000,
+            );
 
             if (slotEndLocal <= endWorkTime) {
-                const hasConflict = activeAppointments.some(app => {
+                const hasConflict = activeAppointments.some((app) => {
                     const appStart = new Date(app.startTime);
                     const appEnd = new Date(app.endTime);
-                    const overlap = (slotStartUTC < appEnd && slotEndUTC > appStart);
+                    const overlap =
+                        slotStartUTC < appEnd && slotEndUTC > appStart;
                     return overlap;
                 });
 
                 if (!hasConflict) {
-                    const hours = slotGeneric.getHours().toString().padStart(2, '0');
-                    const minutes = slotGeneric.getMinutes().toString().padStart(2, '0');
+                    const hours = slotGeneric
+                        .getHours()
+                        .toString()
+                        .padStart(2, "0");
+                    const minutes = slotGeneric
+                        .getMinutes()
+                        .toString()
+                        .padStart(2, "0");
                     availableSlots.push(`${hours}:${minutes}`);
                 }
             }

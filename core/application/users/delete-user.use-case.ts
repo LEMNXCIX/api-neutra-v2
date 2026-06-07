@@ -1,20 +1,22 @@
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { AppError } from '@/types/api-response';
-import { ResourceErrorCodes } from '@/types/error-codes';
+import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 export class DeleteUserUseCase {
-    constructor(private userRepository: IUserRepository) { }
+    constructor(private userRepository: IUserRepository) {}
 
-    async execute(tenantId: string | undefined, id: string): Promise<UseCaseResult> {
+    async execute(
+        tenantId: string | undefined,
+        id: string,
+    ): Promise<UseCaseResult> {
         const existingUser = await this.userRepository.findById(id);
 
         if (!existingUser) {
-            throw new AppError('User not found', 404, ResourceErrorCodes.NOT_FOUND);
+            throw new EntityNotFoundError("User", id);
         }
 
         await this.userRepository.delete(id);
 
-        return Success(null, 'User deleted successfully');
+        return Success(null, "User deleted successfully");
     }
 }

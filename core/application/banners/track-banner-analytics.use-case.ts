@@ -1,32 +1,34 @@
-import { IBannerRepository } from '@/core/repositories/banner.repository.interface';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
-import { AppError } from '@/types/api-response';
-import { ResourceErrorCodes } from '@/types/error-codes';
+import { IBannerRepository } from "@/core/repositories/banner.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 export class TrackBannerAnalyticsUseCase {
-    constructor(private bannerRepository: IBannerRepository) { }
+    constructor(private bannerRepository: IBannerRepository) {}
 
-    async trackImpression(tenantId: string, id: string): Promise<UseCaseResult> {
+    async trackImpression(
+        tenantId: string,
+        id: string,
+    ): Promise<UseCaseResult> {
         const banner = await this.bannerRepository.findById(tenantId, id);
 
         if (!banner) {
-            throw new AppError('Banner not found', 404, ResourceErrorCodes.NOT_FOUND);
+            throw new EntityNotFoundError("Banner", id);
         }
 
         await this.bannerRepository.incrementImpressions(tenantId, id);
 
-        return Success(null, 'Impression tracked');
+        return Success(null, "Impression tracked");
     }
 
     async trackClick(tenantId: string, id: string): Promise<UseCaseResult> {
         const banner = await this.bannerRepository.findById(tenantId, id);
 
         if (!banner) {
-            throw new AppError('Banner not found', 404, ResourceErrorCodes.NOT_FOUND);
+            throw new EntityNotFoundError("Banner", id);
         }
 
         await this.bannerRepository.incrementClicks(tenantId, id);
 
-        return Success(null, 'Click tracked');
+        return Success(null, "Click tracked");
     }
 }

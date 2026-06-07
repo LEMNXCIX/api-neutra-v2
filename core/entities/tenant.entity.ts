@@ -1,8 +1,7 @@
-
 export enum TenantType {
-    STORE = 'STORE',
-    BOOKING = 'BOOKING',
-    HYBRID = 'HYBRID'
+    STORE = "STORE",
+    BOOKING = "BOOKING",
+    HYBRID = "HYBRID",
 }
 
 export interface TenantConfig {
@@ -18,7 +17,7 @@ export interface TenantConfig {
         language?: string;
         timezone?: string;
     };
-    features?: Record<string, any>;
+    features?: Record<string, boolean>;
 }
 
 export class Tenant {
@@ -39,7 +38,7 @@ export class Tenant {
         active: boolean,
         config: TenantConfig | undefined,
         createdAt: Date,
-        updatedAt: Date
+        updatedAt: Date,
     ) {
         this.id = id;
         this.name = name;
@@ -49,5 +48,21 @@ export class Tenant {
         this.config = config;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+    }
+
+    isBookingType(): boolean {
+        return (
+            this.type === TenantType.BOOKING || this.type === TenantType.HYBRID
+        );
+    }
+
+    isStoreType(): boolean {
+        return (
+            this.type === TenantType.STORE || this.type === TenantType.HYBRID
+        );
+    }
+
+    isFeatureEnabled(featureKey: string): boolean {
+        return this.config?.features?.[featureKey] === true;
     }
 }

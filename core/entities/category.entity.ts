@@ -10,20 +10,7 @@ export interface Category {
     type: CategoryType;
     active: boolean;
     tenantId: string;
+    productCount?: number;
     createdAt: Date;
     updatedAt: Date;
-}
-
-export interface CreateCategoryDTO {
-    name: string;
-    description?: string;
-    type?: CategoryType;
-    active?: boolean;
-}
-
-export interface UpdateCategoryDTO {
-    name?: string;
-    description?: string;
-    type?: CategoryType;
-    active?: boolean;
 }

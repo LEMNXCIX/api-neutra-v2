@@ -7,11 +7,3 @@ export interface Feature {
     price: number;
     createdAt?: Date;
 }
-
-export interface CreateFeatureDTO {
-    key: string;
-    name: string;
-    description?: string;
-    category?: string;
-    price?: number;
-}

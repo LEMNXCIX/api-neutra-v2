@@ -1,59 +1,37 @@
-import { Request, Response } from 'express';
-import { ConfigureWhatsAppUseCase } from '@/core/application/whatsapp/configure-whatsapp.use-case';
-import { IWhatsAppConfigRepository } from '@/core/repositories/whatsapp-config.repository.interface';
-import { IFeatureRepository } from '@/core/repositories/feature.repository.interface';
+import { Request, Response } from "express";
+import { GetWhatsAppConfigUseCase } from "@/core/application/whatsapp/get-whatsapp-config.use-case";
+import { ConfigureWhatsAppUseCase } from "@/core/application/whatsapp/configure-whatsapp.use-case";
+import { WhatsAppConfigPresenter } from "@/core/presenters/whatsapp-config.presenter";
+import { present } from "@/core/utils/use-case-result";
 
 export class WhatsAppConfigController {
     constructor(
+        private getWhatsAppConfigUseCase: GetWhatsAppConfigUseCase,
         private configureWhatsAppUseCase: ConfigureWhatsAppUseCase,
-        private whatsappConfigRepo: IWhatsAppConfigRepository
-    ) { }
+    ) {}
 
-    /**
-     * Get Config
-     * GET /api/admin/whatsapp/config
-     */
     async getConfig(req: Request, res: Response) {
-        try {
-            const tenantId = req.headers['x-tenant-id'] as string;
-            if (!tenantId) {
-                return res.status(400).json({ error: 'Tenant ID is required' });
-            }
+        const tenantId = req.headers["x-tenant-id"] as string;
 
-            const config = await this.whatsappConfigRepo.findByTenantId(tenantId);
-
-            // Mask sensitive data
-            if (config) {
-                config.accessToken = '********';
-                config.webhookVerifyToken = '********';
-            }
-
-            return res.status(200).json(config || {});
-        } catch (error: any) {
-            console.error(error);
-            return res.status(500).json({ error: 'Failed to fetch config' });
-        }
+        const result = await this.getWhatsAppConfigUseCase.execute(tenantId);
+        return res.json(
+            present(result, (data) =>
+                WhatsAppConfigPresenter.toResponse(data, true),
+            ),
+        );
     }
 
-    /**
-     * Update Config
-     * POST /api/admin/whatsapp/config
-     */
     async updateConfig(req: Request, res: Response) {
-        try {
-            const tenantId = req.headers['x-tenant-id'] as string;
-            const data = req.body;
+        const tenantId = req.headers["x-tenant-id"] as string;
 
-            if (!tenantId) {
-                return res.status(400).json({ error: 'Tenant ID is required' });
-            }
-
-            const updatedConfig = await this.configureWhatsAppUseCase.execute(tenantId, data);
-
-            return res.status(200).json(updatedConfig);
-        } catch (error: any) {
-            console.error(error);
-            return res.status(500).json({ error: 'Failed to update config' });
-        }
+        const result = await this.configureWhatsAppUseCase.execute(
+            tenantId,
+            req.body,
+        );
+        return res.json(
+            present(result, (data) =>
+                WhatsAppConfigPresenter.toResponse(data, true),
+            ),
+        );
     }
 }

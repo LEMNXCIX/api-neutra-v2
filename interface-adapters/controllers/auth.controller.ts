@@ -1,14 +1,15 @@
-import { Request, Response } from 'express';
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
-import { IPasswordHasher, ITokenGenerator } from '@/core/providers/auth-providers.interface';
-import { ILogger } from '@/core/providers/logger.interface';
-import { IQueueProvider } from '@/core/providers/queue-provider.interface';
-import { LoginUseCase } from '@/core/application/auth/login.use-case';
-import { RegisterUseCase } from '@/core/application/auth/register.use-case';
-import { SocialLoginUseCase } from '@/core/application/auth/social-login.use-case';
-import { ForgotPasswordUseCase } from '@/core/application/auth/forgot-password.use-case';
-import { ResetPasswordUseCase } from '@/core/application/auth/reset-password.use-case';
-import { authResponse, providerResponse, deleteCookie } from '@/helpers/authResponse.helpers';
+import { Request, Response } from "express";
+import { LoginUseCase } from "@/core/application/auth/login.use-case";
+import { RegisterUseCase } from "@/core/application/auth/register.use-case";
+import { SocialLoginUseCase } from "@/core/application/auth/social-login.use-case";
+import { ForgotPasswordUseCase } from "@/core/application/auth/forgot-password.use-case";
+import { ResetPasswordUseCase } from "@/core/application/auth/reset-password.use-case";
+import {
+    authResponse,
+    providerResponse,
+    deleteCookie,
+} from "@/helpers/authResponse.helpers";
+import { Success } from "@/core/utils/use-case-result";
 
 export class AuthController {
     constructor(
@@ -16,7 +17,7 @@ export class AuthController {
         private registerUseCase: RegisterUseCase,
         private socialLoginUseCase: SocialLoginUseCase,
         private forgotPasswordUseCase: ForgotPasswordUseCase,
-        private resetPasswordUseCase: ResetPasswordUseCase
+        private resetPasswordUseCase: ResetPasswordUseCase,
     ) {
         // Bind methods to instance
         this.login = this.login.bind(this);
@@ -30,25 +31,43 @@ export class AuthController {
 
     async login(req: Request, res: Response) {
         // tenantId can be undefined for global login
-        const tenantId = (req as any).tenantId;
+        const tenantId = req.tenantId!;
         const result = await this.loginUseCase.execute(tenantId, req.body);
         return authResponse(req, res, result, 401);
     }
 
     async signup(req: Request, res: Response) {
-        const tenantId = (req as any).tenantId;
-        const origin = (req.headers['x-original-origin'] as string) ||
+        const tenantId = req.tenantId!;
+        const origin =
+            (req.headers["x-original-origin"] as string) ||
             req.headers.origin ||
-            (req.headers.referer ? new URL(req.headers.referer as string).origin : null) ||
-            `${req.protocol}://${req.get('host')}`;
-        const result = await this.registerUseCase.execute(tenantId, req.body, origin);
+            (req.headers.referer
+                ? new URL(req.headers.referer as string).origin
+                : null) ||
+            `${req.protocol}://${req.get("host")}`;
+        const result = await this.registerUseCase.execute(
+            tenantId,
+            req.body,
+            origin,
+        );
         return authResponse(req, res, result, 200);
     }
 
     async socialLogin(req: Request, res: Response) {
-        const tenantId = (req as any).tenantId;
-        const user = (req as any).user.profile;
-        const result = await this.socialLoginUseCase.execute(tenantId, user);
+        const tenantId = req.tenantId!;
+        const profile = req.user as unknown as {
+            provider: string;
+            id: string;
+            displayName?: string;
+            emails?: Array<{ value: string }>;
+            photos?: Array<{ value: string }>;
+        };
+        if (!profile?.provider || !profile?.id) {
+            return res
+                .status(401)
+                .json({ success: false, message: "OAuth profile missing" });
+        }
+        const result = await this.socialLoginUseCase.execute(tenantId, profile);
         return providerResponse(req, res, result, 401);
     }
 
@@ -57,26 +76,34 @@ export class AuthController {
     }
 
     validate(req: Request, res: Response) {
-        return res.status(200).json({
-            success: true,
-            message: 'Validación exitosa',
-            data: { user: (req as any).user }
-        });
+        return res
+            .status(200)
+            .json(Success({ user: req.user! }, "Validación exitosa"));
     }
 
     async forgotPassword(req: Request, res: Response) {
-        const tenantId = (req as any).tenantId;
-        const origin = (req.headers['x-original-origin'] as string) ||
+        const tenantId = req.tenantId!;
+        const origin =
+            (req.headers["x-original-origin"] as string) ||
             req.headers.origin ||
-            (req.headers.referer ? new URL(req.headers.referer as string).origin : null) ||
-            `${req.protocol}://${req.get('host')}`;
-        const result = await this.forgotPasswordUseCase.execute(tenantId, req.body.email, origin);
-        return res.status(result.code).json(result);
+            (req.headers.referer
+                ? new URL(req.headers.referer as string).origin
+                : null) ||
+            `${req.protocol}://${req.get("host")}`;
+        const result = await this.forgotPasswordUseCase.execute(
+            tenantId,
+            req.body.email,
+            origin,
+        );
+        return res.status(200).json(result);
     }
 
     async resetPassword(req: Request, res: Response) {
         const { token, newPassword } = req.body;
-        const result = await this.resetPasswordUseCase.execute(token, newPassword);
-        return res.status(result.code).json(result);
+        const result = await this.resetPasswordUseCase.execute(
+            token,
+            newPassword,
+        );
+        return res.status(200).json(result);
     }
 }

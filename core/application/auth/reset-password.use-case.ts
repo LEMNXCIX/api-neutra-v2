@@ -1,60 +1,38 @@
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
-import { IPasswordHasher } from '@/core/providers/auth-providers.interface';
-import { ILogger } from '@/core/providers/logger.interface';
+import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { IPasswordHasher } from "@/core/providers/auth-providers.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import {
+    ValidationError,
+    BusinessRuleViolationError,
+} from "@/core/domain/errors/domain-errors";
 
 export class ResetPasswordUseCase {
     constructor(
         private userRepository: IUserRepository,
         private passwordHasher: IPasswordHasher,
-        private logger: ILogger
-    ) { }
+    ) {}
 
-    async execute(token: string, newPassword: string) {
+    async execute(token: string, newPassword: string): Promise<UseCaseResult> {
         if (!token || !newPassword) {
-            return {
-                success: false,
-                code: 400,
-                message: "Token and new password are required"
-            };
+            throw new ValidationError("Token and new password are required");
         }
 
-        try {
-            // Find user by valid reset token
-            const user = await this.userRepository.findByResetToken(token);
+        const user = await this.userRepository.findByResetToken(token);
 
-            if (!user) {
-                this.logger.warn('Reset password attempts with invalid or expired token', { token });
-                return {
-                    success: false,
-                    code: 400,
-                    message: "Password reset token is invalid or has expired"
-                };
-            }
-
-            // Hash new password
-            const hashedPassword = await this.passwordHasher.hash(newPassword);
-
-            // Update user password and clear reset info
-            await this.userRepository.update(user.id, {
-                password: hashedPassword,
-                resetPasswordToken: undefined,
-                resetPasswordExpires: undefined
-            });
-
-            this.logger.info('Password reset successful', { userId: user.id, email: user.email });
-
-            return {
-                success: true,
-                code: 200,
-                message: "Password has been successfully reset"
-            };
-        } catch (error: any) {
-            this.logger.error('Reset password error', { error: error.message });
-            return {
-                success: false,
-                code: 500,
-                message: "Error processing password reset"
-            };
+        if (!user) {
+            throw new BusinessRuleViolationError(
+                "Password reset token is invalid or has expired",
+            );
         }
+
+        const hashedPassword = await this.passwordHasher.hash(newPassword);
+
+        await this.userRepository.update(user.id, {
+            password: hashedPassword,
+            resetPasswordToken: undefined,
+            resetPasswordExpires: undefined,
+        });
+
+        return Success(null, "Password has been successfully reset");
     }
 }

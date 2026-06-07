@@ -1,182 +1,131 @@
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
-import { IPasswordHasher, ITokenGenerator } from '@/core/providers/auth-providers.interface';
-import { CreateUserDTO } from '@/core/entities/user.entity';
-import { ILogger } from '@/core/providers/logger.interface';
-import { IQueueProvider } from '@/core/providers/queue-provider.interface';
-import { ValidationErrorCodes, ResourceErrorCodes } from '@/types/error-codes';
-import { prisma } from '@/config/db.config';
+import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import {
+    IPasswordHasher,
+    ITokenGenerator,
+} from "@/core/providers/auth-providers.interface";
+import { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
+import { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import {
+    ValidationError,
+    DuplicateEntityError,
+    EntityNotFoundError,
+    BusinessRuleViolationError,
+} from "@/core/domain/errors/domain-errors";
 
 export class RegisterUseCase {
     constructor(
         private userRepository: IUserRepository,
         private passwordHasher: IPasswordHasher,
         private tokenGenerator: ITokenGenerator,
-        private logger: ILogger,
-        private queueProvider: IQueueProvider
-    ) { }
+        private queueProvider: IQueueProvider,
+        private tenantRepository: ITenantRepository,
+        private roleRepository: IRoleRepository,
+    ) {}
 
-    async execute(tenantId: string | undefined, data: any, origin?: string) {
-        // Default to superadmin tenant if none provided
+    async execute(
+        tenantId: string | undefined,
+        data: CreateUserDTO,
+        origin?: string,
+    ): Promise<UseCaseResult> {
         let resolvedTenantId = tenantId;
         if (!resolvedTenantId) {
-            const superadminTenant = await prisma.tenant.findFirst({
-                where: { slug: 'superadmin' }
-            });
+            const superadminTenant =
+                await this.tenantRepository.findBySlug("superadmin");
             resolvedTenantId = superadminTenant?.id;
         }
 
         if (!resolvedTenantId) {
-            this.logger.error('No tenant context provided and superadmin not found');
-            throw new Error('Tenant context required');
+            throw new EntityNotFoundError("Tenant", resolvedTenantId!);
         }
 
         const currentTenantId = resolvedTenantId;
 
         if (!data.email || !data.password || !data.name) {
-            this.logger.warn('Registration failed: missing fields', { data });
-            return {
-                success: false,
-                code: 400,
-                message: "Missing required fields",
-                errors: [{
-                    code: ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
-                    message: "Email, password, and name are required",
-                    field: !data.email ? 'email' : !data.password ? 'password' : 'name'
-                }]
-            };
+            throw new ValidationError("Email, password, and name are required");
         }
 
-        try {
-            // findByEmail signature changed: (email, options)
-            let user = await this.userRepository.findByEmail(data.email);
+        let user = await this.userRepository.findByEmail(data.email);
 
-            if (user) {
-                // Check if user already belongs to this tenant
-                const alreadyInTenant = user.tenants?.some(ut => ut.tenantId === currentTenantId || ut.tenant?.slug === currentTenantId);
-                if (alreadyInTenant) {
-                    this.logger.warn('Registration failed: user already in tenant', { email: data.email, currentTenantId });
-                    return {
-                        success: false,
-                        code: 409,
-                        message: "Email already exists in this tenant",
-                        errors: [{
-                            code: ResourceErrorCodes.ALREADY_EXISTS,
-                            message: "You are already registered in this site. Please login.",
-                            field: 'email'
-                        }]
-                    };
-                }
-                // If user exists globally but not in this tenant, we might want to add them or tell them to use "Join Site"
-                // For now, let's treat it as email exists to keep it simple and secure
-                this.logger.warn('Registration failed: email exists globally', { email: data.email });
-                return {
-                    success: false,
-                    code: 409,
-                    message: "Email already exists",
-                    errors: [{
-                        code: ResourceErrorCodes.ALREADY_EXISTS,
-                        message: "A user with this email already exists",
-                        field: 'email'
-                    }]
-                };
+        if (user) {
+            const alreadyInTenant = user.tenants?.some(
+                (ut) =>
+                    ut.tenantId === currentTenantId ||
+                    ut.tenant?.slug === currentTenantId,
+            );
+            if (alreadyInTenant) {
+                throw new DuplicateEntityError(
+                    "User",
+                    "tenant",
+                    currentTenantId,
+                );
             }
+            throw new DuplicateEntityError("User", "email", data.email);
+        }
 
-            const hashedPassword = await this.passwordHasher.hash(data.password);
+        const hashedPassword = await this.passwordHasher.hash(data.password);
 
-            const newUserDTO: CreateUserDTO = {
-                name: data.name,
-                email: data.email,
-                password: hashedPassword,
-                profilePic: data.profilePic
-            };
+        const newUserDTO: CreateUserDTO = {
+            name: data.name,
+            email: data.email,
+            password: hashedPassword,
+            profilePic: data.profilePic,
+        };
 
-            user = await this.userRepository.create(newUserDTO);
+        user = await this.userRepository.create(newUserDTO);
 
-            // Fetch 'USER' role for this tenant
-            // Need a way to get roles from repo - for now I'll assume we have a way or use a default ID if we had one
-            // Better: repository.addTenant should find the default role if not provided? 
-            // no, let's find it here or in the controller.
+        const role = await this.roleRepository.findByName(
+            currentTenantId,
+            "USER",
+        );
 
-            // To be safe, I'll use a placeholder and fix it if I need a RoleRepository
-            // Actually, I'll just assume the first 'USER' role for the tenant.
+        if (!role) {
+            throw new BusinessRuleViolationError(
+                `Default role 'USER' not found for tenant. Please ensure the tenant is correctly initialized.`,
+            );
+        }
 
-            // For now, let's use the userRepository.addTenant method 
-            // which I'll update to handle default roles if needed, 
-            // but here I need the roleId.
+        await this.userRepository.addTenant(user.id, currentTenantId, role.id);
 
-            // I'll add a temporary findRoleByName to userRepository or similar.
-            // Wait, I'll just use a direct prisma call for now if I don't have a RoleRepository.
-            // Actually, I should probably have a RoleRepository.
+        const userWithRole = await this.userRepository.findById(user.id, {
+            includeRole: true,
+            includePermissions: true,
+        });
 
-            const role = await (prisma as any).role.findFirst({
-                where: { name: 'USER', tenantId: currentTenantId }
-            });
+        if (!userWithRole) {
+            throw new BusinessRuleViolationError("User creation failed");
+        }
 
-            if (!role) {
-                this.logger.error('DEFAULT_ROLE_NOT_FOUND', { currentTenantId });
-                throw new Error(`Default role 'USER' not found for tenant. Please ensure the tenant is correctly initialized.`);
-            }
+        const userTenant = userWithRole.tenants?.find(
+            (ut) => ut.tenantId === currentTenantId,
+        );
 
-            await this.userRepository.addTenant(user.id, currentTenantId, role.id);
+        const token = this.tokenGenerator.generate({
+            id: userWithRole.id,
+            email: userWithRole.email,
+            name: userWithRole.name,
+            role: {
+                id: userTenant?.role?.id || "",
+                name: userTenant?.role?.name || "",
+                level: userTenant?.role?.level || 0,
+            },
+            tenantId: currentTenantId,
+        });
 
-            // Fetch user with role and permissions for JWT
-            const userWithRole = await this.userRepository.findById(user.id, {
-                includeRole: true,
-                includePermissions: true
-            });
+        const { password: _, ...safeUser } = userWithRole;
 
-            if (!userWithRole) {
-                throw new Error('User creation failed');
-            }
-
-            // Resolve the specific tenant context for the token
-            const userTenant = userWithRole.tenants?.find(ut => ut.tenantId === currentTenantId);
-
-            const token = this.tokenGenerator.generate({
-                id: userWithRole.id,
-                email: userWithRole.email,
-                name: userWithRole.name,
-                role: {
-                    id: userTenant?.role?.id || '',
-                    name: userTenant?.role?.name || '',
-                    level: userTenant?.role?.level || 0
-                },
-                tenantId: currentTenantId
-            });
-
-            const { password: _, ...safeUser } = userWithRole;
-
-            this.logger.info('User registered successfully', { userId: userWithRole.id, email: userWithRole.email });
-
-            // Enqueue welcome email asynchronously
-            await this.queueProvider.enqueue('notifications', {
-                type: 'WELCOME_EMAIL',
+        await this.queueProvider
+            .enqueue("notifications", {
+                type: "WELCOME_EMAIL",
                 email: userWithRole.email,
                 name: userWithRole.name,
                 tenantId: currentTenantId,
-                origin: origin
-            }).catch(err => {
-                this.logger.error('Failed to enqueue welcome email', { userId: userWithRole.id, error: err.message });
-            });
+                origin: origin,
+            })
+            .catch((err) => {});
 
-            return {
-                success: true,
-                code: 201,
-                message: "User created successfully",
-                data: { ...safeUser, token }
-            };
-        } catch (error: any) {
-            this.logger.error('Registration error', { email: data.email, error: error.message, stack: error.stack });
-            return {
-                success: false,
-                code: 500,
-                message: "Error creating user",
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message
-                }]
-            };
-        }
+        return Success({ ...safeUser, token }, "User created successfully");
     }
 }
-

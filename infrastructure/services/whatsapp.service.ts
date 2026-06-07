@@ -1,28 +1,37 @@
-import axios, { AxiosInstance } from 'axios';
-import { IWhatsAppConfigRepository } from '@/core/repositories/whatsapp-config.repository.interface';
-import { IWhatsAppMessageRepository } from '@/core/repositories/whatsapp-message.repository.interface';
-import logger from '@/helpers/logger.helpers';
+import axios, { AxiosInstance } from "axios";
+import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
+import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
+import logger from "@/helpers/logger.helpers";
+import { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
 
-export class WhatsAppService {
+export class WhatsAppService implements IWhatsAppService {
     private apiVersion: string;
     private apiBaseUrl: string;
 
     constructor(
         private whatsappConfigRepository: IWhatsAppConfigRepository,
-        private whatsappMessageRepository: IWhatsAppMessageRepository
+        private whatsappMessageRepository: IWhatsAppMessageRepository,
     ) {
-        this.apiVersion = process.env.WHATSAPP_API_VERSION || 'v21.0';
-        this.apiBaseUrl = process.env.WHATSAPP_API_BASE_URL || 'https://graph.facebook.com';
+        this.apiVersion = process.env.WHATSAPP_API_VERSION || "v21.0";
+        this.apiBaseUrl =
+            process.env.WHATSAPP_API_BASE_URL || "https://graph.facebook.com";
     }
 
     /**
      * Send a text message
      */
-    async sendTextMessage(to: string, message: string, tenantId: string): Promise<string> {
+    async sendTextMessage(
+        to: string,
+        message: string,
+        tenantId: string,
+    ): Promise<string> {
         try {
-            const config = await this.whatsappConfigRepository.findByTenantId(tenantId);
+            const config =
+                await this.whatsappConfigRepository.findByTenantId(tenantId);
             if (!config || !config.enabled) {
-                throw new Error('WhatsApp not configured or disabled for this tenant');
+                throw new Error(
+                    "WhatsApp not configured or disabled for this tenant",
+                );
             }
 
             const url = `${this.apiBaseUrl}/${this.apiVersion}/${config.phoneNumberId}/messages`;
@@ -31,18 +40,18 @@ export class WhatsAppService {
             const accessToken = config.accessToken;
 
             const payload = {
-                messaging_product: 'whatsapp',
-                recipient_type: 'individual',
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
                 to: this.formatPhoneNumber(to),
-                type: 'text',
-                text: { preview_url: false, body: message }
+                type: "text",
+                text: { preview_url: false, body: message },
             };
 
             const response = await axios.post(url, payload, {
                 headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                }
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
             });
 
             const waMessageId = response.data.messages[0].id;
@@ -53,14 +62,13 @@ export class WhatsAppService {
                 waMessageId,
                 from: config.phoneNumberId, // We should store the actual number if available
                 to: to,
-                type: 'text',
+                type: "text",
                 content: { body: message },
-                status: 'sent',
-                direction: 'outbound'
+                status: "sent",
+                direction: "outbound",
             });
 
             return waMessageId;
-
         } catch (error: any) {
             logger.error(`Error sending WhatsApp message: ${error.message}`);
             throw error;
@@ -70,32 +78,41 @@ export class WhatsAppService {
     /**
      * Send a template message
      */
-    async sendTemplateMessage(to: string, templateName: string, languageCode: string, components: any[], tenantId: string): Promise<string> {
+    async sendTemplateMessage(
+        to: string,
+        templateName: string,
+        languageCode: string,
+        components: any[],
+        tenantId: string,
+    ): Promise<string> {
         try {
-            const config = await this.whatsappConfigRepository.findByTenantId(tenantId);
+            const config =
+                await this.whatsappConfigRepository.findByTenantId(tenantId);
             if (!config || !config.enabled) {
-                throw new Error('WhatsApp not configured or disabled for this tenant');
+                throw new Error(
+                    "WhatsApp not configured or disabled for this tenant",
+                );
             }
 
             const url = `${this.apiBaseUrl}/${this.apiVersion}/${config.phoneNumberId}/messages`;
             const accessToken = config.accessToken;
 
             const payload = {
-                messaging_product: 'whatsapp',
+                messaging_product: "whatsapp",
                 to: this.formatPhoneNumber(to),
-                type: 'template',
+                type: "template",
                 template: {
                     name: templateName,
                     language: { code: languageCode },
-                    components: components
-                }
+                    components: components,
+                },
             };
 
             const response = await axios.post(url, payload, {
                 headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                }
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
             });
 
             const waMessageId = response.data.messages[0].id;
@@ -106,14 +123,13 @@ export class WhatsAppService {
                 waMessageId,
                 from: config.phoneNumberId,
                 to: to,
-                type: 'template',
+                type: "template",
                 content: { templateName, components },
-                status: 'sent',
-                direction: 'outbound'
+                status: "sent",
+                direction: "outbound",
             });
 
             return waMessageId;
-
         } catch (error: any) {
             logger.error(`Error sending WhatsApp template: ${error.message}`);
             throw error;
@@ -122,6 +138,6 @@ export class WhatsAppService {
 
     private formatPhoneNumber(phone: string): string {
         // Basic formatting: remove non-digits
-        return phone.replace(/\D/g, '');
+        return phone.replace(/\D/g, "");
     }
 }

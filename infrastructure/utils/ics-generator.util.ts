@@ -1,4 +1,4 @@
-import * as ics from 'ics';
+import * as ics from "ics";
 
 export interface IcsAppointmentData {
     id: string;
@@ -13,7 +13,9 @@ export interface IcsAppointmentData {
 /**
  * Generates an ICS string for a given appointment
  */
-export async function generateAppointmentIcs(data: IcsAppointmentData): Promise<string> {
+export async function generateAppointmentIcs(
+    data: IcsAppointmentData,
+): Promise<string> {
     const start = data.startTime;
 
     // ics expects [year, month, day, hour, minute]
@@ -23,7 +25,7 @@ export async function generateAppointmentIcs(data: IcsAppointmentData): Promise<
         start.getMonth() + 1,
         start.getDate(),
         start.getHours(),
-        start.getMinutes()
+        start.getMinutes(),
     ];
 
     const event: ics.EventAttributes = {
@@ -31,12 +33,12 @@ export async function generateAppointmentIcs(data: IcsAppointmentData): Promise<
         duration: { minutes: data.duration },
         title: data.title,
         description: data.description,
-        location: data.location || 'Online / Specified Location',
-        status: 'CONFIRMED',
-        busyStatus: 'BUSY',
+        location: data.location || "Online / Specified Location",
+        status: "CONFIRMED",
+        busyStatus: "BUSY",
         organizer: data.organizer,
-        productId: 'NeutraApp/Appointment',
-        uid: data.id
+        productId: "NeutraApp/Appointment",
+        uid: data.id,
     };
 
     return new Promise((resolve, reject) => {

@@ -3,77 +3,73 @@
  * Defines the contract for email sending capabilities
  */
 
+export interface OrderEmailData {
+    id: string;
+    items: Array<{ product?: { name: string }; amount: number; price: number }>;
+    subtotal: number;
+    total: number;
+    discountAmount: number;
+    createdAt: Date;
+    trackingNumber?: string | null;
+}
+
+export interface AppointmentEmailData {
+    id: string;
+    userName: string;
+    serviceName: string;
+    staffName: string;
+    appointmentDate: string;
+    appointmentTime: string;
+    duration: number;
+    notes?: string | null;
+    cancellationReason?: string | null;
+}
+
 export interface IEmailService {
-    /**
-     * Send a generic email
-     * @param to Recipient email address
-     * @param subject Email subject
-     * @param template Template name
-     * @param data Template data
-     * @param tenantConfig Tenant-specific branding configuration
-     */
     sendEmail(
         to: string,
         subject: string,
         template: string,
-        data: Record<string, any>,
+        data: Record<string, unknown>,
         tenantConfig?: TenantEmailConfig,
-        attachments?: Attachment[]
+        attachments?: Attachment[],
     ): Promise<boolean>;
 
-    /**
-     * Send welcome email to new user
-     */
     sendWelcomeEmail(
         to: string,
         name: string,
-        tenantConfig?: TenantEmailConfig
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean>;
 
-    /**
-     * Send order confirmation email
-     */
     sendOrderConfirmation(
         to: string,
-        order: any,
-        tenantConfig?: TenantEmailConfig
+        order: OrderEmailData,
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean>;
 
-    /**
-     * Send password reset email
-     */
     sendPasswordReset(
         to: string,
         resetLink: string,
-        tenantConfig?: TenantEmailConfig
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean>;
 
-    /**
-     * Send appointment confirmation email
-     */
     sendAppointmentConfirmation(
         to: string,
-        appointment: any,
+        appointment: AppointmentEmailData,
         tenantConfig?: TenantEmailConfig,
-        attachments?: Attachment[]
+        attachments?: Attachment[],
     ): Promise<boolean>;
 
-    /**
-     * Send appointment reminder email
-     */
     sendAppointmentReminder(
         to: string,
-        appointment: any,
-        tenantConfig?: TenantEmailConfig
+        appointment: AppointmentEmailData,
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean>;
 
-    /**
-     * Send appointment cancellation email
-     */
     sendAppointmentCancellation(
         to: string,
-        appointment: any,
-        tenantConfig?: TenantEmailConfig
+        appointment: AppointmentEmailData,
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean>;
 }
 

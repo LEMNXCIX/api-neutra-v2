@@ -1,89 +1,63 @@
-import { IStaffRepository } from '@/core/repositories/staff.repository.interface';
-import { IUserRepository } from '@/core/repositories/user.repository.interface';
-import { UpdateStaffDTO } from '@/core/entities/staff.entity';
-import { ILogger } from '@/core/providers/logger.interface';
-import { ValidationErrorCodes } from '@/types/error-codes';
-import { prisma } from '@/config/db.config';
+import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import { UpdateStaffDTO } from "@/core/application/dtos/requests/staff.request";
+import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import {
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
 
 export class UpdateStaffUseCase {
     constructor(
         private staffRepository: IStaffRepository,
         private userRepository: IUserRepository,
-        private logger: ILogger
-    ) { }
+        private roleRepository: IRoleRepository,
+    ) {}
 
-    async execute(tenantId: string, id: string, data: UpdateStaffDTO) {
-        if (data.name === '') {
-            this.logger.warn('UpdateStaff failed: empty name', { id, data });
-            return {
-                success: false,
-                code: 400,
-                message: 'Name cannot be empty',
-                errors: [{
-                    code: ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
-                    message: 'Staff name is required',
-                }],
-            };
+    async execute(
+        tenantId: string,
+        id: string,
+        data: UpdateStaffDTO,
+    ): Promise<UseCaseResult> {
+        if (data.name === "") {
+            throw new ValidationError("Name cannot be empty");
         }
 
-        try {
-            const existingStaff = await this.staffRepository.findById(tenantId, id);
-            if (!existingStaff) {
-                return {
-                    success: false,
-                    code: 404,
-                    message: 'Staff member not found',
-                };
-            }
-
-            let userId = data.userId || existingStaff.userId;
-
-            // If email is being updated or exists, check for user linking
-            if (!userId && (data.email || existingStaff.email)) {
-                const emailToSearch = data.email || existingStaff.email;
-                if (emailToSearch) {
-                    const user = await this.userRepository.findByEmail(emailToSearch);
-                    if (user) {
-                        userId = user.id;
-                    }
-                }
-            }
-
-            // Sync role if userId is present
-            if (userId) {
-                const role = await (prisma as any).role.findFirst({
-                    where: { name: 'STAFF', tenantId }
-                });
-
-                if (role) {
-                    await this.userRepository.addTenant(userId, tenantId, role.id);
-                }
-            }
-
-            const staff = await this.staffRepository.update(tenantId, id, {
-                ...data,
-                userId
-            });
-
-            this.logger.info('Staff updated successfully', { staffId: staff.id });
-
-            return {
-                success: true,
-                code: 200,
-                message: 'Staff member updated successfully',
-                data: staff,
-            };
-        } catch (error: any) {
-            this.logger.error('Error updating staff', { staffId: id, error: error.message });
-            return {
-                success: false,
-                code: 500,
-                message: 'Error updating staff member',
-                errors: [{
-                    code: 'SYSTEM_INTERNAL_ERROR',
-                    message: error.message,
-                }],
-            };
+        const existingStaff = await this.staffRepository.findById(tenantId, id);
+        if (!existingStaff) {
+            throw new EntityNotFoundError("Staff", id);
         }
+
+        let userId = data.userId || existingStaff.userId;
+
+        if (!userId && (data.email || existingStaff.email)) {
+            const emailToSearch = data.email || existingStaff.email;
+            if (emailToSearch) {
+                const user =
+                    await this.userRepository.findByEmail(emailToSearch);
+                if (user) {
+                    userId = user.id;
+                }
+            }
+        }
+
+        if (userId) {
+            const role = await this.roleRepository.findByName(
+                tenantId,
+                "STAFF",
+            );
+
+            if (role) {
+                await this.userRepository.addTenant(userId, tenantId, role.id);
+            }
+        }
+
+        const staff = await this.staffRepository.update(tenantId, id, {
+            ...data,
+            userId,
+        });
+
+        return Success(staff, "Staff member updated successfully");
     }
 }

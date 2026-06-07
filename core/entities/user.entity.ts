@@ -1,4 +1,4 @@
-import { Role } from '@/types/rbac';
+import { Role } from "@/core/entities/role.entity";
 
 export interface User {
     id: string;
@@ -35,24 +35,10 @@ export interface UserTenant {
     tenantId: string;
     roleId: string;
     role?: Role;
-    tenantId_userId?: string; // Prisma internal composite if needed
+    tenantId_userId?: string;
     tenant?: {
         id: string;
         name: string;
         slug: string;
     };
-}
-
-export interface CreateUserDTO {
-    name: string;
-    email: string;
-    password?: string;
-    profilePic?: string;
-    phone?: string;
-    pushToken?: string;
-    active?: boolean;
-    googleId?: string;
-    facebookId?: string;
-    twitterId?: string;
-    githubId?: string;
 }
