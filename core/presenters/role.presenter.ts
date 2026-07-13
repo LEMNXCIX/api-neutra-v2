@@ -10,6 +10,7 @@ export class RolePresenter {
     }
 
     static toResponseList(roles: Role[]): IRoleResponse[] {
+        if (!Array.isArray(roles)) return [];
         return roles.map((r) => RoleResponse.fromEntity(r));
     }
 }

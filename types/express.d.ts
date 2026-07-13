@@ -1,4 +1,4 @@
-import { AuthenticatedUser } from "@/types/rbac";
+import { AuthenticatedUser } from "./rbac";
 
 declare global {
     namespace Express {

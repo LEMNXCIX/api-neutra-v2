@@ -10,6 +10,7 @@ export class SlidePresenter {
     }
 
     static toResponseList(slides: Slideshow[]): ISlideResponse[] {
+        if (!Array.isArray(slides)) return [];
         return slides.map((s) => SlideResponse.fromEntity(s));
     }
 }

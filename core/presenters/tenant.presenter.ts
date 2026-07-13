@@ -10,6 +10,7 @@ export class TenantPresenter {
     }
 
     static toResponseList(tenants: Tenant[]): ITenantResponse[] {
+        if (!Array.isArray(tenants)) return [];
         return tenants.map((t) => TenantResponse.fromEntity(t));
     }
 }
