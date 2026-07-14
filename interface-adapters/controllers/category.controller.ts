@@ -37,7 +37,18 @@ export class CategoryController {
         const limit = req.query.limit
             ? parseInt(req.query.limit as string)
             : undefined;
-        const type = req.query.type as CategoryType;
+        const rawType = req.query.type as string | undefined;
+        const validTypes = Object.values(CategoryType) as string[];
+
+        if (rawType && !validTypes.includes(rawType)) {
+            return res.status(400).json({
+                success: false,
+                statusCode: 400,
+                message: `Invalid type. Must be one of: ${validTypes.join(", ")}`,
+            });
+        }
+
+        const type = rawType as CategoryType | undefined;
 
         const result = await this.getCategoriesUseCase.execute(
             tenantId,

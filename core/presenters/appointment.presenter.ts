@@ -16,6 +16,7 @@ export class AppointmentPresenter {
     static toResponseList(
         appointments: Appointment[],
     ): IAppointmentListResponse[] {
+        if (!Array.isArray(appointments)) return [];
         return appointments.map((a) => AppointmentListResponse.fromEntity(a));
     }
 }

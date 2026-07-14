@@ -10,6 +10,7 @@ export class CategoryPresenter {
     }
 
     static toResponseList(categories: Category[]): ICategoryResponse[] {
+        if (!Array.isArray(categories)) return [];
         return categories.map((c) => CategoryResponse.fromEntity(c));
     }
 }

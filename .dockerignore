@@ -1,6 +1,7 @@
 **/.classpath
 **/.dockerignore
 **/.env
+**/.env.*
 **/.git
 **/.gitignore
 **/.project
@@ -20,5 +21,13 @@
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
+dist
+coverage
+*.tsbuildinfo
 LICENSE
 README.md
+docs/
+test/
+scripts/
+.agents/
+AGENTS.md

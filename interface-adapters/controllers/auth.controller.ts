@@ -33,7 +33,7 @@ export class AuthController {
         // tenantId can be undefined for global login
         const tenantId = req.tenantId!;
         const result = await this.loginUseCase.execute(tenantId, req.body);
-        return authResponse(req, res, result, 401);
+        return authResponse(req, res, result, 200);
     }
 
     async signup(req: Request, res: Response) {
@@ -68,7 +68,7 @@ export class AuthController {
                 .json({ success: false, message: "OAuth profile missing" });
         }
         const result = await this.socialLoginUseCase.execute(tenantId, profile);
-        return providerResponse(req, res, result, 401);
+        return providerResponse(req, res, result, 200);
     }
 
     logout(req: Request, res: Response) {

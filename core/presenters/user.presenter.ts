@@ -26,6 +26,7 @@ export class UserPresenter {
     }
 
     static toResponseList(users: User[]): IUserResponse[] {
+        if (!Array.isArray(users)) return [];
         return users.map((u) => UserResponse.fromEntity(u));
     }
 }

@@ -177,8 +177,8 @@ export class PrismaPermissionRepository implements IPermissionRepository {
         name: string,
         description: string,
     ): Promise<Permission> {
-        const existing = await prisma.permission.findFirst({
-            where: { name, tenantId },
+        const existing = await prisma.permission.findUnique({
+            where: { name },
         });
 
         if (existing) {

@@ -10,6 +10,7 @@ export class FeaturePresenter {
     }
 
     static toResponseList(features: Feature[]): IFeatureResponse[] {
+        if (!Array.isArray(features)) return [];
         return features.map((f) => FeatureResponse.fromEntity(f));
     }
 }

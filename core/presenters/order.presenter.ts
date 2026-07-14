@@ -10,6 +10,7 @@ export class OrderPresenter {
     }
 
     static toResponseList(orders: Order[]): IOrderResponse[] {
+        if (!Array.isArray(orders)) return [];
         return orders.map((o) => OrderResponse.fromEntity(o));
     }
 }

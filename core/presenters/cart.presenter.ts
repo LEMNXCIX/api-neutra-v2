@@ -10,6 +10,7 @@ export class CartPresenter {
     }
 
     static toResponseList(carts: Cart[]): ICartResponse[] {
+        if (!Array.isArray(carts)) return [];
         return carts.map((c) => CartResponse.fromEntity(c));
     }
 }
