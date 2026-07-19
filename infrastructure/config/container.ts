@@ -190,6 +190,7 @@ import { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-te
 
 // Use Cases - WhatsApp
 import { ProcessIncomingMessageUseCase } from "@/core/application/whatsapp/process-incoming-message.use-case";
+import { ProcessWhatsAppWebhookUseCase } from "@/core/application/whatsapp/process-whatsapp-webhook.use-case";
 import { ConfigureWhatsAppUseCase } from "@/core/application/whatsapp/configure-whatsapp.use-case";
 import { GetWhatsAppConfigUseCase } from "@/core/application/whatsapp/get-whatsapp-config.use-case";
 import { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
@@ -541,11 +542,13 @@ export class Container {
 
     public static getWhatsAppWebhookController(): WhatsAppWebhookController {
         return new WhatsAppWebhookController(
-            new ProcessIncomingMessageUseCase(
-                this.whatsappBotService,
-                this.whatsappConfigRepo,
+            new ProcessWhatsAppWebhookUseCase(
+                new ProcessIncomingMessageUseCase(
+                    this.whatsappBotService,
+                    this.whatsappConfigRepo,
+                ),
+                this.whatsappMessageRepo,
             ),
-            this.whatsappMessageRepo,
         );
     }
 

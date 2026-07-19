@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "@/types/api-response";
 import { TenantErrorCodes } from "@/types/error-codes";
+import { ROLE_CONSTANTS } from "@/core/domain/constants";
 
 export function resolveSuperAdminTenant(
     req: Request,
@@ -8,7 +9,8 @@ export function resolveSuperAdminTenant(
     next: NextFunction,
 ) {
     const user = req.user;
-    const isSuperAdmin = user && user.role && user.role.name === "SUPER_ADMIN";
+    const isSuperAdmin =
+        user && user.role && user.role.name === ROLE_CONSTANTS.SUPER_ADMIN;
 
     if (isSuperAdmin) {
         const queryTenantId = req.query.tenantId as string | undefined;

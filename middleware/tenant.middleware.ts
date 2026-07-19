@@ -1,20 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import { Container } from "@/infrastructure/config/container";
 import { ErrorCodes } from "@/types/error-codes";
+import config from "@/config/index.config";
+import {
+    TENANT_CONSTANTS,
+    isDevelopment,
+    isTest,
+} from "@/core/domain/constants";
+import { TENANT_HTTP_CONSTANTS } from "@/config/infrastructure-constants";
 
-declare global {
-    namespace Express {
-        interface Request {
-            tenantId?: string;
-            tenant?: {
-                id: string;
-                name: string;
-                slug: string;
-                type: string;
-                active: boolean;
-            };
-        }
-    }
+function isManagementRoute(normalizedPath: string): boolean {
+    return TENANT_HTTP_CONSTANTS.MANAGEMENT_PATH_PREFIXES.some((prefix) =>
+        normalizedPath.startsWith(prefix),
+    );
 }
 
 export const tenantMiddleware = async (
@@ -23,7 +21,7 @@ export const tenantMiddleware = async (
     next: NextFunction,
 ): Promise<void> => {
     try {
-        const nodeEnv = process.env.NODE_ENV || "development";
+        const environment = config.ENVIRONMENT;
         const normalizedPath = req.originalUrl.split("?")[0];
 
         if (!normalizedPath.startsWith("/api")) {
@@ -58,30 +56,21 @@ export const tenantMiddleware = async (
         if (!tenantId && !tenantSlug) {
             const host = req.headers.host || "";
             const subdomain = extractSubdomain(host);
-            if (subdomain && subdomain !== "www" && subdomain !== "api") {
+            if (
+                subdomain &&
+                !TENANT_HTTP_CONSTANTS.RESERVED_SUBDOMAINS.includes(subdomain)
+            ) {
                 tenantSlug = subdomain;
             }
         }
 
-        const isManagementRoute =
-            normalizedPath.startsWith("/api/users") ||
-            normalizedPath.startsWith("/api/roles") ||
-            normalizedPath.startsWith("/api/permissions") ||
-            normalizedPath.startsWith("/api/tenants") ||
-            normalizedPath.startsWith("/api/admin/stats") ||
-            normalizedPath.startsWith("/api/auth/login") ||
-            normalizedPath.startsWith("/api/auth/signup") ||
-            normalizedPath.startsWith("/api/auth/forgot-password") ||
-            normalizedPath.startsWith("/api/auth/reset-password") ||
-            normalizedPath.startsWith("/api/auth/validate");
-
         if (!tenantId && !tenantSlug) {
-            if (isManagementRoute || nodeEnv === "development") {
-                tenantSlug = "superadmin";
+            if (isManagementRoute(normalizedPath) || isDevelopment(environment)) {
+                tenantSlug = TENANT_CONSTANTS.SUPERADMIN_SLUG;
             }
         }
 
-        if (nodeEnv === "test") {
+        if (isTest(environment) || isTest(config.env)) {
             req.tenantId = tenantId || "default-tenant-id";
             req.tenant = {
                 id: req.tenantId,
@@ -103,7 +92,7 @@ export const tenantMiddleware = async (
         }
 
         if (!tenant) {
-            if (isManagementRoute) {
+            if (isManagementRoute(normalizedPath)) {
                 return next();
             }
 

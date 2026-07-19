@@ -47,10 +47,16 @@ export const JWT_CONSTANTS = {
 } as const;
 
 // ============================================================================
-// Multi-Tenancy
+// Multi-Tenancy & RBAC
 // ============================================================================
 export const TENANT_CONSTANTS = {
     DEFAULT_SLUG: "main",
+    /** Platform management tenant (global SUPER_ADMIN context) */
+    SUPERADMIN_SLUG: "superadmin",
+} as const;
+
+export const ROLE_CONSTANTS = {
+    SUPER_ADMIN: "SUPER_ADMIN",
 } as const;
 
 // ============================================================================
@@ -66,14 +72,37 @@ export const VALIDATION_CONSTANTS = {
 // ============================================================================
 export const ENV_CONSTANTS = {
     PRODUCTION: "production",
+    PROD: "prod",
     DEVELOPMENT: "development",
     DEV: "dev",
+    TEST: "test",
 } as const;
 
-export function isDevelopment(env: string): boolean {
-    return env === ENV_CONSTANTS.DEV || env === ENV_CONSTANTS.DEVELOPMENT;
+/**
+ * Normalize env strings for comparison (trim + lower-case).
+ */
+export function normalizeEnv(env: string | undefined | null): string {
+    return (env ?? "").trim().toLowerCase();
 }
 
-export function isProduction(env: string): boolean {
-    return env === ENV_CONSTANTS.PRODUCTION;
+/**
+ * Production-like environments.
+ * Accepts both "production" and legacy "prod".
+ */
+export function isProduction(env: string | undefined | null): boolean {
+    const value = normalizeEnv(env);
+    return value === ENV_CONSTANTS.PRODUCTION || value === ENV_CONSTANTS.PROD;
+}
+
+/**
+ * Development-like environments.
+ * Accepts both "development" and legacy "dev".
+ */
+export function isDevelopment(env: string | undefined | null): boolean {
+    const value = normalizeEnv(env);
+    return value === ENV_CONSTANTS.DEVELOPMENT || value === ENV_CONSTANTS.DEV;
+}
+
+export function isTest(env: string | undefined | null): boolean {
+    return normalizeEnv(env) === ENV_CONSTANTS.TEST;
 }

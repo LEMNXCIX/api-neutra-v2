@@ -5,7 +5,7 @@ export class WhatsAppController {
     constructor(private sendNotificationUseCase: SendNotificationUseCase) {}
 
     async sendTemplate(req: Request, res: Response) {
-        const tenantId = req.headers["x-tenant-id"] as string;
+        const tenantId = req.tenantId!;
         const { to, templateName, languageCode, components } = req.body;
 
         const result = await this.sendNotificationUseCase.execute({

@@ -5,6 +5,11 @@ import {
     UnauthorizedError,
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
+import { ROLE_CONSTANTS } from "@/core/domain/constants";
+
+function isSuperAdmin(user: AuthenticatedUser | undefined): boolean {
+    return user?.role?.name === ROLE_CONSTANTS.SUPER_ADMIN;
+}
 
 export function requirePermission(permission: string) {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -16,7 +21,7 @@ export function requirePermission(permission: string) {
             );
         }
 
-        if (user.role.name === "SUPER_ADMIN") {
+        if (isSuperAdmin(user)) {
             return next();
         }
 
@@ -40,7 +45,7 @@ export function requireAnyPermission(permissions: string[]) {
             throw new UnauthorizedError("You must be logged in");
         }
 
-        if (user.role.name === "SUPER_ADMIN") {
+        if (isSuperAdmin(user)) {
             return next();
         }
 
@@ -66,7 +71,7 @@ export function requireAllPermissions(permissions: string[]) {
             throw new UnauthorizedError("You must be logged in");
         }
 
-        if (user.role.name === "SUPER_ADMIN") {
+        if (isSuperAdmin(user)) {
             return next();
         }
 
@@ -95,7 +100,7 @@ export function requireRole(minLevel: number) {
             throw new UnauthorizedError("You must be logged in");
         }
 
-        if (user.role.name === "SUPER_ADMIN") {
+        if (isSuperAdmin(user)) {
             return next();
         }
 

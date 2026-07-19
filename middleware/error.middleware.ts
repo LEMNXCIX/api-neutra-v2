@@ -5,9 +5,12 @@ import {
     getHttpStatusFromErrorCode,
 } from "@/types/error-codes";
 import { DomainError } from "@/core/domain/errors/domain-errors";
+import { isProduction } from "@/core/domain/constants";
 import { PinoLoggerProvider } from "@/infrastructure/providers/pino-logger.provider";
+import config from "@/config/index.config";
 
 const logger = new PinoLoggerProvider();
+const showStack = !isProduction(config.ENVIRONMENT);
 
 export const errorMiddleware = (
     err: any,
@@ -45,10 +48,7 @@ export const errorMiddleware = (
             {
                 code: SystemErrorCodes.INTERNAL_SERVER_ERROR,
                 message: err.message,
-                metadata:
-                    process.env.NODE_ENV !== "production"
-                        ? { stack: err.stack }
-                        : undefined,
+                metadata: showStack ? { stack: err.stack } : undefined,
             },
         ];
     } else if (typeof err === "string") {

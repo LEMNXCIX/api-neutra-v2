@@ -6,6 +6,10 @@ import { AuthErrorCodes } from "@/types/error-codes";
 import { RedisProvider } from "@/infrastructure/providers/redis.provider";
 import { Container } from "@/infrastructure/config/container";
 import { info } from "@/helpers/logger.helpers";
+import {
+    ROLE_CONSTANTS,
+    TENANT_CONSTANTS,
+} from "@/core/domain/constants";
 
 export async function authenticate(
     req: Request,
@@ -106,8 +110,8 @@ export async function authenticate(
 
                 const globalSuperAdmin = user.tenants?.find(
                     (ut) =>
-                        ut.tenant?.slug === "superadmin" &&
-                        ut.role?.name === "SUPER_ADMIN",
+                        ut.tenant?.slug === TENANT_CONSTANTS.SUPERADMIN_SLUG &&
+                        ut.role?.name === ROLE_CONSTANTS.SUPER_ADMIN,
                 );
 
                 if (!userTenant && globalSuperAdmin) {

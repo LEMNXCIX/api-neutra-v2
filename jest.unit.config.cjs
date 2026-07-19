@@ -1,27 +1,26 @@
 const path = require("path");
 
+const tsJest = require.resolve("ts-jest");
+
+/** Unit/architecture tests only — no DB, Redis, or app bootstrap */
 module.exports = {
     testEnvironment: "node",
     rootDir: __dirname,
-    testMatch: ["**/test/**/*.test.ts", "**/test/**/*.test.js"],
-    // Unit/architecture suites use jest.unit.config.cjs (no DB bootstrap)
-    testPathIgnorePatterns: [
-        "/node_modules/",
-        "/test/unit/",
-        "/test/architecture/",
+    testMatch: [
+        "<rootDir>/test/unit/**/*.test.ts",
+        "<rootDir>/test/architecture/**/*.test.ts",
     ],
     modulePathIgnorePatterns: ["<rootDir>/dist/"],
     transform: {
         "^.+\\.tsx?$": [
-            "ts-jest",
+            tsJest,
             {
                 tsconfig: path.join(__dirname, "tsconfig.json"),
                 diagnostics: false,
             },
         ],
     },
-    setupFilesAfterEnv: ["<rootDir>/test/jest.setup.ts"],
-    testTimeout: 20000,
+    testTimeout: 15000,
     moduleFileExtensions: ["ts", "js", "json", "node"],
     moduleNameMapper: {
         "^@/(.*)$": "<rootDir>/$1",

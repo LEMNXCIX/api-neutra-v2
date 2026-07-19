@@ -9,6 +9,7 @@ import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appo
 import { AppointmentStatus } from "@/core/entities/appointment.entity";
 import { AppointmentPresenter } from "@/core/presenters/appointment.presenter";
 import { present } from "@/core/utils/use-case-result";
+import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
 
 export class AppointmentController {
     constructor(
@@ -23,10 +24,7 @@ export class AppointmentController {
 
     async create(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const origin =
-            (req.headers["x-original-origin"] as string) ||
-            req.headers.origin ||
-            `${req.protocol}://${req.get("host")}`;
+        const origin = resolveRequestOrigin(req);
         const result = await this.createAppointmentUseCase.execute(
             tenantId,
             req.body,
@@ -89,10 +87,7 @@ export class AppointmentController {
         const { id } = req.params;
         const { status } = req.body;
 
-        const origin =
-            (req.headers["x-original-origin"] as string) ||
-            req.headers.origin ||
-            `${req.protocol}://${req.get("host")}`;
+        const origin = resolveRequestOrigin(req);
         const result = await this.updateAppointmentStatusUseCase.execute(
             tenantId,
             id,

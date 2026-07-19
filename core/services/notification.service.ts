@@ -33,12 +33,9 @@ export class NotificationService {
 
             if (provider && recipient) {
                 return provider.send(recipient, message, options);
-            } else {
-                console.warn(
-                    `[NotificationService] Skipping channel ${channel}: Provider not found or no recipient provided.`,
-                );
-                return Promise.resolve(false);
             }
+            // Skip silently when channel has no provider or recipient
+            return Promise.resolve(false);
         });
 
         await Promise.all(promises);

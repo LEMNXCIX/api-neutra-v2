@@ -1,30 +1,28 @@
-import pino from 'pino';
-import config from '@/config/index.config';
+import pino from "pino";
+import config from "@/config/index.config";
+import { isProduction } from "@/core/domain/constants";
 
-const { ENVIRONMENT } = config;
-
-// In development we prefer pretty printing for readability
-const isProd = ENVIRONMENT === 'prod' || ENVIRONMENT === 'production';
+const isProd = isProduction(config.ENVIRONMENT);
 
 const transport = !isProd
-  ? pino.transport({
-    target: 'pino-pretty',
-    options: { colorize: true, translateTime: 'SYS:standard' },
-  })
-  : undefined;
+    ? pino.transport({
+          target: "pino-pretty",
+          options: { colorize: true, translateTime: "SYS:standard" },
+      })
+    : undefined;
 
 const logger = pino(transport);
 
-export function info(payload: any) {
-  logger.info(payload);
+export function info(payload: unknown) {
+    logger.info(payload);
 }
 
-export function warn(payload: any) {
-  logger.warn(payload);
+export function warn(payload: unknown) {
+    logger.warn(payload);
 }
 
-export function error(payload: any) {
-  logger.error(payload);
+export function error(payload: unknown) {
+    logger.error(payload);
 }
 
 export default { info, warn, error };
