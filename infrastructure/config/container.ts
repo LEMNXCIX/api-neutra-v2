@@ -14,7 +14,9 @@ import { PrismaServiceRepository } from "../database/prisma/service.prisma-repos
 import { PrismaPermissionRepository } from "../database/prisma/permission.prisma-repository";
 import { TenantPrismaRepository } from "../database/prisma/tenant.prisma-repository";
 import { PrismaLogRepository } from "../database/prisma/log.prisma-repository";
+import { ResolveAuthenticatedUserUseCase } from "@/core/application/auth/resolve-authenticated-user.use-case";
 import { ILogRepository } from "@/core/repositories/log.repository.interface";
+import { ICacheProvider } from "@/core/providers/cache-provider.interface";
 import { IUserRepository } from "@/core/repositories/user.repository.interface";
 import { ICartRepository } from "@/core/repositories/cart.repository.interface";
 import { IRoleRepository } from "@/core/repositories/role.repository.interface";
@@ -565,6 +567,18 @@ export class Container {
     public static getWhatsAppController(): WhatsAppController {
         return new WhatsAppController(
             new SendNotificationUseCase(this.whatsappService),
+        );
+    }
+
+    public static getCacheProvider(): ICacheProvider {
+        return this.cacheProvider;
+    }
+
+    public static getResolveAuthenticatedUserUseCase(): ResolveAuthenticatedUserUseCase {
+        return new ResolveAuthenticatedUserUseCase(
+            this.tokenGenerator,
+            this.userRepository,
+            this.cacheProvider,
         );
     }
 

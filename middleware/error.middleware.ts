@@ -3,6 +3,7 @@ import { AppError, ApiResponse, ErrorDetail } from "@/types/api-response";
 import {
     SystemErrorCodes,
     getHttpStatusFromErrorCode,
+    httpStatusFromDomainError,
 } from "@/types/error-codes";
 import { DomainError } from "@/core/domain/errors/domain-errors";
 import { isProduction } from "@/core/domain/constants";
@@ -25,7 +26,7 @@ export const errorMiddleware = (
     let errors: ErrorDetail[] = [];
 
     if (err instanceof DomainError) {
-        statusCode = err.statusCode;
+        statusCode = httpStatusFromDomainError(err);
         message = err.message;
         errors = [
             {

@@ -1,4 +1,7 @@
-import { IBannerRepository } from "@/core/repositories/banner.repository.interface";
+import {
+    IBannerRepository,
+    BannerCreateData,
+} from "@/core/repositories/banner.repository.interface";
 import { CreateBannerDTO } from "@/core/application/dtos/requests/banner.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
@@ -20,7 +23,21 @@ export class CreateBannerUseCase {
             );
         }
 
-        const banner = await this.bannerRepository.create(tenantId, data);
+        const repoData: BannerCreateData = {
+            title: data.title,
+            subtitle: data.subtitle,
+            description: data.description,
+            imageUrl: data.imageUrl,
+            backgroundColor: data.backgroundColor,
+            textColor: data.textColor,
+            cta: data.cta,
+            ctaUrl: data.ctaUrl,
+            priority: data.priority,
+            active: data.active,
+            startsAt: data.startsAt,
+            endsAt: data.endsAt,
+        };
+        const banner = await this.bannerRepository.create(tenantId, repoData);
         return Success(banner, "Banner created successfully");
     }
 }

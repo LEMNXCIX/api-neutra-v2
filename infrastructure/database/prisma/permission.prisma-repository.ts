@@ -1,11 +1,7 @@
 import { Permission as PrismaPermission, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IPermissionRepository } from "@/core/repositories/permission.repository.interface";
+import { IPermissionRepository, PermissionCreateData, PermissionUpdateData } from "@/core/repositories/permission.repository.interface";
 import { Permission } from "@/core/entities/permission.entity";
-import {
-    CreatePermissionDTO,
-    UpdatePermissionDTO,
-} from "@/core/application/dtos/requests/permission.request";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -105,7 +101,7 @@ export class PrismaPermissionRepository implements IPermissionRepository {
 
     async create(
         tenantId: string | undefined,
-        data: CreatePermissionDTO,
+        data: PermissionCreateData,
     ): Promise<Permission> {
         try {
             const permission = await prisma.permission.create({
@@ -132,7 +128,7 @@ export class PrismaPermissionRepository implements IPermissionRepository {
     async update(
         tenantId: string | undefined,
         id: string,
-        data: UpdatePermissionDTO,
+        data: PermissionUpdateData,
     ): Promise<Permission> {
         const existing = await this.findById(tenantId, id);
         if (!existing) throw new EntityNotFoundError("Permission", id);

@@ -1,11 +1,11 @@
 import { Category as PrismaCategory, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
-import { Category, CategoryType } from "@/core/entities/category.entity";
 import {
-    CreateCategoryDTO,
-    UpdateCategoryDTO,
-} from "@/core/application/dtos/requests/category.request";
+    ICategoryRepository,
+    CategoryCreateData,
+    CategoryUpdateData,
+} from "@/core/repositories/category.repository.interface";
+import { Category, CategoryType } from "@/core/entities/category.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -83,7 +83,7 @@ export class PrismaCategoryRepository implements ICategoryRepository {
         return category ? this.mapToEntity(category) : null;
     }
 
-    async create(tenantId: string, data: CreateCategoryDTO): Promise<Category> {
+    async create(tenantId: string, data: CategoryCreateData): Promise<Category> {
         try {
             const category = await prisma.category.create({
                 data: {
@@ -110,7 +110,7 @@ export class PrismaCategoryRepository implements ICategoryRepository {
     async update(
         tenantId: string,
         id: string,
-        data: UpdateCategoryDTO,
+        data: CategoryUpdateData,
     ): Promise<Category> {
         try {
             const category = await prisma.category.update({

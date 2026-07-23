@@ -1,8 +1,33 @@
-import { Coupon } from "@/core/entities/coupon.entity";
-import {
-    CreateCouponDTO,
-    UpdateCouponDTO,
-} from "@/core/application/dtos/requests/coupon.request";
+import { Coupon, CouponType } from "@/core/entities/coupon.entity";
+
+export type CreateCouponData = {
+    code: string;
+    type: CouponType;
+    value: number;
+    description?: string;
+    minPurchaseAmount?: number;
+    maxDiscountAmount?: number;
+    usageLimit?: number;
+    active?: boolean;
+    expiresAt: Date | string;
+    applicableProducts?: string[];
+    applicableCategories?: string[];
+    applicableServices?: string[];
+};
+
+export type UpdateCouponData = {
+    code?: string;
+    type?: CouponType;
+    value?: number;
+    description?: string;
+    minPurchaseAmount?: number;
+    maxDiscountAmount?: number;
+    usageLimit?: number;
+    active?: boolean;
+    expiresAt?: Date | string;
+    applicableProducts?: string[];
+    applicableCategories?: string[];
+};
 
 /**
  * Coupon Repository Interface - Tenant-Scoped
@@ -25,11 +50,11 @@ export interface ICouponRepository {
         coupons: Coupon[];
         total: number;
     }>;
-    create(tenantId: string, data: CreateCouponDTO): Promise<Coupon>;
+    create(tenantId: string, data: CreateCouponData): Promise<Coupon>;
     update(
         tenantId: string,
         id: string,
-        data: UpdateCouponDTO,
+        data: UpdateCouponData,
     ): Promise<Coupon>;
     delete(tenantId: string, id: string): Promise<void>;
     incrementUsage(tenantId: string, id: string): Promise<void>;

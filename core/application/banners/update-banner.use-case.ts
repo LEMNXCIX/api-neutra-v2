@@ -1,4 +1,7 @@
-import { IBannerRepository } from "@/core/repositories/banner.repository.interface";
+import {
+    IBannerRepository,
+    BannerUpdateData,
+} from "@/core/repositories/banner.repository.interface";
 import { UpdateBannerDTO } from "@/core/application/dtos/requests/banner.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
@@ -34,10 +37,24 @@ export class UpdateBannerUseCase {
             throw new EntityNotFoundError("Banner", id);
         }
 
+        const repoData: BannerUpdateData = {
+            title: data.title,
+            subtitle: data.subtitle,
+            description: data.description,
+            imageUrl: data.imageUrl,
+            backgroundColor: data.backgroundColor,
+            textColor: data.textColor,
+            cta: data.cta,
+            ctaUrl: data.ctaUrl,
+            priority: data.priority,
+            active: data.active,
+            startsAt: data.startsAt,
+            endsAt: data.endsAt,
+        };
         const updatedBanner = await this.bannerRepository.update(
             tenantId,
             id,
-            data,
+            repoData,
         );
         return Success(updatedBanner, "Banner updated successfully");
     }

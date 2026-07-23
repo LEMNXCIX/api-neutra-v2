@@ -2,18 +2,43 @@ import {
     Appointment,
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
-import {
-    CreateAppointmentDTO,
-    UpdateAppointmentDTO,
-    AppointmentFilters,
-} from "@/core/application/dtos/requests/appointment.request";
+
+export type AppointmentCreateData = {
+    userId: string;
+    serviceId: string;
+    staffId: string;
+    startTime: Date;
+    notes?: string;
+    couponCode?: string;
+};
+
+export type AppointmentUpdateData = {
+    startTime?: Date;
+    serviceId?: string;
+    staffId?: string;
+    status?: AppointmentStatus;
+    notes?: string;
+    cancellationReason?: string;
+};
+
+export type AppointmentFilters = {
+    userId?: string;
+    staffId?: string;
+    serviceId?: string;
+    status?: AppointmentStatus;
+    startDate?: Date;
+    endDate?: Date;
+};
 
 /**
  * Appointment Repository Interface
  * Defines operations for Appointment persistence
  */
 export interface IAppointmentRepository {
-    create(tenantId: string, data: CreateAppointmentDTO): Promise<Appointment>;
+    create(
+        tenantId: string,
+        data: AppointmentCreateData,
+    ): Promise<Appointment>;
     findById(
         tenantId: string,
         id: string,
@@ -33,7 +58,7 @@ export interface IAppointmentRepository {
     update(
         tenantId: string,
         id: string,
-        data: UpdateAppointmentDTO,
+        data: AppointmentUpdateData,
     ): Promise<Appointment>;
     updateStatus(
         tenantId: string,

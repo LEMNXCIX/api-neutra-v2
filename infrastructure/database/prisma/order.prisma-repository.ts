@@ -5,13 +5,13 @@ import {
     Prisma,
 } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IOrderRepository } from "@/core/repositories/order.repository.interface";
+import {
+    IOrderRepository,
+    OrderCreateData,
+    OrderUpdateData,
+} from "@/core/repositories/order.repository.interface";
 import { Order, OrderStatus, OrderItem } from "@/core/entities/order.entity";
 import { Product } from "@/core/entities/product.entity";
-import {
-    CreateOrderDTO,
-    UpdateOrderDTO,
-} from "@/core/application/dtos/requests/order.request";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 type OrderWithIncludes = Prisma.OrderGetPayload<{
@@ -61,7 +61,7 @@ export class PrismaOrderRepository implements IOrderRepository {
         };
     }
 
-    async create(tenantId: string, data: CreateOrderDTO): Promise<Order> {
+    async create(tenantId: string, data: OrderCreateData): Promise<Order> {
         const subtotal = data.items.reduce(
             (sum, item) => sum + item.price * item.amount,
             0,
@@ -278,7 +278,7 @@ export class PrismaOrderRepository implements IOrderRepository {
     async update(
         tenantId: string,
         id: string,
-        data: UpdateOrderDTO,
+        data: OrderUpdateData,
     ): Promise<Order> {
         const updateData: Prisma.OrderUpdateInput = {};
         if (data.status !== undefined)

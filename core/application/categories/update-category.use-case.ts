@@ -1,4 +1,7 @@
-import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
+import {
+    ICategoryRepository,
+    CategoryUpdateData,
+} from "@/core/repositories/category.repository.interface";
 import { UpdateCategoryDTO } from "@/core/application/dtos/requests/category.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
@@ -31,10 +34,16 @@ export class UpdateCategoryUseCase {
             }
         }
 
+        const repoData: CategoryUpdateData = {
+            name: data.name,
+            description: data.description,
+            type: data.type,
+            active: data.active,
+        };
         const updatedCategory = await this.categoryRepository.update(
             tenantId,
             id,
-            data,
+            repoData,
         );
 
         return Success(updatedCategory, "Category updated successfully");

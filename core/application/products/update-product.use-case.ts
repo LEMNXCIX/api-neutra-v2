@@ -1,4 +1,7 @@
-import { IProductRepository } from "@/core/repositories/product.repository.interface";
+import {
+    IProductRepository,
+    UpdateProductData,
+} from "@/core/repositories/product.repository.interface";
 import { UpdateProductDTO } from "@/core/application/dtos/requests/product.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 
@@ -10,7 +13,7 @@ export class UpdateProductUseCase {
         id: string,
         data: UpdateProductDTO,
     ): Promise<UseCaseResult> {
-        const updateData: UpdateProductDTO = {
+        const updateData: UpdateProductData = {
             name: data.name,
             description: data.description,
             image: data.image,

@@ -1,4 +1,4 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { IUserRepository, UserCreateData } from "@/core/repositories/user.repository.interface";
 import { ICartRepository } from "@/core/repositories/cart.repository.interface";
 import { IRoleRepository } from "@/core/repositories/role.repository.interface";
 import { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
@@ -15,7 +15,8 @@ export class CreateUserUseCase {
         tenantId: string | undefined,
         data: CreateUserDTO,
     ): Promise<UseCaseResult> {
-        const user = await this.userRepository.create(data);
+        const userData: UserCreateData = { ...data };
+        const user = await this.userRepository.create(userData);
 
         if (tenantId) {
             const role = await this.roleRepository.findByName(tenantId, "USER");

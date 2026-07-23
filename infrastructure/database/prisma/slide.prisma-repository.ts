@@ -1,11 +1,11 @@
 import { Slideshow as PrismaSlideshow, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { ISlideRepository } from "@/core/repositories/slide.repository.interface";
-import { Slideshow } from "@/core/entities/slide.entity";
 import {
-    CreateSlideshowDTO,
-    UpdateSlideshowDTO,
-} from "@/core/application/dtos/requests/slide.request";
+    ISlideRepository,
+    SlideshowCreateData,
+    SlideshowUpdateData,
+} from "@/core/repositories/slide.repository.interface";
+import { Slideshow } from "@/core/entities/slide.entity";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 export class PrismaSlideRepository implements ISlideRepository {
@@ -22,7 +22,7 @@ export class PrismaSlideRepository implements ISlideRepository {
     }
     async create(
         tenantId: string,
-        data: CreateSlideshowDTO,
+        data: SlideshowCreateData,
     ): Promise<Slideshow> {
         const slide = await prisma.slideshow.create({
             data: {
@@ -39,7 +39,7 @@ export class PrismaSlideRepository implements ISlideRepository {
     async update(
         tenantId: string,
         id: string,
-        data: UpdateSlideshowDTO,
+        data: SlideshowUpdateData,
     ): Promise<Slideshow> {
         try {
             const slide = await prisma.slideshow.update({

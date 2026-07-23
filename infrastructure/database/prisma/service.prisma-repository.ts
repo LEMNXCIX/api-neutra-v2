@@ -1,12 +1,12 @@
 import { Service as PrismaService, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import {
+    IServiceRepository,
+    ServiceCreateData,
+    ServiceUpdateData,
+} from "@/core/repositories/service.repository.interface";
 import { Service } from "@/core/entities/service.entity";
 import { Category } from "@/core/entities/category.entity";
-import {
-    CreateServiceDTO,
-    UpdateServiceDTO,
-} from "@/core/application/dtos/requests/service.request";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -44,7 +44,7 @@ export class PrismaServiceRepository implements IServiceRepository {
         };
     }
 
-    async create(tenantId: string, data: CreateServiceDTO): Promise<Service> {
+    async create(tenantId: string, data: ServiceCreateData): Promise<Service> {
         try {
             const service = await prisma.service.create({
                 data: {
@@ -111,7 +111,7 @@ export class PrismaServiceRepository implements IServiceRepository {
     async update(
         tenantId: string,
         id: string,
-        data: UpdateServiceDTO,
+        data: ServiceUpdateData,
     ): Promise<Service> {
         try {
             const service = await prisma.service.update({

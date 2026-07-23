@@ -1,5 +1,18 @@
 import { User, UserTenant } from "@/core/entities/user.entity";
-import { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
+
+export interface UserCreateData {
+    name: string;
+    email: string;
+    password?: string;
+    profilePic?: string;
+    phone?: string;
+    pushToken?: string;
+    active?: boolean;
+    googleId?: string;
+    facebookId?: string;
+    twitterId?: string;
+    githubId?: string;
+}
 
 export interface FindUserOptions {
     includeRole?: boolean;
@@ -17,7 +30,7 @@ export interface IUserRepository {
         providerField: string,
         providerId: string,
     ): Promise<User | null>;
-    create(data: CreateUserDTO): Promise<User>;
+    create(data: UserCreateData): Promise<User>;
     update(id: string, user: Partial<User>): Promise<User>;
     linkProvider(
         email: string,

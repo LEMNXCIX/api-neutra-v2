@@ -1,11 +1,11 @@
 import { Staff as PrismaStaff, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
-import { Staff, WorkingHours } from "@/core/entities/staff.entity";
 import {
-    CreateStaffDTO,
-    UpdateStaffDTO,
-} from "@/core/application/dtos/requests/staff.request";
+    IStaffRepository,
+    CreateStaffData,
+    UpdateStaffData,
+} from "@/core/repositories/staff.repository.interface";
+import { Staff, WorkingHours } from "@/core/entities/staff.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -43,7 +43,7 @@ export class PrismaStaffRepository implements IStaffRepository {
         };
     }
 
-    async create(tenantId: string, data: CreateStaffDTO): Promise<Staff> {
+    async create(tenantId: string, data: CreateStaffData): Promise<Staff> {
         try {
             const staff = await prisma.staff.create({
                 data: {
@@ -121,7 +121,7 @@ export class PrismaStaffRepository implements IStaffRepository {
     async update(
         tenantId: string,
         id: string,
-        data: UpdateStaffDTO,
+        data: UpdateStaffData,
     ): Promise<Staff> {
         try {
             const staff = await prisma.staff.update({

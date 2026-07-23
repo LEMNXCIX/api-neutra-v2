@@ -1,4 +1,4 @@
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import { IRoleRepository, RoleUpdateData } from "@/core/repositories/role.repository.interface";
 import { IUserRepository } from "@/core/repositories/user.repository.interface";
 import { UpdateRoleDTO } from "@/core/application/dtos/requests/role.request";
 import { ICacheProvider } from "@/core/providers/cache-provider.interface";
@@ -36,10 +36,17 @@ export class UpdateRoleUseCase {
             }
         }
 
+        const updateData: RoleUpdateData = {
+            name: data.name,
+            description: data.description,
+            level: data.level,
+            active: data.active,
+            permissionIds: data.permissionIds,
+        };
         const updatedRole = await this.roleRepository.update(
             tenantId,
             id,
-            data,
+            updateData,
         );
 
         if (tenantId) {

@@ -27,26 +27,7 @@ export interface Role {
     permissions: Permission[];
 }
 
-export interface JWTPayload {
-    id: string;
-    email: string;
-    name: string;
-    role: {
-        id: string;
-        name: string;
-        level: number;
-    };
-    tenantId?: string;
-}
-
-export interface AuthenticatedUser extends JWTPayload {
-    role: {
-        id: string;
-        name: string;
-        level: number;
-        permissions: string[];
-    };
-}
+export { JWTPayload, AuthenticatedUser } from "@/core/domain/auth.types";
 
 // Helper type for user entities with role information
 export interface UserWithRole {

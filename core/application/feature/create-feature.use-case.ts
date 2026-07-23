@@ -1,4 +1,4 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { IFeatureRepository, FeatureCreateData } from "@/core/repositories/feature.repository.interface";
 import { CreateFeatureDTO } from "@/core/application/dtos/requests/feature.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
@@ -22,7 +22,14 @@ export class CreateFeatureUseCase {
             throw new DuplicateEntityError("Feature", "key", data.key);
         }
 
-        const feature = await this.featureRepository.create(data);
+        const createData: FeatureCreateData = {
+            key: data.key,
+            name: data.name,
+            description: data.description,
+            category: data.category,
+            price: data.price,
+        };
+        const feature = await this.featureRepository.create(createData);
         return Success(feature, "Feature created successfully");
     }
 }

@@ -3,11 +3,11 @@ import {
     LogFilters,
     LogEntry,
     LogStats,
+    LogCreateData,
 } from "@/core/repositories/log.repository.interface";
-import { CreateLogDTO } from "@/core/application/dtos/requests/log.request";
 
 class NoOpLogRepository implements ILogRepository {
-    async create(_log: CreateLogDTO): Promise<void> {}
+    async create(_log: LogCreateData): Promise<void> {}
     async findAll(
         _filters: LogFilters,
     ): Promise<{ data: LogEntry[]; total: number }> {

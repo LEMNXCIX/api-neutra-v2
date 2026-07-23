@@ -1,4 +1,7 @@
-import { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import {
+    IServiceRepository,
+    ServiceUpdateData,
+} from "@/core/repositories/service.repository.interface";
 import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
 import { UpdateServiceDTO } from "@/core/application/dtos/requests/service.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
@@ -43,7 +46,12 @@ export class UpdateServiceUseCase {
             }
         }
 
-        const service = await this.serviceRepository.update(tenantId, id, data);
+        const updateData: ServiceUpdateData = { ...data };
+        const service = await this.serviceRepository.update(
+            tenantId,
+            id,
+            updateData,
+        );
 
         return Success(service, "Service updated successfully");
     }

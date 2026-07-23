@@ -4,16 +4,16 @@ import {
     Prisma,
 } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import {
+    IAppointmentRepository,
+    AppointmentCreateData,
+    AppointmentUpdateData,
+    AppointmentFilters,
+} from "@/core/repositories/appointment.repository.interface";
 import {
     Appointment,
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
-import {
-    CreateAppointmentDTO,
-    UpdateAppointmentDTO,
-    AppointmentFilters,
-} from "@/core/application/dtos/requests/appointment.request";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -103,7 +103,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
 
     async create(
         tenantId: string,
-        data: CreateAppointmentDTO,
+        data: AppointmentCreateData,
     ): Promise<Appointment> {
         const service = await prisma.service.findUnique({
             where: { id: data.serviceId },
@@ -219,7 +219,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
     async update(
         tenantId: string,
         id: string,
-        data: UpdateAppointmentDTO,
+        data: AppointmentUpdateData,
     ): Promise<Appointment> {
         const updateData: Prisma.AppointmentUpdateInput = {};
 

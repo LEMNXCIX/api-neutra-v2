@@ -1,4 +1,7 @@
-import { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import {
+    IServiceRepository,
+    ServiceCreateData,
+} from "@/core/repositories/service.repository.interface";
 import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
 import { CreateServiceDTO } from "@/core/application/dtos/requests/service.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
@@ -38,7 +41,11 @@ export class CreateServiceUseCase {
             }
         }
 
-        const service = await this.serviceRepository.create(tenantId, data);
+        const createData: ServiceCreateData = { ...data };
+        const service = await this.serviceRepository.create(
+            tenantId,
+            createData,
+        );
 
         return Success(service, "Service created successfully");
     }

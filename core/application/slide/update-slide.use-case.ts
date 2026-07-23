@@ -1,4 +1,7 @@
-import { ISlideRepository } from "@/core/repositories/slide.repository.interface";
+import {
+    ISlideRepository,
+    SlideshowUpdateData,
+} from "@/core/repositories/slide.repository.interface";
 import { UpdateSlideshowDTO } from "@/core/application/dtos/requests/slide.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 
@@ -10,7 +13,7 @@ export class UpdateSlideUseCase {
         id: string,
         data: UpdateSlideshowDTO,
     ): Promise<UseCaseResult> {
-        const updateData: UpdateSlideshowDTO = {
+        const repoData: SlideshowUpdateData = {
             title: data.title,
             img: data.img,
             desc: data.desc,
@@ -19,7 +22,7 @@ export class UpdateSlideUseCase {
         const slide = await this.slideRepository.update(
             tenantId,
             id,
-            updateData,
+            repoData,
         );
         return Success(slide, "Slide actualizado");
     }

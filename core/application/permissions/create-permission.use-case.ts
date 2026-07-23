@@ -1,4 +1,4 @@
-import { IPermissionRepository } from "@/core/repositories/permission.repository.interface";
+import { IPermissionRepository, PermissionCreateData } from "@/core/repositories/permission.repository.interface";
 import { CreatePermissionDTO } from "@/core/application/dtos/requests/permission.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
@@ -19,9 +19,14 @@ export class CreatePermissionUseCase {
             throw new DuplicateEntityError("Permission", "name", data.name);
         }
 
+        const createData: PermissionCreateData = {
+            name: data.name,
+            description: data.description,
+            active: data.active,
+        };
         const permission = await this.permissionRepository.create(
             tenantId,
-            data,
+            createData,
         );
 
         return Success(permission, "Permission created successfully");

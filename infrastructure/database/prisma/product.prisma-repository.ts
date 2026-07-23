@@ -1,11 +1,11 @@
 import { Product as PrismaProduct, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IProductRepository } from "@/core/repositories/product.repository.interface";
-import { Product } from "@/core/entities/product.entity";
 import {
-    CreateProductDTO,
-    UpdateProductDTO,
-} from "@/core/application/dtos/requests/product.request";
+    IProductRepository,
+    CreateProductData,
+    UpdateProductData,
+} from "@/core/repositories/product.repository.interface";
+import { Product } from "@/core/entities/product.entity";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 type ProductWithCategories = Prisma.ProductGetPayload<{
@@ -62,7 +62,7 @@ export class PrismaProductRepository implements IProductRepository {
         return product ? this.mapToEntity(product) : null;
     }
 
-    async create(tenantId: string, data: CreateProductDTO): Promise<Product> {
+    async create(tenantId: string, data: CreateProductData): Promise<Product> {
         const { categoryIds, ...productData } = data;
         const product = await prisma.product.create({
             data: {
@@ -88,7 +88,7 @@ export class PrismaProductRepository implements IProductRepository {
     async update(
         tenantId: string,
         id: string,
-        data: UpdateProductDTO,
+        data: UpdateProductData,
     ): Promise<Product> {
         const { categoryIds, ...productData } = data;
 

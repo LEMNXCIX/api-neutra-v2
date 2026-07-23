@@ -1,4 +1,7 @@
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import {
+    IAppointmentRepository,
+    AppointmentCreateData,
+} from "@/core/repositories/appointment.repository.interface";
 import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
 import { IServiceRepository } from "@/core/repositories/service.repository.interface";
 import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
@@ -113,8 +116,9 @@ export class CreateAppointmentUseCase {
             await this.couponRepository.incrementUsage(tenantId, couponId);
         }
 
+        const baseData: AppointmentCreateData = { ...data };
         const appointmentData = {
-            ...data,
+            ...baseData,
             couponId,
             discountAmount,
             subtotal,

@@ -1,11 +1,11 @@
 import { Coupon as PrismaCoupon, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
-    CreateCouponDTO,
-    UpdateCouponDTO,
-} from "@/core/application/dtos/requests/coupon.request";
+    ICouponRepository,
+    CreateCouponData,
+    UpdateCouponData,
+} from "@/core/repositories/coupon.repository.interface";
+import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -136,7 +136,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         };
     }
 
-    async create(tenantId: string, data: CreateCouponDTO): Promise<Coupon> {
+    async create(tenantId: string, data: CreateCouponData): Promise<Coupon> {
         try {
             const coupon = await prisma.coupon.create({
                 data: {
@@ -171,7 +171,7 @@ export class PrismaCouponRepository implements ICouponRepository {
     async update(
         tenantId: string,
         id: string,
-        data: UpdateCouponDTO,
+        data: UpdateCouponData,
     ): Promise<Coupon> {
         const updateData: Prisma.CouponUpdateInput = {};
 

@@ -1,8 +1,25 @@
 import { Product } from "@/core/entities/product.entity";
-import {
-    CreateProductDTO,
-    UpdateProductDTO,
-} from "@/core/application/dtos/requests/product.request";
+
+export type CreateProductData = {
+    name: string;
+    description: string;
+    image?: string;
+    price: number;
+    stock?: number;
+    active?: boolean;
+    ownerId: string;
+    categoryIds?: string[];
+};
+
+export type UpdateProductData = {
+    name?: string;
+    description?: string;
+    image?: string;
+    price?: number;
+    stock?: number;
+    active?: boolean;
+    categoryIds?: string[];
+};
 
 /**
  * Product Repository Interface - Tenant-Scoped
@@ -14,11 +31,11 @@ export interface IProductRepository {
         options?: { categoryId?: string },
     ): Promise<Product[]>;
     findById(tenantId: string | undefined, id: string): Promise<Product | null>;
-    create(tenantId: string, product: CreateProductDTO): Promise<Product>;
+    create(tenantId: string, data: CreateProductData): Promise<Product>;
     update(
         tenantId: string,
         id: string,
-        product: UpdateProductDTO,
+        data: UpdateProductData,
     ): Promise<Product>;
     delete(tenantId: string, id: string): Promise<Product>;
     searchByName(tenantId: string, name: string): Promise<Product[]>;
