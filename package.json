@@ -42,7 +42,7 @@
         "lusca": "^1.7.0",
         "morgan": "^1.10.1",
         "nodemailer": "^9.0.1",
-        "npm": "^11.6.1",
+        "npm": "^12.0.1",
         "passport": "^0.7.0",
         "passport-facebook": "^3.0.0",
         "passport-github2": "^0.1.12",
