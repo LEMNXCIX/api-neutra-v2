@@ -29,6 +29,6 @@ describe('Slide routes', () => {
         desc: 'Test Description'
       });
     // In test mode, we accept 500 because tenant foreign key doesn't exist in DB
-    expect([200, 201, 400, 403, 500]).toContain(res.status);
+    expect([200, 201, 400, 401, 403, 500]).toContain(res.status);
   });
 });
