@@ -1,8 +1,20 @@
 import { Role } from "@/core/entities/role.entity";
-import {
-    CreateRoleDTO,
-    UpdateRoleDTO,
-} from "@/core/application/dtos/requests/role.request";
+
+export interface RoleCreateData {
+    name: string;
+    description?: string;
+    level?: number;
+    active?: boolean;
+    permissionIds?: string[];
+}
+
+export interface RoleUpdateData {
+    name?: string;
+    description?: string;
+    level?: number;
+    active?: boolean;
+    permissionIds?: string[];
+}
 
 export interface IRoleRepository {
     findAll(tenantId: string | undefined): Promise<Role[]>;
@@ -17,11 +29,11 @@ export interface IRoleRepository {
         tenantId: string | undefined,
         name: string,
     ): Promise<Role | null>;
-    create(tenantId: string | undefined, data: CreateRoleDTO): Promise<Role>;
+    create(tenantId: string | undefined, data: RoleCreateData): Promise<Role>;
     update(
         tenantId: string | undefined,
         id: string,
-        data: UpdateRoleDTO,
+        data: RoleUpdateData,
     ): Promise<Role>;
     delete(tenantId: string | undefined, id: string): Promise<void>;
     createWithPermissions(

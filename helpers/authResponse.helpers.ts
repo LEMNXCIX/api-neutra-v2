@@ -3,7 +3,6 @@ import config from "@/config/index.config";
 import {
     AUTH_CONSTANTS,
     isProduction,
-    isDevelopment,
 } from "@/core/domain/constants";
 import { DOMAIN_CONSTANTS } from "@/config/infrastructure-constants";
 
@@ -48,20 +47,12 @@ function getCookieDomain(req: Request): string | undefined {
 
 function cookieOptions(req: Request): CookieOptions {
     const domain = getCookieDomain(req);
+    const inProduction = production || isProduction(ENVIRONMENT);
 
     const options: CookieOptions = {
-        httpOnly:
-            production ||
-            ENVIRONMENT === "prod" ||
-            ENVIRONMENT === "production",
-        secure:
-            production ||
-            ENVIRONMENT === "prod" ||
-            ENVIRONMENT === "production",
-        sameSite:
-            production || ENVIRONMENT === "prod" || ENVIRONMENT === "production"
-                ? "none"
-                : "lax",
+        httpOnly: inProduction,
+        secure: inProduction,
+        sameSite: inProduction ? "none" : "lax",
     };
 
     if (domain) {

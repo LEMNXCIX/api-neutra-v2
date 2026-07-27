@@ -1,4 +1,4 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { IUserRepository, UserCreateData } from "@/core/repositories/user.repository.interface";
 import {
     IPasswordHasher,
     ITokenGenerator,
@@ -67,14 +67,14 @@ export class RegisterUseCase {
 
         const hashedPassword = await this.passwordHasher.hash(data.password);
 
-        const newUserDTO: CreateUserDTO = {
+        const newUserData: UserCreateData = {
             name: data.name,
             email: data.email,
             password: hashedPassword,
             profilePic: data.profilePic,
         };
 
-        user = await this.userRepository.create(newUserDTO);
+        user = await this.userRepository.create(newUserData);
 
         const role = await this.roleRepository.findByName(
             currentTenantId,

@@ -1,4 +1,4 @@
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import { IRoleRepository, RoleCreateData } from "@/core/repositories/role.repository.interface";
 import { CreateRoleDTO } from "@/core/application/dtos/requests/role.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
@@ -19,7 +19,14 @@ export class CreateRoleUseCase {
             throw new DuplicateEntityError("Role", "name", data.name);
         }
 
-        const role = await this.roleRepository.create(tenantId, data);
+        const createData: RoleCreateData = {
+            name: data.name,
+            description: data.description,
+            level: data.level,
+            active: data.active,
+            permissionIds: data.permissionIds,
+        };
+        const role = await this.roleRepository.create(tenantId, createData);
 
         return Success(role, "Role created successfully");
     }

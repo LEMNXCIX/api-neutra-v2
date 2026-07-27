@@ -9,8 +9,8 @@ import {
     LogFilters,
     LogEntry,
     LogStats,
+    LogCreateData,
 } from "@/core/repositories/log.repository.interface";
-import { CreateLogDTO } from "@/core/application/dtos/requests/log.request";
 import { LogLevel } from "@/core/providers/logger.interface";
 
 export class PrismaLogRepository implements ILogRepository {
@@ -40,7 +40,7 @@ export class PrismaLogRepository implements ILogRepository {
         };
     }
 
-    async create(log: CreateLogDTO): Promise<void> {
+    async create(log: LogCreateData): Promise<void> {
         try {
             const prismaLevel = this.mapLogLevel(log.level);
 

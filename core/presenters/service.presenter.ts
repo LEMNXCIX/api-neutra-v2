@@ -10,6 +10,7 @@ export class ServicePresenter {
     }
 
     static toResponseList(services: Service[]): IServiceResponse[] {
+        if (!Array.isArray(services)) return [];
         return services.map((s) => ServiceResponse.fromEntity(s));
     }
 }

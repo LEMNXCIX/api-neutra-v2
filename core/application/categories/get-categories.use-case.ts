@@ -18,27 +18,9 @@ export class GetCategoriesUseCase {
             limit,
             type,
         );
-        const stats = await this.categoryRepository.getStats(tenantId);
 
         return Success(
-            {
-                categories: result.categories,
-                stats,
-                pagination:
-                    page && limit
-                        ? {
-                              page,
-                              limit,
-                              total: result.total,
-                              totalPages: Math.ceil(result.total / limit),
-                          }
-                        : {
-                              page: 1,
-                              limit: result.total,
-                              total: result.total,
-                              totalPages: 1,
-                          },
-            },
+            result.categories,
             "Categories retrieved successfully",
         );
     }

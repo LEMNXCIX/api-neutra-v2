@@ -1,4 +1,7 @@
-import { IProductRepository } from "@/core/repositories/product.repository.interface";
+import {
+    IProductRepository,
+    CreateProductData,
+} from "@/core/repositories/product.repository.interface";
 import { CreateProductDTO } from "@/core/application/dtos/requests/product.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
@@ -36,7 +39,7 @@ export class CreateProductUseCase {
             throw new ValidationError("Image size exceeds 5MB limit");
         }
 
-        const newProduct: CreateProductDTO = {
+        const newProduct: CreateProductData = {
             name: data.name,
             description: data.description,
             image: data.image,

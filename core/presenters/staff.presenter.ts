@@ -10,6 +10,7 @@ export class StaffPresenter {
     }
 
     static toResponseList(staffList: Staff[]): IStaffResponse[] {
+        if (!Array.isArray(staffList)) return [];
         return staffList.map((s) => StaffResponse.fromEntity(s));
     }
 }

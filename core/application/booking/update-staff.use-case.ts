@@ -1,4 +1,7 @@
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import {
+    IStaffRepository,
+    UpdateStaffData,
+} from "@/core/repositories/staff.repository.interface";
 import { IUserRepository } from "@/core/repositories/user.repository.interface";
 import { IRoleRepository } from "@/core/repositories/role.repository.interface";
 import { UpdateStaffDTO } from "@/core/application/dtos/requests/staff.request";
@@ -53,10 +56,8 @@ export class UpdateStaffUseCase {
             }
         }
 
-        const staff = await this.staffRepository.update(tenantId, id, {
-            ...data,
-            userId,
-        });
+        const updateData: UpdateStaffData = { ...data, userId };
+        const staff = await this.staffRepository.update(tenantId, id, updateData);
 
         return Success(staff, "Staff member updated successfully");
     }

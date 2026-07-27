@@ -9,6 +9,7 @@ import {
     providerResponse,
     deleteCookie,
 } from "@/helpers/authResponse.helpers";
+import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
 import { Success } from "@/core/utils/use-case-result";
 
 export class AuthController {
@@ -33,18 +34,12 @@ export class AuthController {
         // tenantId can be undefined for global login
         const tenantId = req.tenantId!;
         const result = await this.loginUseCase.execute(tenantId, req.body);
-        return authResponse(req, res, result, 401);
+        return authResponse(req, res, result, 200);
     }
 
     async signup(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const origin =
-            (req.headers["x-original-origin"] as string) ||
-            req.headers.origin ||
-            (req.headers.referer
-                ? new URL(req.headers.referer as string).origin
-                : null) ||
-            `${req.protocol}://${req.get("host")}`;
+        const origin = resolveRequestOrigin(req);
         const result = await this.registerUseCase.execute(
             tenantId,
             req.body,
@@ -68,7 +63,7 @@ export class AuthController {
                 .json({ success: false, message: "OAuth profile missing" });
         }
         const result = await this.socialLoginUseCase.execute(tenantId, profile);
-        return providerResponse(req, res, result, 401);
+        return providerResponse(req, res, result, 200);
     }
 
     logout(req: Request, res: Response) {
@@ -83,13 +78,7 @@ export class AuthController {
 
     async forgotPassword(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const origin =
-            (req.headers["x-original-origin"] as string) ||
-            req.headers.origin ||
-            (req.headers.referer
-                ? new URL(req.headers.referer as string).origin
-                : null) ||
-            `${req.protocol}://${req.get("host")}`;
+        const origin = resolveRequestOrigin(req);
         const result = await this.forgotPasswordUseCase.execute(
             tenantId,
             req.body.email,

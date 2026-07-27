@@ -17,6 +17,34 @@ const FORBIDDEN_IMPORTS = [
     },
 ];
 
+/** Core must not import outer delivery/infra layers */
+const CORE_FORBIDDEN_IMPORTS = [
+    {
+        pattern: /from\s+['"]@\/infrastructure\//,
+        name: "@/infrastructure/*",
+    },
+    {
+        pattern: /from\s+['"]@\/middleware\//,
+        name: "@/middleware/*",
+    },
+    {
+        pattern: /from\s+['"]@\/interface-adapters\//,
+        name: "@/interface-adapters/*",
+    },
+    {
+        pattern: /from\s+['"]@\/helpers\//,
+        name: "@/helpers/*",
+    },
+    {
+        pattern: /from\s+['"]express['"]/,
+        name: "express",
+    },
+    {
+        pattern: /from\s+['"]@prisma\/client['"]/,
+        name: "@prisma/client",
+    },
+];
+
 const PROTECTED_DIRS = [
     { dir: "core/domain", label: "core/domain" },
     { dir: "core/application", label: "core/application" },
@@ -25,8 +53,22 @@ const PROTECTED_DIRS = [
     { dir: "core/ports", label: "core/ports" },
     { dir: "core/providers", label: "core/providers" },
     { dir: "core/services", label: "core/services" },
+    { dir: "core/presenters", label: "core/presenters" },
+    { dir: "core/utils", label: "core/utils" },
     { dir: "interface-adapters", label: "interface-adapters" },
     { dir: "middleware", label: "middleware" },
+];
+
+const CORE_DIRS = [
+    "core/domain",
+    "core/application",
+    "core/entities",
+    "core/repositories",
+    "core/ports",
+    "core/providers",
+    "core/services",
+    "core/presenters",
+    "core/utils",
 ];
 
 function getAllTsFiles(dir: string): string[] {
@@ -74,6 +116,64 @@ for (const { dir, label } of PROTECTED_DIRS) {
                     );
                     violations++;
                 }
+            }
+        }
+    }
+}
+
+// Core layer must not depend on outer layers / frameworks
+console.log("\n--- Core Layer Dependency Check ---\n");
+
+for (const dir of CORE_DIRS) {
+    const fullPath = path.join(ROOT, dir);
+    if (!fs.existsSync(fullPath)) continue;
+
+    const files = getAllTsFiles(fullPath);
+    for (const file of files) {
+        const content = fs.readFileSync(file, "utf-8");
+        const relativePath = path.relative(ROOT, file).replace(/\\/g, "/");
+        const lines = content.split("\n");
+
+        for (let i = 0; i < lines.length; i++) {
+            for (const { pattern, name } of CORE_FORBIDDEN_IMPORTS) {
+                if (pattern.test(lines[i])) {
+                    console.log(
+                        `VIOLATION: ${relativePath}:${i + 1} imports ${name} (core must stay framework-free)`,
+                    );
+                    violations++;
+                }
+            }
+            if (/\bprocess\.env\b/.test(lines[i]) && !/^\s*\/\//.test(lines[i])) {
+                console.log(
+                    `VIOLATION: ${relativePath}:${i + 1} uses process.env (use IConfigProvider / inject config)`,
+                );
+                violations++;
+            }
+        }
+    }
+}
+
+// Controllers should not import Prisma or Container
+console.log("\n--- Controller Boundary Check ---\n");
+
+const controllersDir = path.join(ROOT, "interface-adapters/controllers");
+if (fs.existsSync(controllersDir)) {
+    for (const file of getAllTsFiles(controllersDir)) {
+        const content = fs.readFileSync(file, "utf-8");
+        const relativePath = path.relative(ROOT, file).replace(/\\/g, "/");
+        const lines = content.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            if (
+                /from\s+['"]@prisma\/client['"]/.test(lines[i]) ||
+                /from\s+['"]@\/infrastructure\/database\//.test(lines[i]) ||
+                /from\s+['"]@\/infrastructure\/config\/container['"]/.test(
+                    lines[i],
+                )
+            ) {
+                console.log(
+                    `VIOLATION: ${relativePath}:${i + 1} controller couples to persistence/container`,
+                );
+                violations++;
             }
         }
     }

@@ -10,6 +10,7 @@ export class PermissionPresenter {
     }
 
     static toResponseList(permissions: Permission[]): IPermissionResponse[] {
+        if (!Array.isArray(permissions)) return [];
         return permissions.map((p) => PermissionResponse.fromEntity(p));
     }
 }

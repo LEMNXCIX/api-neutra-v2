@@ -1,14 +1,21 @@
 import { Order, OrderStatus } from "@/core/entities/order.entity";
-import {
-    CreateOrderDTO,
-    UpdateOrderDTO,
-} from "@/core/application/dtos/requests/order.request";
+
+export interface OrderCreateData {
+    userId: string;
+    items: { productId: string; amount: number; price: number }[];
+    couponId?: string;
+}
+
+export interface OrderUpdateData {
+    status?: OrderStatus;
+    trackingNumber?: string;
+}
 
 /**
  * Order Repository Interface - Tenant-Scoped
  */
 export interface IOrderRepository {
-    create(tenantId: string, data: CreateOrderDTO): Promise<Order>;
+    create(tenantId: string, data: OrderCreateData): Promise<Order>;
     findById(tenantId: string, id: string): Promise<Order | null>;
     findByUserId(
         tenantId: string,
@@ -35,7 +42,7 @@ export interface IOrderRepository {
         id: string,
         status: OrderStatus,
     ): Promise<Order>;
-    update(tenantId: string, id: string, data: UpdateOrderDTO): Promise<Order>;
+    update(tenantId: string, id: string, data: OrderUpdateData): Promise<Order>;
     getStats(
         tenantId: string,
         startDate?: Date,

@@ -1,4 +1,4 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { IUserRepository, UserCreateData } from "@/core/repositories/user.repository.interface";
 import { ICartRepository } from "@/core/repositories/cart.repository.interface";
 import { IRoleRepository } from "@/core/repositories/role.repository.interface";
 import { IUidProvider } from "@/core/providers/uid-provider.interface";
@@ -42,13 +42,17 @@ export class GetOrCreateByProviderUseCase {
             } else {
                 const newPassword = this.uidProvider.generate();
 
-                user = await this.userRepository.create({
+                const createData: UserCreateData = {
                     name: data.name,
                     email: data.email,
                     password: newPassword,
                     profilePic: data.profilePic,
-                    [providerField]: data.idProvider,
-                });
+                };
+                if (providerField === 'googleId') createData.googleId = data.idProvider;
+                else if (providerField === 'facebookId') createData.facebookId = data.idProvider;
+                else if (providerField === 'twitterId') createData.twitterId = data.idProvider;
+                else if (providerField === 'githubId') createData.githubId = data.idProvider;
+                user = await this.userRepository.create(createData);
                 created = true;
             }
         }

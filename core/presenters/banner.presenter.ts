@@ -10,6 +10,7 @@ export class BannerPresenter {
     }
 
     static toResponseList(banners: Banner[]): IBannerResponse[] {
+        if (!Array.isArray(banners)) return [];
         return banners.map((b) => BannerResponse.fromEntity(b));
     }
 }
