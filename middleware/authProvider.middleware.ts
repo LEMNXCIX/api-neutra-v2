@@ -40,8 +40,8 @@ export const useGoogleStrategy = () => {
             clientID: oauthClientID as string,
             clientSecret: oauthClientSecret as string,
             callbackURL: callbackUrl("google"),
-        },
-        getProfile,
+        } as any,
+        getProfile as any,
     );
 };
 
