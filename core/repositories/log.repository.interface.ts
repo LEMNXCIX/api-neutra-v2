@@ -1,5 +1,7 @@
+import { LogLevel } from "@/core/providers/logger.interface";
+
 export interface LogCreateData {
-    level: string;
+    level: LogLevel;
     method: string;
     url: string;
     statusCode: number;
