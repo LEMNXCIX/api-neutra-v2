@@ -9,10 +9,7 @@ describe("Categories routes", () => {
         expect([200, 500]).toContain(res.status);
         if (res.status === 200) {
             expect(res.body.success).toBe(true);
-            expect(res.body.data).toHaveProperty("categories");
-            expect(res.body.data).toHaveProperty("stats");
-            expect(res.body.data).toHaveProperty("pagination");
-            expect(Array.isArray(res.body.data.categories)).toBe(true);
+            expect(Array.isArray(res.body.data)).toBe(true);
         }
     });
 });

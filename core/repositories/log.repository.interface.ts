@@ -1,4 +1,20 @@
-import { CreateLogDTO } from "@/core/application/dtos/requests/log.request";
+import { LogLevel } from "@/core/providers/logger.interface";
+
+export interface LogCreateData {
+    level: LogLevel;
+    method: string;
+    url: string;
+    statusCode: number;
+    duration: number;
+    tenantId?: string;
+    userId?: string;
+    ip?: string;
+    userAgent?: string;
+    message: string;
+    metadata?: Record<string, unknown>;
+    error?: Record<string, unknown>;
+    traceId?: string;
+}
 
 export interface LogFilters {
     level?: string;
@@ -42,7 +58,7 @@ export interface LogStats {
 }
 
 export interface ILogRepository {
-    create(log: CreateLogDTO): Promise<void>;
+    create(log: LogCreateData): Promise<void>;
     findAll(filters: LogFilters): Promise<{ data: LogEntry[]; total: number }>;
     getStats(timeframe: string): Promise<LogStats>;
 }

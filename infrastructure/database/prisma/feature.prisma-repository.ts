@@ -1,8 +1,7 @@
 import { Feature as PrismaFeature, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { IFeatureRepository, FeatureCreateData } from "@/core/repositories/feature.repository.interface";
 import { Feature } from "@/core/entities/feature.entity";
-import { CreateFeatureDTO } from "@/core/application/dtos/requests/feature.request";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -41,7 +40,7 @@ export class PrismaFeatureRepository implements IFeatureRepository {
         return feature ? this.mapToEntity(feature) : null;
     }
 
-    async create(data: CreateFeatureDTO): Promise<Feature> {
+    async create(data: FeatureCreateData): Promise<Feature> {
         try {
             const feature = await prisma.feature.create({
                 data: {

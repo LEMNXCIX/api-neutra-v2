@@ -1,10 +1,24 @@
+const path = require("path");
+
 module.exports = {
-    preset: "ts-jest",
     testEnvironment: "node",
+    rootDir: __dirname,
     testMatch: ["**/test/**/*.test.ts", "**/test/**/*.test.js"],
+    // Unit/architecture suites use jest.unit.config.cjs (no DB bootstrap)
+    testPathIgnorePatterns: [
+        "/node_modules/",
+        "/test/unit/",
+        "/test/architecture/",
+    ],
     modulePathIgnorePatterns: ["<rootDir>/dist/"],
     transform: {
-        "^.+\\.ts$": "ts-jest",
+        "^.+\\.tsx?$": [
+            "ts-jest",
+            {
+                tsconfig: path.join(__dirname, "tsconfig.json"),
+                diagnostics: false,
+            },
+        ],
     },
     setupFilesAfterEnv: ["<rootDir>/test/jest.setup.ts"],
     testTimeout: 20000,

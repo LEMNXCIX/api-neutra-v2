@@ -1,4 +1,4 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { IUserRepository, UserCreateData } from "@/core/repositories/user.repository.interface";
 import { ITokenGenerator } from "@/core/providers/auth-providers.interface";
 import { IUidProvider } from "@/core/providers/uid-provider.interface";
 import { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
@@ -49,7 +49,7 @@ export class SocialLoginUseCase {
                             : user.profilePic,
                 });
             } else {
-                const newUserDTO: CreateUserDTO = {
+                const newUserData: UserCreateData = {
                     name: data.displayName || "User",
                     email: email,
                     password: this.uidProvider.generate(),
@@ -59,7 +59,7 @@ export class SocialLoginUseCase {
                             ? data.photos[0].value
                             : undefined,
                 };
-                user = await this.userRepository.create(newUserDTO);
+                user = await this.userRepository.create(newUserData);
             }
         }
 

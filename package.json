@@ -6,6 +6,7 @@
     "scripts": {
         "pretest": "ts-node ./scripts/clean-dist.ts",
         "test": "cross-env NODE_ENV=test jest --runInBand",
+        "test:unit": "cross-env NODE_ENV=test bun test ./test/unit ./test/architecture",
         "test:ci": "cross-env NODE_ENV=test jest --runInBand --forceExit",
         "build": "tsc -p tsconfig.json",
         "start": "node -r ts-node/register ./app.ts",

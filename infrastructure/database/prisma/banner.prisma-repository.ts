@@ -1,11 +1,11 @@
 import { Banner as PrismaBanner, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IBannerRepository } from "@/core/repositories/banner.repository.interface";
-import { Banner } from "@/core/entities/banner.entity";
 import {
-    CreateBannerDTO,
-    UpdateBannerDTO,
-} from "@/core/application/dtos/requests/banner.request";
+    IBannerRepository,
+    BannerCreateData,
+    BannerUpdateData,
+} from "@/core/repositories/banner.repository.interface";
+import { Banner } from "@/core/entities/banner.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -64,7 +64,7 @@ export class PrismaBannerRepository implements IBannerRepository {
         return banners.map(this.mapToEntity);
     }
 
-    async create(tenantId: string, data: CreateBannerDTO): Promise<Banner> {
+    async create(tenantId: string, data: BannerCreateData): Promise<Banner> {
         try {
             const banner = await prisma.banner.create({
                 data: {
@@ -99,7 +99,7 @@ export class PrismaBannerRepository implements IBannerRepository {
     async update(
         tenantId: string,
         id: string,
-        data: UpdateBannerDTO,
+        data: BannerUpdateData,
     ): Promise<Banner> {
         const updateData: Prisma.BannerUpdateInput = {};
 

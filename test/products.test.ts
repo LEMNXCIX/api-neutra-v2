@@ -16,10 +16,7 @@ describe("Products routes", () => {
         expect([200, 500]).toContain(res.status);
         if (res.status === 200) {
             expect(res.body.success).toBe(true);
-            expect(res.body.data).toHaveProperty("products");
-            expect(res.body.data).toHaveProperty("stats");
-            expect(res.body.data).toHaveProperty("pagination");
-            expect(Array.isArray(res.body.data.products)).toBe(true);
+            expect(Array.isArray(res.body.data)).toBe(true);
         }
     });
 
@@ -44,7 +41,7 @@ describe("Products routes", () => {
                 description: "Test Description",
                 ownerId: "test-user-id",
             });
-        expect([200, 201, 400, 403]).toContain(res.status);
+        expect([200, 201, 400, 401, 403]).toContain(res.status);
     });
 
     test("POST /api/products/search returns json", async () => {

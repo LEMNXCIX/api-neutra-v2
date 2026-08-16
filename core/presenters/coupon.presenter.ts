@@ -10,6 +10,7 @@ export class CouponPresenter {
     }
 
     static toResponseList(coupons: Coupon[]): ICouponResponse[] {
+        if (!Array.isArray(coupons)) return [];
         return coupons.map((c) => CouponResponse.fromEntity(c));
     }
 }

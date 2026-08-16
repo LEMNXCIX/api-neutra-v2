@@ -1,4 +1,7 @@
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import {
+    IStaffRepository,
+    CreateStaffData,
+} from "@/core/repositories/staff.repository.interface";
 import { IUserRepository } from "@/core/repositories/user.repository.interface";
 import { IRoleRepository } from "@/core/repositories/role.repository.interface";
 import { CreateStaffDTO } from "@/core/application/dtos/requests/staff.request";
@@ -40,10 +43,8 @@ export class CreateStaffUseCase {
             }
         }
 
-        const staff = await this.staffRepository.create(tenantId, {
-            ...data,
-            userId,
-        });
+        const staffData: CreateStaffData = { ...data, userId };
+        const staff = await this.staffRepository.create(tenantId, staffData);
 
         return Success(staff, "Staff member created successfully");
     }

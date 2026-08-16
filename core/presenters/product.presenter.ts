@@ -10,6 +10,7 @@ export class ProductPresenter {
     }
 
     static toResponseList(products: Product[]): IProductResponse[] {
+        if (!Array.isArray(products)) return [];
         return products.map((p) => ProductResponse.fromEntity(p));
     }
 }

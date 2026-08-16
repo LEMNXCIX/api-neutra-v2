@@ -3,11 +3,11 @@ import { prisma } from "@/config/db.config";
 import {
     IUserRepository,
     FindUserOptions,
+    UserCreateData,
 } from "@/core/repositories/user.repository.interface";
 import { User, UserTenant } from "@/core/entities/user.entity";
 import { Role } from "@/core/entities/role.entity";
 import { Permission } from "@/core/entities/permission.entity";
-import { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -222,7 +222,7 @@ export class PrismaUserRepository implements IUserRepository {
         return this.mapToEntity(user);
     }
 
-    async create(data: CreateUserDTO): Promise<User> {
+    async create(data: UserCreateData): Promise<User> {
         try {
             const user = await prisma.user.create({
                 data: {

@@ -27,13 +27,8 @@ export class GetOrdersPaginatedUseCase {
             endDate: options.endDate,
         });
 
-        const totalPages = Math.ceil(result.total / limit);
-
         return Success(
-            {
-                orders: result.orders,
-                pagination: { page, limit, total: result.total, totalPages },
-            },
+            result.orders,
             "Orders retrieved successfully",
         );
     }

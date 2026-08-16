@@ -1,8 +1,12 @@
 import { IConfigProvider } from "@/core/providers/config-provider.interface";
+import config from "@/config/index.config";
 
+/**
+ * Env-backed config adapter. Prefer this (or `config`) over raw process.env outside infrastructure.
+ */
 export class EnvConfigProvider implements IConfigProvider {
     getFrontendUrl(): string {
-        return process.env.FRONTEND_URL || "http://localhost:3000";
+        return config.frontendUrl;
     }
 
     getSmtpFrom(): string {
@@ -10,6 +14,14 @@ export class EnvConfigProvider implements IConfigProvider {
     }
 
     getNodeEnv(): string {
-        return process.env.NODE_ENV || "development";
+        return config.ENVIRONMENT;
+    }
+
+    getAllowedOrigins(): string {
+        return config.allowedOrigins;
+    }
+
+    getWhatsAppVerifyToken(): string {
+        return config.whatsappVerifyToken;
     }
 }
