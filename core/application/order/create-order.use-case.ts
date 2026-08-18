@@ -1,8 +1,11 @@
-import { IOrderRepository } from "@/core/repositories/order.repository.interface";
+import { IOrderRepository, OrderCreateData } from "@/core/repositories/order.repository.interface";
 import { GetCartUseCase } from "@/core/application/cart/get-cart.use-case";
 import { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
 import { CreateOrderDTO } from "@/core/application/dtos/requests/order.request";
-import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import {
+    BusinessRuleViolationError,
+    EntityNotFoundError,
+} from "@/core/domain/errors/domain-errors";
 import { IProductRepository } from "@/core/repositories/product.repository.interface";
 import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
 import { IEmailService } from "@/core/ports/email.port";
@@ -44,11 +47,7 @@ export class CreateOrderUseCase {
         try {
             cartResponse = await this.getCartUseCase.execute(tenantId, userId);
         } catch (error: unknown) {
-            if (
-                error instanceof Error &&
-                "statusCode" in error &&
-                (error as { statusCode: number }).statusCode === 404
-            ) {
+            if (error instanceof EntityNotFoundError) {
                 throw new BusinessRuleViolationError(
                     "Tu carrito esta vacío, no puedes generar una orden.",
                     "CART_EMPTY",
@@ -70,7 +69,7 @@ export class CreateOrderUseCase {
 
         const cartItems = cartResponse.data as CartProductItem[];
 
-        const orderData: CreateOrderDTO = {
+        const orderData: OrderCreateData = {
             userId,
             items: cartItems.map((item: CartProductItem) => ({
                 productId: item.id,

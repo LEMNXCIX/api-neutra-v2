@@ -1,4 +1,7 @@
-import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
+import {
+    ICouponRepository,
+    UpdateCouponData,
+} from "@/core/repositories/coupon.repository.interface";
 import { UpdateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
@@ -20,10 +23,11 @@ export class UpdateCouponUseCase {
             throw new EntityNotFoundError("Coupon", id);
         }
 
+        const updateData: UpdateCouponData = { ...data };
         const updatedCoupon = await this.couponRepository.update(
             tenantId,
             id,
-            data,
+            updateData,
         );
         return Success(updatedCoupon, "Coupon updated successfully");
     }

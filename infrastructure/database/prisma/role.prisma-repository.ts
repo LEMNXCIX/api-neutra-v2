@@ -1,12 +1,8 @@
 import { Role as PrismaRole, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import { IRoleRepository, RoleCreateData, RoleUpdateData } from "@/core/repositories/role.repository.interface";
 import { Role } from "@/core/entities/role.entity";
 import { Permission } from "@/core/entities/permission.entity";
-import {
-    CreateRoleDTO,
-    UpdateRoleDTO,
-} from "@/core/application/dtos/requests/role.request";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -121,7 +117,7 @@ export class PrismaRoleRepository implements IRoleRepository {
 
     async create(
         tenantId: string | undefined,
-        data: CreateRoleDTO,
+        data: RoleCreateData,
     ): Promise<Role> {
         try {
             const { permissionIds, ...roleData } = data;
@@ -158,7 +154,7 @@ export class PrismaRoleRepository implements IRoleRepository {
     async update(
         tenantId: string | undefined,
         id: string,
-        data: UpdateRoleDTO,
+        data: RoleUpdateData,
     ): Promise<Role> {
         const { permissionIds, ...roleData } = data;
 

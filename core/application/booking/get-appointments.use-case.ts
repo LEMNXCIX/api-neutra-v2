@@ -1,4 +1,7 @@
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import {
+    IAppointmentRepository,
+    AppointmentFilters as RepoFilters,
+} from "@/core/repositories/appointment.repository.interface";
 import { AppointmentFilters } from "@/core/application/dtos/requests/appointment.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 
@@ -9,9 +12,10 @@ export class GetAppointmentsUseCase {
         tenantId: string | undefined,
         filters?: AppointmentFilters,
     ): Promise<UseCaseResult> {
+        const mappedFilters: RepoFilters = { ...(filters ?? {}) };
         const appointments = await this.appointmentRepository.findAll(
             tenantId,
-            filters,
+            mappedFilters,
         );
         return Success(appointments, "Appointments retrieved successfully");
     }

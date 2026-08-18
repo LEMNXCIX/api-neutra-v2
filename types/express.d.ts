@@ -14,7 +14,20 @@ declare global {
                 active: boolean;
             };
             traceId?: string;
-            validatedBody?: any;
+            validatedBody?: unknown;
+        }
+
+        interface Response {
+            apiSuccess: (
+                data?: unknown,
+                message?: string,
+                statusCode?: number,
+            ) => Response;
+            apiError: (
+                err: unknown,
+                message?: string,
+                statusCode?: number,
+            ) => Response;
         }
     }
 }

@@ -1,8 +1,18 @@
 import { Category, CategoryType } from "@/core/entities/category.entity";
-import {
-    CreateCategoryDTO,
-    UpdateCategoryDTO,
-} from "@/core/application/dtos/requests/category.request";
+
+export type CategoryCreateData = {
+    name: string;
+    description?: string;
+    type?: CategoryType;
+    active?: boolean;
+};
+
+export type CategoryUpdateData = {
+    name?: string;
+    description?: string;
+    type?: CategoryType;
+    active?: boolean;
+};
 
 /**
  * Category Repository Interface - Tenant-Scoped
@@ -20,11 +30,11 @@ export interface ICategoryRepository {
         name: string,
         type?: CategoryType,
     ): Promise<Category | null>;
-    create(tenantId: string, data: CreateCategoryDTO): Promise<Category>;
+    create(tenantId: string, data: CategoryCreateData): Promise<Category>;
     update(
         tenantId: string,
         id: string,
-        data: UpdateCategoryDTO,
+        data: CategoryUpdateData,
     ): Promise<Category>;
     delete(tenantId: string, id: string): Promise<void>;
     getStats(

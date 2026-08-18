@@ -1,8 +1,16 @@
 import { Permission } from "@/core/entities/permission.entity";
-import {
-    CreatePermissionDTO,
-    UpdatePermissionDTO,
-} from "@/core/application/dtos/requests/permission.request";
+
+export interface PermissionCreateData {
+    name: string;
+    description?: string;
+    active?: boolean;
+}
+
+export interface PermissionUpdateData {
+    name?: string;
+    description?: string;
+    active?: boolean;
+}
 
 export interface IPermissionRepository {
     findAll(tenantId: string | undefined): Promise<Permission[]>;
@@ -22,12 +30,12 @@ export interface IPermissionRepository {
     ): Promise<Permission | null>;
     create(
         tenantId: string | undefined,
-        data: CreatePermissionDTO,
+        data: PermissionCreateData,
     ): Promise<Permission>;
     update(
         tenantId: string | undefined,
         id: string,
-        data: UpdatePermissionDTO,
+        data: PermissionUpdateData,
     ): Promise<Permission>;
     delete(tenantId: string | undefined, id: string): Promise<void>;
     upsertByName(

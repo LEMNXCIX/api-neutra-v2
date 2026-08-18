@@ -11,7 +11,7 @@ export class WhatsAppConfigController {
     ) {}
 
     async getConfig(req: Request, res: Response) {
-        const tenantId = req.headers["x-tenant-id"] as string;
+        const tenantId = req.tenantId!;
 
         const result = await this.getWhatsAppConfigUseCase.execute(tenantId);
         return res.json(
@@ -22,7 +22,7 @@ export class WhatsAppConfigController {
     }
 
     async updateConfig(req: Request, res: Response) {
-        const tenantId = req.headers["x-tenant-id"] as string;
+        const tenantId = req.tenantId!;
 
         const result = await this.configureWhatsAppUseCase.execute(
             tenantId,

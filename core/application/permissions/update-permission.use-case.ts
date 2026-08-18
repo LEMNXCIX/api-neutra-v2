@@ -1,4 +1,4 @@
-import { IPermissionRepository } from "@/core/repositories/permission.repository.interface";
+import { IPermissionRepository, PermissionUpdateData } from "@/core/repositories/permission.repository.interface";
 import { UpdatePermissionDTO } from "@/core/application/dtos/requests/permission.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
@@ -31,10 +31,15 @@ export class UpdatePermissionUseCase {
             }
         }
 
+        const updateData: PermissionUpdateData = {
+            name: data.name,
+            description: data.description,
+            active: data.active,
+        };
         const updatedPermission = await this.permissionRepository.update(
             tenantId,
             id,
-            data,
+            updateData,
         );
 
         return Success(updatedPermission, "Permission updated successfully");

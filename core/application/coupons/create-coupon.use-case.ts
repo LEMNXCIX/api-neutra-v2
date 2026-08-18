@@ -1,4 +1,7 @@
-import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
+import {
+    ICouponRepository,
+    CreateCouponData,
+} from "@/core/repositories/coupon.repository.interface";
 import { CreateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
 import { CouponType } from "@/core/entities/coupon.entity";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
@@ -54,7 +57,8 @@ export class CreateCouponUseCase {
             throw new DuplicateEntityError("Coupon", "code", data.code);
         }
 
-        const coupon = await this.couponRepository.create(tenantId, data);
+        const couponData: CreateCouponData = { ...data };
+        const coupon = await this.couponRepository.create(tenantId, couponData);
         return Success(coupon, "Coupon created successfully");
     }
 }

@@ -14,7 +14,9 @@ import { PrismaServiceRepository } from "../database/prisma/service.prisma-repos
 import { PrismaPermissionRepository } from "../database/prisma/permission.prisma-repository";
 import { TenantPrismaRepository } from "../database/prisma/tenant.prisma-repository";
 import { PrismaLogRepository } from "../database/prisma/log.prisma-repository";
+import { ResolveAuthenticatedUserUseCase } from "@/core/application/auth/resolve-authenticated-user.use-case";
 import { ILogRepository } from "@/core/repositories/log.repository.interface";
+import { ICacheProvider } from "@/core/providers/cache-provider.interface";
 import { IUserRepository } from "@/core/repositories/user.repository.interface";
 import { ICartRepository } from "@/core/repositories/cart.repository.interface";
 import { IRoleRepository } from "@/core/repositories/role.repository.interface";
@@ -190,6 +192,7 @@ import { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-te
 
 // Use Cases - WhatsApp
 import { ProcessIncomingMessageUseCase } from "@/core/application/whatsapp/process-incoming-message.use-case";
+import { ProcessWhatsAppWebhookUseCase } from "@/core/application/whatsapp/process-whatsapp-webhook.use-case";
 import { ConfigureWhatsAppUseCase } from "@/core/application/whatsapp/configure-whatsapp.use-case";
 import { GetWhatsAppConfigUseCase } from "@/core/application/whatsapp/get-whatsapp-config.use-case";
 import { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
@@ -541,11 +544,13 @@ export class Container {
 
     public static getWhatsAppWebhookController(): WhatsAppWebhookController {
         return new WhatsAppWebhookController(
-            new ProcessIncomingMessageUseCase(
-                this.whatsappBotService,
-                this.whatsappConfigRepo,
+            new ProcessWhatsAppWebhookUseCase(
+                new ProcessIncomingMessageUseCase(
+                    this.whatsappBotService,
+                    this.whatsappConfigRepo,
+                ),
+                this.whatsappMessageRepo,
             ),
-            this.whatsappMessageRepo,
         );
     }
 
@@ -562,6 +567,18 @@ export class Container {
     public static getWhatsAppController(): WhatsAppController {
         return new WhatsAppController(
             new SendNotificationUseCase(this.whatsappService),
+        );
+    }
+
+    public static getCacheProvider(): ICacheProvider {
+        return this.cacheProvider;
+    }
+
+    public static getResolveAuthenticatedUserUseCase(): ResolveAuthenticatedUserUseCase {
+        return new ResolveAuthenticatedUserUseCase(
+            this.tokenGenerator,
+            this.userRepository,
+            this.cacheProvider,
         );
     }
 

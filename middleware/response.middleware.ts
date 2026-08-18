@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-import type { AuthenticatedUser } from "@/types/rbac";
 import {
     ApiResponse,
     StandardResponse,
@@ -8,40 +7,13 @@ import {
     SystemErrorCodes,
 } from "@/types/api-response";
 import { PinoLoggerProvider } from "@/infrastructure/providers/pino-logger.provider";
+import config from "@/config/index.config";
+import { isProduction } from "@/core/domain/constants";
+import { DomainError } from "@/core/domain/errors/domain-errors";
+import { httpStatusFromDomainError } from "@/types/error-codes";
 
 const logger = new PinoLoggerProvider();
-
-declare global {
-    namespace Express {
-        interface User extends AuthenticatedUser {}
-
-        interface Request {
-            tenantId?: string;
-            tenant?: {
-                id: string;
-                name: string;
-                slug: string;
-                type: string;
-                active: boolean;
-            };
-            traceId?: string;
-            validatedBody?: any;
-        }
-
-        interface Response {
-            apiSuccess: (
-                data?: any,
-                message?: string,
-                statusCode?: number,
-            ) => Response;
-            apiError: (
-                err: any,
-                message?: string,
-                statusCode?: number,
-            ) => Response;
-        }
-    }
-}
+const configIsProduction = isProduction(config.ENVIRONMENT);
 
 function makeTraceId(req: Request) {
     return `${req.method}-${req.path}-${Date.now()}`;
@@ -158,7 +130,16 @@ export default function responseMiddleware(
         let finalStatusCode = statusCode;
         let finalErrors: ErrorDetail[] = [];
 
-        if (err instanceof AppError) {
+        if (err instanceof DomainError) {
+            finalMessage = err.message || message;
+            finalStatusCode = httpStatusFromDomainError(err);
+            finalErrors = [
+                {
+                    code: err.code,
+                    message: err.message,
+                },
+            ];
+        } else if (err instanceof AppError) {
             finalMessage = err.message || message;
             finalStatusCode = err.statusCode;
             finalErrors = err.details || [];
@@ -168,10 +149,9 @@ export default function responseMiddleware(
                 {
                     code: SystemErrorCodes.INTERNAL_SERVER_ERROR,
                     message: err.message,
-                    metadata:
-                        process.env.NODE_ENV !== "production"
-                            ? { stack: err.stack }
-                            : undefined,
+                    metadata: !configIsProduction
+                        ? { stack: err.stack }
+                        : undefined,
                 },
             ];
         } else if (typeof err === "string") {
