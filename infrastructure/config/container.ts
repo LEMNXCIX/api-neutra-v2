@@ -1,4 +1,5 @@
 import { PrismaUserRepository } from "../database/prisma/user.prisma-repository";
+import { PinoLoggerProvider } from "../providers/pino-logger.provider";
 import { PrismaCartRepository } from "../database/prisma/cart.prisma-repository";
 import { PrismaRoleRepository } from "../database/prisma/role.prisma-repository";
 import { PrismaStaffRepository } from "../database/prisma/staff.prisma-repository";
@@ -219,6 +220,7 @@ import { WhatsAppBotService } from "../services/whatsapp-bot.service";
 export class Container {
     // Repositories (Singletons)
     private static userRepository = new PrismaUserRepository();
+    private static logger = new PinoLoggerProvider();
     private static cartRepository = new PrismaCartRepository();
     private static roleRepository = new PrismaRoleRepository();
     private static staffRepository = new PrismaStaffRepository();
@@ -354,12 +356,11 @@ export class Container {
                 this.orderRepository,
                 new GetCartUseCase(this.cartRepository),
                 new ClearCartUseCase(this.cartRepository),
-                this.productRepository,
-                this.couponRepository,
                 this.userRepository,
                 emailService,
                 this.featureRepository,
                 this.configProvider,
+                this.logger,
             ),
             new GetOrderUseCase(this.orderRepository),
             new GetUserOrdersUseCase(this.orderRepository),
