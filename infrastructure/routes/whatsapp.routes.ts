@@ -1,11 +1,13 @@
-import { Router } from "express";
+import { Application, Router } from "express";
 import { WhatsAppWebhookController } from "@/infrastructure/webhooks/whatsapp-webhook.controller";
 
 import { WhatsAppConfigController } from "@/interface-adapters/controllers/whatsapp-config.controller";
 import { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.controller";
+import { authenticate } from "@/middleware/authenticate.middleware";
+import { requirePermission } from "@/middleware/authorization.middleware";
 
 function whatsappRoutes(
-    app: any,
+    app: Application,
     whatsappWebhookController: WhatsAppWebhookController,
     whatsappConfigController: WhatsAppConfigController,
     whatsappController: WhatsAppController,
@@ -121,8 +123,11 @@ function whatsappRoutes(
      *       404:
      *         description: Configuration not found
      */
-    router.get("/admin/whatsapp/config", (req, res) =>
-        whatsappConfigController.getConfig(req, res),
+    router.get(
+        "/admin/whatsapp/config",
+        authenticate,
+        requirePermission("whatsapp:read"),
+        (req, res) => whatsappConfigController.getConfig(req, res),
     );
 
     /**
@@ -151,8 +156,11 @@ function whatsappRoutes(
      *       400:
      *         description: Invalid configuration data
      */
-    router.post("/admin/whatsapp/config", (req, res) =>
-        whatsappConfigController.updateConfig(req, res),
+    router.post(
+        "/admin/whatsapp/config",
+        authenticate,
+        requirePermission("whatsapp:write"),
+        (req, res) => whatsappConfigController.updateConfig(req, res),
     );
 
     /**
@@ -183,8 +191,11 @@ function whatsappRoutes(
      *       422:
      *         description: WhatsApp not configured or disabled
      */
-    router.post("/whatsapp/send-template", (req, res) =>
-        whatsappController.sendTemplate(req, res),
+    router.post(
+        "/whatsapp/send-template",
+        authenticate,
+        requirePermission("whatsapp:write"),
+        (req, res) => whatsappController.sendTemplate(req, res),
     );
 
     /**
