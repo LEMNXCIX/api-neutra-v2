@@ -5,6 +5,8 @@ import { WhatsAppConfigController } from "@/interface-adapters/controllers/whats
 import { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.controller";
 import { authenticate } from "@/middleware/authenticate.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
+import { ConfigureWhatsAppDto } from "@/core/application/dtos/requests/whatsapp.request";
 
 function whatsappRoutes(
     app: Application,
@@ -160,6 +162,7 @@ function whatsappRoutes(
         "/admin/whatsapp/config",
         authenticate,
         requirePermission("whatsapp:write"),
+        validateDto(ConfigureWhatsAppDto),
         (req, res) => whatsappConfigController.updateConfig(req, res),
     );
 
