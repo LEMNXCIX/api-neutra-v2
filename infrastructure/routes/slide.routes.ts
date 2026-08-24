@@ -4,6 +4,7 @@ import { optionalAuthenticate } from "@/middleware/optional-authenticate.middlew
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { SlideController } from "@/interface-adapters/controllers/slide.controller";
+import { requireTenantFeature } from "@/middleware/tenant-feature.middleware";
 
 function slide(app: Application, slideController: SlideController) {
     const router = Router();
@@ -69,6 +70,7 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.post(
         "/",
+        requireTenantFeature("BANNERS"),
         authenticate,
         requirePermission("slides:write"),
         slideController.create,
@@ -115,6 +117,7 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.put(
         "/:id",
+        requireTenantFeature("BANNERS"),
         authenticate,
         requirePermission("slides:write"),
         slideController.update,
@@ -138,6 +141,7 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.get(
         "/",
+        requireTenantFeature("BANNERS"),
         optionalAuthenticate,
         resolveSuperAdminTenant,
         slideController.getAll,
@@ -161,6 +165,7 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.get(
         "/stats",
+        requireTenantFeature("BANNERS"),
         authenticate,
         requirePermission("stats:read"),
         slideController.getStats,
@@ -188,7 +193,10 @@ function slide(app: Application, slideController: SlideController) {
      *       404:
      *         description: Slide not found
      */
-    router.get("/:id", slideController.getById);
+    router.get(
+        "/:id",
+        requireTenantFeature("BANNERS"),
+        slideController.getById);
 
     /**
      * @swagger
@@ -216,6 +224,7 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.delete(
         "/:id",
+        requireTenantFeature("BANNERS"),
         authenticate,
         requirePermission("slides:delete"),
         slideController.delete,

@@ -6,6 +6,7 @@ import { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.co
 import { authenticate } from "@/middleware/authenticate.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { validateDto } from "@/middleware/validation.middleware";
+import { requireTenantFeature } from "@/middleware/tenant-feature.middleware";
 import { ConfigureWhatsAppDto } from "@/core/application/dtos/requests/whatsapp.request";
 
 function whatsappRoutes(
@@ -129,6 +130,7 @@ function whatsappRoutes(
         "/admin/whatsapp/config",
         authenticate,
         requirePermission("whatsapp:read"),
+        requireTenantFeature("WHATSAPP_API"),
         (req, res) => whatsappConfigController.getConfig(req, res),
     );
 
@@ -162,6 +164,7 @@ function whatsappRoutes(
         "/admin/whatsapp/config",
         authenticate,
         requirePermission("whatsapp:write"),
+        requireTenantFeature("WHATSAPP_API"),
         validateDto(ConfigureWhatsAppDto),
         (req, res) => whatsappConfigController.updateConfig(req, res),
     );
@@ -198,6 +201,7 @@ function whatsappRoutes(
         "/whatsapp/send-template",
         authenticate,
         requirePermission("whatsapp:write"),
+        requireTenantFeature("WHATSAPP_API"),
         (req, res) => whatsappController.sendTemplate(req, res),
     );
 

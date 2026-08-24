@@ -3,6 +3,7 @@ import { authenticate } from "@/middleware/authenticate.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { StaffController } from "@/interface-adapters/controllers/staff.controller";
+import { requireTenantType } from "@/middleware/tenant-feature.middleware";
 
 function staff(app: Application, staffController: StaffController) {
     const router = Router();
@@ -69,7 +70,10 @@ function staff(app: Application, staffController: StaffController) {
      *       404:
      *         description: Staff profile not found for current user
      */
-    router.get("/me", authenticate, (req, res) =>
+    router.get(
+        "/me",
+        requireTenantType("BOOKING", "HYBRID"),
+        authenticate, (req, res) =>
         staffController.getMe(req, res),
     );
 
@@ -103,6 +107,7 @@ function staff(app: Application, staffController: StaffController) {
      */
     router.post(
         "/",
+        requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("staff:write"),
         (req, res) => staffController.create(req, res),
@@ -135,7 +140,10 @@ function staff(app: Application, staffController: StaffController) {
      *       401:
      *         description: Unauthorized
      */
-    router.get("/", authenticate, resolveSuperAdminTenant, (req, res) =>
+    router.get(
+        "/",
+        requireTenantType("BOOKING", "HYBRID"),
+        authenticate, resolveSuperAdminTenant, (req, res) =>
         staffController.getAll(req, res),
     );
 
@@ -174,6 +182,7 @@ function staff(app: Application, staffController: StaffController) {
      */
     router.post(
         "/:staffId/services",
+        requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("staff:write"),
         (req, res) => staffController.assignService(req, res),
@@ -212,6 +221,7 @@ function staff(app: Application, staffController: StaffController) {
      */
     router.put(
         "/:staffId/services",
+        requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("staff:write"),
         (req, res) => staffController.syncServices(req, res),
@@ -254,6 +264,7 @@ function staff(app: Application, staffController: StaffController) {
      */
     router.put(
         "/:id",
+        requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("staff:write"),
         (req, res) => staffController.update(req, res),
@@ -286,6 +297,7 @@ function staff(app: Application, staffController: StaffController) {
      */
     router.delete(
         "/:id",
+        requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("staff:write"),
         (req, res) => staffController.delete(req, res),
