@@ -17,6 +17,11 @@ function getCookieDomain(req: Request): string | undefined {
 
     const domain = host.split(":")[0];
 
+    // Bare localhost: share the session across localhost subdomains
+    if (domain === "localhost") {
+        return "localhost";
+    }
+
     // For local development with subdomains
     if (domain.endsWith(DOMAIN_CONSTANTS.LOCAL_LOCALHOST)) {
         return DOMAIN_CONSTANTS.LOCAL_LOCALHOST;
