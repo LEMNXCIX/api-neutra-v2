@@ -1,6 +1,7 @@
 import { Application, Router } from "express";
 import { TenantController } from "@/interface-adapters/controllers/tenant.controller";
 import { authenticate } from "@/middleware/authenticate.middleware";
+import { serviceTokenOr } from "@/middleware/service-token.middleware";
 import { validateDto } from "@/middleware/validation.middleware";
 import {
     CreateTenantDto,
@@ -115,7 +116,7 @@ function tenants(app: Application, tenantController: TenantController) {
      *       401:
      *         description: Unauthorized
      */
-    router.get("/", authenticate, (req, res) =>
+    router.get("/", serviceTokenOr(authenticate), (req, res) =>
         tenantController.getAll(req, res),
     );
 
