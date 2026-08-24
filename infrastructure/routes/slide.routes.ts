@@ -70,9 +70,9 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.post(
         "/",
-        requireTenantFeature("BANNERS"),
+        requireTenantFeature("SLIDES"),
         authenticate,
-        requirePermission("slides:write"),
+        requirePermission("banners:write"),
         slideController.create,
     );
 
@@ -117,9 +117,9 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.put(
         "/:id",
-        requireTenantFeature("BANNERS"),
+        requireTenantFeature("SLIDES"),
         authenticate,
-        requirePermission("slides:write"),
+        requirePermission("banners:write"),
         slideController.update,
     );
 
@@ -141,7 +141,7 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.get(
         "/",
-        requireTenantFeature("BANNERS"),
+        requireTenantFeature("SLIDES"),
         optionalAuthenticate,
         resolveSuperAdminTenant,
         slideController.getAll,
@@ -165,7 +165,7 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.get(
         "/stats",
-        requireTenantFeature("BANNERS"),
+        requireTenantFeature("SLIDES"),
         authenticate,
         requirePermission("stats:read"),
         slideController.getStats,
@@ -195,7 +195,7 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.get(
         "/:id",
-        requireTenantFeature("BANNERS"),
+        requireTenantFeature("SLIDES"),
         slideController.getById);
 
     /**
@@ -224,9 +224,9 @@ function slide(app: Application, slideController: SlideController) {
      */
     router.delete(
         "/:id",
-        requireTenantFeature("BANNERS"),
+        requireTenantFeature("SLIDES"),
         authenticate,
-        requirePermission("slides:delete"),
+        requirePermission("banners:delete"),
         slideController.delete,
     );
 }

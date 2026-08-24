@@ -155,6 +155,7 @@ const ROLES = [
 // Features
 const FEATURES = [
     { key: 'BANNERS', name: 'Marketing Banners', description: 'Enable marketing banners', category: 'MODULE', price: 0 },
+    { key: 'SLIDES', name: 'Slides Carousel', description: 'Enable homepage slides carousel', category: 'MODULE', price: 0 },
     { key: 'COUPONS', name: 'Coupons Management', description: 'Permite la gestion de cupones', category: 'MODULE', price: 0.5 },
     { key: 'EMAIL_NOTIFICATIONS', name: 'Email Notifications', description: 'Enable email notifications', category: 'INTEGRATION', price: 0 },
     { key: 'WHATSAPP_API', name: 'WhatsApp API Integration', description: 'Integración con la API de WhatsApp', category: 'INTEGRATION', price: 5 },
