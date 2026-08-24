@@ -50,6 +50,9 @@ export interface IOrderRepository {
     ): Promise<{
         orders: Order[];
         total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
     }>;
     updateStatus(
         tenantId: string,

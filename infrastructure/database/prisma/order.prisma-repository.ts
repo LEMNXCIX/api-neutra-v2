@@ -264,6 +264,9 @@ export class PrismaOrderRepository implements IOrderRepository {
     ): Promise<{
         orders: Order[];
         total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
     }> {
         const { search, status, page, limit, startDate, endDate } = options;
 
@@ -314,6 +317,9 @@ export class PrismaOrderRepository implements IOrderRepository {
         return {
             orders: orders.map((o) => this.mapToEntity(o)),
             total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
         };
     }
 
