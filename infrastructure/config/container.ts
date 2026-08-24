@@ -94,7 +94,6 @@ import { GetProductSummaryStatsUseCase } from "@/core/application/products/get-p
 import { CreateOrderUseCase } from "@/core/application/order/create-order.use-case";
 import { GetOrderUseCase } from "@/core/application/order/get-order.use-case";
 import { GetUserOrdersUseCase } from "@/core/application/order/get-user-orders.use-case";
-import { GetAllOrdersUseCase } from "@/core/application/order/get-all-orders.use-case";
 import { GetOrdersPaginatedUseCase } from "@/core/application/order/get-orders-paginated.use-case";
 import { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
 import { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
@@ -364,7 +363,6 @@ export class Container {
             ),
             new GetOrderUseCase(this.orderRepository),
             new GetUserOrdersUseCase(this.orderRepository),
-            new GetAllOrdersUseCase(this.orderRepository),
             new GetOrdersPaginatedUseCase(this.orderRepository),
             new ChangeOrderStatusUseCase(this.orderRepository),
             new UpdateOrderUseCase(this.orderRepository),
