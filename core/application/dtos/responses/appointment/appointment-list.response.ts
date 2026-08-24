@@ -8,6 +8,10 @@ import { IServiceMinimalResponse } from "../shared/service-minimal.response";
 import { UserMinimalResponse } from "../shared/user-minimal.response";
 import { StaffMinimalResponse } from "../shared/staff-minimal.response";
 import { ServiceMinimalResponse } from "../shared/service-minimal.response";
+import {
+    ITenantMinimalResponse,
+    TenantMinimalResponse,
+} from "../shared/tenant-minimal.response";
 
 export interface IAppointmentListResponse {
     id: string;
@@ -21,6 +25,7 @@ export interface IAppointmentListResponse {
     user?: IUserMinimalResponse;
     staff?: IStaffMinimalResponse;
     service?: IServiceMinimalResponse;
+    tenant?: ITenantMinimalResponse;
 }
 
 export class AppointmentListResponse {
@@ -42,6 +47,9 @@ export class AppointmentListResponse {
                 : undefined,
             service: appointment.service
                 ? ServiceMinimalResponse.fromEntity(appointment.service)
+                : undefined,
+            tenant: appointment.tenant
+                ? TenantMinimalResponse.fromEntity(appointment.tenant)
                 : undefined,
         };
     }

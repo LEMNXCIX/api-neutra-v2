@@ -12,7 +12,13 @@ export class FeatureController {
         private createFeatureUseCase: CreateFeatureUseCase,
         private updateFeatureUseCase: UpdateFeatureUseCase,
         private deleteFeatureUseCase: DeleteFeatureUseCase,
-    ) {}
+    ) {
+        // Route handlers are registered as bare method references
+        this.getAll = this.getAll.bind(this);
+        this.create = this.create.bind(this);
+        this.update = this.update.bind(this);
+        this.delete = this.delete.bind(this);
+    }
 
     async getAll(req: Request, res: Response) {
         const result = await this.getFeaturesUseCase.execute();

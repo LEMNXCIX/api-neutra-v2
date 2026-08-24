@@ -19,6 +19,7 @@ export interface Staff {
     workingHours?: WorkingHours;
     serviceIds?: string[];
     tenantId: string;
+    tenant?: { id: string; name: string; slug: string };
     createdAt: Date;
     updatedAt: Date;
 }

@@ -20,7 +20,7 @@ import {
 } from "@/core/domain/errors/domain-errors";
 
 type AppointmentWithIncludes = Prisma.AppointmentGetPayload<{
-    include: { user: true; service: true; staff: true; coupon: true };
+    include: { user: true; service: true; staff: true; coupon: true; tenant: true };
 }>;
 
 type AppointmentWithCoupon = Prisma.AppointmentGetPayload<{
@@ -79,6 +79,13 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                       name: included.staff.name,
                       email: included.staff.email ?? undefined,
                       avatar: included.staff.avatar ?? undefined,
+                  }
+                : undefined,
+            tenant: included.tenant
+                ? {
+                      id: included.tenant.id,
+                      name: included.tenant.name,
+                      slug: included.tenant.slug,
                   }
                 : undefined,
             coupon:
@@ -196,6 +203,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 service: true,
                 staff: true,
                 coupon: true,
+                tenant: true,
             },
             orderBy: { startTime: "asc" },
         });

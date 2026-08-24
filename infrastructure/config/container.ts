@@ -435,6 +435,7 @@ export class Container {
                 new ValidateCouponUseCase(this.couponRepository),
                 this.queueProvider,
                 this.featureRepository,
+                this.tenantRepository,
             ),
             new GetAppointmentsUseCase(this.appointmentRepository),
             new GetAppointmentByIdUseCase(this.appointmentRepository),
@@ -447,6 +448,7 @@ export class Container {
                 this.appointmentRepository,
                 this.staffRepository,
                 this.serviceRepository,
+                this.tenantRepository,
             ),
             new UpdateAppointmentStatusUseCase(
                 this.appointmentRepository,
