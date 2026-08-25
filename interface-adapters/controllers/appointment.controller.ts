@@ -51,6 +51,25 @@ export class AppointmentController {
         if (req.query.endDate)
             filters.endDate = new Date(req.query.endDate as string);
 
+        const page = req.query.page
+            ? parseInt(req.query.page as string)
+            : undefined;
+        const limit = req.query.limit
+            ? parseInt(req.query.limit as string)
+            : undefined;
+
+        if (page || limit) {
+            const result = await this.getAppointmentsUseCase.executePaginated(
+                tenantId,
+                filters,
+                page || 1,
+                limit || 10,
+            );
+            return res.json(
+                present(result, AppointmentPresenter.toResponseList),
+            );
+        }
+
         const result = await this.getAppointmentsUseCase.execute(
             tenantId,
             filters,
