@@ -11,7 +11,7 @@ const ENVIRONMENT: string = config.ENVIRONMENT;
 const callbackURL: string | undefined = config.callbackURL;
 const callbackURLDev: string | undefined = config.callbackURLDev;
 
-function getCookieDomain(req: Request): string | undefined {
+export function getCookieDomain(req: Request): string | undefined {
     const host = req.get("host");
     if (!host) return undefined;
 
@@ -50,7 +50,7 @@ function getCookieDomain(req: Request): string | undefined {
     return undefined;
 }
 
-function cookieOptions(req: Request): CookieOptions {
+export function cookieOptions(req: Request): CookieOptions {
     const domain = getCookieDomain(req);
     const inProduction = production || isProduction(ENVIRONMENT);
 
