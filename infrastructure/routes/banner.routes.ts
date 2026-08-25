@@ -87,8 +87,8 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      */
     router.get(
         "/all/list",
-        requireTenantFeature("BANNERS"),
         authenticate,
+        requireTenantFeature("BANNERS"),
         resolveSuperAdminTenant,
         requirePermission("banners:read"),
         bannerController.getAll,
@@ -112,8 +112,8 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      */
     router.get(
         "/stats",
-        requireTenantFeature("BANNERS"),
         authenticate,
+        requireTenantFeature("BANNERS"),
         requirePermission("stats:read"),
         bannerController.getStats,
     );
@@ -225,8 +225,8 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      */
     router.post(
         "/",
-        requireTenantFeature("BANNERS"),
         authenticate,
+        requireTenantFeature("BANNERS"),
         requirePermission("banners:write"),
         bannerController.create,
     );
@@ -274,8 +274,8 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      */
     router.put(
         "/:id",
-        requireTenantFeature("BANNERS"),
         authenticate,
+        requireTenantFeature("BANNERS"),
         requirePermission("banners:write"),
         bannerController.update,
     );
@@ -306,8 +306,8 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      */
     router.delete(
         "/:id",
-        requireTenantFeature("BANNERS"),
         authenticate,
+        requireTenantFeature("BANNERS"),
         requirePermission("banners:delete"),
         bannerController.delete,
     );
