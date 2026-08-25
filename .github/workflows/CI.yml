@@ -8,6 +8,13 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    # Job-level so `npm ci` postinstall (prisma generate) also gets a URL:
+    # prisma.config.ts refuses to boot without it. The DB is never contacted
+    # during generate/typecheck/unit tests.
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      JWT_SECRET: ci-secret
+      SESSION_SECRET: ci-secret
     steps:
       - uses: actions/checkout@v4
 
@@ -25,17 +32,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
-        env:
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
 
       - name: Typecheck
         run: npx tsc --noEmit
-        env:
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
 
       - name: Unit tests
         run: npm run test:unit
-        env:
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
-          JWT_SECRET: ci-secret
-          SESSION_SECRET: ci-secret
