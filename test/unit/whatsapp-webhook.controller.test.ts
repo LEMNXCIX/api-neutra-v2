@@ -11,7 +11,13 @@ const { WhatsAppWebhookController } = require(
 );
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { default: config } = require("@/config/index.config");
-const VALID_TOKEN = config.whatsappVerifyToken || "verify-me";
+// The config module is a shared singleton cached across test files; it may
+// have been loaded earlier with WHATSAPP_VERIFY_TOKEN unset (CI). The
+// controller reads config.whatsappVerifyToken at call time, so set it here.
+if (!config.whatsappVerifyToken) {
+    config.whatsappVerifyToken = "verify-me";
+}
+const VALID_TOKEN = config.whatsappVerifyToken;
 
 function createRes() {
     const res: Record<string, unknown> = {};
