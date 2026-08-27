@@ -1,18 +1,17 @@
 // HTTP adapter for Meta webhooks
 process.env.NODE_ENV = "development";
 
+if (!process.env.WHATSAPP_VERIFY_TOKEN) {
+    process.env.WHATSAPP_VERIFY_TOKEN = "verify-me";
+}
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { WhatsAppWebhookController } = require(
     "@/infrastructure/webhooks/whatsapp-webhook.controller"
 );
-// Read the token from the loaded config instead of assuming the env value
-// (other test files may have imported config before this one).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { default: config } = require("@/config/index.config");
 const VALID_TOKEN = config.whatsappVerifyToken || "verify-me";
-if (process.env.WHATSAPP_VERIFY_TOKEN === undefined) {
-    process.env.WHATSAPP_VERIFY_TOKEN = VALID_TOKEN;
-}
 
 function createRes() {
     const res: Record<string, unknown> = {};
