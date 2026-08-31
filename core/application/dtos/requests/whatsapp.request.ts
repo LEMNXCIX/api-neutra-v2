@@ -25,3 +25,47 @@ export interface SendNotificationDTO {
         parameters?: Array<Record<string, unknown>>;
     }>;
 }
+
+import {
+    IsBoolean,
+    IsOptional,
+    IsString,
+    MinLength,
+} from "class-validator";
+
+export class ConfigureWhatsAppDto {
+    @IsString()
+    @MinLength(1, { message: "phoneNumberId is required" })
+    phoneNumberId!: string;
+
+    @IsOptional()
+    @IsString()
+    businessAccountId?: string;
+
+    @IsOptional()
+    @IsString()
+    @MinLength(10)
+    accessToken?: string;
+
+    @IsOptional()
+    @IsString()
+    webhookVerifyToken?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    enabled?: boolean;
+
+    @IsOptional()
+    @IsBoolean()
+    notificationsEnabled?: boolean;
+
+    @IsOptional()
+    @IsBoolean()
+    botEnabled?: boolean;
+
+    @IsOptional()
+    templates?: WhatsAppTemplate[];
+
+    @IsOptional()
+    botConfig?: BotConfig;
+}

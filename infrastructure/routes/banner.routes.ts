@@ -3,6 +3,7 @@ import { authenticate } from "@/middleware/authenticate.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { BannerController } from "@/interface-adapters/controllers/banner.controller";
+import { requireTenantFeature } from "@/middleware/tenant-feature.middleware";
 
 function bannerRoutes(app: Application, bannerController: BannerController) {
     const router = Router();
@@ -57,7 +58,10 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *               items:
      *                 $ref: '#/components/schemas/Banner'
      */
-    router.get("/", bannerController.getActive);
+    router.get(
+        "/",
+        requireTenantFeature("BANNERS"),
+        bannerController.getActive);
 
     /**
      * @swagger
@@ -84,6 +88,7 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
     router.get(
         "/all/list",
         authenticate,
+        requireTenantFeature("BANNERS"),
         resolveSuperAdminTenant,
         requirePermission("banners:read"),
         bannerController.getAll,
@@ -108,6 +113,7 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
     router.get(
         "/stats",
         authenticate,
+        requireTenantFeature("BANNERS"),
         requirePermission("stats:read"),
         bannerController.getStats,
     );
@@ -134,7 +140,10 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       404:
      *         description: Banner not found
      */
-    router.get("/:id", bannerController.getById);
+    router.get(
+        "/:id",
+        requireTenantFeature("BANNERS"),
+        bannerController.getById);
 
     /**
      * @swagger
@@ -152,7 +161,10 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       200:
      *         description: Impression tracked successfully
      */
-    router.post("/:id/impression", bannerController.trackImpression);
+    router.post(
+        "/:id/impression",
+        requireTenantFeature("BANNERS"),
+        bannerController.trackImpression);
 
     /**
      * @swagger
@@ -170,7 +182,10 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
      *       200:
      *         description: Click tracked successfully
      */
-    router.post("/:id/click", bannerController.trackClick);
+    router.post(
+        "/:id/click",
+        requireTenantFeature("BANNERS"),
+        bannerController.trackClick);
 
     /**
      * @swagger
@@ -211,6 +226,7 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
     router.post(
         "/",
         authenticate,
+        requireTenantFeature("BANNERS"),
         requirePermission("banners:write"),
         bannerController.create,
     );
@@ -259,6 +275,7 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
     router.put(
         "/:id",
         authenticate,
+        requireTenantFeature("BANNERS"),
         requirePermission("banners:write"),
         bannerController.update,
     );
@@ -290,6 +307,7 @@ function bannerRoutes(app: Application, bannerController: BannerController) {
     router.delete(
         "/:id",
         authenticate,
+        requireTenantFeature("BANNERS"),
         requirePermission("banners:delete"),
         bannerController.delete,
     );

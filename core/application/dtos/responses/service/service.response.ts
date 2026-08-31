@@ -1,4 +1,8 @@
 import { Service } from "@/core/entities/service.entity";
+import {
+    ITenantMinimalResponse,
+    TenantMinimalResponse,
+} from "../shared/tenant-minimal.response";
 
 export interface ICategoryMinimalResponse {
     id: string;
@@ -15,6 +19,7 @@ export interface IServiceResponse {
     category?: ICategoryMinimalResponse;
     active: boolean;
     tenantId: string;
+    tenant?: ITenantMinimalResponse;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -33,6 +38,9 @@ export class ServiceResponse {
                 : undefined,
             active: service.active,
             tenantId: service.tenantId,
+    tenant: service.tenant
+                ? TenantMinimalResponse.fromEntity(service.tenant)
+                : undefined,
             createdAt: service.createdAt,
             updatedAt: service.updatedAt,
         };

@@ -1,18 +1,28 @@
 import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
 import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
 import { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
 import { GetAvailabilityDTO } from "@/core/application/dtos/requests/appointment.request";
+import {
+    TimeRange,
+    fitsInRanges,
+    getDayRanges,
+    intersectRanges,
+    isHoliday,
+    toMinutes,
+} from "@/core/utils/working-hours";
 
 export class GetAvailabilityUseCase {
     constructor(
         private appointmentRepository: IAppointmentRepository,
         private staffRepository: IStaffRepository,
         private serviceRepository: IServiceRepository,
+        private tenantRepository: ITenantRepository,
     ) {}
 
     async execute(
@@ -40,13 +50,35 @@ export class GetAvailabilityUseCase {
             throw new EntityNotFoundError("Staff", data.staffId);
         }
 
-        const workStartHour = 9;
-        const workEndHour = 17;
-
-        const targetDate = new Date(data.date);
+        // ponytail: working hours are interpreted in server-local wall clock,
+        // same frame as the legacy 9-17 grid; per-client TZ handling unchanged.
+        // Date-only strings parse as UTC midnight → in TZ<UTC the local
+        // weekday shifts a day. Noon keeps the intended calendar day.
+        const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(data.date)
+            ? new Date(`${data.date}T12:00:00`)
+            : new Date(data.date);
         if (isNaN(targetDate.getTime())) {
             throw new ValidationError("Invalid Date");
         }
+
+        const tenant = await this.tenantRepository.findById(tenantId);
+        const settings = tenant?.config?.settings;
+        if (isHoliday(settings?.holidays, targetDate)) {
+            return Success([]);
+        }
+
+        const staffRanges = getDayRanges(staff.workingHours, targetDate);
+        const tenantRanges = getDayRanges(settings?.businessHours, targetDate);
+        const ranges = intersectRanges(staffRanges, tenantRanges);
+        const hasHours = !!staff.workingHours || tenantRanges.length > 0;
+        if (hasHours && !ranges.length) {
+            return Success([]); // day off
+        }
+
+        // Legacy fallback: no schedule defined anywhere → 9:00-17:00
+        const workRanges: TimeRange[] = ranges.length
+            ? ranges
+            : [{ start: "09:00", end: "17:00" }];
 
         const startOfDay = new Date(targetDate);
         startOfDay.setHours(0, 0, 0, 0);
@@ -67,18 +99,27 @@ export class GetAvailabilityUseCase {
             (a) => a.status !== "CANCELLED" && a.status !== "NO_SHOW",
         );
 
-        const availableSlots: string[] = [];
         const interval = 30;
         const offset = data.timezoneOffset ? Number(data.timezoneOffset) : 0;
 
+        const availableSlots: string[] = [];
+
+        const openFrom = Math.min(
+            ...workRanges.map((r) => toMinutes(r.start)),
+        );
+        const openTo = Math.max(...workRanges.map((r) => toMinutes(r.end)));
+
         const currentSlot = new Date(targetDate);
-        currentSlot.setHours(workStartHour, 0, 0, 0);
+        currentSlot.setHours(Math.floor(openFrom / 60), openFrom % 60, 0, 0);
 
         const endWorkTime = new Date(targetDate);
-        endWorkTime.setHours(workEndHour, 0, 0, 0);
+        endWorkTime.setHours(Math.floor(openTo / 60), openTo % 60, 0, 0);
 
         while (currentSlot < endWorkTime) {
             const slotGeneric = new Date(currentSlot);
+            const slotStartMin =
+                slotGeneric.getHours() * 60 + slotGeneric.getMinutes();
+            const slotEndMin = slotStartMin + service.duration;
             const slotStartUTC = new Date(
                 slotGeneric.getTime() + offset * 60000,
             );
@@ -92,30 +133,23 @@ export class GetAvailabilityUseCase {
                 continue;
             }
 
-            const slotEndLocal = new Date(
-                slotGeneric.getTime() + service.duration * 60000,
-            );
-
-            if (slotEndLocal <= endWorkTime) {
-                const hasConflict = activeAppointments.some((app) => {
+            if (
+                fitsInRanges(slotStartMin, slotEndMin, workRanges) &&
+                !activeAppointments.some((app) => {
                     const appStart = new Date(app.startTime);
                     const appEnd = new Date(app.endTime);
-                    const overlap =
-                        slotStartUTC < appEnd && slotEndUTC > appStart;
-                    return overlap;
-                });
-
-                if (!hasConflict) {
-                    const hours = slotGeneric
-                        .getHours()
-                        .toString()
-                        .padStart(2, "0");
-                    const minutes = slotGeneric
-                        .getMinutes()
-                        .toString()
-                        .padStart(2, "0");
-                    availableSlots.push(`${hours}:${minutes}`);
-                }
+                    return slotStartUTC < appEnd && slotEndUTC > appStart;
+                })
+            ) {
+                const hours = slotGeneric
+                    .getHours()
+                    .toString()
+                    .padStart(2, "0");
+                const minutes = slotGeneric
+                    .getMinutes()
+                    .toString()
+                    .padStart(2, "0");
+                availableSlots.push(`${hours}:${minutes}`);
             }
 
             currentSlot.setMinutes(currentSlot.getMinutes() + interval);

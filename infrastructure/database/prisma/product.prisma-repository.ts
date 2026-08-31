@@ -9,7 +9,7 @@ import { Product } from "@/core/entities/product.entity";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 type ProductWithCategories = Prisma.ProductGetPayload<{
-    include: { categories: true };
+    include: { categories: true; tenant: true };
 }>;
 
 export class PrismaProductRepository implements IProductRepository {
@@ -23,9 +23,17 @@ export class PrismaProductRepository implements IProductRepository {
             stock: prismaProduct.stock,
             active: prismaProduct.active,
             ownerId: prismaProduct.ownerId,
+            tenantId: prismaProduct.tenantId,
             createdAt: prismaProduct.createdAt,
             updatedAt: prismaProduct.updatedAt,
             categories: prismaProduct.categories,
+            tenant: prismaProduct.tenant
+                ? {
+                      id: prismaProduct.tenant.id,
+                      name: prismaProduct.tenant.name,
+                      slug: prismaProduct.tenant.slug,
+                  }
+                : undefined,
         };
     }
 
@@ -45,7 +53,7 @@ export class PrismaProductRepository implements IProductRepository {
 
         const products = await prisma.product.findMany({
             where,
-            include: { categories: true },
+            include: { categories: true, tenant: true },
             orderBy: { createdAt: "desc" },
         });
         return products.map((p) => this.mapToEntity(p));
@@ -57,7 +65,7 @@ export class PrismaProductRepository implements IProductRepository {
     ): Promise<Product | null> {
         const product = await prisma.product.findFirst({
             where: { id, ...(tenantId && { tenantId }) },
-            include: { categories: true },
+            include: { categories: true, tenant: true },
         });
         return product ? this.mapToEntity(product) : null;
     }
@@ -80,7 +88,7 @@ export class PrismaProductRepository implements IProductRepository {
                       }
                     : undefined,
             },
-            include: { categories: true },
+            include: { categories: true, tenant: true },
         });
         return this.mapToEntity(product);
     }
@@ -108,7 +116,7 @@ export class PrismaProductRepository implements IProductRepository {
                           }
                         : undefined,
                 },
-                include: { categories: true },
+                include: { categories: true, tenant: true },
             });
             return this.mapToEntity(product);
         } catch (error: unknown) {
@@ -126,7 +134,7 @@ export class PrismaProductRepository implements IProductRepository {
         try {
             const product = await prisma.product.delete({
                 where: { id, tenantId },
-                include: { categories: true },
+                include: { categories: true, tenant: true },
             });
             return this.mapToEntity(product);
         } catch (error: unknown) {
@@ -146,7 +154,7 @@ export class PrismaProductRepository implements IProductRepository {
                 tenantId,
                 name: { contains: name, mode: "insensitive" },
             },
-            include: { categories: true },
+            include: { categories: true, tenant: true },
         });
         return products.map((p) => this.mapToEntity(p));
     }
@@ -220,7 +228,7 @@ export class PrismaProductRepository implements IProductRepository {
                 ...(where as Prisma.ProductWhereInput),
                 tenantId,
             },
-            include: { categories: true },
+            include: { categories: true, tenant: true },
         });
         return product ? this.mapToEntity(product) : null;
     }

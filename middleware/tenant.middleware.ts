@@ -9,6 +9,7 @@ import {
 import { TENANT_HTTP_CONSTANTS } from "@/config/infrastructure-constants";
 import { Container } from "@/infrastructure/config/container";
 import config from "@/config/index.config";
+import { logger } from "@/infrastructure/providers/logger.instance";
 
 function isManagementRoute(normalizedPath: string): boolean {
     return TENANT_HTTP_CONSTANTS.MANAGEMENT_PATH_PREFIXES.some((prefix) =>
@@ -159,7 +160,7 @@ export function createTenantMiddleware(deps: {
 
             next();
         } catch (error) {
-            console.error("Tenant middleware error:", error);
+            logger.error("Tenant middleware error", error);
             res.status(500).json({
                 success: false,
                 statusCode: 500,

@@ -3,7 +3,6 @@ import { OrderStatus } from "@/core/entities/order.entity";
 import { CreateOrderUseCase } from "@/core/application/order/create-order.use-case";
 import { GetOrderUseCase } from "@/core/application/order/get-order.use-case";
 import { GetUserOrdersUseCase } from "@/core/application/order/get-user-orders.use-case";
-import { GetAllOrdersUseCase } from "@/core/application/order/get-all-orders.use-case";
 import { GetOrdersPaginatedUseCase } from "@/core/application/order/get-orders-paginated.use-case";
 import { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
 import { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
@@ -17,7 +16,6 @@ export class OrderController {
         private createOrderUseCase: CreateOrderUseCase,
         private getOrderUseCase: GetOrderUseCase,
         private getUserOrdersUseCase: GetUserOrdersUseCase,
-        private getAllOrdersUseCase: GetAllOrdersUseCase,
         private getOrdersPaginatedUseCase: GetOrdersPaginatedUseCase,
         private changeOrderStatusUseCase: ChangeOrderStatusUseCase,
         private updateOrderUseCase: UpdateOrderUseCase,
@@ -99,27 +97,25 @@ export class OrderController {
         const tenantId = req.tenantId!;
         const { search, status, page, limit } = req.query;
 
-        if (page || limit || search || status) {
-            const result = await this.getOrdersPaginatedUseCase.execute(
-                tenantId,
-                {
-                    search: search as string,
-                    status: status as string,
-                    page: page ? parseInt(page as string) : undefined,
-                    limit: limit ? parseInt(limit as string) : undefined,
-                    startDate: req.query.startDate
-                        ? new Date(req.query.startDate as string)
-                        : undefined,
-                    endDate: req.query.endDate
-                        ? new Date(req.query.endDate as string)
-                        : undefined,
-                },
-            );
-            return res.json(present(result, OrderPresenter.toResponseList));
-        } else {
-            const result = await this.getAllOrdersUseCase.execute(tenantId);
-            return res.json(present(result, OrderPresenter.toResponseList));
-        }
+        // Always paginated: unbounded list endpoints are a memory/DoS risk.
+        const parsedPage = page ? parseInt(page as string) : 1;
+        const parsedLimit = limit ? parseInt(limit as string) : 50;
+        const result = await this.getOrdersPaginatedUseCase.execute(
+            tenantId,
+            {
+                search: search as string,
+                status: status as string,
+                page: Math.max(1, parsedPage),
+                limit: Math.min(100, Math.max(1, parsedLimit)),
+                startDate: req.query.startDate
+                    ? new Date(req.query.startDate as string)
+                    : undefined,
+                endDate: req.query.endDate
+                    ? new Date(req.query.endDate as string)
+                    : undefined,
+            },
+        );
+        return res.json(present(result, OrderPresenter.toResponseList));
     }
 
     async changeStatus(req: Request, res: Response) {

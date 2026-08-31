@@ -37,12 +37,12 @@
         "express-rate-limit": "^8.1.0",
         "express-session": "^1.18.2",
         "handlebars": "^4.7.8",
+        "helmet": "^8.3.0",
         "ics": "^3.8.1",
         "jsonwebtoken": "^9.0.2",
         "lusca": "^1.7.0",
         "morgan": "^1.10.1",
         "nodemailer": "^9.0.1",
-        "npm": "^11.6.1",
         "passport": "^0.7.0",
         "passport-facebook": "^3.0.0",
         "passport-github2": "^0.1.12",
@@ -88,9 +88,16 @@
         "hono": "^4.7.11",
         "passport": "^0.7.0",
         "passport-oauth": "^1.0.0",
-        "xmldom": "npm:@xmldom/xmldom@^0.8.10"
+        "xmldom": "npm:@xmldom/xmldom@^0.8.10",
+        "@types/express-serve-static-core": "5.1.0"
     },
     "prisma": {
         "seed": "ts-node prisma/seed.ts"
+    },
+    "allowScripts": {
+        "bcrypt@6.0.0": true,
+        "prisma@7.9.1": true,
+        "@prisma/engines@7.9.1": true,
+        "msgpackr-extract@3.0.4": true
     }
 }

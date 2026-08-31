@@ -3,6 +3,7 @@ import handlebars from 'handlebars';
 import fs from 'fs';
 import path from 'path';
 import { IEmailService, TenantEmailConfig } from '@/core/ports/email.port';
+import { logger } from "@/infrastructure/providers/logger.instance";
 
 export class NodemailerProvider implements IEmailService {
     private transporter: Transporter;
@@ -40,7 +41,7 @@ export class NodemailerProvider implements IEmailService {
             const templatePath = path.join(this.templatesPath, `${template}.hbs`);
 
             if (!fs.existsSync(templatePath)) {
-                console.error(`Email template not found: ${templatePath}`);
+                logger.error(`Email template not found: ${templatePath}`);
                 return false;
             }
 
@@ -71,7 +72,7 @@ export class NodemailerProvider implements IEmailService {
                     content: contentHtml,
                 });
             } else {
-                console.warn('Base layout not found, sending content only');
+                logger.warn('Base layout not found, sending content only');
             }
 
             // Send email
@@ -83,10 +84,10 @@ export class NodemailerProvider implements IEmailService {
                 attachments,
             });
 
-            console.log('Email sent successfully:', info.messageId);
+            logger.info('Email sent successfully', { messageId: info.messageId });
             return true;
         } catch (error) {
-            console.error('Error sending email:', error);
+            logger.error('Error sending email', error);
             return false;
         }
     }

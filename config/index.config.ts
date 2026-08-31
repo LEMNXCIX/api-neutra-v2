@@ -45,4 +45,19 @@ const config = {
     whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
 };
 
+// Fail fast in production when critical secrets are missing or left at the
+// placeholder values shipped in .env.example.
+if (checkProduction(ENVIRONMENT)) {
+    const required = ["JWT_SECRET", "SESSION_SECRET"] as const;
+    const placeholders = ["your_jwt_secret_here", "your_session_secret_here"];
+    for (const key of required) {
+        const value = process.env[key];
+        if (!value || placeholders.includes(value)) {
+            throw new Error(
+                `Missing or placeholder ${key}. Refusing to start in production.`,
+            );
+        }
+    }
+}
+
 export default config;

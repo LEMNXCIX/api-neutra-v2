@@ -7,6 +7,8 @@ export interface Product {
     stock: number;
     active: boolean;
     ownerId: string;
+    tenantId: string;
+    tenant?: { id: string; name: string; slug: string };
     createdAt?: Date;
     updatedAt?: Date;
     categories?: { id: string; name: string }[];

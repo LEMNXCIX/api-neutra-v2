@@ -1,5 +1,6 @@
 import { TenantPrismaRepository } from "../infrastructure/database/prisma/tenant.prisma-repository";
 import { PrismaRoleRepository } from "../infrastructure/database/prisma/role.prisma-repository";
+import { PrismaFeatureRepository } from "../infrastructure/database/prisma/feature.prisma-repository";
 import { PrismaPermissionRepository } from "../infrastructure/database/prisma/permission.prisma-repository";
 import { CreateTenantUseCase } from "../core/application/tenant/create-tenant.use-case";
 import { UpdateTenantUseCase } from "../core/application/tenant/update-tenant.use-case";
@@ -47,8 +48,9 @@ async function verify() {
         mockUserRepository,
         roleRepository,
         permissionRepository,
+        new PrismaFeatureRepository(),
     );
-    const updateUseCase = new UpdateTenantUseCase(repository);
+    const updateUseCase = new UpdateTenantUseCase(repository, new PrismaFeatureRepository());
 
     const slug = `test-tenant-${Date.now()}`;
     console.log(`Creating tenant with slug: ${slug}`);

@@ -22,6 +22,16 @@ export class GetCategoriesUseCase {
         return Success(
             result.categories,
             "Categories retrieved successfully",
+            {
+                pagination: {
+                    page: page || 1,
+                    limit: limit || result.categories.length,
+                    total: result.total,
+                    totalPages: limit
+                        ? Math.ceil(result.total / limit)
+                        : 1,
+                },
+            },
         );
     }
 

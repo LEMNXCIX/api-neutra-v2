@@ -75,7 +75,8 @@ export class TenantController {
 
     async updateFeatures(req: Request, res: Response) {
         const tenantId = req.params.id;
-        const features = req.body as Record<string, boolean>;
+        // Body matches UpdateTenantFeaturesDto: { features: { KEY: bool } }
+        const { features } = req.body;
         const result = await this.updateTenantFeaturesUseCase.execute(
             tenantId,
             { features },
