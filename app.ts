@@ -60,10 +60,20 @@ const app = express();
 // Trust proxy settings (required for express-rate-limit behind Docker/Proxies)
 app.set("trust proxy", 1);
 
-// Security headers (CSP disabled: Scalar reference + inline admin assets)
+// Security headers (CSP enabled with targeted allowances for docs/admin assets)
 app.use(
     helmet({
-        contentSecurityPolicy: false,
+        contentSecurityPolicy: {
+            useDefaults: true,
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", "data:", "https:"],
+                connectSrc: ["'self'", "https:"],
+                frameAncestors: ["'self'"],
+            },
+        },
         crossOriginResourcePolicy: { policy: "cross-origin" },
     }),
 );
