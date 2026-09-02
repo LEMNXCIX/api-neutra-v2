@@ -6,6 +6,8 @@ export class GetPermissionsPaginatedUseCase {
 
     async execute(tenantId: string | undefined, page: number = 1, limit: number = 10, search?: string): Promise<UseCaseResult> {
         const { permissions, total } = await this.permissionRepository.findAllPaginated(tenantId, page, limit, search);
-        return Success(permissions, "Permissions retrieved successfully");
+        return Success(permissions, "Permissions retrieved successfully", {
+            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        });
     }
 }

@@ -1,5 +1,6 @@
 import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
+import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { optionalAuthenticate } from '@/middleware/optional-authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { CategoryController } from '@/interface-adapters/controllers/category.controller';
@@ -59,7 +60,7 @@ function categoryRoutes(app: Application, categoryController: CategoryController
      *               items:
      *                 $ref: '#/components/schemas/Category'
      */
-    router.get('/', optionalAuthenticate, categoryController.getAll);
+    router.get('/', optionalAuthenticate, resolveSuperAdminTenant, categoryController.getAll);
 
     /**
      * @swagger

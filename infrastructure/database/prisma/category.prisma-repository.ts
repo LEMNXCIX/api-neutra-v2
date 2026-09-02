@@ -13,7 +13,10 @@ import {
 
 export class PrismaCategoryRepository implements ICategoryRepository {
     private mapToEntity(
-        category: PrismaCategory & { _count?: { products: number } },
+        category: PrismaCategory & {
+        _count?: { products: number };
+        tenant?: { id: string; name: string; slug: string };
+    },
     ): Category {
         return {
             id: category.id,
@@ -22,6 +25,9 @@ export class PrismaCategoryRepository implements ICategoryRepository {
             type: category.type as CategoryType,
             active: category.active,
             tenantId: category.tenantId,
+            tenant: category.tenant
+                ? { id: category.tenant.id, name: category.tenant.name, slug: category.tenant.slug }
+                : undefined,
             createdAt: category.createdAt,
             updatedAt: category.updatedAt,
             productCount: category._count?.products,
@@ -51,6 +57,7 @@ export class PrismaCategoryRepository implements ICategoryRepository {
                     _count: {
                         select: { products: true },
                     },
+                    tenant: true,
                 },
             }),
             prisma.category.count({ where }),

@@ -1,4 +1,8 @@
 import { Category, CategoryType } from "@/core/entities/category.entity";
+import {
+    ITenantMinimalResponse,
+    TenantMinimalResponse,
+} from "../shared/tenant-minimal.response";
 
 export interface ICategoryResponse {
     id: string;
@@ -7,6 +11,7 @@ export interface ICategoryResponse {
     type: CategoryType;
     active: boolean;
     tenantId: string;
+    tenant?: ITenantMinimalResponse;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -20,6 +25,9 @@ export class CategoryResponse {
             type: category.type,
             active: category.active,
             tenantId: category.tenantId,
+    tenant: category.tenant
+                ? TenantMinimalResponse.fromEntity(category.tenant)
+                : undefined,
             createdAt: category.createdAt,
             updatedAt: category.updatedAt,
         };

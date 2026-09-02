@@ -1,5 +1,6 @@
 import { INotificationProvider, NotificationMessage } from '@/core/ports/notification-provider.interface';
 import { emailService } from '@/infrastructure/services/email.service';
+import { logger } from "@/infrastructure/providers/logger.instance";
 
 export class EmailProvider implements INotificationProvider {
     async send(recipient: string, message: NotificationMessage, options?: any): Promise<boolean> {
@@ -14,7 +15,7 @@ export class EmailProvider implements INotificationProvider {
             const template = message.templateId || 'general-notification'; // Assuming a generic template exists or will be handled
             const data = message.data || { body: message.body };
 
-            console.log(`[EmailProvider] Sending email to ${recipient} with subject: ${subject}`);
+            logger.info('Sending email', { recipient, subject });
 
             return await emailService.sendEmail(
                 recipient,
@@ -25,7 +26,7 @@ export class EmailProvider implements INotificationProvider {
                 message.attachments
             );
         } catch (error) {
-            console.error('[EmailProvider] Error sending email:', error);
+            logger.error('Error sending email', error);
             return false;
         }
     }

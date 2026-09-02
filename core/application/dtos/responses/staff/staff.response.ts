@@ -1,4 +1,8 @@
 import { Staff } from "@/core/entities/staff.entity";
+import {
+    ITenantMinimalResponse,
+    TenantMinimalResponse,
+} from "../shared/tenant-minimal.response";
 
 export interface IStaffResponse {
     id: string;
@@ -12,6 +16,7 @@ export interface IStaffResponse {
     workingHours?: Record<string, unknown>;
     serviceIds?: string[];
     tenantId: string;
+    tenant?: ITenantMinimalResponse;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -30,6 +35,9 @@ export class StaffResponse {
             workingHours: staff.workingHours,
             serviceIds: staff.serviceIds,
             tenantId: staff.tenantId,
+    tenant: staff.tenant
+                ? TenantMinimalResponse.fromEntity(staff.tenant)
+                : undefined,
             createdAt: staff.createdAt,
             updatedAt: staff.updatedAt,
         };

@@ -6,13 +6,12 @@ import {
     BusinessRuleViolationError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
-import { IProductRepository } from "@/core/repositories/product.repository.interface";
-import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
 import { IEmailService } from "@/core/ports/email.port";
 import { IUserRepository } from "@/core/repositories/user.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import { IConfigProvider } from "@/core/providers/config-provider.interface";
+import { ILogger } from "@/core/providers/logger.interface";
 import { Order } from "@/core/entities/order.entity";
 
 interface CartProductItem {
@@ -30,12 +29,11 @@ export class CreateOrderUseCase {
         private orderRepository: IOrderRepository,
         private getCartUseCase: GetCartUseCase,
         private clearCartUseCase: ClearCartUseCase,
-        private productRepository: IProductRepository,
-        private couponRepository: ICouponRepository,
         private userRepository: IUserRepository,
         private emailService: IEmailService,
         private featureRepository: IFeatureRepository,
         private configProvider: IConfigProvider,
+        private logger: ILogger,
     ) {}
 
     async execute(
@@ -79,28 +77,27 @@ export class CreateOrderUseCase {
             couponId,
         };
 
-        const order = await this.orderRepository.create(tenantId, orderData);
-
-        if (couponId) {
-            await this.couponRepository.incrementUsage(tenantId, couponId);
-        }
-
-        for (const item of cartItems) {
-            const product = await this.productRepository.findById(
-                tenantId,
-                item.id,
-            );
-            if (product) {
-                const newStock = product.stock - item.amount;
-                await this.productRepository.update(tenantId, item.id, {
-                    stock: newStock,
-                });
-            }
-        }
+        const order = await this.orderRepository.createWithInventoryAdjustment(
+            tenantId,
+            orderData,
+            cartItems.map((item: CartProductItem) => ({
+                productId: item.id,
+                amount: item.amount,
+            })),
+            couponId,
+        );
 
         await this.clearCartUseCase.execute(tenantId, userId);
 
-        this.sendOrderConfirmation(tenantId, userId, order).catch(() => {});
+        this.sendOrderConfirmation(tenantId, userId, order).catch(
+            (error: unknown) => {
+                this.logger.error(
+                    "Failed to send order confirmation email",
+                    error,
+                    { tenantId, userId, orderId: order.id },
+                );
+            },
+        );
 
         return Success(order, "Se ha generado su orden");
     }

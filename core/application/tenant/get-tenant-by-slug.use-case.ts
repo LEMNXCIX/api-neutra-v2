@@ -19,6 +19,7 @@ export class GetTenantBySlugUseCase {
                 slug: tenant.slug,
                 type: tenant.type,
                 active: tenant.active,
+                config: tenant.config,
             },
             "Tenant found",
         );

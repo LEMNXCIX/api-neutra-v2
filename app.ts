@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import lusca from "lusca";
+import helmet from "helmet";
 
 import config from "@/config/index.config";
 import { connection } from "@/config/db.config";
@@ -17,6 +18,7 @@ import { corsMiddleware } from "@/middleware/cors.middleware";
 import { devCookieDomainMiddleware } from "@/middleware/dev-cookie-domain.middleware";
 import { Container } from "@/infrastructure/config/container";
 import { errorMiddleware } from "@/middleware/error.middleware";
+import { logger } from "@/infrastructure/providers/logger.instance";
 
 // Rutas
 import auth from "@/infrastructure/routes/auth.routes";
@@ -44,17 +46,58 @@ import appointmentRoutes from "@/infrastructure/routes/appointment.routes";
 
 const { port, ENVIRONMENT } = config;
 
+// Process-level failure handlers: log and keep serving; a graceful exit is
+// preferable to a silent hang (Node 20 keeps running on unhandled rejections).
+process.on("unhandledRejection", (reason) => {
+    logger.error("Unhandled promise rejection", reason);
+});
+process.on("uncaughtException", (error) => {
+    logger.error("Uncaught exception", error);
+});
+
 const app = express();
 
 // Trust proxy settings (required for express-rate-limit behind Docker/Proxies)
 app.set("trust proxy", 1);
 
+// Security headers (CSP enabled with targeted allowances for docs/admin assets)
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            useDefaults: true,
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", "data:", "https:"],
+                connectSrc: ["'self'", "https:"],
+                frameAncestors: ["'self'"],
+            },
+        },
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+    }),
+);
+
 // Middlewares (orden: contexto > logging > parsing > security > custom)
 app.use(contextMiddleware);
 app.use(wideLogMiddleware(Container.getLogRepository()));
-app.use(morgan("dev"));
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+if (!checkProduction(ENVIRONMENT)) {
+    app.use(morgan("dev"));
+}
+// Large payloads (base64 image uploads) allowed only on image-heavy routes;
+// everything else keeps a small default limit (DoS surface reduction).
+for (const imagePath of [
+    "/api/products",
+    "/api/banners",
+    "/api/sliders",
+    "/api/users",
+]) {
+    app.use(imagePath, express.json({ limit: "10mb" }));
+    app.use(imagePath, express.urlencoded({ limit: "10mb", extended: true }));
+}
+// Default body limit is small; large payloads are enabled per-route above.
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ limit: "100kb", extended: true }));
 app.use(requestMiddleware);
 app.use(cookieParser());
 
@@ -129,9 +172,7 @@ if (require.main === module) {
 
     const portNumber = typeof port === "string" ? parseInt(port, 10) : port;
     app.listen(portNumber, "0.0.0.0", () => {
-        console.log(`Server started successfully!`);
-        console.log(`Local: http://localhost:${portNumber}`);
-        console.log(`Listening on 0.0.0.0:${portNumber} (LAN-accessible)`);
+        logger.info(`Server started on http://localhost:${portNumber} (0.0.0.0)`);
     });
 }
 

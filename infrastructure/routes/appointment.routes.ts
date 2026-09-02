@@ -2,6 +2,7 @@ import { Application, Router } from "express";
 import { authenticate } from "@/middleware/authenticate.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { AppointmentController } from "@/interface-adapters/controllers/appointment.controller";
+import { requireTenantType } from "@/middleware/tenant-feature.middleware";
 
 function appointments(
     app: Application,
@@ -103,7 +104,10 @@ function appointments(
      *       400:
      *         description: Invalid query parameters
      */
-    router.get("/availability", (req, res) =>
+    router.get(
+        "/availability",
+        requireTenantType("BOOKING", "HYBRID"),
+        (req, res) =>
         appointmentController.getAvailability(req, res),
     );
 
@@ -135,7 +139,10 @@ function appointments(
      *       422:
      *         description: Invalid appointment data
      */
-    router.post("/", authenticate, (req, res) =>
+    router.post(
+        "/",
+        requireTenantType("BOOKING", "HYBRID"),
+        authenticate, (req, res) =>
         appointmentController.create(req, res),
     );
 
@@ -193,7 +200,10 @@ function appointments(
      *       401:
      *         description: Unauthorized
      */
-    router.get("/", authenticate, resolveSuperAdminTenant, (req, res) =>
+    router.get(
+        "/",
+        requireTenantType("BOOKING", "HYBRID"),
+        authenticate, resolveSuperAdminTenant, (req, res) =>
         appointmentController.getAll(req, res),
     );
 
@@ -224,7 +234,10 @@ function appointments(
      *       404:
      *         description: Appointment not found
      */
-    router.get("/:id", authenticate, (req, res) =>
+    router.get(
+        "/:id",
+        requireTenantType("BOOKING", "HYBRID"),
+        authenticate, (req, res) =>
         appointmentController.getById(req, res),
     );
 
@@ -266,7 +279,10 @@ function appointments(
      *       409:
      *         description: Appointment cannot be cancelled
      */
-    router.put("/:id/cancel", authenticate, (req, res) =>
+    router.put(
+        "/:id/cancel",
+        requireTenantType("BOOKING", "HYBRID"),
+        authenticate, (req, res) =>
         appointmentController.cancel(req, res),
     );
 
@@ -305,7 +321,10 @@ function appointments(
      *       422:
      *         description: Invalid status transition
      */
-    router.put("/:id/status", authenticate, (req, res) =>
+    router.put(
+        "/:id/status",
+        requireTenantType("BOOKING", "HYBRID"),
+        authenticate, (req, res) =>
         appointmentController.updateStatus(req, res),
     );
 
@@ -332,7 +351,10 @@ function appointments(
      *       404:
      *         description: Appointment not found
      */
-    router.delete("/:id", authenticate, (req, res) =>
+    router.delete(
+        "/:id",
+        requireTenantType("BOOKING", "HYBRID"),
+        authenticate, (req, res) =>
         appointmentController.delete(req, res),
     );
 }

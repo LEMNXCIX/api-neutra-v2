@@ -19,4 +19,27 @@ export class GetAppointmentsUseCase {
         );
         return Success(appointments, "Appointments retrieved successfully");
     }
+
+    async executePaginated(
+        tenantId: string | undefined,
+        filters: RepoFilters,
+        page: number,
+        limit: number,
+    ): Promise<UseCaseResult> {
+        const { appointments, total } =
+            await this.appointmentRepository.findAllPaginated(
+                tenantId,
+                filters,
+                page,
+                limit,
+            );
+        return Success(appointments, "Appointments retrieved successfully", {
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        });
+    }
 }
