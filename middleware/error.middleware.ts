@@ -44,11 +44,15 @@ export const errorMiddleware = (
             },
         ];
     } else if (err instanceof Error) {
-        message = err.message;
+        // Never leak internal error messages (Prisma, libraries) to clients
+        // in production; the real message is logged with the traceId.
+        message = showStack
+            ? err.message
+            : "An unexpected error occurred";
         errors = [
             {
                 code: SystemErrorCodes.INTERNAL_SERVER_ERROR,
-                message: err.message,
+                message,
                 metadata: showStack ? { stack: err.stack } : undefined,
             },
         ];

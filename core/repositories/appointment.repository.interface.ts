@@ -48,6 +48,12 @@ export interface IAppointmentRepository {
         tenantId: string | undefined,
         filters?: AppointmentFilters,
     ): Promise<Appointment[]>;
+    findAllPaginated(
+        tenantId: string | undefined,
+        filters: AppointmentFilters | undefined,
+        page: number,
+        limit: number,
+    ): Promise<{ appointments: Appointment[]; total: number }>;
     findByUser(tenantId: string, userId: string): Promise<Appointment[]>;
     findByStaff(
         tenantId: string,

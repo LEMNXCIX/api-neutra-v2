@@ -1,4 +1,5 @@
 import { PrismaUserRepository } from "../database/prisma/user.prisma-repository";
+import { PinoLoggerProvider } from "../providers/pino-logger.provider";
 import { PrismaCartRepository } from "../database/prisma/cart.prisma-repository";
 import { PrismaRoleRepository } from "../database/prisma/role.prisma-repository";
 import { PrismaStaffRepository } from "../database/prisma/staff.prisma-repository";
@@ -93,7 +94,6 @@ import { GetProductSummaryStatsUseCase } from "@/core/application/products/get-p
 import { CreateOrderUseCase } from "@/core/application/order/create-order.use-case";
 import { GetOrderUseCase } from "@/core/application/order/get-order.use-case";
 import { GetUserOrdersUseCase } from "@/core/application/order/get-user-orders.use-case";
-import { GetAllOrdersUseCase } from "@/core/application/order/get-all-orders.use-case";
 import { GetOrdersPaginatedUseCase } from "@/core/application/order/get-orders-paginated.use-case";
 import { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
 import { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
@@ -219,6 +219,7 @@ import { WhatsAppBotService } from "../services/whatsapp-bot.service";
 export class Container {
     // Repositories (Singletons)
     private static userRepository = new PrismaUserRepository();
+    private static logger = new PinoLoggerProvider();
     private static cartRepository = new PrismaCartRepository();
     private static roleRepository = new PrismaRoleRepository();
     private static staffRepository = new PrismaStaffRepository();
@@ -354,16 +355,14 @@ export class Container {
                 this.orderRepository,
                 new GetCartUseCase(this.cartRepository),
                 new ClearCartUseCase(this.cartRepository),
-                this.productRepository,
-                this.couponRepository,
                 this.userRepository,
                 emailService,
                 this.featureRepository,
                 this.configProvider,
+                this.logger,
             ),
             new GetOrderUseCase(this.orderRepository),
             new GetUserOrdersUseCase(this.orderRepository),
-            new GetAllOrdersUseCase(this.orderRepository),
             new GetOrdersPaginatedUseCase(this.orderRepository),
             new ChangeOrderStatusUseCase(this.orderRepository),
             new UpdateOrderUseCase(this.orderRepository),
@@ -436,6 +435,7 @@ export class Container {
                 new ValidateCouponUseCase(this.couponRepository),
                 this.queueProvider,
                 this.featureRepository,
+                this.tenantRepository,
             ),
             new GetAppointmentsUseCase(this.appointmentRepository),
             new GetAppointmentByIdUseCase(this.appointmentRepository),
@@ -448,6 +448,7 @@ export class Container {
                 this.appointmentRepository,
                 this.staffRepository,
                 this.serviceRepository,
+                this.tenantRepository,
             ),
             new UpdateAppointmentStatusUseCase(
                 this.appointmentRepository,
@@ -524,11 +525,12 @@ export class Container {
                 this.userRepository,
                 this.roleRepository,
                 this.permissionRepository,
+                this.featureRepository,
             ),
             new GetTenantsUseCase(this.tenantRepository),
             new GetTenantByIdUseCase(this.tenantRepository),
             new GetTenantBySlugUseCase(this.tenantRepository),
-            new UpdateTenantUseCase(this.tenantRepository),
+            new UpdateTenantUseCase(this.tenantRepository, this.featureRepository),
             new DeleteTenantUseCase(this.tenantRepository),
             new GetTenantFeaturesUseCase(this.featureRepository),
             new UpdateTenantFeaturesUseCase(this.featureRepository),

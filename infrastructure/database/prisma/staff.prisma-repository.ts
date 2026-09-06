@@ -12,7 +12,7 @@ import {
 } from "@/core/domain/errors/domain-errors";
 
 type StaffWithServices = Prisma.StaffGetPayload<{
-    include: { staffServices: { select: { serviceId: true } } };
+    include: { staffServices: { select: { serviceId: true } }; tenant: true };
 }>;
 
 function parseWorkingHours(
@@ -38,6 +38,11 @@ export class PrismaStaffRepository implements IStaffRepository {
             workingHours: parseWorkingHours(staff.workingHours),
             serviceIds: staff.staffServices?.map((ss) => ss.serviceId) || [],
             tenantId: staff.tenantId,
+            tenant: staff.tenant
+
+            ? { id: staff.tenant.id, name: staff.tenant.name, slug: staff.tenant.slug }
+
+            : undefined,
             createdAt: staff.createdAt,
             updatedAt: staff.updatedAt,
         };
@@ -57,7 +62,7 @@ export class PrismaStaffRepository implements IStaffRepository {
                     active: data.active ?? true,
                     workingHours: data.workingHours as Prisma.InputJsonValue,
                 },
-                include: { staffServices: { select: { serviceId: true } } },
+                include: { staffServices: { select: { serviceId: true } }, tenant: true },
             });
             return this.mapToEntity(staff);
         } catch (error: unknown) {
@@ -79,7 +84,7 @@ export class PrismaStaffRepository implements IStaffRepository {
     async findById(tenantId: string, id: string): Promise<Staff | null> {
         const staff = await prisma.staff.findFirst({
             where: { id, tenantId },
-            include: { staffServices: { select: { serviceId: true } } },
+            include: { staffServices: { select: { serviceId: true } }, tenant: true },
         });
         return staff ? this.mapToEntity(staff) : null;
     }
@@ -87,7 +92,7 @@ export class PrismaStaffRepository implements IStaffRepository {
     async findByEmail(tenantId: string, email: string): Promise<Staff | null> {
         const staff = await prisma.staff.findFirst({
             where: { email, tenantId },
-            include: { staffServices: { select: { serviceId: true } } },
+            include: { staffServices: { select: { serviceId: true } }, tenant: true },
         });
         return staff ? this.mapToEntity(staff) : null;
     }
@@ -98,7 +103,7 @@ export class PrismaStaffRepository implements IStaffRepository {
     ): Promise<Staff | null> {
         const staff = await prisma.staff.findFirst({
             where: { userId, tenantId },
-            include: { staffServices: { select: { serviceId: true } } },
+            include: { staffServices: { select: { serviceId: true } }, tenant: true },
         });
         return staff ? this.mapToEntity(staff) : null;
     }
@@ -112,7 +117,7 @@ export class PrismaStaffRepository implements IStaffRepository {
                 ...(tenantId && { tenantId }),
                 ...(activeOnly && { active: true }),
             },
-            include: { staffServices: { select: { serviceId: true } } },
+            include: { staffServices: { select: { serviceId: true } }, tenant: true },
             orderBy: { name: "asc" },
         });
         return staffList.map((s) => this.mapToEntity(s));
@@ -136,7 +141,7 @@ export class PrismaStaffRepository implements IStaffRepository {
                     active: data.active,
                     workingHours: data.workingHours as Prisma.InputJsonValue,
                 },
-                include: { staffServices: { select: { serviceId: true } } },
+                include: { staffServices: { select: { serviceId: true } }, tenant: true },
             });
             return this.mapToEntity(staff);
         } catch (error: unknown) {

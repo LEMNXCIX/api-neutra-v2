@@ -391,6 +391,9 @@ model Order {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+  @@index([tenantId, userId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
   @@map("orders")
 }
 

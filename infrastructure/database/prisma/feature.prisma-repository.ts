@@ -135,22 +135,35 @@ export class PrismaFeatureRepository implements IFeatureRepository {
         tenantId: string,
         features: Record<string, boolean>,
     ): Promise<void> {
-        const updates = Object.entries(features).map(([featureId, enabled]) => {
-            return prisma.tenantFeature.upsert({
-                where: {
-                    tenantId_featureId: {
+        // Input is keyed by feature.key (e.g. "COUPONS"); tenantFeature.featureId
+        // is a FK to features.id, so translate keys → ids first.
+        const keys = Object.keys(features);
+        if (!keys.length) return;
+        const rows = await prisma.feature.findMany({
+            where: { key: { in: keys } },
+            select: { id: true, key: true },
+        });
+        const idByKey = new Map(rows.map((f) => [f.key, f.id]));
+
+        const updates = Object.entries(features)
+            .filter(([key]) => idByKey.has(key))
+            .map(([key, enabled]) => {
+                const featureId = idByKey.get(key)!;
+                return prisma.tenantFeature.upsert({
+                    where: {
+                        tenantId_featureId: {
+                            tenantId,
+                            featureId,
+                        },
+                    },
+                    update: { enabled },
+                    create: {
                         tenantId,
                         featureId,
+                        enabled,
                     },
-                },
-                update: { enabled },
-                create: {
-                    tenantId,
-                    featureId,
-                    enabled,
-                },
+                });
             });
-        });
 
         if (updates.length > 0) {
             await prisma.$transaction(updates);

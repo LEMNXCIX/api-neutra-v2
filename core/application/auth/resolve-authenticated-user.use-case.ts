@@ -73,6 +73,15 @@ export class ResolveAuthenticatedUserUseCase {
                 userTenant = globalSuperAdmin;
             }
 
+            // Security: a valid token does not grant access to tenants the
+            // user is not a member of. Without this check, an attacker could
+            // point x-tenant-id/x-tenant-slug at any tenant and read its data.
+            if (!userTenant || !userTenant.role) {
+                throw new ForbiddenError(
+                    "User is not authorized for this tenant",
+                );
+            }
+
             if (userTenant && userTenant.role) {
                 permissions =
                     userTenant.role.permissions?.map((p) => p.name) ?? [];

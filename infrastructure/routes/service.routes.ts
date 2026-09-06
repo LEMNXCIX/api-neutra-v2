@@ -4,6 +4,7 @@ import { optionalAuthenticate } from "@/middleware/optional-authenticate.middlew
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { ServiceController } from "@/interface-adapters/controllers/service.controller";
+import { requireTenantType } from "@/middleware/tenant-feature.middleware";
 
 function services(app: Application, serviceController: ServiceController) {
     const router = Router();
@@ -76,6 +77,7 @@ function services(app: Application, serviceController: ServiceController) {
      */
     router.post(
         "/",
+        requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("services:write"),
         (req, res) => serviceController.create(req, res),
@@ -104,7 +106,10 @@ function services(app: Application, serviceController: ServiceController) {
      *               items:
      *                 $ref: '#/components/schemas/Service'
      */
-    router.get("/", optionalAuthenticate, resolveSuperAdminTenant, (req, res) =>
+    router.get(
+        "/",
+        requireTenantType("BOOKING", "HYBRID"),
+        optionalAuthenticate, resolveSuperAdminTenant, (req, res) =>
         serviceController.getAll(req, res),
     );
 
@@ -145,6 +150,7 @@ function services(app: Application, serviceController: ServiceController) {
      */
     router.put(
         "/:id",
+        requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("services:write"),
         (req, res) => serviceController.update(req, res),
@@ -177,6 +183,7 @@ function services(app: Application, serviceController: ServiceController) {
      */
     router.delete(
         "/:id",
+        requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("services:write"),
         (req, res) => serviceController.delete(req, res),

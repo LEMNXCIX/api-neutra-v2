@@ -3,6 +3,7 @@ import { Application, Router } from "express";
 import passport from "passport";
 import { AuthController } from "@/interface-adapters/controllers/auth.controller";
 import { authenticate } from "@/middleware/authenticate.middleware";
+import { authLimiter } from "@/middleware/rateLimit.middleware";
 
 function auth(app: Application, authController: AuthController) {
     const router = Router();
@@ -33,7 +34,7 @@ function auth(app: Application, authController: AuthController) {
      *       401:
      *         description: Invalid credentials
      */
-    router.post("/login", authController.login);
+    router.post("/login", authLimiter, authController.login);
 
     /**
      * @swagger
@@ -53,7 +54,7 @@ function auth(app: Application, authController: AuthController) {
      *       400:
      *         description: Bad request
      */
-    router.post("/signup", authController.signup);
+    router.post("/signup", authLimiter, authController.signup);
 
     /**
      * @swagger
@@ -108,7 +109,7 @@ function auth(app: Application, authController: AuthController) {
      *       400:
      *         description: Invalid email
      */
-    router.post("/forgot-password", authController.forgotPassword);
+    router.post("/forgot-password", authLimiter, authController.forgotPassword);
 
     /**
      * @swagger

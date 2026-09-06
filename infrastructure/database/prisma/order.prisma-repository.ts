@@ -12,7 +12,10 @@ import {
 } from "@/core/repositories/order.repository.interface";
 import { Order, OrderStatus, OrderItem } from "@/core/entities/order.entity";
 import { Product } from "@/core/entities/product.entity";
-import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import {
+    BusinessRuleViolationError,
+    EntityNotFoundError,
+} from "@/core/domain/errors/domain-errors";
 
 type OrderWithIncludes = Prisma.OrderGetPayload<{
     include: {
@@ -103,6 +106,80 @@ export class PrismaOrderRepository implements IOrderRepository {
         return this.mapToEntity(order);
     }
 
+    async createWithInventoryAdjustment(
+        tenantId: string,
+        data: OrderCreateData,
+        adjustments: Array<{ productId: string; amount: number }>,
+        couponId?: string,
+    ): Promise<Order> {
+        return prisma.$transaction(async (tx) => {
+            // Atomic, guarded stock decrement: fails if stock is insufficient
+            for (const adjustment of adjustments) {
+                const result = await tx.product.updateMany({
+                    where: {
+                        id: adjustment.productId,
+                        tenantId,
+                        stock: { gte: adjustment.amount },
+                    },
+                    data: { stock: { decrement: adjustment.amount } },
+                });
+                if (result.count === 0) {
+                    throw new BusinessRuleViolationError(
+                        `Stock insuficiente para el producto ${adjustment.productId}`,
+                        "INSUFFICIENT_STOCK",
+                    );
+                }
+            }
+
+            if (couponId) {
+                await tx.coupon.update({
+                    where: { id: couponId, tenantId },
+                    data: { usageCount: { increment: 1 } },
+                });
+            }
+
+            const subtotal = data.items.reduce(
+                (sum, item) => sum + item.price * item.amount,
+                0,
+            );
+            const discountAmount = 0;
+            const total = subtotal - discountAmount;
+
+            const order = await tx.order.create({
+                data: {
+                    userId: data.userId,
+                    tenantId,
+                    status: "PENDIENTE" as PrismaOrderStatus,
+                    couponId: data.couponId,
+                    subtotal,
+                    total,
+                    discountAmount,
+                    items: {
+                        create: data.items.map((item) => ({
+                            productId: item.productId,
+                            amount: item.amount,
+                            price: item.price,
+                        })),
+                    },
+                },
+                include: {
+                    items: {
+                        include: {
+                            product: true,
+                        },
+                    },
+                    user: {
+                        select: {
+                            name: true,
+                            email: true,
+                        },
+                    },
+                },
+            });
+            return this.mapToEntity(order);
+        });
+    }
+
     async findById(tenantId: string, id: string): Promise<Order | null> {
         const order = await prisma.order.findFirst({
             where: { id, tenantId },
@@ -187,6 +264,9 @@ export class PrismaOrderRepository implements IOrderRepository {
     ): Promise<{
         orders: Order[];
         total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
     }> {
         const { search, status, page, limit, startDate, endDate } = options;
 
@@ -237,6 +317,9 @@ export class PrismaOrderRepository implements IOrderRepository {
         return {
             orders: orders.map((o) => this.mapToEntity(o)),
             total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
         };
     }
 

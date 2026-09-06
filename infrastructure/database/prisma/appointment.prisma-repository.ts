@@ -20,7 +20,7 @@ import {
 } from "@/core/domain/errors/domain-errors";
 
 type AppointmentWithIncludes = Prisma.AppointmentGetPayload<{
-    include: { user: true; service: true; staff: true; coupon: true };
+    include: { user: true; service: true; staff: true; coupon: true; tenant: true };
 }>;
 
 type AppointmentWithCoupon = Prisma.AppointmentGetPayload<{
@@ -79,6 +79,13 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                       name: included.staff.name,
                       email: included.staff.email ?? undefined,
                       avatar: included.staff.avatar ?? undefined,
+                  }
+                : undefined,
+            tenant: included.tenant
+                ? {
+                      id: included.tenant.id,
+                      name: included.tenant.name,
+                      slug: included.tenant.slug,
                   }
                 : undefined,
             coupon:
@@ -172,7 +179,53 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         tenantId: string | undefined,
         filters?: AppointmentFilters,
     ): Promise<Appointment[]> {
-        const where: Prisma.AppointmentWhereInput = {
+        const appointments = await prisma.appointment.findMany({
+            where: this.buildWhere(tenantId, filters),
+            include: {
+                user: true,
+                service: true,
+                staff: true,
+                coupon: true,
+                tenant: true,
+            },
+            orderBy: { startTime: "asc" },
+        });
+
+        return appointments.map((a) => this.mapToEntity(a));
+    }
+
+    async findAllPaginated(
+        tenantId: string | undefined,
+        filters: AppointmentFilters | undefined,
+        page: number,
+        limit: number,
+    ): Promise<{ appointments: Appointment[]; total: number }> {
+        const where = this.buildWhere(tenantId, filters);
+        const [appointments, total] = await Promise.all([
+            prisma.appointment.findMany({
+                where,
+                include: {
+                    user: true,
+                    service: true,
+                    staff: true,
+                    coupon: true,
+                    tenant: true,
+                },
+                orderBy: { startTime: "asc" },
+                skip: (page - 1) * limit,
+                take: limit,
+            }),
+            prisma.appointment.count({ where }),
+        ]);
+
+        return { appointments: appointments.map((a) => this.mapToEntity(a)), total };
+    }
+
+    private buildWhere(
+        tenantId: string | undefined,
+        filters?: AppointmentFilters,
+    ): Prisma.AppointmentWhereInput {
+        return {
             ...(tenantId && { tenantId }),
             ...(filters?.userId && { userId: filters.userId }),
             ...(filters?.staffId && { staffId: filters.staffId }),
@@ -188,19 +241,6 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                     },
                 }),
         };
-
-        const appointments = await prisma.appointment.findMany({
-            where,
-            include: {
-                user: true,
-                service: true,
-                staff: true,
-                coupon: true,
-            },
-            orderBy: { startTime: "asc" },
-        });
-
-        return appointments.map((a) => this.mapToEntity(a));
     }
 
     async findByUser(tenantId: string, userId: string): Promise<Appointment[]> {

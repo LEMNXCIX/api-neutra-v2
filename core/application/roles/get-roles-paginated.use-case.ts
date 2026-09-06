@@ -8,8 +8,8 @@ export class GetRolesPaginatedUseCase {
         const { roles, total } = await this.roleRepository.findAllPaginated(tenantId, page, limit, search);
         const totalPages = Math.ceil(total / limit);
 
-        return Success(roles, "Roles retrieved successfully");
-        // Note: Pagination data should ideally be part of UseCaseResult or a specific property
-        // For now Success(roles) is enough if pagination is handled in meta or data
+        return Success(roles, "Roles retrieved successfully", {
+            pagination: { page, limit, total, totalPages },
+        });
     }
 }

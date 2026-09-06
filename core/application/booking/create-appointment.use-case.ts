@@ -9,6 +9,7 @@ import { CreateAppointmentDTO } from "@/core/application/dtos/requests/appointme
 import { IQueueProvider } from "@/core/providers/queue-provider.interface";
 import { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     EntityNotFoundError,
@@ -16,6 +17,13 @@ import {
     InvalidStateError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import {
+    fitsInRanges,
+    getDayRanges,
+    intersectRanges,
+    isHoliday,
+    toMinutes,
+} from "@/core/utils/working-hours";
 
 export class CreateAppointmentUseCase {
     constructor(
@@ -26,6 +34,7 @@ export class CreateAppointmentUseCase {
         private validateCouponUseCase: ValidateCouponUseCase,
         private queueProvider: IQueueProvider,
         private featureRepository: IFeatureRepository,
+        private tenantRepository?: ITenantRepository,
     ) {}
 
     async execute(
@@ -71,6 +80,38 @@ export class CreateAppointmentUseCase {
         const startTime = new Date(data.startTime);
         const endTime = new Date(startTime);
         endTime.setMinutes(endTime.getMinutes() + service.duration);
+
+        // Schedule validation (optional dep so existing wiring/tests keep working)
+        if (this.tenantRepository) {
+            const tenant = await this.tenantRepository.findById(tenantId);
+            const settings = tenant?.config?.settings;
+            if (isHoliday(settings?.holidays, startTime)) {
+                throw new BusinessRuleViolationError(
+                    "The selected date is a holiday",
+                    "HOLIDAY_CLOSED",
+                );
+            }
+            const ranges = intersectRanges(
+                getDayRanges(staff.workingHours, startTime),
+                getDayRanges(settings?.businessHours, startTime),
+            );
+            const hasHours =
+                !!staff.workingHours ||
+                getDayRanges(settings?.businessHours, startTime).length > 0;
+            if (
+                hasHours &&
+                !fitsInRanges(
+                    startTime.getHours() * 60 + startTime.getMinutes(),
+                    endTime.getHours() * 60 + endTime.getMinutes(),
+                    ranges,
+                )
+            ) {
+                throw new BusinessRuleViolationError(
+                    "The selected time is outside working hours",
+                    "OUTSIDE_WORKING_HOURS",
+                );
+            }
+        }
 
         const isAvailable = await this.appointmentRepository.checkAvailability(
             tenantId,

@@ -5,8 +5,11 @@ import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 export class GetSlidesUseCase {
     constructor(private slideRepository: ISlideRepository) {}
 
-    async execute(tenantId: string | undefined): Promise<UseCaseResult> {
-        const slides = await this.slideRepository.findAll(tenantId);
+    async execute(
+        tenantId: string | undefined,
+        opts?: { activeOnly?: boolean },
+    ): Promise<UseCaseResult> {
+        const slides = await this.slideRepository.findAll(tenantId, opts);
         return Success(slides);
     }
 

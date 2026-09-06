@@ -2,6 +2,7 @@ import { Application, Router } from 'express';
 import { authenticate } from '@/middleware/authenticate.middleware';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { CouponController } from '@/interface-adapters/controllers/coupon.controller';
+import { requireTenantFeature } from "@/middleware/tenant-feature.middleware";
 
 function couponRoutes(app: Application, couponController: CouponController) {
     const router = Router();
@@ -65,7 +66,10 @@ function couponRoutes(app: Application, couponController: CouponController) {
      *       401:
      *         description: Unauthorized
      */
-    router.post('/validate', authenticate, couponController.validate);
+    router.post(
+        '/validate',
+        requireTenantFeature("COUPONS"),
+        authenticate, couponController.validate);
 
     // Admin routes
     /**
@@ -84,7 +88,10 @@ function couponRoutes(app: Application, couponController: CouponController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/stats', authenticate, requirePermission('stats:read'), couponController.getStats);
+    router.get(
+        '/stats',
+        requireTenantFeature("COUPONS"),
+        authenticate, requirePermission('stats:read'), couponController.getStats);
 
     /**
      * @swagger
@@ -108,7 +115,10 @@ function couponRoutes(app: Application, couponController: CouponController) {
      *       403:
      *         description: Forbidden
      */
-    router.get('/', authenticate, requirePermission('coupons:read'), couponController.getAll);
+    router.get(
+        '/',
+        requireTenantFeature("COUPONS"),
+        authenticate, requirePermission('coupons:read'), couponController.getAll);
 
     /**
      * @swagger
@@ -134,7 +144,10 @@ function couponRoutes(app: Application, couponController: CouponController) {
      *       404:
      *         description: Coupon not found
      */
-    router.get('/:id', authenticate, requirePermission('coupons:read'), couponController.getById);
+    router.get(
+        '/:id',
+        requireTenantFeature("COUPONS"),
+        authenticate, requirePermission('coupons:read'), couponController.getById);
 
     /**
      * @swagger
@@ -160,7 +173,10 @@ function couponRoutes(app: Application, couponController: CouponController) {
      *       404:
      *         description: Coupon not found
      */
-    router.get('/code/:code', authenticate, requirePermission('coupons:read'), couponController.getByCode);
+    router.get(
+        '/code/:code',
+        requireTenantFeature("COUPONS"),
+        authenticate, requirePermission('coupons:read'), couponController.getByCode);
 
     /**
      * @swagger
@@ -208,7 +224,10 @@ function couponRoutes(app: Application, couponController: CouponController) {
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('coupons:write'), couponController.create);
+    router.post(
+        '/',
+        requireTenantFeature("COUPONS"),
+        authenticate, requirePermission('coupons:write'), couponController.create);
 
     /**
      * @swagger
@@ -250,7 +269,10 @@ function couponRoutes(app: Application, couponController: CouponController) {
      *       404:
      *         description: Coupon not found
      */
-    router.put('/:id', authenticate, requirePermission('coupons:write'), couponController.update);
+    router.put(
+        '/:id',
+        requireTenantFeature("COUPONS"),
+        authenticate, requirePermission('coupons:write'), couponController.update);
 
     /**
      * @swagger
@@ -276,7 +298,10 @@ function couponRoutes(app: Application, couponController: CouponController) {
      *       404:
      *         description: Coupon not found
      */
-    router.delete('/:id', authenticate, requirePermission('coupons:delete'), couponController.delete);
+    router.delete(
+        '/:id',
+        requireTenantFeature("COUPONS"),
+        authenticate, requirePermission('coupons:delete'), couponController.delete);
 }
 
 export default couponRoutes;

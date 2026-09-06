@@ -26,9 +26,9 @@ export class ConfigureWhatsAppUseCase {
         }
         const features =
             await this.featureRepository.getTenantFeatureStatus(tenantId);
-        if (!features["WHATSAPP_NOTIFICATIONS"]) {
+        if (!features["WHATSAPP_API"]) {
             throw new ForbiddenError(
-                "Upgrade required: WHATSAPP_NOTIFICATIONS feature is not enabled for this tenant.",
+                "Upgrade required: WHATSAPP_API feature is not enabled for this tenant.",
                 "FORBIDDEN",
             );
         }

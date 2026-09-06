@@ -4,6 +4,7 @@ import { LogLevel } from "@/core/providers/logger.interface";
 import { v4 as uuidv4 } from "uuid";
 import { RequestContext } from "@/infrastructure/context/request-context";
 import { SECURITY_CONSTANTS } from "@/core/domain/constants";
+import { logger } from "@/infrastructure/providers/logger.instance";
 
 export default function wideLogMiddleware(logRepository: ILogRepository) {
     return function (req: Request, res: Response, next: NextFunction) {
@@ -68,7 +69,7 @@ export default function wideLogMiddleware(logRepository: ILogRepository) {
             // Persist only to DB if it's an error or important enough
             // Or persist EVERYTHING if we want full observability as "Canonical Logs"
             logRepository.create(logData).catch((err) => {
-                console.error("Error in wideLogMiddleware persistence:", err);
+                logger.error("wideLogMiddleware persistence failed", err);
             });
         });
 

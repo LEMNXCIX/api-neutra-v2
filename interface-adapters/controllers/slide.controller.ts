@@ -59,8 +59,11 @@ export class SlideController {
 
     async getAll(req: Request, res: Response) {
         const tenantId = req.tenantId!;
+        const activeOnly = req.query.activeOnly === "true";
 
-        const result = await this.getSlidesUseCase.execute(tenantId);
+        const result = await this.getSlidesUseCase.execute(tenantId, {
+            activeOnly,
+        });
         return res.json(present(result, SlidePresenter.toResponseList));
     }
 

@@ -6,6 +6,7 @@ import { Permission } from "@/core/entities/permission.entity";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
 import { CreateTenantDTO } from "@/core/application/dtos/requests/tenant.request";
+import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 
 export class CreateTenantUseCase {
     constructor(
@@ -13,6 +14,7 @@ export class CreateTenantUseCase {
         private userRepository: IUserRepository,
         private roleRepository: IRoleRepository,
         private permissionRepository: IPermissionRepository,
+        private featureRepository: IFeatureRepository,
     ) {}
 
     async execute(
@@ -142,6 +144,18 @@ export class CreateTenantUseCase {
                 creatorId,
                 tenant.id,
                 adminRole.id,
+            );
+        }
+
+        // Sync onboarding feature selection into the tenantFeature table
+        // (source of truth for server-side enforcement).
+        const selectedFeatures = Object.entries(data.config?.features ?? {}).filter(
+            ([, enabled]) => enabled === true,
+        );
+        if (selectedFeatures.length) {
+            await this.featureRepository.updateTenantFeatures(
+                tenant.id,
+                Object.fromEntries(selectedFeatures),
             );
         }
 

@@ -23,6 +23,20 @@ const devLimiter = rateLimit({
     message: { error: "Too many requests, please try again later." },
 });
 
+// Strict limiter for credential-based endpoints (brute-force mitigation).
+const authLimiter = rateLimit({
+    windowMs: 15 * TIME_CONSTANTS.MINUTE_MS,
+    max: isDev ? 50 : 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    message: {
+        error: "Too many authentication attempts, please try again later.",
+    },
+});
+
+export { authLimiter };
+
 export default function rateLimiter() {
     return isDev ? devLimiter : defaultLimiter;
 }

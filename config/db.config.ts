@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import config from '@/config/index.config';
+import { logger } from "@/infrastructure/providers/logger.instance";
 
 const { dbUsername, dbPassword, dbHost, dbName } = config;
 
@@ -13,9 +14,9 @@ const prisma = new PrismaClient({ adapter });
 const connection = async function () {
   try {
     await prisma.$connect();
-    console.log("Prisma Connected");
+    logger.info("Prisma Connected");
   } catch (error) {
-    console.error("Prisma Connection Error", error);
+    logger.error("Prisma Connection Error", error);
   }
 };
 

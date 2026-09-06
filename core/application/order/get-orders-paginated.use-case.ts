@@ -30,6 +30,14 @@ export class GetOrdersPaginatedUseCase {
         return Success(
             result.orders,
             "Orders retrieved successfully",
+            {
+                pagination: {
+                    page: result.page,
+                    limit: result.limit,
+                    total: result.total,
+                    totalPages: result.totalPages,
+                },
+            },
         );
     }
 }

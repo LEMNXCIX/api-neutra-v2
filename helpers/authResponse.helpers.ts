@@ -11,11 +11,16 @@ const ENVIRONMENT: string = config.ENVIRONMENT;
 const callbackURL: string | undefined = config.callbackURL;
 const callbackURLDev: string | undefined = config.callbackURLDev;
 
-function getCookieDomain(req: Request): string | undefined {
+export function getCookieDomain(req: Request): string | undefined {
     const host = req.get("host");
     if (!host) return undefined;
 
     const domain = host.split(":")[0];
+
+    // Bare localhost: share the session across localhost subdomains
+    if (domain === "localhost") {
+        return "localhost";
+    }
 
     // For local development with subdomains
     if (domain.endsWith(DOMAIN_CONSTANTS.LOCAL_LOCALHOST)) {
@@ -45,7 +50,7 @@ function getCookieDomain(req: Request): string | undefined {
     return undefined;
 }
 
-function cookieOptions(req: Request): CookieOptions {
+export function cookieOptions(req: Request): CookieOptions {
     const domain = getCookieDomain(req);
     const inProduction = production || isProduction(ENVIRONMENT);
 

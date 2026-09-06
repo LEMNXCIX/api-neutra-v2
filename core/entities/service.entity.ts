@@ -15,6 +15,7 @@ export interface Service {
     category?: Category;
     active: boolean;
     tenantId: string;
+    tenant?: { id: string; name: string; slug: string };
     createdAt: Date;
     updatedAt: Date;
 }

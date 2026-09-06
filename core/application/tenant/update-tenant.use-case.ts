@@ -5,9 +5,13 @@ import {
     DuplicateEntityError,
 } from "@/core/domain/errors/domain-errors";
 import { UpdateTenantDTO } from "@/core/application/dtos/requests/tenant.request";
+import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 
 export class UpdateTenantUseCase {
-    constructor(private tenantRepository: ITenantRepository) {}
+    constructor(
+        private tenantRepository: ITenantRepository,
+        private featureRepository: IFeatureRepository,
+    ) {}
 
     async execute(id: string, data: UpdateTenantDTO): Promise<UseCaseResult> {
         const existing = await this.tenantRepository.findById(id);
@@ -46,6 +50,15 @@ export class UpdateTenantUseCase {
         }
 
         const updated = await this.tenantRepository.update(id, data);
+
+        // Keep the tenantFeature table (source of truth for server-side
+        // enforcement) in sync with config.features from the payload.
+        if (updated.config?.features) {
+            await this.featureRepository.updateTenantFeatures(
+                id,
+                updated.config.features,
+            );
+        }
 
         return Success(updated, "Tenant updated successfully");
     }

@@ -22,6 +22,13 @@ export class GetCouponsPaginatedUseCase {
             limit
         });
 
-        return Success(result.coupons, 'Coupons retrieved successfully');
+        return Success(result.coupons, 'Coupons retrieved successfully', {
+            pagination: {
+                page,
+                limit,
+                total: result.total,
+                totalPages: Math.ceil(result.total / limit),
+            },
+        });
     }
 }

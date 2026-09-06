@@ -1,4 +1,8 @@
 import { Product } from "@/core/entities/product.entity";
+import {
+    ITenantMinimalResponse,
+    TenantMinimalResponse,
+} from "../shared/tenant-minimal.response";
 
 export interface IProductResponse {
     id: string;
@@ -9,6 +13,7 @@ export interface IProductResponse {
     stock: number;
     active: boolean;
     ownerId: string;
+    tenant?: ITenantMinimalResponse;
     createdAt?: Date;
     updatedAt?: Date;
     categories?: Array<{ id: string; name: string }>;
@@ -25,6 +30,9 @@ export class ProductResponse {
             stock: product.stock,
             active: product.active,
             ownerId: product.ownerId,
+    tenant: product.tenant
+                ? TenantMinimalResponse.fromEntity(product.tenant)
+                : undefined,
             createdAt: product.createdAt,
             updatedAt: product.updatedAt,
             categories: product.categories,

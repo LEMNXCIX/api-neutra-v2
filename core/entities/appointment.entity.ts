@@ -25,6 +25,7 @@ export interface Appointment {
     confirmationSent: boolean;
     reminderSent: boolean;
     tenantId: string;
+    tenant?: { id: string; name: string; slug: string };
     createdAt: Date;
     updatedAt: Date;
 

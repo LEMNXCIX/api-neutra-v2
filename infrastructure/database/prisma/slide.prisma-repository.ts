@@ -66,9 +66,15 @@ export class PrismaSlideRepository implements ISlideRepository {
         }
     }
 
-    async findAll(tenantId: string | undefined): Promise<Slideshow[]> {
+    async findAll(
+        tenantId: string | undefined,
+        opts?: { activeOnly?: boolean },
+    ): Promise<Slideshow[]> {
         const slides = await prisma.slideshow.findMany({
-            where: { ...(tenantId && { tenantId }) },
+            where: {
+                ...(tenantId && { tenantId }),
+                ...(opts?.activeOnly && { active: true }),
+            },
         });
         return slides.map((s) => this.mapToEntity(s));
     }

@@ -1,6 +1,13 @@
 import { Application, Router } from "express";
-import { TenantController } from "../../interface-adapters/controllers/tenant.controller";
+import { TenantController } from "@/interface-adapters/controllers/tenant.controller";
 import { authenticate } from "@/middleware/authenticate.middleware";
+import { serviceTokenOr } from "@/middleware/service-token.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    CreateTenantDto,
+    UpdateTenantDto,
+    UpdateTenantFeaturesDto,
+} from "@/core/application/dtos/requests/tenant.dto";
 
 function tenants(app: Application, tenantController: TenantController) {
     const router = Router();
@@ -109,7 +116,7 @@ function tenants(app: Application, tenantController: TenantController) {
      *       401:
      *         description: Unauthorized
      */
-    router.get("/", authenticate, (req, res) =>
+    router.get("/", serviceTokenOr(authenticate), (req, res) =>
         tenantController.getAll(req, res),
     );
 
@@ -139,7 +146,7 @@ function tenants(app: Application, tenantController: TenantController) {
      *       409:
      *         description: Tenant with this slug already exists
      */
-    router.post("/", authenticate, (req, res) =>
+    router.post("/", authenticate, validateDto(CreateTenantDto), (req, res) =>
         tenantController.create(req, res),
     );
 
@@ -207,7 +214,7 @@ function tenants(app: Application, tenantController: TenantController) {
      *       404:
      *         description: Tenant not found
      */
-    router.put("/:id/features", authenticate, (req, res) =>
+    router.put("/:id/features", authenticate, validateDto(UpdateTenantFeaturesDto), (req, res) =>
         tenantController.updateFeatures(req, res),
     );
 
@@ -277,7 +284,7 @@ function tenants(app: Application, tenantController: TenantController) {
      *       409:
      *         description: Slug already in use
      */
-    router.put("/:id", authenticate, (req, res) =>
+    router.put("/:id", authenticate, validateDto(UpdateTenantDto), (req, res) =>
         tenantController.update(req, res),
     );
 

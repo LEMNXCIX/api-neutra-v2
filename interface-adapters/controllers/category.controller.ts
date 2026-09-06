@@ -30,7 +30,7 @@ export class CategoryController {
     };
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = req.tenantId;
         const page = req.query.page
             ? parseInt(req.query.page as string)
             : undefined;

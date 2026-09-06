@@ -3,6 +3,7 @@ import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.r
 import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
 import logger from "@/helpers/logger.helpers";
 import { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
+import type { MetaMessageResponse, MetaTemplateComponent } from "@/types/whatsapp-meta.types";
 
 export class WhatsAppService implements IWhatsAppService {
     private apiVersion: string;
@@ -54,7 +55,7 @@ export class WhatsAppService implements IWhatsAppService {
                 },
             });
 
-            const waMessageId = response.data.messages[0].id;
+            const waMessageId = (response.data as MetaMessageResponse).messages[0].id;
 
             // Save message to DB
             await this.whatsappMessageRepository.create({
@@ -69,8 +70,8 @@ export class WhatsAppService implements IWhatsAppService {
             });
 
             return waMessageId;
-        } catch (error: any) {
-            logger.error(`Error sending WhatsApp message: ${error.message}`);
+        } catch (error) {
+            logger.error(`Error sending WhatsApp message: ${(error as Error).message}`);
             throw error;
         }
     }
@@ -82,7 +83,7 @@ export class WhatsAppService implements IWhatsAppService {
         to: string,
         templateName: string,
         languageCode: string,
-        components: any[],
+        components: MetaTemplateComponent[],
         tenantId: string,
     ): Promise<string> {
         try {
@@ -130,8 +131,8 @@ export class WhatsAppService implements IWhatsAppService {
             });
 
             return waMessageId;
-        } catch (error: any) {
-            logger.error(`Error sending WhatsApp template: ${error.message}`);
+        } catch (error) {
+            logger.error(`Error sending WhatsApp template: ${(error as Error).message}`);
             throw error;
         }
     }

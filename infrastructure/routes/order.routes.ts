@@ -1,6 +1,7 @@
 import { Application, Router } from "express";
 import { authenticate } from "@/middleware/authenticate.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
+import { requireTenantType } from "@/middleware/tenant-feature.middleware";
 import { OrderController } from "@/interface-adapters/controllers/order.controller";
 
 function order(app: Application, orderController: OrderController) {
@@ -64,7 +65,9 @@ function order(app: Application, orderController: OrderController) {
      *       401:
      *         description: Unauthorized
      */
-    router.get("/statuses", authenticate, orderController.getStatuses);
+    router.get(
+        "/statuses",
+        requireTenantType("STORE", "HYBRID"), authenticate, orderController.getStatuses);
 
     /**
      * @swagger
@@ -86,7 +89,9 @@ function order(app: Application, orderController: OrderController) {
      *       401:
      *         description: Unauthorized
      */
-    router.post("/", authenticate, orderController.create);
+    router.post(
+        "/",
+        requireTenantType("STORE", "HYBRID"), authenticate, orderController.create);
 
     /**
      * @swagger
@@ -117,7 +122,9 @@ function order(app: Application, orderController: OrderController) {
      *       404:
      *         description: Order not found
      */
-    router.get("/getOrder", authenticate, orderController.getOne);
+    router.get(
+        "/getOrder",
+        requireTenantType("STORE", "HYBRID"), authenticate, orderController.getOne);
 
     /**
      * @swagger
@@ -144,7 +151,9 @@ function order(app: Application, orderController: OrderController) {
      *               items:
      *                 $ref: '#/components/schemas/Order'
      */
-    router.get("/getOrderByUser", authenticate, orderController.getByUser);
+    router.get(
+        "/getOrderByUser",
+        requireTenantType("STORE", "HYBRID"), authenticate, orderController.getByUser);
 
     // Admin routes
     /**
@@ -185,6 +194,7 @@ function order(app: Application, orderController: OrderController) {
      */
     router.get(
         "/stats",
+        requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("stats:read"),
         orderController.getStats,
@@ -212,6 +222,7 @@ function order(app: Application, orderController: OrderController) {
      */
     router.get(
         "/",
+        requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:read"),
         orderController.getAll,
@@ -233,6 +244,7 @@ function order(app: Application, orderController: OrderController) {
      */
     router.get(
         "/all",
+        requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:read"),
         orderController.getAll,
@@ -268,6 +280,7 @@ function order(app: Application, orderController: OrderController) {
      */
     router.put(
         "/changeStatus",
+        requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:write"),
         orderController.changeStatus,
@@ -306,6 +319,7 @@ function order(app: Application, orderController: OrderController) {
      */
     router.put(
         "/:id",
+        requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:write"),
         orderController.update,
@@ -336,7 +350,9 @@ function order(app: Application, orderController: OrderController) {
      *       404:
      *         description: Order not found
      */
-    router.get("/:id", authenticate, orderController.getOneById);
+    router.get(
+        "/:id",
+        requireTenantType("STORE", "HYBRID"), authenticate, orderController.getOneById);
 }
 
 export default order;

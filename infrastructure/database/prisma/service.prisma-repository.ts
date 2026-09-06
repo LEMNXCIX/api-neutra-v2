@@ -13,7 +13,7 @@ import {
 } from "@/core/domain/errors/domain-errors";
 
 type ServiceWithCategory = Prisma.ServiceGetPayload<{
-    include: { category: true };
+    include: { category: true; tenant: true };
 }>;
 
 export class PrismaServiceRepository implements IServiceRepository {
@@ -39,6 +39,11 @@ export class PrismaServiceRepository implements IServiceRepository {
                 : undefined,
             active: service.active,
             tenantId: service.tenantId,
+            tenant: service.tenant
+
+            ? { id: service.tenant.id, name: service.tenant.name, slug: service.tenant.slug }
+
+            : undefined,
             createdAt: service.createdAt,
             updatedAt: service.updatedAt,
         };
@@ -56,7 +61,7 @@ export class PrismaServiceRepository implements IServiceRepository {
                     categoryId: data.categoryId,
                     active: data.active ?? true,
                 },
-                include: { category: true },
+                include: { category: true, tenant: true },
             });
             return this.mapToEntity(service);
         } catch (error: unknown) {
@@ -74,7 +79,7 @@ export class PrismaServiceRepository implements IServiceRepository {
     async findById(tenantId: string, id: string): Promise<Service | null> {
         const service = await prisma.service.findFirst({
             where: { id, tenantId },
-            include: { category: true },
+            include: { category: true, tenant: true },
         });
         return service ? this.mapToEntity(service) : null;
     }
@@ -90,7 +95,7 @@ export class PrismaServiceRepository implements IServiceRepository {
 
         const services = await prisma.service.findMany({
             where,
-            include: { category: true },
+            include: { category: true, tenant: true },
             orderBy: { name: "asc" },
         });
         return services.map((s) => this.mapToEntity(s));
@@ -102,7 +107,7 @@ export class PrismaServiceRepository implements IServiceRepository {
     ): Promise<Service[]> {
         const services = await prisma.service.findMany({
             where: { tenantId, categoryId, active: true },
-            include: { category: true },
+            include: { category: true, tenant: true },
             orderBy: { name: "asc" },
         });
         return services.map((s) => this.mapToEntity(s));
@@ -124,7 +129,7 @@ export class PrismaServiceRepository implements IServiceRepository {
                     categoryId: data.categoryId,
                     active: data.active,
                 },
-                include: { category: true },
+                include: { category: true, tenant: true },
             });
             return this.mapToEntity(service);
         } catch (error: unknown) {

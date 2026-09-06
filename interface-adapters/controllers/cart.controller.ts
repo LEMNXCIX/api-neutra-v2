@@ -23,8 +23,10 @@ export class CartController {
     getItems = async (req: Request, res: Response) => {
         const { id } = req.user!;
         const tenantId = req.tenantId!;
+        // GetCartUseCase returns a flat product array, not a Cart entity —
+        // CartPresenter would read .items off the array and yield {}.
         const result = await this.getCartUseCase.execute(tenantId, id);
-        return res.json(present(result, CartPresenter.toResponse));
+        return res.json(result);
     };
 
     addToCart = async (req: Request, res: Response) => {

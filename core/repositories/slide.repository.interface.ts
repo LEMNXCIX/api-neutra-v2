@@ -24,7 +24,10 @@ export interface ISlideRepository {
         id: string,
         data: SlideshowUpdateData,
     ): Promise<Slideshow>;
-    findAll(tenantId: string | undefined): Promise<Slideshow[]>;
+    findAll(
+        tenantId: string | undefined,
+        opts?: { activeOnly?: boolean },
+    ): Promise<Slideshow[]>;
     delete(tenantId: string, id: string): Promise<void>;
     findById(tenantId: string, id: string): Promise<Slideshow | null>;
     getStats(tenantId: string): Promise<{
