@@ -152,7 +152,8 @@ model Tenant {
   banners        Banner[]
   slideshows     Slideshow[]
   coupons        Coupon[]
-  tenantFeatures TenantFeature[]
+  tenantFeatures       TenantFeature[]
+  loyaltyCampaigns     LoyaltyCampaign[]
   loyaltyLedgerEntries LoyaltyLedgerEntry[]
   loyaltyRewardClaims  LoyaltyRewardClaim[]
   roles          Role[]
@@ -503,8 +504,9 @@ model Coupon {
   // Personal reward coupons are owned by one user; shared coupons leave ownerId null.
   ownerId        String?
   owner          User?    @relation("CouponOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  isReward       Boolean  @default(false)
-  sourceCouponId String?
+  isReward           Boolean @default(false)
+  isLoyaltyTemplate Boolean @default(false)
+  sourceCouponId     String?
   sourceCoupon   Coupon?  @relation("CouponClones", fields: [sourceCouponId], references: [id], onDelete: SetNull)
   clones         Coupon[] @relation("CouponClones")
 
@@ -517,12 +519,14 @@ model Coupon {
   orders       Order[]       @relation("CouponOrders")
   appointments Appointment[] @relation("CouponAppointments")
   loyaltyRewardClaim LoyaltyRewardClaim?
+  loyaltyCampaigns   LoyaltyCampaign[]  @relation("CampaignRewardCoupon")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
   @@index([ownerId])
+  @@index([isLoyaltyTemplate])
   @@map("coupons")
 }
 
@@ -667,7 +671,7 @@ model Appointment {
   tenant          Tenant   @relation("TenantAppointments", fields: [tenantId], references: [id])
 
   loyaltyLedgerEntries LoyaltyLedgerEntry[]
-  
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
@@ -682,21 +686,94 @@ model Appointment {
 // LOYALTY MODULE
 // ============================================
 
+enum LoyaltyCampaignStatus {
+  DRAFT
+  ACTIVE
+  ENDED
+  ARCHIVED
+}
+
+enum LoyaltyCampaignSource {
+  BOOKING
+  STORE
+  ALL
+}
+
+enum LoyaltyCampaignMetric {
+  COUNT
+  SPEND
+}
+
+enum LoyaltySourceType {
+  APPOINTMENT
+  ORDER
+}
+
+enum LoyaltyLedgerEntryType {
+  ACCRUAL
+  REVERSAL
+}
+
+model LoyaltyCampaign {
+  id          String                 @id @default(uuid())
+  tenantId    String
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  source      LoyaltyCampaignSource
+  metric      LoyaltyCampaignMetric
+  targetValue Decimal                @db.Decimal(18, 2)
+  status      LoyaltyCampaignStatus  @default(DRAFT)
+  startsAt    DateTime
+  endsAt      DateTime
+  claimUntil  DateTime
+
+  rewardCouponId  String?
+  rewardCoupon    Coupon?                 @relation("CampaignRewardCoupon", fields: [rewardCouponId], references: [id], onDelete: Restrict)
+  rewardValidDays Int?
+  maxClaims       Int?
+  claimedCount    Int                     @default(0)
+
+  ledgerEntries LoyaltyLedgerEntry[]
+  rewardClaims  LoyaltyRewardClaim[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, source, status])
+  @@index([rewardCouponId])
+  @@map("loyalty_campaigns")
+}
+
 model LoyaltyLedgerEntry {
-  id                  String   @id @default(uuid())
-  tenantId            String
-  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userId              String
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceAppointmentId String
-  sourceAppointment   Appointment @relation(fields: [sourceAppointmentId], references: [id], onDelete: Cascade)
-  points              Int      @default(1)
+  id         String                   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaignId String?
+  campaign   LoyaltyCampaign?         @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  userId     String
+  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceType LoyaltySourceType?
+  sourceId   String?
+  value      Decimal?                 @db.Decimal(18, 2)
+  entryType  LoyaltyLedgerEntryType   @default(ACCRUAL)
+  reversalOfId String?                  @unique
+  reversalOf LoyaltyLedgerEntry?      @relation("LoyaltyLedgerReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversal   LoyaltyLedgerEntry?      @relation("LoyaltyLedgerReversal")
+
+  // Legacy booking-only fields remain until the application contract migration.
+  sourceAppointmentId String?
+  sourceAppointment   Appointment? @relation(fields: [sourceAppointmentId], references: [id], onDelete: Cascade)
+  points              Int?
   reason              String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
   @@unique([tenantId, sourceAppointmentId])
+  @@unique([campaignId, sourceType, sourceId, entryType])
   @@index([tenantId, userId, createdAt])
+  @@index([tenantId, campaignId, userId, createdAt])
   @@map("loyalty_ledger_entries")
 }
 
@@ -704,6 +781,8 @@ model LoyaltyRewardClaim {
   id         String                    @id @default(uuid())
   tenantId   String
   tenant     Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaignId String?
+  campaign   LoyaltyCampaign?          @relation(fields: [campaignId], references: [id], onDelete: Restrict)
   userId     String
   user       User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   milestone  Int                       @default(10)
@@ -714,7 +793,9 @@ model LoyaltyRewardClaim {
   updatedAt  DateTime                  @updatedAt
 
   @@unique([tenantId, userId])
+  @@unique([campaignId, userId])
   @@index([tenantId, userId])
+  @@index([tenantId, campaignId, userId])
   @@map("loyalty_reward_claims")
 }
 
