@@ -24,6 +24,9 @@ ALTER COLUMN "points" DROP NOT NULL;
 ALTER TABLE "loyalty_reward_claims"
 ADD COLUMN "campaignId" TEXT;
 
+ALTER TABLE "loyalty_reward_claims"
+ALTER COLUMN "milestone" DROP NOT NULL;
+
 -- CreateTable
 CREATE TABLE "loyalty_campaigns" (
     "id" TEXT NOT NULL,
