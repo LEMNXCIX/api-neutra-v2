@@ -17,14 +17,12 @@ export function getCookieDomain(req: Request): string | undefined {
 
     const domain = host.split(":")[0];
 
-    // Bare localhost: share the session across localhost subdomains
-    if (domain === "localhost") {
-        return "localhost";
-    }
-
-    // For local development with subdomains
-    if (domain.endsWith(DOMAIN_CONSTANTS.LOCAL_LOCALHOST)) {
-        return DOMAIN_CONSTANTS.LOCAL_LOCALHOST;
+    // Browsers reject Domain=.localhost, so local cookies must be host-only.
+    if (
+        domain === "localhost" ||
+        domain.endsWith(DOMAIN_CONSTANTS.LOCAL_LOCALHOST)
+    ) {
+        return undefined;
     }
 
     // For nip.io development (e.g. 172.27.16.1.nip.io)

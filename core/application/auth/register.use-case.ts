@@ -62,19 +62,30 @@ export class RegisterUseCase {
                     currentTenantId,
                 );
             }
-            throw new DuplicateEntityError("User", "email", data.email);
+
+            const passwordMatches = await this.passwordHasher.compare(
+                data.password,
+                user.password ?? "",
+            );
+
+            if (!passwordMatches) {
+                throw new BusinessRuleViolationError(
+                    "An account with this email already exists. Use the same password to join this tenant.",
+                    "USER_ALREADY_EXISTS",
+                );
+            }
+        } else {
+            const hashedPassword = await this.passwordHasher.hash(data.password);
+
+            const newUserData: UserCreateData = {
+                name: data.name,
+                email: data.email,
+                password: hashedPassword,
+                profilePic: data.profilePic,
+            };
+
+            user = await this.userRepository.create(newUserData);
         }
-
-        const hashedPassword = await this.passwordHasher.hash(data.password);
-
-        const newUserData: UserCreateData = {
-            name: data.name,
-            email: data.email,
-            password: hashedPassword,
-            profilePic: data.profilePic,
-        };
-
-        user = await this.userRepository.create(newUserData);
 
         const role = await this.roleRepository.findByName(
             currentTenantId,
