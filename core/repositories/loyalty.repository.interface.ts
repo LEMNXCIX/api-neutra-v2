@@ -1,9 +1,43 @@
 import {
+    LoyaltyCampaign,
+    LoyaltyCampaignMetric,
+    LoyaltyCampaignProgress,
+    LoyaltyCampaignRewardClaim,
+    LoyaltyCampaignSource,
+    LoyaltyCampaignStats,
+    LoyaltyCampaignStatus,
     LoyaltyLedgerEntry,
+    LoyaltySourceType,
     LoyaltyRewardClaim,
     LoyaltyTenantStats,
 } from "@/core/entities/loyalty.entity";
 import { Coupon } from "@/core/entities/coupon.entity";
+
+export type CreateLoyaltyCampaignData = {
+    name: string;
+    description?: string | null;
+    source: LoyaltyCampaignSource;
+    metric: LoyaltyCampaignMetric;
+    targetValue: string;
+    startsAt: Date;
+    endsAt: Date;
+    claimUntil: Date;
+    rewardCouponId: string;
+    rewardValidDays: number;
+    maxClaims?: number | null;
+};
+
+export type UpdateLoyaltyCampaignData = Partial<
+    Omit<CreateLoyaltyCampaignData, "rewardCouponId" | "rewardValidDays">
+> & {
+    rewardCouponId?: string;
+    rewardValidDays?: number;
+};
+
+export type LoyaltyCampaignClaimResult = {
+    claim: LoyaltyCampaignRewardClaim;
+    coupon: Coupon;
+};
 
 export type CreateLoyaltyLedgerEntryData = {
     userId: string;
@@ -19,6 +53,46 @@ export type LoyaltyRewardClaimResult = {
 };
 
 export interface ILoyaltyRepository {
+    createCampaign(
+        tenantId: string,
+        data: CreateLoyaltyCampaignData,
+    ): Promise<LoyaltyCampaign>;
+    updateCampaign(
+        tenantId: string,
+        campaignId: string,
+        data: UpdateLoyaltyCampaignData,
+    ): Promise<LoyaltyCampaign>;
+    deleteCampaign(tenantId: string, campaignId: string): Promise<void>;
+    listCampaigns(tenantId: string): Promise<LoyaltyCampaign[]>;
+    getCampaign(
+        tenantId: string,
+        campaignId: string,
+    ): Promise<LoyaltyCampaign | null>;
+    findActiveCampaignAt(
+        tenantId: string,
+        sourceType: LoyaltySourceType,
+        at: Date,
+    ): Promise<LoyaltyCampaign | null>;
+    getCampaignProgress(
+        tenantId: string,
+        campaignId: string,
+        userId: string,
+    ): Promise<LoyaltyCampaignProgress>;
+    getCampaignStats(
+        tenantId: string,
+        campaignId: string,
+    ): Promise<LoyaltyCampaignStats>;
+    transitionCampaignStatus(
+        tenantId: string,
+        campaignId: string,
+        from: LoyaltyCampaignStatus,
+        to: LoyaltyCampaignStatus,
+    ): Promise<LoyaltyCampaign | null>;
+    claimCampaignReward(
+        tenantId: string,
+        campaignId: string,
+        userId: string,
+    ): Promise<LoyaltyCampaignClaimResult>;
     findLedgerEntries(
         tenantId: string,
         userId?: string,
