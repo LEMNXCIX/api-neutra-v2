@@ -1,6 +1,6 @@
 /**
  * Email Service Test Script
- * Run with: npx ts-node scripts/test-email.ts
+ * Run with: npx tsx scripts/test-email.ts
  */
 
 // Load environment variables from .env file

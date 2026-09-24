@@ -1,6 +1,6 @@
 /**
  * Seed Booking Data
- * Run with: npx ts-node scripts/seed-booking.ts
+ * Run with: npx tsx scripts/seed-booking.ts
  */
 
 import dotenv from 'dotenv';

@@ -28,3 +28,7 @@ yarn-error.log*
 /dist
 /docs
 /generated/prisma
+# Local Pi runtime state
+.atl/
+odd/
+.playwright-mcp
