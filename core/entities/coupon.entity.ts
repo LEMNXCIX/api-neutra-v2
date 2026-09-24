@@ -9,6 +9,9 @@ export interface Coupon {
     type: CouponType;
     value: number;
     description?: string;
+    ownerId?: string;
+    isReward?: boolean;
+    sourceCouponId?: string;
     minPurchaseAmount?: number;
     maxDiscountAmount?: number;
     usageLimit?: number;
@@ -20,6 +23,25 @@ export interface Coupon {
     applicableServices: string[];
     createdAt: Date;
     updatedAt: Date;
+}
+
+export function isPersonalCoupon(
+    coupon: Pick<Coupon, "ownerId">,
+): boolean {
+    return coupon.ownerId !== undefined && coupon.ownerId !== null;
+}
+
+export function isCouponOwnedBy(
+    coupon: Pick<Coupon, "ownerId">,
+    userId?: string,
+): boolean {
+    return !isPersonalCoupon(coupon) || coupon.ownerId === userId;
+}
+
+export function isRewardCoupon(
+    coupon: Pick<Coupon, "isReward">,
+): boolean {
+    return coupon.isReward === true;
 }
 
 export function isExpired(coupon: Coupon): boolean {

@@ -1,6 +1,41 @@
 import { Request, Response, NextFunction } from "express";
 import { Container } from "@/infrastructure/config/container";
 import { ROLE_CONSTANTS } from "@/core/domain/constants";
+import { TenantErrorCodes } from "@/types/error-codes";
+
+function hasConcreteTenant(req: Request): boolean {
+    if (typeof req.tenantId !== "string") return false;
+
+    const tenantId = req.tenantId.trim();
+    return tenantId.length > 0 && tenantId.toLowerCase() !== "all";
+}
+
+/**
+ * Rejects cross-tenant (`all`) or missing tenant context for routes that
+ * must always query one tenant.
+ */
+export function requireConcreteTenantContext(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) {
+    if (!hasConcreteTenant(req)) {
+        return res.status(400).json({
+            success: false,
+            statusCode: 400,
+            message: "A concrete tenant context is required",
+            errors: [
+                {
+                    code: TenantErrorCodes.TENANT_REQUIRED,
+                    message:
+                        "Provide a concrete tenant via tenantId or x-tenant-id; 'all' is not allowed.",
+                },
+            ],
+        });
+    }
+
+    next();
+}
 
 function isSuperAdmin(req: Request): boolean {
     const role = (req.user as { role?: { name?: string } } | undefined)?.role;

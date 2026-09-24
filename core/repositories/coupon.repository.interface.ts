@@ -34,8 +34,16 @@ export type UpdateCouponData = {
  */
 export interface ICouponRepository {
     findAll(tenantId: string | undefined): Promise<Coupon[]>;
-    findById(tenantId: string, id: string): Promise<Coupon | null>;
-    findByCode(tenantId: string, code: string): Promise<Coupon | null>;
+    findById(
+        tenantId: string,
+        id: string,
+        userId?: string,
+    ): Promise<Coupon | null>;
+    findByCode(
+        tenantId: string,
+        code: string,
+        userId?: string,
+    ): Promise<Coupon | null>;
     findActive(tenantId: string | undefined): Promise<Coupon[]>;
     findAllPaginated(
         tenantId: string | undefined,
@@ -57,7 +65,17 @@ export interface ICouponRepository {
         data: UpdateCouponData,
     ): Promise<Coupon>;
     delete(tenantId: string, id: string): Promise<void>;
-    incrementUsage(tenantId: string, id: string): Promise<void>;
+    incrementUsage(
+        tenantId: string,
+        id: string,
+        userId?: string,
+    ): Promise<void>;
+    cloneRewardCoupon(
+        tenantId: string,
+        templateId: string,
+        userId: string,
+        code?: string,
+    ): Promise<Coupon>;
     getStats(tenantId: string): Promise<{
         totalCoupons: number;
         activeCoupons: number;

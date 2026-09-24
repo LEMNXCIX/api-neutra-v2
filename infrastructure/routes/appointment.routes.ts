@@ -2,7 +2,15 @@ import { Application, Router } from "express";
 import { authenticate } from "@/middleware/authenticate.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { AppointmentController } from "@/interface-adapters/controllers/appointment.controller";
-import { requireTenantType } from "@/middleware/tenant-feature.middleware";
+import {
+    requireConcreteTenantContext,
+    requireTenantType,
+} from "@/middleware/tenant-feature.middleware";
+import {
+    APPOINTMENT_OPERATIONAL_ROLES,
+    requireAnyRole,
+    requirePermission,
+} from "@/middleware/authorization.middleware";
 
 function appointments(
     app: Application,
@@ -41,7 +49,17 @@ function appointments(
      *           format: date-time
      *         status:
      *           type: string
-     *           enum: [PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW]
+     *           enum: [PENDING, CONFIRMED, IN_PROGRESS, NEEDS_REVIEW, COMPLETED, CANCELLED, NO_SHOW]
+     *         statusChangedAt:
+     *           type: string
+     *           format: date-time
+     *           nullable: true
+     *         statusChangeReason:
+     *           type: string
+     *           nullable: true
+     *         statusChangedById:
+     *           type: string
+     *           nullable: true
      *         notes:
      *           type: string
      *         cancellationReason:
@@ -174,7 +192,7 @@ function appointments(
      *         name: status
      *         schema:
      *           type: string
-     *           enum: [PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW]
+     *           enum: [PENDING, CONFIRMED, IN_PROGRESS, NEEDS_REVIEW, COMPLETED, CANCELLED, NO_SHOW]
      *         description: Filter by status
      *       - in: query
      *         name: startDate
@@ -205,6 +223,65 @@ function appointments(
         requireTenantType("BOOKING", "HYBRID"),
         authenticate, resolveSuperAdminTenant, (req, res) =>
         appointmentController.getAll(req, res),
+    );
+
+    /**
+     * @swagger
+     * /appointments/attention:
+     *   get:
+     *     summary: Get appointments needing review
+     *     tags: [Appointments]
+     *     security:
+     *       - bearerAuth: []
+     *     parameters:
+     *       - in: query
+     *         name: page
+     *         schema:
+     *           type: integer
+     *           minimum: 1
+     *           default: 1
+     *       - in: query
+     *         name: limit
+     *         schema:
+     *           type: integer
+     *           minimum: 1
+     *           maximum: 100
+     *           default: 10
+     *       - in: query
+     *         name: tenantId
+     *         schema:
+     *           type: string
+     *         description: Concrete tenant ID for SUPER_ADMIN; `all` is not allowed
+     *       - in: header
+     *         name: x-tenant-id
+     *         schema:
+     *           type: string
+     *         description: Concrete tenant ID header for SUPER_ADMIN
+     *     responses:
+     *       200:
+     *         description: Paginated appointments requiring review
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: array
+     *               items:
+     *                 $ref: '#/components/schemas/Appointment'
+     *       400:
+     *         description: Missing or non-concrete tenant context
+     *       401:
+     *         description: Unauthorized
+     *       403:
+     *         description: Forbidden
+     */
+    router.get(
+        "/attention",
+        requireTenantType("BOOKING", "HYBRID"),
+        authenticate,
+        resolveSuperAdminTenant,
+        requireConcreteTenantContext,
+        requirePermission("appointments:read"),
+        requireAnyRole(APPOINTMENT_OPERATIONAL_ROLES),
+        (req, res) => appointmentController.getAttention(req, res),
     );
 
     /**
@@ -263,7 +340,7 @@ function appointments(
      *           schema:
      *             type: object
      *             properties:
-     *               cancellationReason:
+     *               reason:
      *                 type: string
      *     responses:
      *       200:
@@ -324,8 +401,10 @@ function appointments(
     router.put(
         "/:id/status",
         requireTenantType("BOOKING", "HYBRID"),
-        authenticate, (req, res) =>
-        appointmentController.updateStatus(req, res),
+        authenticate,
+        requirePermission("appointments:write"),
+        requireAnyRole(APPOINTMENT_OPERATIONAL_ROLES),
+        (req, res) => appointmentController.updateStatus(req, res),
     );
 
     /**
@@ -354,8 +433,10 @@ function appointments(
     router.delete(
         "/:id",
         requireTenantType("BOOKING", "HYBRID"),
-        authenticate, (req, res) =>
-        appointmentController.delete(req, res),
+        authenticate,
+        requirePermission("appointments:delete"),
+        requireAnyRole(APPOINTMENT_OPERATIONAL_ROLES),
+        (req, res) => appointmentController.delete(req, res),
     );
 }
 

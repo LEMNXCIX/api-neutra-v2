@@ -41,6 +41,7 @@ export class CreateAppointmentUseCase {
         tenantId: string,
         data: CreateAppointmentDTO,
         origin?: string,
+        actorId?: string,
     ): Promise<UseCaseResult> {
         if (
             !data.userId ||
@@ -78,6 +79,13 @@ export class CreateAppointmentUseCase {
         }
 
         const startTime = new Date(data.startTime);
+        if (startTime.getTime() <= Date.now()) {
+            throw new BusinessRuleViolationError(
+                "The appointment start time must be in the future",
+                "START_TIME_NOT_IN_FUTURE",
+            );
+        }
+
         const endTime = new Date(startTime);
         endTime.setMinutes(endTime.getMinutes() + service.duration);
 
@@ -139,6 +147,7 @@ export class CreateAppointmentUseCase {
                     orderTotal: service.price,
                     serviceIds: [service.id],
                 },
+                data.userId,
             );
 
             if (!validationResult.success || !validationResult.data?.valid) {
@@ -154,12 +163,12 @@ export class CreateAppointmentUseCase {
             total = subtotal - discountAmount;
             if (total < 0) total = 0;
 
-            await this.couponRepository.incrementUsage(tenantId, couponId);
         }
 
         const baseData: AppointmentCreateData = { ...data };
         const appointmentData = {
             ...baseData,
+            statusChangedById: actorId ?? data.userId,
             couponId,
             discountAmount,
             subtotal,

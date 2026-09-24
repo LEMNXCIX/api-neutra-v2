@@ -7,6 +7,7 @@ import { PrismaProductRepository } from "../database/prisma/product.prisma-repos
 import { PrismaCategoryRepository } from "../database/prisma/category.prisma-repository";
 import { PrismaOrderRepository } from "../database/prisma/order.prisma-repository";
 import { PrismaCouponRepository } from "../database/prisma/coupon.prisma-repository";
+import { PrismaLoyaltyRepository } from "../database/prisma/loyalty.prisma-repository";
 import { PrismaFeatureRepository } from "../database/prisma/feature.prisma-repository";
 import { PrismaBannerRepository } from "../database/prisma/banner.prisma-repository";
 import { PrismaSlideRepository } from "../database/prisma/slide.prisma-repository";
@@ -26,6 +27,7 @@ import { IProductRepository } from "@/core/repositories/product.repository.inter
 import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
 import { IOrderRepository } from "@/core/repositories/order.repository.interface";
 import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
+import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import { IBannerRepository } from "@/core/repositories/banner.repository.interface";
 import { ISlideRepository } from "@/core/repositories/slide.repository.interface";
@@ -51,6 +53,7 @@ import { CouponController } from "@/interface-adapters/controllers/coupon.contro
 import { FeatureController } from "@/interface-adapters/controllers/feature.controller";
 import { SlideController } from "@/interface-adapters/controllers/slide.controller";
 import { AppointmentController } from "@/interface-adapters/controllers/appointment.controller";
+import { LoyaltyController } from "@/interface-adapters/controllers/loyalty.controller";
 import { StaffController } from "@/interface-adapters/controllers/staff.controller";
 import { ServiceController } from "@/interface-adapters/controllers/service.controller";
 import { RoleController } from "@/interface-adapters/controllers/role.controller";
@@ -149,6 +152,7 @@ import { GetSliderStatsUseCase } from "@/core/application/slide/get-slider-stats
 // Use Cases - Booking
 import { CreateAppointmentUseCase } from "@/core/application/booking/create-appointment.use-case";
 import { GetAppointmentsUseCase } from "@/core/application/booking/get-appointments.use-case";
+import { GetAppointmentsNeedingReviewUseCase } from "@/core/application/booking/get-appointments-needing-review.use-case";
 import { GetAppointmentByIdUseCase } from "@/core/application/booking/get-appointment-by-id.use-case";
 import { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appointment.use-case";
 import { GetAvailabilityUseCase } from "@/core/application/booking/get-availability.use-case";
@@ -165,6 +169,15 @@ import { UpdateStaffUseCase } from "@/core/application/booking/update-staff.use-
 import { DeleteStaffUseCase } from "@/core/application/booking/delete-staff.use-case";
 import { AssignStaffServiceUseCase } from "@/core/application/booking/assign-staff-service.use-case";
 import { SyncStaffServicesUseCase } from "@/core/application/booking/sync-staff-services.use-case";
+import { SweepAppointmentReviewsUseCase } from "@/core/application/booking/sweep-appointment-reviews.use-case";
+
+// Use Cases - Loyalty
+import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
+import { ClaimLoyaltyRewardUseCase } from "@/core/application/loyalty/claim-loyalty-reward.use-case";
+import { GetTenantLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
+import { GetLoyaltyConfigUseCase } from "@/core/application/loyalty/get-loyalty-config.use-case";
+import { UpdateLoyaltyConfigUseCase } from "@/core/application/loyalty/update-loyalty-config.use-case";
+import { GetAllTenantsLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-all-tenants-loyalty-overview.use-case";
 
 // Use Cases - Role
 import { CreateRoleUseCase } from "@/core/application/roles/create-role.use-case";
@@ -227,10 +240,16 @@ export class Container {
     private static categoryRepository = new PrismaCategoryRepository();
     private static orderRepository = new PrismaOrderRepository();
     private static couponRepository = new PrismaCouponRepository();
+    private static loyaltyRepository = new PrismaLoyaltyRepository();
     private static featureRepository = new PrismaFeatureRepository();
     private static bannerRepository = new PrismaBannerRepository();
     private static slideRepository = new PrismaSlideRepository();
     private static appointmentRepository = new PrismaAppointmentRepository();
+    private static sweepAppointmentReviewsUseCase =
+        new SweepAppointmentReviewsUseCase(
+            this.appointmentRepository,
+            this.logger,
+        );
     private static serviceRepository = new PrismaServiceRepository();
     private static permissionRepository = new PrismaPermissionRepository();
     private static tenantRepository = new TenantPrismaRepository();
@@ -438,6 +457,7 @@ export class Container {
                 this.tenantRepository,
             ),
             new GetAppointmentsUseCase(this.appointmentRepository),
+            new GetAppointmentsNeedingReviewUseCase(this.appointmentRepository),
             new GetAppointmentByIdUseCase(this.appointmentRepository),
             new CancelAppointmentUseCase(
                 this.appointmentRepository,
@@ -456,6 +476,32 @@ export class Container {
                 this.featureRepository,
             ),
             new DeleteAppointmentUseCase(this.appointmentRepository),
+        );
+    }
+
+    public static getLoyaltyController(): LoyaltyController {
+        return new LoyaltyController(
+            new GetCustomerLoyaltySummaryUseCase(
+                this.loyaltyRepository,
+                this.tenantRepository,
+            ),
+            new ClaimLoyaltyRewardUseCase(
+                this.loyaltyRepository,
+                this.tenantRepository,
+            ),
+            new GetTenantLoyaltyOverviewUseCase(
+                this.loyaltyRepository,
+                this.tenantRepository,
+            ),
+            new GetLoyaltyConfigUseCase(this.tenantRepository),
+            new UpdateLoyaltyConfigUseCase(
+                this.tenantRepository,
+                this.couponRepository,
+            ),
+            new GetAllTenantsLoyaltyOverviewUseCase(
+                this.loyaltyRepository,
+                this.tenantRepository,
+            ),
         );
     }
 
@@ -612,6 +658,10 @@ export class Container {
         return this.appointmentRepository;
     }
 
+    public static getSweepAppointmentReviewsUseCase(): SweepAppointmentReviewsUseCase {
+        return this.sweepAppointmentReviewsUseCase;
+    }
+
     public static getCartRepository(): ICartRepository {
         return this.cartRepository;
     }
@@ -634,6 +684,10 @@ export class Container {
 
     public static getCouponRepository(): ICouponRepository {
         return this.couponRepository;
+    }
+
+    public static getLoyaltyRepository(): ILoyaltyRepository {
+        return this.loyaltyRepository;
     }
 
     public static getBannerRepository(): IBannerRepository {

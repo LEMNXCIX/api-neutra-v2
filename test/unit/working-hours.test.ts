@@ -64,6 +64,35 @@ describe("GetAvailabilityUseCase — working hours", () => {
         expect(slots).toHaveLength(16);
     });
 
+    it("excludes slots at or before now using the client offset", async () => {
+        // 15:00 UTC is 10:00 for UTC-5 (Date.getTimezoneOffset = 300).
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date("2030-01-04T15:00:00.000Z"));
+
+        try {
+            const deps = makeDeps({});
+            const uc = new GetAvailabilityUseCase(
+                deps.appointmentRepo,
+                deps.staffRepo,
+                deps.serviceRepo,
+                deps.tenantRepo,
+            );
+            const result = await uc.execute("t1", {
+                ...base,
+                date: "2030-01-04",
+                timezoneOffset: "300",
+            });
+            const slots = result.data as string[];
+
+            expect(slots).not.toContain("09:00");
+            expect(slots).not.toContain("09:30");
+            expect(slots).not.toContain("10:00");
+            expect(slots[0]).toBe("10:30");
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
     it("returns [] on the staff member's day off", async () => {
         const deps = makeDeps({ staff: { workingHours: { sunday: null } } });
         const uc = new GetAvailabilityUseCase(
@@ -137,8 +166,8 @@ describe("GetAvailabilityUseCase — working hours", () => {
             staff: { workingHours: { friday: { start: "09:00", end: "17:00" } } },
             appointments: [
                 {
-                    startTime: new Date("2030-01-04T10:00:00"),
-                    endTime: new Date("2030-01-04T11:30:00"),
+                    startTime: new Date("2030-01-04T10:00:00.000Z"),
+                    endTime: new Date("2030-01-04T11:30:00.000Z"),
                     status: "CONFIRMED",
                 },
             ],
@@ -208,6 +237,29 @@ describe("CreateAppointmentUseCase — schedule validation", () => {
             deps.tenantRepo,
         );
     };
+
+    it("rejects appointments starting at the current instant", async () => {
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date("2030-01-04T15:00:00.000Z"));
+
+        try {
+            const uc = makeUseCase({});
+            await expect(
+                uc.execute("t1", {
+                    userId: "u1",
+                    serviceId: "svc1",
+                    staffId: "s1",
+                    startTime: "2030-01-04T15:00:00.000Z" as never,
+                } as never),
+            ).rejects.toMatchObject({
+                name: "BusinessRuleViolationError",
+                code: "START_TIME_NOT_IN_FUTURE",
+                message: "The appointment start time must be in the future",
+            });
+        } finally {
+            jest.useRealTimers();
+        }
+    });
 
     it("rejects appointments outside working hours", async () => {
         const uc = makeUseCase({

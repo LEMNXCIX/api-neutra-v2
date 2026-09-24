@@ -43,11 +43,12 @@ import { apiReference } from "@scalar/express-api-reference";
 import serviceRoutes from "@/infrastructure/routes/service.routes";
 import staffRoutes from "@/infrastructure/routes/staff.routes";
 import appointmentRoutes from "@/infrastructure/routes/appointment.routes";
+import loyaltyRoutes from "@/infrastructure/routes/loyalty.routes";
 
 const { port, ENVIRONMENT } = config;
 
 // Process-level failure handlers: log and keep serving; a graceful exit is
-// preferable to a silent hang (Node 20 keeps running on unhandled rejections).
+// preferable to a silent hang (Node 22 keeps running on unhandled rejections).
 process.on("unhandledRejection", (reason) => {
     logger.error("Unhandled promise rejection", reason);
 });
@@ -137,6 +138,7 @@ permission(app, Container.getPermissionController());
 serviceRoutes(app, Container.getServiceController());
 staffRoutes(app, Container.getStaffController());
 appointmentRoutes(app, Container.getAppointmentController());
+loyaltyRoutes(app, Container.getLoyaltyController());
 banner(app, Container.getBannerController());
 coupon(app, Container.getCouponController());
 features(app, Container.getFeatureController());
@@ -169,6 +171,8 @@ if (require.main === module) {
     // Background workers only when running as the process entry
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require("./infrastructure/workers/notification.worker");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./infrastructure/workers/appointment-review.worker");
 
     const portNumber = typeof port === "string" ? parseInt(port, 10) : port;
     app.listen(portNumber, "0.0.0.0", () => {

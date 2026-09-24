@@ -9,6 +9,12 @@ export interface CreateAppointmentDTO {
     couponCode?: string;
 }
 
+export interface AppointmentMutationActor {
+    id: string;
+    canManage: boolean;
+    canDelete: boolean;
+}
+
 export interface UpdateAppointmentDTO {
     startTime?: Date;
     serviceId?: string;

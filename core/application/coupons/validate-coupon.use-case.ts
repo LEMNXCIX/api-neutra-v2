@@ -2,12 +2,14 @@ import { ICouponRepository } from "@/core/repositories/coupon.repository.interfa
 import { ValidateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
 import { CouponValidationResult } from "@/core/application/dtos/responses/coupon/coupon-validation.response";
 import {
-    CouponType,
     isExpired,
     hasReachedUsageLimit,
     isApplicableToProduct,
     isApplicableToCategory,
     calculateDiscount,
+    isCouponOwnedBy,
+    isPersonalCoupon,
+    isRewardCoupon,
 } from "@/core/entities/coupon.entity";
 import {
     EntityNotFoundError,
@@ -21,14 +23,42 @@ export class ValidateCouponUseCase {
     async execute(
         tenantId: string,
         data: ValidateCouponDTO,
+        userId?: string,
     ): Promise<UseCaseResult<CouponValidationResult>> {
         const coupon = await this.couponRepository.findByCode(
             tenantId,
             data.code,
+            userId,
         );
 
         if (!coupon) {
             throw new EntityNotFoundError("Coupon", data.code);
+        }
+
+        if (!isCouponOwnedBy(coupon, userId)) {
+            throw new BusinessRuleViolationError(
+                "Coupon is not available for this user",
+                "COUPON_NOT_OWNED",
+            );
+        }
+
+        if (isRewardCoupon(coupon) && !isPersonalCoupon(coupon)) {
+            throw new BusinessRuleViolationError(
+                "Reward coupon is not assigned to a customer",
+                "REWARD_COUPON_NOT_OWNED",
+            );
+        }
+
+        if (
+            isRewardCoupon(coupon) &&
+            (!data.serviceIds?.length ||
+                data.productIds?.length ||
+                data.categoryIds?.length)
+        ) {
+            throw new BusinessRuleViolationError(
+                "Reward coupons can only be used for booking services",
+                "REWARD_COUPON_SERVICES_ONLY",
+            );
         }
 
         if (!coupon.active) {

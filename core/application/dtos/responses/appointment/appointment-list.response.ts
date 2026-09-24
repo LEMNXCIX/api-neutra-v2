@@ -15,9 +15,13 @@ import {
 
 export interface IAppointmentListResponse {
     id: string;
+    userId: string;
     startTime: Date;
     endTime: Date;
     status: AppointmentStatus;
+    statusChangedAt?: Date | null;
+    statusChangeReason?: string | null;
+    statusChangedById?: string | null;
     notes?: string;
     total: number;
     createdAt: Date;
@@ -32,9 +36,13 @@ export class AppointmentListResponse {
     static fromEntity(appointment: Appointment): IAppointmentListResponse {
         return {
             id: appointment.id,
+            userId: appointment.userId,
             startTime: appointment.startTime,
             endTime: appointment.endTime,
             status: appointment.status,
+            statusChangedAt: appointment.statusChangedAt ?? null,
+            statusChangeReason: appointment.statusChangeReason ?? null,
+            statusChangedById: appointment.statusChangedById ?? null,
             notes: appointment.notes,
             total: appointment.total ?? 0,
             createdAt: appointment.createdAt,

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Coupon as PrismaCoupon, Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
 import {
@@ -7,18 +8,60 @@ import {
 } from "@/core/repositories/coupon.repository.interface";
 import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
+    BusinessRuleViolationError,
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
 
+type PrismaCouponWithPersonalFields = PrismaCoupon & {
+    ownerId?: string | null;
+    isReward?: boolean | null;
+    sourceCouponId?: string | null;
+};
+
+type CouponWhereInput = Prisma.CouponWhereInput & {
+    ownerId?: Prisma.StringNullableFilter<"Coupon"> | string | null;
+    isReward?: Prisma.BoolFilter<"Coupon"> | boolean;
+};
+
+type CouponUncheckedCreateInput = Prisma.CouponUncheckedCreateInput & {
+    ownerId?: string;
+    isReward?: boolean;
+    sourceCouponId?: string;
+};
+
+function toCouponType(value: string): CouponType {
+    if (value === CouponType.PERCENT || value === CouponType.FIXED) {
+        return value;
+    }
+    throw new Error(`Unsupported coupon type: ${value}`);
+}
+
+function sharedCouponWhere(
+    conditions: Prisma.CouponWhereInput = {},
+): CouponWhereInput {
+    return { ...conditions, ownerId: null };
+}
+
+function couponOwnerFilters(
+    userId?: string,
+): Array<Prisma.CouponWhereInput & { ownerId: string | null }> {
+    return userId
+        ? [{ ownerId: null }, { ownerId: userId }]
+        : [{ ownerId: null }];
+}
+
 export class PrismaCouponRepository implements ICouponRepository {
-    private mapToEntity(data: PrismaCoupon): Coupon {
+    private mapToEntity(data: PrismaCouponWithPersonalFields): Coupon {
         return {
             id: data.id,
             code: data.code,
-            type: data.type as CouponType,
+            type: toCouponType(data.type),
             value: data.value,
             description: data.description ?? undefined,
+            ownerId: data.ownerId ?? undefined,
+            isReward: data.isReward ?? false,
+            sourceCouponId: data.sourceCouponId ?? undefined,
             minPurchaseAmount: data.minPurchaseAmount ?? undefined,
             maxDiscountAmount: data.maxDiscountAmount ?? undefined,
             usageLimit: data.usageLimit ?? undefined,
@@ -35,37 +78,48 @@ export class PrismaCouponRepository implements ICouponRepository {
 
     async findAll(tenantId: string | undefined): Promise<Coupon[]> {
         const coupons = await prisma.coupon.findMany({
-            where: { ...(tenantId && { tenantId }) },
+            where: sharedCouponWhere(tenantId ? { tenantId } : {}),
             orderBy: { createdAt: "desc" },
         });
         return coupons.map(this.mapToEntity);
     }
 
-    async findById(tenantId: string, id: string): Promise<Coupon | null> {
-        const coupon = await prisma.coupon.findFirst({
-            where: { id, tenantId },
-        });
+    async findById(
+        tenantId: string,
+        id: string,
+        userId?: string,
+    ): Promise<Coupon | null> {
+        const where: CouponWhereInput = {
+            id,
+            tenantId,
+            OR: couponOwnerFilters(userId),
+        };
+        const coupon = await prisma.coupon.findFirst({ where });
         return coupon ? this.mapToEntity(coupon) : null;
     }
 
-    async findByCode(tenantId: string, code: string): Promise<Coupon | null> {
-        const coupon = await prisma.coupon.findFirst({
-            where: {
-                tenantId,
-                code: code.toUpperCase(),
-            },
-        });
+    async findByCode(
+        tenantId: string,
+        code: string,
+        userId?: string,
+    ): Promise<Coupon | null> {
+        const where: CouponWhereInput = {
+            tenantId,
+            code: code.toUpperCase(),
+            OR: couponOwnerFilters(userId),
+        };
+        const coupon = await prisma.coupon.findFirst({ where });
         return coupon ? this.mapToEntity(coupon) : null;
     }
 
     async findActive(tenantId: string | undefined): Promise<Coupon[]> {
         const now = new Date();
         const coupons = await prisma.coupon.findMany({
-            where: {
+            where: sharedCouponWhere({
                 ...(tenantId && { tenantId }),
                 active: true,
                 expiresAt: { gte: now },
-            },
+            }),
             orderBy: { createdAt: "desc" },
         });
         return coupons.map(this.mapToEntity);
@@ -87,9 +141,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         const { search, type, status, page, limit } = options;
         const now = new Date();
 
-        const where: Prisma.CouponWhereInput = {
-            ...(tenantId && { tenantId }),
-        };
+        const where = sharedCouponWhere(tenantId ? { tenantId } : {});
 
         if (search) {
             where.code = {
@@ -99,7 +151,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         }
 
         if (type && type !== "all") {
-            where.type = type as CouponType;
+            where.type = toCouponType(type);
         }
 
         if (status && status !== "all") {
@@ -238,13 +290,108 @@ export class PrismaCouponRepository implements ICouponRepository {
         }
     }
 
-    async incrementUsage(tenantId: string, id: string): Promise<void> {
-        await prisma.coupon.update({
-            where: { id, tenantId },
-            data: {
-                usageCount: { increment: 1 },
-            },
+    async incrementUsage(
+        tenantId: string,
+        id: string,
+        userId?: string,
+    ): Promise<void> {
+        const where: CouponWhereInput = {
+            id,
+            tenantId,
+            OR: [
+                { ownerId: null },
+                ...(userId
+                    ? [
+                          {
+                              ownerId: userId,
+                              isReward: true,
+                              usageCount: { lt: 1 },
+                          },
+                      ]
+                    : []),
+            ],
+        };
+        const result = await prisma.coupon.updateMany({
+            where,
+            data: { usageCount: { increment: 1 } },
         });
+        if (result.count === 0) {
+            throw new BusinessRuleViolationError(
+                "The coupon is not available for this user",
+                "COUPON_UNAVAILABLE",
+            );
+        }
+    }
+
+    async cloneRewardCoupon(
+        tenantId: string,
+        templateId: string,
+        userId: string,
+        code?: string,
+    ): Promise<Coupon> {
+        try {
+            const coupon = await prisma.$transaction(async (tx) => {
+                const where: CouponWhereInput = {
+                    id: templateId,
+                    tenantId,
+                    ownerId: null,
+                    isReward: false,
+                    active: true,
+                    expiresAt: { gte: new Date() },
+                };
+                const template = await tx.coupon.findFirst({ where });
+                if (!template) {
+                    throw new EntityNotFoundError("Coupon", templateId);
+                }
+                const expiresAt = new Date(template.expiresAt).getTime();
+                if (
+                    !template.active ||
+                    !Number.isFinite(expiresAt) ||
+                    expiresAt <= Date.now()
+                ) {
+                    throw new BusinessRuleViolationError(
+                        "The reward coupon template is inactive or expired",
+                        "INVALID_LOYALTY_REWARD_TEMPLATE",
+                    );
+                }
+
+                const data: CouponUncheckedCreateInput = {
+                    tenantId,
+                    code:
+                        code?.trim().toUpperCase() ||
+                        `LOYALTY-${randomUUID().replace(/-/g, "").toUpperCase()}`,
+                    type: toCouponType(template.type),
+                    value: template.value,
+                    description: template.description,
+                    minPurchaseAmount: template.minPurchaseAmount,
+                    maxDiscountAmount: template.maxDiscountAmount,
+                    usageLimit: 1,
+                    usageCount: 0,
+                    active: true,
+                    expiresAt: template.expiresAt,
+                    applicableProducts: template.applicableProducts,
+                    applicableCategories: template.applicableCategories,
+                    applicableServices: template.applicableServices,
+                    ownerId: userId,
+                    isReward: true,
+                    sourceCouponId: templateId,
+                };
+                return tx.coupon.create({ data });
+            });
+            return this.mapToEntity(coupon);
+        } catch (error: unknown) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2002"
+            ) {
+                throw new DuplicateEntityError(
+                    "Coupon",
+                    "code",
+                    code ?? "",
+                );
+            }
+            throw error;
+        }
     }
 
     async getStats(tenantId: string): Promise<{
@@ -262,14 +409,28 @@ export class PrismaCouponRepository implements ICouponRepository {
             unusedCoupons,
             expiredCoupons,
         ] = await Promise.all([
-            prisma.coupon.count({ where: { tenantId } }),
+            prisma.coupon.count({ where: sharedCouponWhere({ tenantId }) }),
             prisma.coupon.count({
-                where: { tenantId, active: true, expiresAt: { gte: now } },
+                where: sharedCouponWhere({
+                    tenantId,
+                    active: true,
+                    expiresAt: { gte: now },
+                }),
             }),
-            prisma.coupon.count({ where: { tenantId, usageCount: { gt: 0 } } }),
-            prisma.coupon.count({ where: { tenantId, usageCount: 0 } }),
             prisma.coupon.count({
-                where: { tenantId, expiresAt: { lt: now } },
+                where: sharedCouponWhere({
+                    tenantId,
+                    usageCount: { gt: 0 },
+                }),
+            }),
+            prisma.coupon.count({
+                where: sharedCouponWhere({ tenantId, usageCount: 0 }),
+            }),
+            prisma.coupon.count({
+                where: sharedCouponWhere({
+                    tenantId,
+                    expiresAt: { lt: now },
+                }),
             }),
         ]);
 

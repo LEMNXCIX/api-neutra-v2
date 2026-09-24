@@ -153,6 +153,8 @@ model Tenant {
   slideshows     Slideshow[]
   coupons        Coupon[]
   tenantFeatures TenantFeature[]
+  loyaltyLedgerEntries LoyaltyLedgerEntry[]
+  loyaltyRewardClaims  LoyaltyRewardClaim[]
   roles          Role[]
   permissions    Permission[]
   
@@ -258,6 +260,9 @@ model User {
   orders   Order[]
   appointments Appointment[] @relation("UserAppointments")
   staff        Staff[]       @relation("UserAsStaff")
+  ownedCoupons   Coupon[]    @relation("CouponOwner")
+  loyaltyLedgerEntries LoyaltyLedgerEntry[]
+  loyaltyRewardClaims  LoyaltyRewardClaim[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -469,6 +474,10 @@ enum CouponType {
   FIXED
 }
 
+enum LoyaltyRewardClaimStatus {
+  CLAIMED
+}
+
 // Coupon Model
 model Coupon {
   id    String     @id @default(uuid())
@@ -491,6 +500,14 @@ model Coupon {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
+  // Personal reward coupons are owned by one user; shared coupons leave ownerId null.
+  ownerId        String?
+  owner          User?    @relation("CouponOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  isReward       Boolean  @default(false)
+  sourceCouponId String?
+  sourceCoupon   Coupon?  @relation("CouponClones", fields: [sourceCouponId], references: [id], onDelete: SetNull)
+  clones         Coupon[] @relation("CouponClones")
+
   // Optional: Limit to specific products/categories/services
   applicableProducts   String[] // Array of product IDs
   applicableCategories String[] // Array of category IDs
@@ -499,11 +516,13 @@ model Coupon {
   // Relations
   orders       Order[]       @relation("CouponOrders")
   appointments Appointment[] @relation("CouponAppointments")
+  loyaltyRewardClaim LoyaltyRewardClaim?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+  @@index([ownerId])
   @@map("coupons")
 }
 
@@ -515,6 +534,7 @@ enum AppointmentStatus {
   PENDING
   CONFIRMED
   IN_PROGRESS
+  NEEDS_REVIEW
   COMPLETED
   CANCELLED
   NO_SHOW
@@ -620,7 +640,10 @@ model Appointment {
   endTime         DateTime
   
   // Status
-  status          AppointmentStatus @default(PENDING)
+  status             AppointmentStatus @default(PENDING)
+  statusChangedAt    DateTime?
+  statusChangeReason String?
+  statusChangedById  String?
   
   // Additional info
   notes           String?
@@ -642,6 +665,8 @@ model Appointment {
   // Multi-tenancy
   tenantId        String
   tenant          Tenant   @relation("TenantAppointments", fields: [tenantId], references: [id])
+
+  loyaltyLedgerEntries LoyaltyLedgerEntry[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -651,6 +676,46 @@ model Appointment {
   @@index([tenantId, staffId, startTime])
   @@index([tenantId, status])
   @@map("appointments")
+}
+
+// ============================================
+// LOYALTY MODULE
+// ============================================
+
+model LoyaltyLedgerEntry {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceAppointmentId String
+  sourceAppointment   Appointment @relation(fields: [sourceAppointmentId], references: [id], onDelete: Cascade)
+  points              Int      @default(1)
+  reason              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([tenantId, sourceAppointmentId])
+  @@index([tenantId, userId, createdAt])
+  @@map("loyalty_ledger_entries")
+}
+
+model LoyaltyRewardClaim {
+  id         String                    @id @default(uuid())
+  tenantId   String
+  tenant     Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestone  Int                       @default(10)
+  couponId   String                    @unique
+  coupon     Coupon                    @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  status     LoyaltyRewardClaimStatus  @default(CLAIMED)
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, userId])
+  @@map("loyalty_reward_claims")
 }
 
 // ============================================
