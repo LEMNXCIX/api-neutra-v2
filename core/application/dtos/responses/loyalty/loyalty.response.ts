@@ -1,33 +1,16 @@
 import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
-    DEFAULT_LOYALTY_TARGET_POINTS,
     LoyaltyCampaign,
     LoyaltyCampaignCustomerSummary,
-    LoyaltyConfig,
-    LoyaltyLedgerEntry,
-    LoyaltyRewardClaim,
-    LoyaltyStatus,
-    LoyaltyTenantStats,
-    ParsedLoyaltyConfig,
     LoyaltyCampaignMetric,
+    LoyaltyCampaignRewardClaim,
     LoyaltyCampaignSource,
     LoyaltyCampaignStatus,
+    LoyaltyRewardClaimStatus,
+    LoyaltyStatus,
 } from "@/core/entities/loyalty.entity";
-import { CouponPresenter } from "@/core/presenters/coupon.presenter";
 import { ICouponResponse } from "@/core/application/dtos/responses/coupon/coupon.response";
-
-export interface ILoyaltyConfigResponse {
-    targetPoints: number;
-    rewardCouponId: string | null;
-}
-
-export interface ILoyaltySummaryResponse {
-    points: number;
-    targetPoints: number;
-    remaining: number;
-    status: LoyaltyStatus;
-    coupon?: ICouponResponse;
-}
+import { CouponPresenter } from "@/core/presenters/coupon.presenter";
 
 export interface ILoyaltyCampaignResponse {
     id: string;
@@ -82,19 +65,13 @@ export interface ILoyaltyCampaignClaimMetadataResponse {
     id: string;
     campaignId: string;
     couponId: string;
-    status: LoyaltyRewardClaim["status"];
+    status: LoyaltyRewardClaimStatus;
     createdAt: Date;
     updatedAt: Date;
 }
 
 export interface ILoyaltyCampaignClaimResponse
     extends ILoyaltyCampaignClaimMetadataResponse {
-    id: string;
-    campaignId: string;
-    couponId: string;
-    status: LoyaltyRewardClaim["status"];
-    createdAt: Date;
-    updatedAt: Date;
     coupon: ICouponResponse;
 }
 
@@ -111,62 +88,10 @@ export interface ILoyaltyTenantCampaignOverviewResponse {
         endedCampaignCount: number;
         archivedCampaignCount: number;
         totalClaims: number;
-        totalPoints: number;
-        activeCustomers: number;
     };
 }
 
-export interface ILoyaltyClaimResponse {
-    id: string;
-    milestone: number;
-    couponId: string;
-    status: LoyaltyRewardClaim["status"];
-    createdAt: Date;
-    updatedAt: Date;
-    coupon: ICouponResponse;
-}
-
-export interface ILoyaltyLedgerResponse {
-    id: string;
-    sourceAppointmentId: string;
-    points: number;
-    reason: string;
-    createdAt: Date;
-}
-
-export interface ILoyaltyClaimListResponse {
-    id: string;
-    userId: string;
-    milestone: number;
-    couponId: string;
-    status: LoyaltyRewardClaim["status"];
-    createdAt: Date;
-    coupon?: ICouponResponse;
-}
-
-export interface ILoyaltyTenantOverviewResponse {
-    tenantId: string;
-    name: string;
-    slug: string;
-    type: string;
-    active: boolean;
-    config: ILoyaltyConfigResponse;
-    stats: LoyaltyTenantStats;
-    recentLedger: ILoyaltyLedgerResponse[];
-    recentClaims: ILoyaltyClaimListResponse[];
-}
-
 export class LoyaltyPresenter {
-    static toConfigResponse(
-        config: ParsedLoyaltyConfig | LoyaltyConfig,
-    ): ILoyaltyConfigResponse {
-        return {
-            targetPoints:
-                config.targetPoints ?? DEFAULT_LOYALTY_TARGET_POINTS,
-            rewardCouponId: config.rewardCouponId ?? null,
-        };
-    }
-
     static toCampaignResponse(
         campaign: LoyaltyCampaign,
     ): ILoyaltyCampaignResponse {
@@ -221,7 +146,7 @@ export class LoyaltyPresenter {
         );
     }
 
-    static toCustomerSummaryResponse(
+    static toCustomerCampaignSummaryResponse(
         summary: LoyaltyCampaignCustomerSummary,
     ): ILoyaltyCustomerCampaignSummaryResponse {
         return {
@@ -256,37 +181,22 @@ export class LoyaltyPresenter {
         };
     }
 
-    static toCustomerCampaignSummaryResponse(
-        summary: LoyaltyCampaignCustomerSummary,
-    ): ILoyaltyCustomerCampaignSummaryResponse {
-        return LoyaltyPresenter.toCustomerSummaryResponse(summary);
-    }
-
-    static toCustomerSummaryListResponse(
+    static toCustomerCampaignSummaryListResponse(
         summaries: LoyaltyCampaignCustomerSummary[],
     ): ILoyaltyCustomerCampaignSummaryResponse[] {
         return summaries.map((summary) =>
-            LoyaltyPresenter.toCustomerSummaryResponse(summary),
+            LoyaltyPresenter.toCustomerCampaignSummaryResponse(summary),
         );
     }
 
-    static toCustomerCampaignResponse(
-        summary: LoyaltyCampaignCustomerSummary,
-    ): ILoyaltyCustomerCampaignSummaryResponse {
-        return LoyaltyPresenter.toCustomerSummaryResponse(summary);
-    }
-
     static toCampaignClaimResponse(
-        claim: {
-            id: string;
-            campaignId: string;
-            couponId: string;
-            status: LoyaltyRewardClaim["status"];
-            createdAt: Date;
-            updatedAt: Date;
-        },
-        coupon: Coupon = (claim as { coupon?: Coupon }).coupon!,
+        claim: LoyaltyCampaignRewardClaim,
+        coupon?: Coupon,
     ): ILoyaltyCampaignClaimResponse {
+        const rewardCoupon = coupon ?? claim.coupon;
+        if (!rewardCoupon) {
+            throw new Error("Loyalty campaign claim coupon is missing");
+        }
         return {
             id: claim.id,
             campaignId: claim.campaignId,
@@ -294,82 +204,7 @@ export class LoyaltyPresenter {
             status: claim.status,
             createdAt: claim.createdAt,
             updatedAt: claim.updatedAt,
-            coupon: CouponPresenter.toResponse(coupon),
-        };
-    }
-
-    static toLoyaltyCampaignClaimResponse(
-        claim: {
-            id: string;
-            campaignId: string;
-            couponId: string;
-            status: LoyaltyRewardClaim["status"];
-            createdAt: Date;
-            updatedAt: Date;
-        },
-        coupon?: Coupon,
-    ): ILoyaltyCampaignClaimResponse {
-        return this.toCampaignClaimResponse(claim, coupon);
-    }
-
-    static toSummaryResponse(summary: {
-        points: number;
-        targetPoints: number;
-        remaining: number;
-        status: LoyaltyStatus;
-        coupon?: Coupon;
-    }): ILoyaltySummaryResponse {
-        return {
-            points: summary.points,
-            targetPoints: summary.targetPoints,
-            remaining: summary.remaining,
-            status: summary.status,
-            ...(summary.coupon
-                ? { coupon: CouponPresenter.toResponse(summary.coupon) }
-                : {}),
-        };
-    }
-
-    static toClaimResponse(
-        claim: LoyaltyRewardClaim,
-        coupon: Coupon = claim.coupon!,
-    ): ILoyaltyClaimResponse {
-        return {
-            id: claim.id,
-            milestone: claim.milestone,
-            couponId: claim.couponId,
-            status: claim.status,
-            createdAt: claim.createdAt,
-            updatedAt: claim.updatedAt,
-            coupon: CouponPresenter.toResponse(coupon),
-        };
-    }
-
-    static toLedgerResponse(
-        entry: LoyaltyLedgerEntry,
-    ): ILoyaltyLedgerResponse {
-        return {
-            id: entry.id,
-            sourceAppointmentId: entry.sourceAppointmentId,
-            points: entry.points,
-            reason: entry.reason,
-            createdAt: entry.createdAt,
-        };
-    }
-
-    static toClaimListResponse(
-        claim: LoyaltyRewardClaim,
-    ): ILoyaltyClaimListResponse {
-        return {
-            id: claim.id,
-            userId: claim.userId,
-            milestone: claim.milestone,
-            couponId: claim.couponId,
-            status: claim.status,
-            createdAt: claim.createdAt,
-            ...(claim.coupon
-                ? { coupon: CouponPresenter.toResponse(claim.coupon) }
-                : {}),
+            coupon: CouponPresenter.toResponse(rewardCoupon),
         };
     }
 
@@ -396,49 +231,7 @@ export class LoyaltyPresenter {
             stats: overview.stats,
         };
     }
-
-    static toTenantOverviewResponse(overview: {
-        tenantId: string;
-        name: string;
-        slug: string;
-        type: string;
-        active: boolean;
-        campaigns?: LoyaltyCampaign[];
-        stats: LoyaltyTenantStats | ILoyaltyTenantCampaignOverviewResponse["stats"];
-        config?: ParsedLoyaltyConfig;
-        recentLedger?: LoyaltyLedgerEntry[];
-        recentClaims?: LoyaltyRewardClaim[];
-    }): ILoyaltyTenantOverviewResponse | ILoyaltyTenantCampaignOverviewResponse {
-        if (overview.campaigns) {
-            return LoyaltyPresenter.toTenantCampaignOverviewResponse({
-                tenantId: overview.tenantId,
-                name: overview.name,
-                slug: overview.slug,
-                type: overview.type,
-                active: overview.active,
-                campaigns: overview.campaigns,
-                stats: overview.stats as ILoyaltyTenantCampaignOverviewResponse["stats"],
-            });
-        }
-        return {
-            tenantId: overview.tenantId,
-            name: overview.name,
-            slug: overview.slug,
-            type: overview.type,
-            active: overview.active,
-            config: LoyaltyPresenter.toConfigResponse(overview.config!),
-            stats: overview.stats as LoyaltyTenantStats,
-            recentLedger: (overview.recentLedger ?? []).map((entry) =>
-                LoyaltyPresenter.toLedgerResponse(entry),
-            ),
-            recentClaims: (overview.recentClaims ?? []).map((claim) =>
-                LoyaltyPresenter.toClaimListResponse(claim),
-            ),
-        };
-    }
 }
-
-export class LoyaltyCampaignPresenter extends LoyaltyPresenter {}
 
 export type ICampaignResponse = ILoyaltyCampaignResponse;
 export type LoyaltyCampaignResponse = ILoyaltyCampaignResponse;

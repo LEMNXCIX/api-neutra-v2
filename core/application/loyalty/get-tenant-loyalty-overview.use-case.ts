@@ -19,8 +19,6 @@ export interface LoyaltyCampaignTenantStats {
     endedCampaignCount: number;
     archivedCampaignCount: number;
     totalClaims: number;
-    totalPoints: number;
-    activeCustomers: number;
 }
 
 export interface LoyaltyCampaignTenantOverview {
@@ -38,14 +36,11 @@ export async function buildLoyaltyCampaignTenantOverview(
     loyaltyRepository: ILoyaltyRepository,
 ): Promise<LoyaltyCampaignTenantOverview> {
     const campaigns = await loyaltyRepository.listCampaigns(tenant.id);
-    const [campaignStats, legacyStats] = await Promise.all([
-        Promise.all(
-            campaigns.map((campaign) =>
-                loyaltyRepository.getCampaignStats(tenant.id, campaign.id),
-            ),
+    const campaignStats = await Promise.all(
+        campaigns.map((campaign) =>
+            loyaltyRepository.getCampaignStats(tenant.id, campaign.id),
         ),
-        loyaltyRepository.getTenantStats(tenant.id),
-    ]);
+    );
     return {
         tenantId: tenant.id,
         name: tenant.name,
@@ -68,8 +63,6 @@ export async function buildLoyaltyCampaignTenantOverview(
                 (total, stat) => total + stat.claimedCount,
                 0,
             ),
-            totalPoints: legacyStats.totalPoints,
-            activeCustomers: legacyStats.activeCustomers,
         },
     };
 }

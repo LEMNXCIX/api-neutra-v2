@@ -670,8 +670,6 @@ model Appointment {
   tenantId        String
   tenant          Tenant   @relation("TenantAppointments", fields: [tenantId], references: [id])
 
-  loyaltyLedgerEntries LoyaltyLedgerEntry[]
-
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
@@ -750,29 +748,22 @@ model LoyaltyLedgerEntry {
   id         String                   @id @default(uuid())
   tenantId   String
   tenant     Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  campaignId String?
-  campaign   LoyaltyCampaign?         @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  campaignId String
+  campaign   LoyaltyCampaign          @relation(fields: [campaignId], references: [id], onDelete: Restrict)
   userId     String
   user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceType LoyaltySourceType?
-  sourceId   String?
-  value      Decimal?                 @db.Decimal(18, 2)
+  sourceType LoyaltySourceType
+  sourceId   String
+  value      Decimal                  @db.Decimal(18, 2)
   entryType  LoyaltyLedgerEntryType   @default(ACCRUAL)
-  reversalOfId String?                  @unique
+  reversalOfId String?                 @unique
   reversalOf LoyaltyLedgerEntry?      @relation("LoyaltyLedgerReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
   reversal   LoyaltyLedgerEntry?      @relation("LoyaltyLedgerReversal")
+  reason     String
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
 
-  // Legacy booking-only fields remain until the application contract migration.
-  sourceAppointmentId String?
-  sourceAppointment   Appointment? @relation(fields: [sourceAppointmentId], references: [id], onDelete: Cascade)
-  points              Int?
-  reason              String
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
-
-  @@unique([tenantId, sourceAppointmentId])
   @@unique([campaignId, sourceType, sourceId, entryType])
-  @@index([tenantId, userId, createdAt])
   @@index([tenantId, campaignId, userId, createdAt])
   @@map("loyalty_ledger_entries")
 }
@@ -781,20 +772,17 @@ model LoyaltyRewardClaim {
   id         String                    @id @default(uuid())
   tenantId   String
   tenant     Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  campaignId String?
-  campaign   LoyaltyCampaign?          @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  campaignId String
+  campaign   LoyaltyCampaign           @relation(fields: [campaignId], references: [id], onDelete: Restrict)
   userId     String
   user       User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  milestone  Int?                      @default(10)
   couponId   String                    @unique
   coupon     Coupon                    @relation(fields: [couponId], references: [id], onDelete: Restrict)
   status     LoyaltyRewardClaimStatus  @default(CLAIMED)
   createdAt  DateTime                  @default(now())
   updatedAt  DateTime                  @updatedAt
 
-  @@unique([tenantId, userId])
   @@unique([campaignId, userId])
-  @@index([tenantId, userId])
   @@index([tenantId, campaignId, userId])
   @@map("loyalty_reward_claims")
 }

@@ -87,13 +87,13 @@ export class LoyaltyController {
                 requireUserId(req),
             );
         return res.json(
-            present(result, LoyaltyPresenter.toCustomerSummaryListResponse),
+            present(result, LoyaltyPresenter.toCustomerCampaignSummaryListResponse),
         );
     };
 
     getCustomerCampaign = async (req: Request, res: Response) => {
         const result =
-            await this.getCustomerLoyaltySummaryUseCase.executeCampaign(
+            await this.getCustomerLoyaltySummaryUseCase.execute(
                 requireTenantId(req),
                 requireCampaignId(req),
                 requireUserId(req),
@@ -104,7 +104,7 @@ export class LoyaltyController {
     };
 
     claimCustomerCampaign = async (req: Request, res: Response) => {
-        const result = await this.claimLoyaltyRewardUseCase.executeCampaign(
+        const result = await this.claimLoyaltyRewardUseCase.execute(
             requireTenantId(req),
             requireCampaignId(req),
             requireUserId(req),

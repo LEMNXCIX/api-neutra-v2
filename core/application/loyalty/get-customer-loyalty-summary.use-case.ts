@@ -1,30 +1,27 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
 import {
     assertLoyaltyCampaignFeatures,
-    DEFAULT_LOYALTY_TARGET_POINTS,
     getEffectiveLoyaltyCampaignStatus,
     getLoyaltyCampaignCustomerStatus,
     getLoyaltyCampaignProgressValue,
     getLoyaltyCampaignRemainingValue,
-    isValidLoyaltyTargetPoints,
     LoyaltyCampaign,
     LoyaltyCampaignCustomerSummary,
     LoyaltyCampaignRewardClaim,
     LoyaltyCampaignStatus,
-    LoyaltyStatus,
 } from "@/core/entities/loyalty.entity";
+import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 import {
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 
-function validateCustomerIdentity(tenantId: string, userId: string): void {
-    if (!tenantId?.trim() || !userId?.trim()) {
+function validateIdentity(...values: string[]): void {
+    if (values.some((value) => !value?.trim())) {
         throw new ValidationError(
-            "Tenant and customer identity are required",
+            "Tenant, campaign, and customer identity are required",
             "MISSING_REQUIRED_FIELDS",
         );
     }
@@ -90,7 +87,12 @@ export async function buildLoyaltyCampaignCustomerSummary(
         remaining: remainingValue,
         status: customerStatus,
         campaignStatus: lifecycleStatus,
-        ...(claim ? { claim, ...(claim.coupon ? { coupon: claim.coupon } : {}) } : {}),
+        ...(claim
+            ? {
+                  claim,
+                  ...(claim.coupon ? { coupon: claim.coupon } : {}),
+              }
+            : {}),
     };
 }
 
@@ -103,104 +105,52 @@ export class GetCustomerLoyaltySummaryUseCase {
 
     async execute(
         tenantId: string,
-        userId: string,
-    ): Promise<UseCaseResult<any>>;
-    async execute(
-        tenantId: string,
         campaignId: string,
         userId: string,
-    ): Promise<UseCaseResult<LoyaltyCampaignCustomerSummary>>;
-    async execute(
-        tenantId: string,
-        second: string,
-        third?: string,
-    ): Promise<UseCaseResult<any>> {
-        const hasCampaign = third !== undefined;
-        const campaignId = hasCampaign ? second : undefined;
-        const userId = hasCampaign ? third : second;
-        validateCustomerIdentity(tenantId, userId);
+    ): Promise<UseCaseResult<LoyaltyCampaignCustomerSummary>> {
+        validateIdentity(tenantId, campaignId, userId);
+        await this.assertTenantAccess(tenantId);
 
-        const tenant = await this.tenantRepository.findById(tenantId);
-        if (!tenant) throw new EntityNotFoundError("Tenant", tenantId);
-        assertLoyaltyCampaignFeatures(
-            await this.featureRepository.getTenantFeatureStatus(tenantId),
+        const campaign = await this.loyaltyRepository.getCampaign(
+            tenantId,
+            campaignId,
         );
-
-        if (!hasCampaign) {
-            return this.executeLegacySummary(tenant, tenantId, userId);
+        if (!campaign || campaign.status === LoyaltyCampaignStatus.DRAFT) {
+            throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
         }
 
-        if (hasCampaign) {
-            const campaign = await this.loyaltyRepository.getCampaign(
+        const claim =
+            campaign.status === LoyaltyCampaignStatus.ARCHIVED
+                ? await this.loyaltyRepository.findCampaignRewardClaim(
+                      tenantId,
+                      campaign.id,
+                      userId,
+                  )
+                : undefined;
+        if (campaign.status === LoyaltyCampaignStatus.ARCHIVED && !claim) {
+            throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
+        }
+
+        return Success(
+            await buildLoyaltyCampaignCustomerSummary(
+                this.loyaltyRepository,
                 tenantId,
-                campaignId!,
-            );
-            if (!campaign || campaign.status === LoyaltyCampaignStatus.DRAFT) {
-                throw new EntityNotFoundError("LoyaltyCampaign", campaignId!);
-            }
-            const claim =
-                campaign.status === LoyaltyCampaignStatus.ARCHIVED
-                    ? await this.loyaltyRepository.findCampaignRewardClaim(
-                          tenantId,
-                          campaign.id,
-                          userId,
-                      )
-                    : undefined;
-            if (
-                campaign.status === LoyaltyCampaignStatus.ARCHIVED &&
-                !claim
-            ) {
-                throw new EntityNotFoundError("LoyaltyCampaign", campaignId!);
-            }
-            return Success(
-                await buildLoyaltyCampaignCustomerSummary(
-                    this.loyaltyRepository,
-                    tenantId,
-                    campaign,
-                    userId,
-                    new Date(),
-                    claim,
-                ),
-                "Loyalty campaign summary retrieved successfully",
-            );
-        }
-
-        return this.executeLegacySummary(tenant, tenantId, userId);
-    }
-
-    async executeCampaign(
-        tenantId: string,
-        campaignId: string,
-        userId: string,
-    ): Promise<UseCaseResult<LoyaltyCampaignCustomerSummary>> {
-        return this.execute(tenantId, campaignId, userId);
-    }
-
-    async executeCustomerCampaign(
-        tenantId: string,
-        userId: string,
-        campaignId: string,
-    ): Promise<UseCaseResult<LoyaltyCampaignCustomerSummary>> {
-        return this.executeCampaign(tenantId, campaignId, userId);
-    }
-
-    async executeForUser(
-        tenantId: string,
-        userId: string,
-        campaignId: string,
-    ): Promise<UseCaseResult<LoyaltyCampaignCustomerSummary>> {
-        return this.executeCampaign(tenantId, campaignId, userId);
+                campaign,
+                userId,
+                new Date(),
+                claim,
+            ),
+            "Loyalty campaign summary retrieved successfully",
+        );
     }
 
     async executeList(
         tenantId: string,
         userId: string,
     ): Promise<UseCaseResult<LoyaltyCampaignCustomerSummary[]>> {
-        const tenant = await this.tenantRepository.findById(tenantId);
-        if (!tenant) throw new EntityNotFoundError("Tenant", tenantId);
-        assertLoyaltyCampaignFeatures(
-            await this.featureRepository.getTenantFeatureStatus(tenantId),
-        );
+        validateIdentity(tenantId, userId);
+        await this.assertTenantAccess(tenantId);
+        const now = new Date();
         const campaigns = await this.loyaltyRepository.listCampaigns(tenantId);
         const summaries = await Promise.all(
             campaigns.map(async (campaign) => {
@@ -226,7 +176,7 @@ export class GetCustomerLoyaltySummaryUseCase {
                     tenantId,
                     campaign,
                     userId,
-                    new Date(),
+                    now,
                     claim,
                 );
             }),
@@ -240,64 +190,11 @@ export class GetCustomerLoyaltySummaryUseCase {
         );
     }
 
-    private async executeLegacySummary(
-        tenant: { config?: { loyalty?: { targetPoints?: number; rewardCouponId?: string | null } } },
-        tenantId: string,
-        userId: string,
-    ): Promise<UseCaseResult<any>> {
-        const config = tenant.config?.loyalty;
-        const [points, claim] = await Promise.all([
-            this.loyaltyRepository.getPointsBalance(tenantId, userId),
-            this.loyaltyRepository.findRewardClaim(tenantId, userId),
-        ]);
-        const targetPoints = claim?.milestone ??
-            (isValidLoyaltyTargetPoints(config?.targetPoints)
-                ? config!.targetPoints!
-                : DEFAULT_LOYALTY_TARGET_POINTS);
-        const remaining = claim ? 0 : Math.max(targetPoints - points, 0);
-        const status = claim
-            ? LoyaltyStatus.CLAIMED
-            : !config?.rewardCouponId
-              ? LoyaltyStatus.NOT_CONFIGURED
-              : points >= targetPoints
-                ? LoyaltyStatus.READY
-                : LoyaltyStatus.IN_PROGRESS;
-        return Success(
-            {
-                points,
-                targetPoints,
-                remaining,
-                status,
-                ...(claim?.coupon ? { coupon: claim.coupon } : {}),
-            },
-            "Loyalty summary retrieved successfully",
+    private async assertTenantAccess(tenantId: string): Promise<void> {
+        const tenant = await this.tenantRepository.findById(tenantId);
+        if (!tenant) throw new EntityNotFoundError("Tenant", tenantId);
+        assertLoyaltyCampaignFeatures(
+            await this.featureRepository.getTenantFeatureStatus(tenantId),
         );
-    }
-}
-
-export class GetCustomerLoyaltyCampaignUseCase {
-    constructor(private summaryUseCase: GetCustomerLoyaltySummaryUseCase) {}
-
-    execute(
-        tenantId: string,
-        campaignId: string,
-        userId: string,
-    ): Promise<UseCaseResult<LoyaltyCampaignCustomerSummary>> {
-        return this.summaryUseCase.executeCampaign(
-            tenantId,
-            campaignId,
-            userId,
-        );
-    }
-}
-
-export class GetCustomerLoyaltyCampaignsUseCase {
-    constructor(private summaryUseCase: GetCustomerLoyaltySummaryUseCase) {}
-
-    async execute(
-        tenantId: string,
-        userId: string,
-    ): Promise<UseCaseResult<LoyaltyCampaignCustomerSummary[]>> {
-        return this.summaryUseCase.executeList(tenantId, userId);
     }
 }

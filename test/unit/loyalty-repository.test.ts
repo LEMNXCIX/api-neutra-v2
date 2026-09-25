@@ -54,25 +54,6 @@ function rewardDefinition() {
     } as never;
 }
 
-function claimRow(
-    coupon = couponRow(),
-    overrides: Record<string, unknown> = {},
-) {
-    return {
-        id: "claim-1",
-        tenantId: "tenant-1",
-        campaignId: null,
-        userId: "user-1",
-        milestone: 10,
-        couponId: coupon.id,
-        status: "CLAIMED",
-        createdAt: now,
-        updatedAt: now,
-        coupon,
-        ...overrides,
-    };
-}
-
 function campaignRow(overrides: Record<string, unknown> = {}) {
     return {
         id: "campaign-1",
@@ -112,7 +93,6 @@ function campaignClaimRow(
         tenantId: "tenant-1",
         campaignId: "campaign-1",
         userId: "user-1",
-        milestone: null,
         couponId: coupon.id,
         status: "CLAIMED",
         createdAt: now,
@@ -124,23 +104,9 @@ function campaignClaimRow(
 
 function setup() {
     const ledger = {
-        findMany: jest.fn().mockResolvedValue([]),
-        findFirst: jest.fn().mockResolvedValue(null),
-        upsert: jest.fn().mockResolvedValue({
-            id: "entry-1",
-            tenantId: "tenant-1",
-            userId: "user-1",
-            sourceAppointmentId: "appointment-1",
-            points: 1,
-            reason: "appointment.completed",
-            createdAt: now,
-            updatedAt: now,
+        aggregate: jest.fn().mockResolvedValue({
+            _sum: { value: new Prisma.Decimal("10.00") },
         }),
-        aggregate: jest.fn().mockImplementation(async ({ _sum }) => ({
-            _sum: _sum.value
-                ? { value: new Prisma.Decimal("10.00") }
-                : { points: 10 },
-        })),
     };
     const campaigns = {
         create: jest.fn().mockImplementation(async ({ data }) =>
@@ -153,21 +119,16 @@ function setup() {
     };
     const claims = {
         findFirst: jest.fn().mockResolvedValue(null),
-        findMany: jest.fn().mockResolvedValue([]),
-        count: jest.fn().mockResolvedValue(0),
-        create: jest.fn().mockImplementation(async ({ data }) => {
-            if (data.campaignId) {
-                return campaignClaimRow(
-                    couponRow({
-                        id: data.couponId,
-                        ownerId: data.userId,
-                        sourceCouponId: "template-1",
-                    }),
-                    data,
-                );
-            }
-            return claimRow(couponRow(), data);
-        }),
+        create: jest.fn().mockImplementation(async ({ data }) =>
+            campaignClaimRow(
+                couponRow({
+                    id: data.couponId,
+                    ownerId: data.userId,
+                    sourceCouponId: "template-1",
+                }),
+                data,
+            ),
+        ),
     };
     const coupons = {
         findFirst: jest.fn().mockResolvedValue(
@@ -213,50 +174,6 @@ function setup() {
 }
 
 describe("PrismaLoyaltyRepository", () => {
-    test("inserts a legacy ledger entry idempotently by tenant and appointment", async () => {
-        const { repository, ledger } = setup();
-
-        const result = await repository.insertLedgerEntry("tenant-1", {
-            userId: "user-1",
-            sourceAppointmentId: "appointment-1",
-            points: 1,
-            reason: "appointment.completed",
-        });
-
-        expect(ledger.upsert).toHaveBeenCalledWith(
-            expect.objectContaining({
-                where: {
-                    tenantId_sourceAppointmentId: {
-                        tenantId: "tenant-1",
-                        sourceAppointmentId: "appointment-1",
-                    },
-                },
-                create: expect.objectContaining({
-                    tenantId: "tenant-1",
-                    points: 1,
-                }),
-                update: {},
-            }),
-        );
-        expect(result.sourceAppointmentId).toBe("appointment-1");
-    });
-
-    test("sums legacy points only within the requested tenant and user", async () => {
-        const { repository, ledger } = setup();
-
-        await expect(
-            repository.getPointsBalance("tenant-1", "user-1"),
-        ).resolves.toBe(10);
-        expect(ledger.aggregate).toHaveBeenCalledWith({
-            where: {
-                tenantId: "tenant-1",
-                userId: "user-1",
-                points: { not: null },
-            },
-            _sum: { points: true },
-        });
-    });
-
     test("creates a tenant-scoped campaign with a fixed Decimal string", async () => {
         const { repository, campaigns, coupons, database } = setup();
 
@@ -367,6 +284,10 @@ describe("PrismaLoyaltyRepository", () => {
         expect(candidate.updateCampaignWithTemplate).toBeUndefined();
         expect(candidate.findCampaignClaim).toBeUndefined();
         expect(candidate.getCampaignClaim).toBeUndefined();
+        expect(candidate.claimReward).toBeUndefined();
+        expect(candidate.findRewardClaim).toBeUndefined();
+        expect(candidate.getPointsBalance).toBeUndefined();
+        expect(candidate.getTenantStats).toBeUndefined();
     });
 
     test("updates a campaign only inside its tenant", async () => {
@@ -623,11 +544,10 @@ describe("PrismaLoyaltyRepository", () => {
     );
 
     test("returns campaign stats and rejects lifecycle skips", async () => {
-        const { repository, campaigns, claims } = setup();
+        const { repository, campaigns } = setup();
         campaigns.findFirst.mockResolvedValue(
             campaignRow({ maxClaims: 3, claimedCount: 1 }),
         );
-        claims.count.mockResolvedValue(99);
 
         await expect(
             repository.getCampaignStats("tenant-1", "campaign-1"),
@@ -637,7 +557,6 @@ describe("PrismaLoyaltyRepository", () => {
             maxClaims: 3,
             remainingClaims: 2,
         });
-        expect(claims.count).not.toHaveBeenCalled();
         await expect(
             repository.transitionCampaignStatus(
                 "tenant-1",
@@ -650,167 +569,32 @@ describe("PrismaLoyaltyRepository", () => {
         });
     });
 
-    test("claims once and clones the configured template in one legacy transaction", async () => {
-        const { repository, claims, coupons, database } = setup();
-
-        const result = await repository.claimReward(
-            "tenant-1",
-            "user-1",
-            "template-1",
-        );
-
-        expect(database.$transaction).toHaveBeenCalledTimes(1);
-        expect(coupons.create).toHaveBeenCalledWith(
-            expect.objectContaining({
-                data: expect.objectContaining({
-                    tenantId: "tenant-1",
-                    ownerId: "user-1",
-                    isReward: true,
-                    isLoyaltyTemplate: false,
-                    sourceCouponId: "template-1",
-                    usageLimit: 1,
-                }),
-            }),
-        );
-        expect(claims.create).toHaveBeenCalledWith(
-            expect.objectContaining({
-                data: expect.objectContaining({
-                    tenantId: "tenant-1",
-                    userId: "user-1",
-                    milestone: 10,
-                    couponId: "clone-1",
-                    status: "CLAIMED",
-                }),
-            }),
-        );
-        expect(result.coupon.ownerId).toBe("user-1");
-        expect(result.claim.milestone).toBe(10);
-    });
-
-    test("returns the existing legacy claim without cloning another coupon", async () => {
-        const { repository, claims, coupons } = setup();
-        claims.findFirst.mockResolvedValue(claimRow());
-
-        const result = await repository.claimReward(
-            "tenant-1",
-            "user-1",
-            "template-1",
-        );
-
-        expect(result.claim.id).toBe("claim-1");
-        expect(coupons.create).not.toHaveBeenCalled();
-        expect(claims.findFirst).toHaveBeenCalledWith(
-            expect.objectContaining({
-                where: {
-                    tenantId: "tenant-1",
-                    userId: "user-1",
-                    milestone: { not: null },
-                },
-            }),
-        );
-    });
-
-    test("keeps a T1-backfilled legacy claim visible to legacy callers", async () => {
+    test("keeps a migrated generic claim visible through its campaign", async () => {
         const { repository, claims } = setup();
         claims.findFirst.mockResolvedValue(
-            claimRow(couponRow(), { campaignId: "legacy-campaign" }),
-        );
-
-        await expect(
-            repository.findRewardClaim("tenant-1", "user-1"),
-        ).resolves.toMatchObject({ id: "claim-1", milestone: 10 });
-        expect(claims.findFirst).toHaveBeenCalledWith(
-            expect.objectContaining({
-                where: {
-                    tenantId: "tenant-1",
-                    userId: "user-1",
-                    milestone: { not: null },
-                },
-            }),
-        );
-    });
-
-    test("returns the original target when the configured target was lowered", async () => {
-        const { repository, claims, coupons } = setup();
-        claims.findFirst.mockResolvedValue(
-            claimRow(couponRow(), { milestone: 15 }),
-        );
-
-        const result = await repository.claimReward(
-            "tenant-1",
-            "user-1",
-            "template-1",
-            10,
-        );
-
-        expect(result.claim.milestone).toBe(15);
-        expect(coupons.create).not.toHaveBeenCalled();
-    });
-
-    test.each([
-        ["inactive", { active: false }],
-        ["expired", { expiresAt: new Date("2000-01-01T00:00:00.000Z") }],
-    ])("rejects an %s legacy template without creating a reward coupon", async (
-        _label,
-        overrides,
-    ) => {
-        const { repository, coupons } = setup();
-        coupons.findFirst.mockResolvedValue(
-            couponRow({
-                id: "template-1",
-                ownerId: null,
-                isReward: false,
-                isLoyaltyTemplate: true,
-                sourceCouponId: null,
-                ...overrides,
+            campaignClaimRow(couponRow(), {
+                id: "migrated-claim",
+                campaignId: "migrated-campaign",
             }),
         );
 
         await expect(
-            repository.claimReward(
+            repository.findCampaignRewardClaim(
                 "tenant-1",
+                "migrated-campaign",
                 "user-1",
-                "template-1",
             ),
-        ).rejects.toMatchObject({ code: "INVALID_LOYALTY_REWARD_TEMPLATE" });
-        expect(coupons.create).not.toHaveBeenCalled();
-    });
-
-    test("rejects unsafe target points before opening a transaction", async () => {
-        const { repository, database } = setup();
-
-        await expect(
-            repository.claimReward(
-                "tenant-1",
-                "user-1",
-                "template-1",
-                Number.MAX_SAFE_INTEGER + 1,
-            ),
-        ).rejects.toMatchObject({ code: "INVALID_LOYALTY_TARGET_POINTS" });
-        expect(database.$transaction).not.toHaveBeenCalled();
-    });
-
-    test("returns the winner after a concurrent legacy unique-claim conflict", async () => {
-        const { repository, claims, coupons } = setup();
-        const existing = claimRow(couponRow(), { milestone: 15 });
-        claims.findFirst
-            .mockResolvedValueOnce(null)
-            .mockResolvedValueOnce(existing);
-        claims.create.mockRejectedValueOnce(
-            new Prisma.PrismaClientKnownRequestError("duplicate", {
-                code: "P2002",
-                clientVersion: "test",
-            }),
-        );
-
-        const result = await repository.claimReward(
-            "tenant-1",
-            "user-1",
-            "template-1",
-            10,
-        );
-
-        expect(result.claim.milestone).toBe(15);
-        expect(coupons.create).toHaveBeenCalledTimes(1);
+        ).resolves.toMatchObject({
+            id: "migrated-claim",
+            campaignId: "migrated-campaign",
+        });
+        expect(claims.findFirst).toHaveBeenCalledWith({
+            where: {
+                tenantId: "tenant-1",
+                campaignId: "migrated-campaign",
+                userId: "user-1",
+            },
+            include: { coupon: true },
+        });
     });
 });

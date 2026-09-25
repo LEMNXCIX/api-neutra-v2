@@ -17,10 +17,6 @@ import {
     requireTenantType,
 } from "@/middleware/tenant-feature.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
-import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
-import { ClaimLoyaltyRewardUseCase } from "@/core/application/loyalty/claim-loyalty-reward.use-case";
-import { GetTenantLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
-import { UpdateLoyaltyConfigUseCase } from "@/core/application/loyalty/update-loyalty-config.use-case";
 import { GetAllTenantsLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-all-tenants-loyalty-overview.use-case";
 import { Tenant, TenantType } from "@/core/entities/tenant.entity";
 import {
@@ -37,8 +33,6 @@ import {
     CreateLoyaltyCampaignDto,
     LoyaltyRewardDefinitionDto,
     UpdateLoyaltyCampaignDto,
-    UpdateLoyaltyConfigDTO,
-    UpdateLoyaltyConfigDto,
 } from "@/core/application/dtos/requests/loyalty.request";
 import { ROLE_CONSTANTS } from "@/core/domain/constants";
 
@@ -76,14 +70,6 @@ function tenant(overrides: Partial<Tenant> = {}): Tenant {
         updatedAt: new Date("2030-01-01T00:00:00.000Z"),
         ...overrides,
     } as Tenant;
-}
-
-function featureRepository() {
-    return {
-        getTenantFeatureStatus: jest
-            .fn()
-            .mockResolvedValue({ LOYALTY: true, COUPONS: true }),
-    } as never;
 }
 
 function coupon(overrides: Record<string, unknown> = {}) {
@@ -165,8 +151,6 @@ function tenantCampaignOverview(overrides: Record<string, unknown> = {}) {
             endedCampaignCount: 0,
             archivedCampaignCount: 0,
             totalClaims: 0,
-            totalPoints: 0,
-            activeCustomers: 0,
         },
         ...overrides,
     };
@@ -193,340 +177,11 @@ function campaignRequest() {
     };
 }
 
-describe("loyalty customer use cases", () => {
-    test("returns a tenant-scoped summary for the authenticated customer", async () => {
-        const loyaltyRepository = {
-            getPointsBalance: jest.fn().mockResolvedValue(10),
-            findRewardClaim: jest.fn().mockResolvedValue(null),
-        };
-        const useCase = new GetCustomerLoyaltySummaryUseCase(
-            loyaltyRepository as never,
-            {
-                findById: jest.fn().mockResolvedValue(
-                    tenant({
-                        config: {
-                            loyalty: {
-                                targetPoints: 10,
-                                rewardCouponId: "template-1",
-                            },
-                        },
-                    }),
-                ),
-            } as never,
-            featureRepository(),
-        );
-
-        const result = await useCase.execute("tenant-1", "customer-1");
-
-        expect(loyaltyRepository.getPointsBalance).toHaveBeenCalledWith(
-            "tenant-1",
-            "customer-1",
-        );
-        expect(loyaltyRepository.findRewardClaim).toHaveBeenCalledWith(
-            "tenant-1",
-            "customer-1",
-        );
-        expect(result.data).toMatchObject({
-            points: 10,
-            targetPoints: 10,
-            remaining: 0,
-            status: LoyaltyStatus.READY,
-        });
-    });
-
-    test("preserves the claimed target after the configured target is lowered", async () => {
-        const claim = {
-            id: "claim-1",
-            tenantId: "tenant-1",
-            userId: "customer-1",
-            milestone: 15,
-            couponId: "coupon-1",
-            status: LoyaltyRewardClaimStatus.CLAIMED,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            coupon: coupon({ ownerId: "customer-1", isReward: true }),
-        };
-        const loyaltyRepository = {
-            getPointsBalance: jest.fn().mockResolvedValue(12),
-            findRewardClaim: jest.fn().mockResolvedValue(claim),
-        };
-        const useCase = new GetCustomerLoyaltySummaryUseCase(
-            loyaltyRepository as never,
-            {
-                findById: jest.fn().mockResolvedValue(
-                    tenant({
-                        config: {
-                            loyalty: {
-                                targetPoints: 10,
-                                rewardCouponId: "template-1",
-                            },
-                        },
-                    }),
-                ),
-            } as never,
-            featureRepository(),
-        );
-
-        await expect(useCase.execute("tenant-1", "customer-1")).resolves.toMatchObject({
-            data: {
-                points: 12,
-                targetPoints: 15,
-                remaining: 0,
-                status: LoyaltyStatus.CLAIMED,
-                coupon: expect.objectContaining({ id: "coupon-1" }),
-            },
-        });
-        expect(loyaltyRepository.findRewardClaim).toHaveBeenCalledWith(
-            "tenant-1",
-            "customer-1",
-        );
-    });
-
-    test("marks a customer with no configured template as not configured", async () => {
-        const useCase = new GetCustomerLoyaltySummaryUseCase(
-            {
-                getPointsBalance: jest.fn().mockResolvedValue(10),
-                findRewardClaim: jest.fn().mockResolvedValue(null),
-            } as never,
-            { findById: jest.fn().mockResolvedValue(tenant()) } as never,
-            featureRepository(),
-        );
-
-        await expect(useCase.execute("tenant-1", "customer-1")).resolves.toMatchObject({
-            data: { status: LoyaltyStatus.NOT_CONFIGURED },
-        });
-    });
-
-    test("passes the authenticated identity and configured target to an idempotent claim", async () => {
-        const claim = {
-            id: "claim-1",
-            tenantId: "tenant-1",
-            userId: "customer-1",
-            milestone: 10,
-            couponId: "coupon-1",
-            status: LoyaltyRewardClaimStatus.CLAIMED,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            coupon: coupon({ ownerId: "customer-1", isReward: true }),
-        };
-        const loyaltyRepository = {
-            claimReward: jest.fn().mockResolvedValue({
-                claim,
-                coupon: claim.coupon,
-            }),
-        };
-        const useCase = new ClaimLoyaltyRewardUseCase(
-            loyaltyRepository as never,
-            {
-                findById: jest.fn().mockResolvedValue(
-                    tenant({
-                        config: {
-                            loyalty: {
-                                targetPoints: 10,
-                                rewardCouponId: "template-1",
-                            },
-                        },
-                    }),
-                ),
-            } as never,
-            featureRepository(),
-        );
-
-        await useCase.execute("tenant-1", "customer-1");
-
-        expect(loyaltyRepository.claimReward).toHaveBeenCalledWith(
-            "tenant-1",
-            "customer-1",
-            "template-1",
-            10,
-        );
-    });
-});
-
-describe("loyalty configuration", () => {
-    test("merges only the loyalty section and preserves tenant config", async () => {
-        const update = jest.fn().mockResolvedValue(tenant());
-        const useCase = new UpdateLoyaltyConfigUseCase(
-            {
-                findById: jest.fn().mockResolvedValue(
-                    tenant({
-                        config: {
-                            branding: { primaryColor: "#fff" },
-                            settings: { currency: "USD" },
-                            features: { OTHER: true },
-                        },
-                    }),
-                ),
-                update,
-            } as never,
-            {
-                findById: jest.fn().mockResolvedValue(
-                    coupon({ ownerId: undefined, isReward: false }),
-                ),
-            } as never,
-        );
-
-        const data: UpdateLoyaltyConfigDTO = {
-            targetPoints: 15,
-            rewardCouponId: "template-1",
-        };
-        await useCase.execute("tenant-1", data);
-
-        expect(update).toHaveBeenCalledWith("tenant-1", {
-            config: {
-                branding: { primaryColor: "#fff" },
-                settings: { currency: "USD" },
-                features: { OTHER: true },
-                loyalty: {
-                    targetPoints: 15,
-                    rewardCouponId: "template-1",
-                },
-            },
-        });
-    });
-
-    test.each([
-        { targetPoints: 0 },
-        { targetPoints: 1.5 },
-        { targetPoints: Number.MAX_SAFE_INTEGER + 1 },
-        { rewardCouponId: "" },
-        { userId: "customer-2" },
-    ])("rejects invalid configuration %j", async (data) => {
-        const useCase = new UpdateLoyaltyConfigUseCase(
-            {
-                findById: jest.fn().mockResolvedValue(tenant()),
-                update: jest.fn(),
-            } as never,
-            { findById: jest.fn() } as never,
-        );
-
-        await expect(
-            useCase.execute("tenant-1", data as UpdateLoyaltyConfigDTO),
-        ).rejects.toMatchObject({ code: expect.stringMatching(/INVALID/) });
-    });
-
-    test("accepts a validated DTO with omitted optional fields", async () => {
-        const update = jest.fn().mockResolvedValue(tenant());
-        const useCase = new UpdateLoyaltyConfigUseCase(
-            {
-                findById: jest.fn().mockResolvedValue(tenant()),
-                update,
-            } as never,
-            {
-                findById: jest.fn().mockResolvedValue(
-                    coupon({ ownerId: undefined, isReward: false }),
-                ),
-            } as never,
-        );
-        const data = plainToInstance(UpdateLoyaltyConfigDto, {
-            rewardCouponId: "template-1",
-        });
-
-        await useCase.execute("tenant-1", data);
-
-        expect(update).toHaveBeenCalledWith(
-            "tenant-1",
-            expect.objectContaining({
-                config: expect.objectContaining({
-                    loyalty: {
-                        targetPoints: 10,
-                        rewardCouponId: "template-1",
-                    },
-                }),
-            }),
-        );
-    });
-
-    test("rejects a personal or reward coupon as a template", async () => {
-        const useCase = new UpdateLoyaltyConfigUseCase(
-            {
-                findById: jest.fn().mockResolvedValue(tenant()),
-                update: jest.fn(),
-            } as never,
-            {
-                findById: jest
-                    .fn()
-                    .mockResolvedValue(
-                        coupon({ ownerId: "customer-1", isReward: true }),
-                    ),
-            } as never,
-        );
-
-        await expect(
-            useCase.execute("tenant-1", {
-                rewardCouponId: "template-1",
-            }),
-        ).rejects.toMatchObject({ code: "INVALID_LOYALTY_REWARD_COUPON" });
-    });
-
-    test.each([
-        ["inactive", { active: false }],
-        ["expired", { expiresAt: new Date("2000-01-01T00:00:00.000Z") }],
-    ])("rejects an %s shared reward template", async (_label, overrides) => {
-        const update = jest.fn();
-        const useCase = new UpdateLoyaltyConfigUseCase(
-            {
-                findById: jest.fn().mockResolvedValue(tenant()),
-                update,
-            } as never,
-            {
-                findById: jest
-                    .fn()
-                    .mockResolvedValue(coupon(overrides)),
-            } as never,
-        );
-
-        await expect(
-            useCase.execute("tenant-1", {
-                rewardCouponId: "template-1",
-            }),
-        ).rejects.toMatchObject({ code: "INVALID_LOYALTY_REWARD_COUPON" });
-        expect(update).not.toHaveBeenCalled();
-    });
-
-    test("revalidates an existing template on a target-only update", async () => {
-        const update = jest.fn();
-        const useCase = new UpdateLoyaltyConfigUseCase(
-            {
-                findById: jest.fn().mockResolvedValue(
-                    tenant({
-                        config: {
-                            loyalty: {
-                                targetPoints: 20,
-                                rewardCouponId: "template-1",
-                            },
-                        },
-                    }),
-                ),
-                update,
-            } as never,
-            {
-                findById: jest
-                    .fn()
-                    .mockResolvedValue(coupon({ active: false })),
-            } as never,
-        );
-
-        await expect(
-            useCase.execute("tenant-1", { targetPoints: 15 }),
-        ).rejects.toMatchObject({ code: "INVALID_LOYALTY_REWARD_COUPON" });
-        expect(update).not.toHaveBeenCalled();
-    });
-});
-
 describe("cross-tenant loyalty overview", () => {
     test("keeps disabled tenants visible", async () => {
         const loyaltyRepository = {
             listCampaigns: jest.fn().mockResolvedValue([]),
             getCampaignStats: jest.fn(),
-            getTenantStats: jest.fn().mockImplementation(async (tenantId) => ({
-                tenantId,
-                totalPoints: 0,
-                totalClaims: 0,
-                activeCustomers: 0,
-            })),
-            findRecentLedgerEntries: jest.fn().mockResolvedValue([]),
-            findRecentRewardClaims: jest.fn().mockResolvedValue([]),
         };
         const useCase = new GetAllTenantsLoyaltyOverviewUseCase(
             loyaltyRepository as never,
@@ -559,9 +214,9 @@ describe("loyalty campaign HTTP API", () => {
     function controller() {
         const customer = {
             executeList: jest.fn(),
-            executeCampaign: jest.fn(),
+            execute: jest.fn(),
         };
-        const claim = { executeCampaign: jest.fn() };
+        const claim = { execute: jest.fn() };
         const campaigns = { execute: jest.fn() };
         const create = { execute: jest.fn() };
         const update = { execute: jest.fn() };
@@ -633,10 +288,10 @@ describe("loyalty campaign HTTP API", () => {
         setup.customer.executeList.mockResolvedValue(
             Success([selectedSummary]),
         );
-        setup.customer.executeCampaign.mockResolvedValue(
+        setup.customer.execute.mockResolvedValue(
             Success(selectedSummary),
         );
-        setup.claim.executeCampaign.mockResolvedValue(
+        setup.claim.execute.mockResolvedValue(
             Success({
                 claim,
                 coupon: coupon({ ownerId: "customer-1", isReward: true }),
@@ -712,12 +367,12 @@ describe("loyalty campaign HTTP API", () => {
             "tenant-1",
             "customer-1",
         );
-        expect(setup.customer.executeCampaign).toHaveBeenCalledWith(
+        expect(setup.customer.execute).toHaveBeenCalledWith(
             "tenant-1",
             "campaign-1",
             "customer-1",
         );
-        expect(setup.claim.executeCampaign).toHaveBeenCalledWith(
+        expect(setup.claim.execute).toHaveBeenCalledWith(
             "tenant-1",
             "campaign-1",
             "customer-1",

@@ -634,7 +634,8 @@ describe("loyalty campaign application services", () => {
             isReward: true,
             isLoyaltyTemplate: false,
         }) as unknown as Coupon;
-        const presented = LoyaltyPresenter.toCustomerSummaryResponse({
+        const presented =
+            LoyaltyPresenter.toCustomerCampaignSummaryResponse({
             campaignId: "campaign-1",
             metric: LoyaltyCampaignMetric.COUNT,
             progressValue: "10.00",
@@ -674,7 +675,7 @@ describe("loyalty campaign application services", () => {
             targetValue: "10.00",
         });
         expect(
-            LoyaltyPresenter.toCustomerSummaryResponse({
+            LoyaltyPresenter.toCustomerCampaignSummaryResponse({
                 campaignId: "campaign-1",
                 metric: LoyaltyCampaignMetric.COUNT,
                 progressValue: "4.00",

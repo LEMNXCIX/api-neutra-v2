@@ -23,25 +23,6 @@ import {
     MAX_LOYALTY_PRISMA_INT,
 } from "@/core/entities/loyalty.entity";
 
-export interface UpdateLoyaltyConfigDTO {
-    targetPoints?: number;
-    rewardCouponId?: string | null;
-}
-
-export class UpdateLoyaltyConfigDto implements UpdateLoyaltyConfigDTO {
-    @IsOptional()
-    @IsInt()
-    @Min(1)
-    targetPoints?: number;
-
-    @IsOptional()
-    @IsString()
-    @Transform(({ value }) =>
-        typeof value === "string" ? value.trim() : value,
-    )
-    rewardCouponId?: string | null;
-}
-
 export interface LoyaltyRewardDefinitionDTO {
     type: CouponType;
     value: number;

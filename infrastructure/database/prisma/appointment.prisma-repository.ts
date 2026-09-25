@@ -629,8 +629,6 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                             sourceId: id,
                             value,
                             entryType: LoyaltyLedgerEntryType.ACCRUAL,
-                            sourceAppointmentId: id,
-                            points: 1,
                             reason: "appointment.completed",
                             createdAt: eventAt,
                         },

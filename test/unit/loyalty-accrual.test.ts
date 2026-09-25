@@ -328,8 +328,6 @@ describe("Prisma appointment loyalty transaction", () => {
                 sourceId: "appointment-1",
                 value: "1.00",
                 entryType: "ACCRUAL",
-                sourceAppointmentId: "appointment-1",
-                points: 1,
                 reason: "appointment.completed",
                 createdAt: eventAt,
             },

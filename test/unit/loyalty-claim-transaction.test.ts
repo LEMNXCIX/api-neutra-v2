@@ -79,7 +79,6 @@ function campaignClaimRow(
         tenantId: "tenant-1",
         campaignId: "campaign-1",
         userId: "customer-1",
-        milestone: null,
         couponId: coupon.id,
         status: "CLAIMED",
         createdAt: now,
@@ -90,19 +89,13 @@ function campaignClaimRow(
 }
 
 function setup(
-    balance = 10,
     campaignOverrides: Record<string, unknown> = {},
     netTotal = "10.00",
 ) {
     const ledger = {
-        findMany: jest.fn().mockResolvedValue([]),
-        findFirst: jest.fn().mockResolvedValue(null),
-        upsert: jest.fn(),
-        aggregate: jest.fn().mockImplementation(async ({ _sum }) => ({
-            _sum: _sum.value
-                ? { value: new Prisma.Decimal(netTotal) }
-                : { points: balance },
-        })),
+        aggregate: jest.fn().mockResolvedValue({
+            _sum: { value: new Prisma.Decimal(netTotal) },
+        }),
     };
     const campaigns = {
         create: jest.fn(),
@@ -113,40 +106,19 @@ function setup(
     };
     const claims = {
         findFirst: jest.fn().mockResolvedValue(null),
-        findMany: jest.fn().mockResolvedValue([]),
-        count: jest.fn().mockResolvedValue(0),
-        create: jest.fn().mockImplementation(async ({ data }) => {
-            if (data.campaignId) {
-                return campaignClaimRow(
-                    {
-                        ...template(),
-                        id: data.couponId,
-                        ownerId: data.userId,
-                        isReward: true,
-                        isLoyaltyTemplate: false,
-                        sourceCouponId: "template-1",
-                    },
-                    data,
-                );
-            }
-            return {
-                id: "claim-1",
-                tenantId: "tenant-1",
-                campaignId: null,
-                userId: "customer-1",
-                milestone: data.milestone,
-                couponId: "coupon-1",
-                status: data.status,
-                createdAt: now,
-                updatedAt: now,
-                coupon: {
+        create: jest.fn().mockImplementation(async ({ data }) =>
+            campaignClaimRow(
+                {
                     ...template(),
-                    id: "coupon-1",
-                    ownerId: "customer-1",
+                    id: data.couponId,
+                    ownerId: data.userId,
                     isReward: true,
+                    isLoyaltyTemplate: false,
+                    sourceCouponId: "template-1",
                 },
-            };
-        }),
+                data,
+            ),
+        ),
     };
     const coupons = {
         findFirst: jest.fn().mockResolvedValue(template()),
@@ -188,57 +160,8 @@ describe("loyalty claim transaction", () => {
         jest.useRealTimers();
     });
 
-    test("checks the legacy target balance inside the transaction before cloning", async () => {
-        const { repository, ledger, coupons } = setup(9);
-
-        await expect(
-            repository.claimReward(
-                "tenant-1",
-                "customer-1",
-                "template-1",
-                10,
-            ),
-        ).rejects.toMatchObject({ code: "LOYALTY_TARGET_NOT_REACHED" });
-        expect(ledger.aggregate).toHaveBeenCalledWith({
-            where: {
-                tenantId: "tenant-1",
-                userId: "customer-1",
-                points: { not: null },
-            },
-            _sum: { points: true },
-        });
-        expect(coupons.create).not.toHaveBeenCalled();
-    });
-
-    test("uses the configured milestone in the legacy balance check and claim", async () => {
-        const { repository, ledger, claims } = setup(15);
-
-        const result = await repository.claimReward(
-            "tenant-1",
-            "customer-1",
-            "template-1",
-            15,
-        );
-
-        expect(ledger.aggregate).toHaveBeenCalledWith({
-            where: {
-                tenantId: "tenant-1",
-                userId: "customer-1",
-                points: { not: null },
-            },
-            _sum: { points: true },
-        });
-        expect(claims.create).toHaveBeenCalledWith(
-            expect.objectContaining({
-                data: expect.objectContaining({ milestone: 15 }),
-            }),
-        );
-        expect(result.claim.milestone).toBe(15);
-    });
-
     test("claims campaign progress and reserves maxClaims in the same transaction", async () => {
         const { repository, campaigns, claims, coupons, ledger } = setup(
-            10,
             { maxClaims: 2 },
             "10.00",
         );
@@ -285,7 +208,6 @@ describe("loyalty claim transaction", () => {
                     campaignId: "campaign-1",
                     tenantId: "tenant-1",
                     userId: "customer-1",
-                    milestone: null,
                 }),
             }),
         );
@@ -293,7 +215,7 @@ describe("loyalty claim transaction", () => {
     });
 
     test("requires startsAt <= now and accepts the exact boundary", async () => {
-        const beforeStart = setup(10, {
+        const beforeStart = setup({
             startsAt: new Date(now.getTime() + 1),
         });
         await expect(
@@ -305,7 +227,7 @@ describe("loyalty claim transaction", () => {
         ).rejects.toMatchObject({ code: "LOYALTY_CAMPAIGN_NOT_CLAIMABLE" });
         expect(beforeStart.campaigns.updateMany).not.toHaveBeenCalled();
 
-        const atStart = setup(10, { startsAt: now });
+        const atStart = setup({ startsAt: now });
         await expect(
             atStart.repository.claimCampaignReward(
                 "tenant-1",
@@ -333,11 +255,7 @@ describe("loyalty claim transaction", () => {
     });
 
     test("rejects a campaign whose Decimal progress is below target", async () => {
-        const { repository, campaigns, coupons } = setup(
-            10,
-            {},
-            "9.99",
-        );
+        const { repository, campaigns, coupons } = setup({}, "9.99");
 
         await expect(
             repository.claimCampaignReward(
@@ -357,7 +275,7 @@ describe("loyalty claim transaction", () => {
         _label,
         overrides,
     ) => {
-        const { repository, campaigns } = setup(10, overrides);
+        const { repository, campaigns } = setup(overrides);
 
         await expect(
             repository.claimCampaignReward(
@@ -393,7 +311,7 @@ describe("loyalty claim transaction", () => {
     });
 
     test("does not create a coupon when the atomic maxClaims reservation is exhausted", async () => {
-        const { repository, campaigns, claims, coupons } = setup(10, {
+        const { repository, campaigns, claims, coupons } = setup({
             maxClaims: 1,
         });
         campaigns.updateMany.mockResolvedValue({ count: 0 });
@@ -434,34 +352,4 @@ describe("loyalty claim transaction", () => {
         expect(coupons.create).toHaveBeenCalledTimes(1);
     });
 
-    test("keeps overview statistics scoped to the requested tenant", async () => {
-        const { repository, ledger, claims } = setup(20);
-        ledger.findMany.mockResolvedValue([
-            {
-                id: "entry-1",
-                tenantId: "tenant-1",
-                userId: "customer-1",
-                sourceAppointmentId: "appointment-1",
-                points: 20,
-                reason: "appointment.completed",
-                createdAt: now,
-                updatedAt: now,
-            },
-        ]);
-        claims.count.mockResolvedValue(2);
-
-        await expect(repository.getTenantStats("tenant-1")).resolves.toEqual({
-            tenantId: "tenant-1",
-            totalPoints: 20,
-            totalClaims: 2,
-            activeCustomers: 1,
-        });
-        expect(claims.count).toHaveBeenCalledWith({
-            where: { tenantId: "tenant-1", milestone: { not: null } },
-        });
-        expect(ledger.findMany).toHaveBeenCalledWith({
-            where: { tenantId: "tenant-1", points: { not: null } },
-            orderBy: { createdAt: "desc" },
-        });
-    });
 });

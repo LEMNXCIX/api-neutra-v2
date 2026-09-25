@@ -2,22 +2,10 @@ import { TenantType } from "@/core/entities/tenant.entity";
 import type { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 
-export const DEFAULT_LOYALTY_TARGET_POINTS = 10;
-export const LOYALTY_REWARD_MILESTONE = 10;
 export const MAX_LOYALTY_PRISMA_INT = 2_147_483_647;
 
 const POSITIVE_DECIMAL_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/;
 const DECIMAL_PATTERN = /^-?(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/;
-
-export function isValidLoyaltyTargetPoints(
-    value: unknown,
-): value is number {
-    return (
-        typeof value === "number" &&
-        Number.isSafeInteger(value) &&
-        value > 0
-    );
-}
 
 export function isValidPositiveDecimalString(
     value: unknown,
@@ -287,16 +275,6 @@ export const getLoyaltyCampaignRemaining = getLoyaltyCampaignRemainingValue;
 export const calculateLoyaltyCampaignRemaining =
     getLoyaltyCampaignRemainingValue;
 
-export interface LoyaltyConfig {
-    targetPoints?: number;
-    rewardCouponId?: string | null;
-}
-
-export interface ParsedLoyaltyConfig {
-    targetPoints: number;
-    rewardCouponId?: string;
-}
-
 export enum LoyaltyCampaignStatus {
     DRAFT = "DRAFT",
     ACTIVE = "ACTIVE",
@@ -342,7 +320,6 @@ export enum LoyaltyStatus {
     READY = "READY",
     CLAIMED = "CLAIMED",
     EXPIRED = "EXPIRED",
-    NOT_CONFIGURED = "NOT_CONFIGURED",
 }
 
 export const LoyaltyCampaignCustomerStatus = LoyaltyStatus;
@@ -372,21 +349,6 @@ export function getLoyaltyCampaignCustomerStatus(input: {
     return input.reachedTarget
         ? LoyaltyStatus.READY
         : LoyaltyStatus.IN_PROGRESS;
-}
-
-export interface LoyaltySummary {
-    points: number;
-    targetPoints: number;
-    remaining: number;
-    status: LoyaltyStatus;
-    coupon?: Coupon;
-}
-
-export interface LoyaltyTenantStats {
-    tenantId: string;
-    totalPoints: number;
-    totalClaims: number;
-    activeCustomers: number;
 }
 
 export interface LoyaltyCampaignReward {
@@ -485,34 +447,4 @@ export interface LoyaltyCampaignRewardClaim {
     createdAt: Date;
     updatedAt: Date;
     coupon?: Coupon;
-}
-
-export interface LoyaltyLedgerEntry {
-    id: string;
-    tenantId: string;
-    userId: string;
-    sourceAppointmentId: string;
-    points: number;
-    reason: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
-
-export interface LoyaltyRewardClaim {
-    id: string;
-    tenantId: string;
-    userId: string;
-    milestone: number;
-    couponId: string;
-    status: LoyaltyRewardClaimStatus;
-    createdAt: Date;
-    updatedAt: Date;
-    coupon?: Coupon;
-}
-
-// Keep the JSON config shape typed without changing the legacy TenantConfig owner.
-declare module "@/core/entities/tenant.entity" {
-    interface TenantConfig {
-        loyalty?: LoyaltyConfig;
-    }
 }

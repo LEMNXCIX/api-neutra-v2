@@ -1,7 +1,10 @@
 import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { buildLoyaltyTenantOverview } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
+import {
+    buildLoyaltyTenantOverview,
+    LoyaltyCampaignTenantOverview,
+} from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
 
 export class GetAllTenantsLoyaltyOverviewUseCase {
     constructor(
@@ -9,7 +12,7 @@ export class GetAllTenantsLoyaltyOverviewUseCase {
         private tenantRepository: ITenantRepository,
     ) {}
 
-    async execute(): Promise<UseCaseResult<any[]>> {
+    async execute(): Promise<UseCaseResult<LoyaltyCampaignTenantOverview[]>> {
         const tenants = await this.tenantRepository.findAll();
         // ponytail: one aggregate query per tenant; batch with groupBy if the tenant count grows.
         const overviews = await Promise.all(
