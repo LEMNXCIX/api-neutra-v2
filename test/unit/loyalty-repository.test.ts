@@ -41,6 +41,19 @@ function couponRow(overrides: Record<string, unknown> = {}) {
     };
 }
 
+function rewardDefinition() {
+    return {
+        type: "PERCENT",
+        value: 20,
+        description: "Reward",
+        minPurchaseAmount: null,
+        maxDiscountAmount: null,
+        applicableProducts: [],
+        applicableCategories: [],
+        applicableServices: ["service-1"],
+    } as never;
+}
+
 function claimRow(
     coupon = couponRow(),
     overrides: Record<string, unknown> = {},
@@ -79,6 +92,13 @@ function campaignRow(overrides: Record<string, unknown> = {}) {
         claimedCount: 0,
         createdAt: now,
         updatedAt: now,
+        rewardCoupon: couponRow({
+            id: "template-1",
+            ownerId: null,
+            isReward: false,
+            isLoyaltyTemplate: true,
+            sourceCouponId: null,
+        }),
         ...overrides,
     };
 }
@@ -159,7 +179,17 @@ function setup() {
                 sourceCouponId: null,
             }),
         ),
-        create: jest.fn().mockResolvedValue(couponRow()),
+        create: jest.fn().mockImplementation(async ({ data }) =>
+            couponRow({
+                id: data.isLoyaltyTemplate ? "template-1" : "clone-1",
+                ownerId: data.ownerId,
+                isReward: data.isReward,
+                isLoyaltyTemplate: data.isLoyaltyTemplate,
+                sourceCouponId: data.sourceCouponId,
+            }),
+        ),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
     };
     const tx = {
         loyaltyLedgerEntry: ledger,
@@ -228,7 +258,7 @@ describe("PrismaLoyaltyRepository", () => {
     });
 
     test("creates a tenant-scoped campaign with a fixed Decimal string", async () => {
-        const { repository, campaigns, coupons } = setup();
+        const { repository, campaigns, coupons, database } = setup();
 
         const result = await repository.createCampaign("tenant-1", {
             name: "Spend rewards",
@@ -238,7 +268,7 @@ describe("PrismaLoyaltyRepository", () => {
             startsAt,
             endsAt,
             claimUntil,
-            rewardCouponId: "template-1",
+            reward: rewardDefinition(),
             rewardValidDays: 30,
             maxClaims: 50,
         });
@@ -251,17 +281,92 @@ describe("PrismaLoyaltyRepository", () => {
                 status: LoyaltyCampaignStatus.DRAFT,
             }),
         );
-        expect(coupons.findFirst).toHaveBeenCalledWith({
-            where: expect.objectContaining({
-                id: "template-1",
-                tenantId: "tenant-1",
-                ownerId: null,
-                isLoyaltyTemplate: true,
-                active: true,
-                expiresAt: { gte: claimUntil },
+        expect(database.$transaction).toHaveBeenCalledTimes(1);
+        expect(coupons.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    ownerId: null,
+                    active: true,
+                    isReward: false,
+                    isLoyaltyTemplate: true,
+                    usageLimit: null,
+                    expiresAt: claimUntil,
+                }),
+            }),
+        );
+        expect(result.targetValue).toBe("100.50");
+    });
+
+    test("round-trips the reward definition on campaign reads", async () => {
+        const { repository, campaigns } = setup();
+        campaigns.findFirst.mockResolvedValue(campaignRow());
+
+        await expect(
+            repository.getCampaign("tenant-1", "campaign-1"),
+        ).resolves.toMatchObject({
+            reward: expect.objectContaining({
+                type: "PERCENT",
+                value: 20,
+                applicableServices: ["service-1"],
             }),
         });
-        expect(result.targetValue).toBe("100.50");
+    });
+
+    test("extends claimUntil and the existing template expiry atomically", async () => {
+        const { repository, campaigns, coupons } = setup();
+        campaigns.findFirst
+            .mockResolvedValueOnce(campaignRow({ status: "DRAFT" }))
+            .mockResolvedValueOnce(
+                campaignRow({ status: "DRAFT", claimUntil: new Date("2030-03-01") }),
+            );
+        coupons.findFirst.mockResolvedValue(
+            couponRow({
+                id: "template-1",
+                ownerId: null,
+                isReward: false,
+                isLoyaltyTemplate: true,
+                expiresAt: new Date("2000-01-01"),
+            }),
+        );
+
+        await repository.updateCampaign("tenant-1", "campaign-1", {
+            claimUntil: new Date("2030-03-01"),
+        });
+
+        expect(coupons.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({ id: "template-1" }),
+                data: { expiresAt: new Date("2030-03-01") },
+            }),
+        );
+        expect(campaigns.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({ claimUntil: new Date("2030-03-01") }),
+            }),
+        );
+    });
+
+    test("rolls back a claimUntil extension when the template is missing", async () => {
+        const { repository, campaigns, coupons, database } = setup();
+        campaigns.findFirst.mockResolvedValue(campaignRow({ status: "DRAFT" }));
+        coupons.findFirst.mockResolvedValue(null);
+
+        await expect(
+            repository.updateCampaign("tenant-1", "campaign-1", {
+                claimUntil: new Date("2030-03-01"),
+            }),
+        ).rejects.toMatchObject({ code: "INVALID_LOYALTY_REWARD_TEMPLATE" });
+        expect(database.$transaction).toHaveBeenCalledTimes(1);
+        expect(campaigns.updateMany).not.toHaveBeenCalled();
+    });
+
+    test("does not expose removed repository aliases", () => {
+        const { repository } = setup();
+        const candidate = repository as unknown as Record<string, unknown>;
+        expect(candidate.createCampaignWithTemplate).toBeUndefined();
+        expect(candidate.updateCampaignWithTemplate).toBeUndefined();
+        expect(candidate.findCampaignClaim).toBeUndefined();
+        expect(candidate.getCampaignClaim).toBeUndefined();
     });
 
     test("updates a campaign only inside its tenant", async () => {
@@ -460,6 +565,7 @@ describe("PrismaLoyaltyRepository", () => {
                 repository.findActiveCampaignAt("tenant-1", sourceType, at),
             ).resolves.toMatchObject({ id: "campaign-1", targetValue: "10.00" });
             expect(campaigns.findFirst).toHaveBeenCalledWith({
+                include: { rewardCoupon: true },
                 where: {
                     tenantId: "tenant-1",
                     status: LoyaltyCampaignStatus.ACTIVE,

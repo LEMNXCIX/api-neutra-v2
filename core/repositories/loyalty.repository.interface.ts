@@ -2,6 +2,7 @@ import {
     LoyaltyCampaign,
     LoyaltyCampaignMetric,
     LoyaltyCampaignProgress,
+    LoyaltyCampaignReward,
     LoyaltyCampaignRewardClaim,
     LoyaltyCampaignSource,
     LoyaltyCampaignStats,
@@ -13,6 +14,8 @@ import {
 } from "@/core/entities/loyalty.entity";
 import { Coupon } from "@/core/entities/coupon.entity";
 
+export type LoyaltyCampaignRewardDefinition = LoyaltyCampaignReward;
+
 export type CreateLoyaltyCampaignData = {
     name: string;
     description?: string | null;
@@ -22,15 +25,15 @@ export type CreateLoyaltyCampaignData = {
     startsAt: Date;
     endsAt: Date;
     claimUntil: Date;
-    rewardCouponId: string;
+    reward: LoyaltyCampaignReward;
     rewardValidDays: number;
     maxClaims?: number | null;
 };
 
 export type UpdateLoyaltyCampaignData = Partial<
-    Omit<CreateLoyaltyCampaignData, "rewardCouponId" | "rewardValidDays">
+    Omit<CreateLoyaltyCampaignData, "reward" | "rewardValidDays">
 > & {
-    rewardCouponId?: string;
+    reward?: LoyaltyCampaignReward;
     rewardValidDays?: number;
 };
 
@@ -83,6 +86,11 @@ export interface ILoyaltyRepository {
         tenantId: string,
         campaignId: string,
     ): Promise<LoyaltyCampaignStats>;
+    findCampaignRewardClaim(
+        tenantId: string,
+        campaignId: string,
+        userId: string,
+    ): Promise<LoyaltyCampaignRewardClaim | null>;
     transitionCampaignStatus(
         tenantId: string,
         campaignId: string,

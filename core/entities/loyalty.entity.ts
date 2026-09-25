@@ -1,5 +1,6 @@
 import { TenantType } from "@/core/entities/tenant.entity";
-import type { Coupon } from "@/core/entities/coupon.entity";
+import type { Coupon, CouponType } from "@/core/entities/coupon.entity";
+import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 
 export const DEFAULT_LOYALTY_TARGET_POINTS = 10;
 export const LOYALTY_REWARD_MILESTONE = 10;
@@ -189,6 +190,36 @@ export function getLoyaltyCampaignSource(
     throw new TypeError("Unsupported loyalty campaign source type");
 }
 
+export function assertLoyaltyCampaignFeatures(
+    features: Record<string, boolean> | null | undefined,
+): void {
+    const resolved = features ?? {};
+    if (resolved.LOYALTY !== true) {
+        throw new BusinessRuleViolationError(
+            "LOYALTY must be enabled for campaign administration",
+            "LOYALTY_FEATURE_REQUIRED",
+        );
+    }
+    if (resolved.COUPONS !== true) {
+        throw new BusinessRuleViolationError(
+            "LOYALTY requires COUPONS to be enabled for campaign administration",
+            "LOYALTY_REQUIRES_COUPONS",
+        );
+    }
+}
+
+export function assertLoyaltyCampaignSourceCompatible(
+    tenantType: TenantType,
+    source: LoyaltyCampaignSource,
+): void {
+    if (!isLoyaltyCampaignSourceCompatible(tenantType, source)) {
+        throw new BusinessRuleViolationError(
+            "The campaign source is not supported by this tenant type",
+            "LOYALTY_CAMPAIGN_SOURCE_NOT_COMPATIBLE",
+        );
+    }
+}
+
 function normalizeNonNegativeDecimal(value: string): string {
     const normalized = normalizeDecimalString(value);
     if (normalized === null) {
@@ -209,6 +240,53 @@ function normalizeDecimalString(value: string): string | null {
     return negative ? `-${normalized}` : normalized;
 }
 
+function decimalStringToCents(value: string): bigint {
+    const normalized = normalizeDecimalString(value);
+    if (normalized === null) {
+        throw new TypeError("Loyalty values must be fixed decimal strings");
+    }
+    const negative = normalized.startsWith("-");
+    const unsigned = negative ? normalized.slice(1) : normalized;
+    const [whole, fraction = "00"] = unsigned.split(".");
+    const cents =
+        BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0").slice(0, 2));
+    return negative ? -cents : cents;
+}
+
+function centsToDecimalString(cents: bigint): string {
+    const negative = cents < 0n;
+    const absolute = negative ? -cents : cents;
+    const whole = absolute / 100n;
+    const fraction = (absolute % 100n).toString().padStart(2, "0");
+    return `${negative ? "-" : ""}${whole}.${fraction}`;
+}
+
+/**
+ * Subtracts two fixed two-decimal campaign values without floating point.
+ * Remaining campaign value is a business quantity, so it never goes below zero.
+ */
+export function subtractLoyaltyDecimalStrings(
+    value: string,
+    subtrahend: string,
+): string {
+    const difference =
+        decimalStringToCents(value) - decimalStringToCents(subtrahend);
+    return centsToDecimalString(difference < 0n ? 0n : difference);
+}
+
+export const subtractDecimalStrings = subtractLoyaltyDecimalStrings;
+
+export function getLoyaltyCampaignRemainingValue(
+    progressValue: string,
+    targetValue: string,
+): string {
+    return subtractLoyaltyDecimalStrings(targetValue, progressValue);
+}
+
+export const getLoyaltyCampaignRemaining = getLoyaltyCampaignRemainingValue;
+export const calculateLoyaltyCampaignRemaining =
+    getLoyaltyCampaignRemainingValue;
+
 export interface LoyaltyConfig {
     targetPoints?: number;
     rewardCouponId?: string | null;
@@ -224,6 +302,13 @@ export enum LoyaltyCampaignStatus {
     ACTIVE = "ACTIVE",
     ENDED = "ENDED",
     ARCHIVED = "ARCHIVED",
+}
+
+export enum LoyaltyCampaignAction {
+    ACTIVATE = "activate",
+    END = "end",
+    ARCHIVE = "archive",
+    DELETE = "delete",
 }
 
 export enum LoyaltyCampaignSource {
@@ -252,10 +337,41 @@ export enum LoyaltyRewardClaimStatus {
 }
 
 export enum LoyaltyStatus {
+    NOT_STARTED = "NOT_STARTED",
     IN_PROGRESS = "IN_PROGRESS",
     READY = "READY",
     CLAIMED = "CLAIMED",
+    EXPIRED = "EXPIRED",
     NOT_CONFIGURED = "NOT_CONFIGURED",
+}
+
+export const LoyaltyCampaignCustomerStatus = LoyaltyStatus;
+export type LoyaltyCampaignCustomerStatus = LoyaltyStatus;
+
+export function getLoyaltyCampaignCustomerStatus(input: {
+    lifecycleStatus: LoyaltyCampaignStatus;
+    startsAt: Date;
+    claimUntil: Date;
+    reachedTarget: boolean;
+    claimed: boolean;
+    now: Date;
+}): LoyaltyStatus {
+    if (input.claimed) return LoyaltyStatus.CLAIMED;
+    if (
+        input.lifecycleStatus === LoyaltyCampaignStatus.DRAFT ||
+        input.now.getTime() < input.startsAt.getTime()
+    ) {
+        return LoyaltyStatus.NOT_STARTED;
+    }
+    if (
+        input.lifecycleStatus === LoyaltyCampaignStatus.ARCHIVED ||
+        input.now.getTime() >= input.claimUntil.getTime()
+    ) {
+        return LoyaltyStatus.EXPIRED;
+    }
+    return input.reachedTarget
+        ? LoyaltyStatus.READY
+        : LoyaltyStatus.IN_PROGRESS;
 }
 
 export interface LoyaltySummary {
@@ -273,6 +389,17 @@ export interface LoyaltyTenantStats {
     activeCustomers: number;
 }
 
+export interface LoyaltyCampaignReward {
+    type: CouponType;
+    value: number;
+    description?: string | null;
+    minPurchaseAmount?: number | null;
+    maxDiscountAmount?: number | null;
+    applicableProducts: string[];
+    applicableCategories: string[];
+    applicableServices: string[];
+}
+
 export interface LoyaltyCampaign {
     id: string;
     tenantId: string;
@@ -286,6 +413,7 @@ export interface LoyaltyCampaign {
     endsAt: Date;
     claimUntil: Date;
     rewardCouponId?: string;
+    reward?: LoyaltyCampaignReward;
     rewardValidDays?: number;
     maxClaims?: number;
     claimedCount: number;
@@ -320,6 +448,24 @@ export interface LoyaltyCampaignProgress {
     progressValue: string;
     targetValue: string;
     reachedTarget: boolean;
+}
+
+export interface LoyaltyCampaignCustomerSummary {
+    campaignId: string;
+    metric: LoyaltyCampaignMetric;
+    progressValue: string;
+    targetValue: string;
+    remainingValue: string;
+    lifecycleStatus: LoyaltyCampaignStatus;
+    customerStatus: LoyaltyStatus;
+    /** Short aliases used by API consumers. */
+    progress?: string;
+    target?: string;
+    remaining?: string;
+    status?: LoyaltyStatus;
+    campaignStatus?: LoyaltyCampaignStatus;
+    coupon?: Coupon;
+    claim?: LoyaltyCampaignRewardClaim;
 }
 
 export interface LoyaltyCampaignStats {

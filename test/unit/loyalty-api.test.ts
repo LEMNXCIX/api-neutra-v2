@@ -29,6 +29,14 @@ function tenant(overrides: Partial<Tenant> = {}): Tenant {
     } as Tenant;
 }
 
+function featureRepository() {
+    return {
+        getTenantFeatureStatus: jest
+            .fn()
+            .mockResolvedValue({ LOYALTY: true, COUPONS: true }),
+    } as never;
+}
+
 function coupon(overrides: Record<string, unknown> = {}) {
     return {
         id: "coupon-1",
@@ -68,6 +76,7 @@ describe("loyalty customer use cases", () => {
                     }),
                 ),
             } as never,
+            featureRepository(),
         );
 
         const result = await useCase.execute("tenant-1", "customer-1");
@@ -118,6 +127,7 @@ describe("loyalty customer use cases", () => {
                     }),
                 ),
             } as never,
+            featureRepository(),
         );
 
         await expect(useCase.execute("tenant-1", "customer-1")).resolves.toMatchObject({
@@ -142,6 +152,7 @@ describe("loyalty customer use cases", () => {
                 findRewardClaim: jest.fn().mockResolvedValue(null),
             } as never,
             { findById: jest.fn().mockResolvedValue(tenant()) } as never,
+            featureRepository(),
         );
 
         await expect(useCase.execute("tenant-1", "customer-1")).resolves.toMatchObject({
@@ -181,6 +192,7 @@ describe("loyalty customer use cases", () => {
                     }),
                 ),
             } as never,
+            featureRepository(),
         );
 
         await useCase.execute("tenant-1", "customer-1");
@@ -368,6 +380,8 @@ describe("loyalty configuration", () => {
 describe("cross-tenant loyalty overview", () => {
     test("keeps disabled tenants visible", async () => {
         const loyaltyRepository = {
+            listCampaigns: jest.fn().mockResolvedValue([]),
+            getCampaignStats: jest.fn(),
             getTenantStats: jest.fn().mockImplementation(async (tenantId) => ({
                 tenantId,
                 totalPoints: 0,

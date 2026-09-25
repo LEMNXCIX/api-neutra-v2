@@ -9,7 +9,7 @@ export class GetAllTenantsLoyaltyOverviewUseCase {
         private tenantRepository: ITenantRepository,
     ) {}
 
-    async execute(): Promise<UseCaseResult> {
+    async execute(): Promise<UseCaseResult<any[]>> {
         const tenants = await this.tenantRepository.findAll();
         // ponytail: one aggregate query per tenant; batch with groupBy if the tenant count grows.
         const overviews = await Promise.all(

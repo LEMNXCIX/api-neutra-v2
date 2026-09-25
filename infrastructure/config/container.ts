@@ -493,14 +493,17 @@ export class Container {
             new GetCustomerLoyaltySummaryUseCase(
                 this.loyaltyRepository,
                 this.tenantRepository,
+                this.featureRepository,
             ),
             new ClaimLoyaltyRewardUseCase(
                 this.loyaltyRepository,
                 this.tenantRepository,
+                this.featureRepository,
             ),
             new GetTenantLoyaltyOverviewUseCase(
                 this.loyaltyRepository,
                 this.tenantRepository,
+                this.featureRepository,
             ),
             new GetLoyaltyConfigUseCase(this.tenantRepository),
             new UpdateLoyaltyConfigUseCase(

@@ -6,6 +6,7 @@ import {
     CreateLoyaltyLedgerEntryData,
     ILoyaltyRepository,
     LoyaltyCampaignClaimResult,
+    LoyaltyCampaignRewardDefinition,
     LoyaltyRewardClaimResult,
     UpdateLoyaltyCampaignData,
 } from "@/core/repositories/loyalty.repository.interface";
@@ -20,6 +21,7 @@ import {
     isValidLoyaltyTargetPoints,
     LoyaltyCampaign,
     LoyaltyCampaignMetric,
+    LoyaltyCampaignReward,
     LoyaltyCampaignProgress,
     LoyaltyCampaignRewardClaim,
     LoyaltyCampaignSource,
@@ -81,6 +83,7 @@ type CampaignRecord = {
     claimedCount: number;
     createdAt: Date;
     updatedAt: Date;
+    rewardCoupon?: CouponRecord | null;
 };
 
 type LedgerRecord = {
@@ -180,9 +183,9 @@ type RewardCouponWhere = {
     ownerId: null | { not: null };
     isReward?: boolean;
     isLoyaltyTemplate?: boolean;
-    active: boolean;
+    active?: boolean;
     usageCount?: number;
-    expiresAt: { gte?: Date; gt?: Date };
+    expiresAt?: { gte?: Date; gt?: Date };
 };
 
 type RewardCouponCreateData = {
@@ -193,17 +196,17 @@ type RewardCouponCreateData = {
     description: string | null;
     minPurchaseAmount: number | null;
     maxDiscountAmount: number | null;
-    usageLimit: number;
+    usageLimit: number | null;
     usageCount: number;
     active: boolean;
     expiresAt: Date;
     applicableProducts: string[];
     applicableCategories: string[];
     applicableServices: string[];
-    ownerId: string;
-    isReward: true;
-    isLoyaltyTemplate: false;
-    sourceCouponId: string;
+    ownerId: string | null;
+    isReward: boolean;
+    isLoyaltyTemplate: boolean;
+    sourceCouponId: string | null;
 };
 
 type LoyaltyLedgerDelegate = {
@@ -243,10 +246,12 @@ type LoyaltyCampaignDelegate = {
     create(args: { data: CampaignCreateData }): Promise<CampaignRecord>;
     findMany(args: {
         where: { tenantId: string };
+        include: { rewardCoupon: true };
         orderBy: { createdAt: "desc" };
     }): Promise<CampaignRecord[]>;
     findFirst(args: {
         where: Record<string, unknown>;
+        include?: { rewardCoupon: true };
         orderBy?: { startsAt: "desc" };
     }): Promise<CampaignRecord | null>;
     updateMany(args: {
@@ -286,6 +291,10 @@ type LoyaltyRewardClaimDelegate = {
     }): Promise<ClaimRecord>;
 };
 
+type RewardCouponUpdateData = Partial<
+    Omit<RewardCouponCreateData, "tenantId" | "code">
+>;
+
 type RewardCouponDelegate = {
     findFirst(args: {
         where: RewardCouponWhere;
@@ -293,6 +302,13 @@ type RewardCouponDelegate = {
     create(args: {
         data: RewardCouponCreateData;
     }): Promise<CouponRecord>;
+    updateMany(args: {
+        where: Record<string, unknown>;
+        data: RewardCouponUpdateData;
+    }): Promise<{ count: number }>;
+    deleteMany(args: {
+        where: Record<string, unknown>;
+    }): Promise<{ count: number }>;
 };
 
 type LoyaltyTransaction = {
@@ -339,7 +355,12 @@ function isLoyaltyDatabase(value: unknown): value is LoyaltyDatabase {
             "count",
             "create",
         ]) &&
-        hasMethods(value.coupon, ["findFirst", "create"]) &&
+        hasMethods(value.coupon, [
+            "findFirst",
+            "create",
+            "updateMany",
+            "deleteMany",
+        ]) &&
         typeof value.$transaction === "function"
     );
 }
@@ -414,6 +435,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             description: row.description ?? undefined,
             ownerId: row.ownerId ?? undefined,
             isReward: row.isReward,
+            isLoyaltyTemplate: row.isLoyaltyTemplate,
             sourceCouponId: row.sourceCouponId ?? undefined,
             minPurchaseAmount: row.minPurchaseAmount ?? undefined,
             maxDiscountAmount: row.maxDiscountAmount ?? undefined,
@@ -426,6 +448,22 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             applicableServices: row.applicableServices,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
+        };
+    }
+
+    private mapCampaignReward(
+        row: CouponRecord | null | undefined,
+    ): LoyaltyCampaignReward | undefined {
+        if (!row) return undefined;
+        return {
+            type: toCouponType(row.type),
+            value: row.value,
+            description: row.description ?? undefined,
+            minPurchaseAmount: row.minPurchaseAmount ?? undefined,
+            maxDiscountAmount: row.maxDiscountAmount ?? undefined,
+            applicableProducts: [...row.applicableProducts],
+            applicableCategories: [...row.applicableCategories],
+            applicableServices: [...row.applicableServices],
         };
     }
 
@@ -443,6 +481,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             endsAt: row.endsAt,
             claimUntil: row.claimUntil,
             rewardCouponId: row.rewardCouponId ?? undefined,
+            reward: this.mapCampaignReward(row.rewardCoupon),
             rewardValidDays: row.rewardValidDays ?? undefined,
             maxClaims: row.maxClaims ?? undefined,
             claimedCount: row.claimedCount,
@@ -535,7 +574,6 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         startsAt: Date;
         endsAt: Date;
         claimUntil: Date;
-        rewardCouponId?: string;
         rewardValidDays?: number;
         maxClaims?: number | null;
     }): void {
@@ -557,12 +595,6 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 "INVALID_CAMPAIGN_DATES",
             );
         }
-        if (!data.rewardCouponId?.trim()) {
-            throw new ValidationError(
-                "Campaign reward template is required",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
         if (!isValidLoyaltyRewardValidDays(data.rewardValidDays)) {
             throw new ValidationError(
                 "Campaign reward validity must be a positive integer",
@@ -577,6 +609,143 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             throw new ValidationError(
                 "Campaign maxClaims must be a positive integer",
                 "INVALID_CAMPAIGN_MAX_CLAIMS",
+            );
+        }
+    }
+
+    private validateRewardDefinition(
+        reward: LoyaltyCampaignRewardDefinition,
+    ): void {
+        if (!Object.values(CouponType).includes(reward.type)) {
+            throw new ValidationError(
+                "Reward definition type is invalid",
+                "INVALID_LOYALTY_REWARD_TEMPLATE",
+            );
+        }
+        if (
+            typeof reward.value !== "number" ||
+            !Number.isFinite(reward.value) ||
+            reward.value <= 0 ||
+            (reward.type === CouponType.PERCENT && reward.value > 100)
+        ) {
+            throw new ValidationError(
+                "Reward definition value is invalid",
+                "INVALID_LOYALTY_REWARD_TEMPLATE",
+            );
+        }
+        if (
+            reward.description !== undefined &&
+            reward.description !== null &&
+            typeof reward.description !== "string"
+        ) {
+            throw new ValidationError(
+                "Reward definition description is invalid",
+                "INVALID_LOYALTY_REWARD_TEMPLATE",
+            );
+        }
+        for (const [field, value] of [
+            ["minPurchaseAmount", reward.minPurchaseAmount],
+            ["maxDiscountAmount", reward.maxDiscountAmount],
+        ] as const) {
+            if (
+                value !== undefined &&
+                value !== null &&
+                (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+            ) {
+                throw new ValidationError(
+                    `Reward definition ${field} is invalid`,
+                    "INVALID_LOYALTY_REWARD_TEMPLATE",
+                );
+            }
+        }
+        for (const value of [
+            reward.applicableProducts,
+            reward.applicableCategories,
+            reward.applicableServices,
+        ]) {
+            if (
+                value !== undefined &&
+                (!Array.isArray(value) ||
+                    value.some((item) => typeof item !== "string"))
+            ) {
+                throw new ValidationError(
+                    "Reward definition applicability is invalid",
+                    "INVALID_LOYALTY_REWARD_TEMPLATE",
+                );
+            }
+        }
+    }
+
+    private buildTemplateData(
+        tenantId: string,
+        reward: LoyaltyCampaignRewardDefinition,
+        claimUntil: Date,
+    ): RewardCouponCreateData {
+        this.validateRewardDefinition(reward);
+        return {
+            tenantId,
+            code: `LOYALTY-TEMPLATE-${randomUUID().replace(/-/g, "").toUpperCase()}`,
+            type: reward.type,
+            value: reward.value,
+            description: reward.description?.trim() || null,
+            minPurchaseAmount: reward.minPurchaseAmount ?? null,
+            maxDiscountAmount: reward.maxDiscountAmount ?? null,
+            usageLimit: null,
+            usageCount: 0,
+            active: true,
+            expiresAt: new Date(claimUntil),
+            applicableProducts: [...(reward.applicableProducts ?? [])],
+            applicableCategories: [...(reward.applicableCategories ?? [])],
+            applicableServices: [...(reward.applicableServices ?? [])],
+            ownerId: null,
+            isReward: false,
+            isLoyaltyTemplate: true,
+            sourceCouponId: null,
+        };
+    }
+
+    private buildCampaignData(
+        tenantId: string,
+        data: CreateLoyaltyCampaignData,
+        rewardCouponId: string,
+    ): CampaignCreateData {
+        return {
+            tenantId,
+            name: data.name.trim(),
+            description: data.description?.trim() || null,
+            source: data.source,
+            metric: data.metric,
+            targetValue: new Prisma.Decimal(data.targetValue),
+            status: LoyaltyCampaignStatus.DRAFT,
+            startsAt: data.startsAt,
+            endsAt: data.endsAt,
+            claimUntil: data.claimUntil,
+            rewardCouponId,
+            rewardValidDays: data.rewardValidDays,
+            maxClaims: data.maxClaims ?? null,
+        };
+    }
+
+    private async updateTemplate(
+        tx: LoyaltyTransaction,
+        tenantId: string,
+        templateId: string,
+        data: RewardCouponUpdateData,
+    ): Promise<void> {
+        const result = await tx.coupon.updateMany({
+            where: {
+                id: templateId,
+                tenantId,
+                ownerId: null,
+                isReward: false,
+                isLoyaltyTemplate: true,
+            },
+            data,
+        });
+        if (result && result.count === 0) {
+            throw new BusinessRuleViolationError(
+                "The campaign reward template is no longer available",
+                "INVALID_LOYALTY_REWARD_TEMPLATE",
             );
         }
     }
@@ -611,27 +780,29 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
     ): Promise<LoyaltyCampaign> {
         this.validateIdentity(tenantId);
         this.validateCampaignFields(data);
-        await this.validateRewardTemplate(
-            tenantId,
-            data.rewardCouponId,
-            data.claimUntil,
-        );
-        const row = await this.db.loyaltyCampaign.create({
-            data: {
-                tenantId,
-                name: data.name.trim(),
-                description: data.description?.trim() || null,
-                source: data.source,
-                metric: data.metric,
-                targetValue: new Prisma.Decimal(data.targetValue),
-                status: LoyaltyCampaignStatus.DRAFT,
-                startsAt: data.startsAt,
-                endsAt: data.endsAt,
-                claimUntil: data.claimUntil,
-                rewardCouponId: data.rewardCouponId.trim(),
-                rewardValidDays: data.rewardValidDays,
-                maxClaims: data.maxClaims ?? null,
-            },
+        if (!data.reward) {
+            throw new ValidationError(
+                "Campaign reward definition is required",
+                "INVALID_LOYALTY_REWARD_TEMPLATE",
+            );
+        }
+        this.validateRewardDefinition(data.reward);
+        const row = await this.db.$transaction(async (tx) => {
+            const template = await tx.coupon.create({
+                data: this.buildTemplateData(
+                    tenantId,
+                    data.reward,
+                    data.claimUntil,
+                ),
+            });
+            const campaign = await tx.loyaltyCampaign.create({
+                data: this.buildCampaignData(
+                    tenantId,
+                    data,
+                    template.id,
+                ),
+            });
+            return { ...campaign, rewardCoupon: template };
         });
         return this.mapCampaign(row);
     }
@@ -642,121 +813,212 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         data: UpdateLoyaltyCampaignData,
     ): Promise<LoyaltyCampaign> {
         this.validateIdentity(tenantId, campaignId);
-        const current = await this.getCampaign(tenantId, campaignId);
-        if (!current) {
-            throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
-        }
-        if (current.status !== LoyaltyCampaignStatus.DRAFT) {
-            throw new BusinessRuleViolationError(
-                "Only DRAFT loyalty campaigns can be updated",
-                "LOYALTY_CAMPAIGN_NOT_DRAFT",
-            );
-        }
-
-        const candidate = {
-            name: data.name ?? current.name,
-            source: data.source ?? current.source,
-            metric: data.metric ?? current.metric,
-            targetValue: data.targetValue ?? current.targetValue,
-            startsAt: data.startsAt ?? current.startsAt,
-            endsAt: data.endsAt ?? current.endsAt,
-            claimUntil: data.claimUntil ?? current.claimUntil,
-            rewardCouponId: data.rewardCouponId ?? current.rewardCouponId,
-            rewardValidDays: data.rewardValidDays ?? current.rewardValidDays,
-            maxClaims:
-                data.maxClaims === undefined
-                    ? current.maxClaims ?? null
-                    : data.maxClaims,
-        };
-        this.validateCampaignFields(candidate);
-        if (
-            candidate.maxClaims !== null &&
-            candidate.maxClaims < current.claimedCount
-        ) {
-            throw new ValidationError(
-                "Campaign maxClaims cannot be lower than claimedCount",
-                "INVALID_CAMPAIGN_MAX_CLAIMS",
-            );
-        }
-        await this.validateRewardTemplate(
+        if (data.reward) this.validateRewardDefinition(data.reward);
+        return this.updateCampaignAndTemplate(
             tenantId,
-            candidate.rewardCouponId!,
-            candidate.claimUntil,
+            campaignId,
+            data,
+            data.reward,
         );
+    }
 
-        const updateData: CampaignUpdateData = {};
-        if (data.name !== undefined) updateData.name = data.name.trim();
-        if (data.description !== undefined) {
-            updateData.description = data.description?.trim() || null;
-        }
-        if (data.source !== undefined) updateData.source = data.source;
-        if (data.metric !== undefined) updateData.metric = data.metric;
-        if (data.targetValue !== undefined) {
-            updateData.targetValue = new Prisma.Decimal(data.targetValue);
-        }
-        if (data.startsAt !== undefined) updateData.startsAt = data.startsAt;
-        if (data.endsAt !== undefined) updateData.endsAt = data.endsAt;
-        if (data.claimUntil !== undefined) updateData.claimUntil = data.claimUntil;
-        if (data.rewardCouponId !== undefined) {
-            updateData.rewardCouponId = data.rewardCouponId.trim();
-        }
-        if (data.rewardValidDays !== undefined) {
-            updateData.rewardValidDays = data.rewardValidDays;
-        }
-        if (data.maxClaims !== undefined) updateData.maxClaims = data.maxClaims;
+    private async updateCampaignAndTemplate(
+        tenantId: string,
+        campaignId: string,
+        data: UpdateLoyaltyCampaignData,
+        reward: LoyaltyCampaignRewardDefinition | undefined,
+    ): Promise<LoyaltyCampaign> {
+        return this.db.$transaction(async (tx) => {
+            const currentRow = await tx.loyaltyCampaign.findFirst({
+                where: { id: campaignId, tenantId },
+                include: { rewardCoupon: true },
+            });
+            if (!currentRow) {
+                throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
+            }
+            const current = this.mapCampaign(currentRow);
+            if (current.status !== LoyaltyCampaignStatus.DRAFT) {
+                throw new BusinessRuleViolationError(
+                    "Only DRAFT loyalty campaigns can be updated",
+                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
+                );
+            }
 
-        const result = await this.db.loyaltyCampaign.updateMany({
-            where: {
-                id: campaignId,
-                tenantId,
-                status: LoyaltyCampaignStatus.DRAFT,
-            },
-            data: updateData,
+            const candidate = {
+                name: data.name ?? current.name,
+                source: data.source ?? current.source,
+                metric: data.metric ?? current.metric,
+                targetValue: data.targetValue ?? current.targetValue,
+                startsAt: data.startsAt ?? current.startsAt,
+                endsAt: data.endsAt ?? current.endsAt,
+                claimUntil: data.claimUntil ?? current.claimUntil,
+                rewardCouponId: current.rewardCouponId,
+                rewardValidDays:
+                    data.rewardValidDays ?? current.rewardValidDays,
+                maxClaims:
+                    data.maxClaims === undefined
+                        ? current.maxClaims ?? null
+                        : data.maxClaims,
+            };
+            this.validateCampaignFields(candidate);
+            if (
+                candidate.maxClaims !== null &&
+                candidate.maxClaims < current.claimedCount
+            ) {
+                throw new ValidationError(
+                    "Campaign maxClaims cannot be lower than claimedCount",
+                    "INVALID_CAMPAIGN_MAX_CLAIMS",
+                );
+            }
+
+            const templateId = current.rewardCouponId;
+            if (!templateId) {
+                throw new BusinessRuleViolationError(
+                    "Campaign reward template is missing",
+                    "INVALID_LOYALTY_REWARD_TEMPLATE",
+                );
+            }
+            const existingTemplate = await tx.coupon.findFirst({
+                where: {
+                    id: templateId,
+                    tenantId,
+                    ownerId: null,
+                    isReward: false,
+                    isLoyaltyTemplate: true,
+                },
+            });
+            if (!existingTemplate) {
+                throw new BusinessRuleViolationError(
+                    "The campaign reward template is missing",
+                    "INVALID_LOYALTY_REWARD_TEMPLATE",
+                );
+            }
+            if (reward) {
+                if (templateId) {
+                    await this.updateTemplate(tx, tenantId, templateId, {
+                        type: reward.type,
+                        value: reward.value,
+                        description: reward.description?.trim() || null,
+                        minPurchaseAmount: reward.minPurchaseAmount ?? null,
+                        maxDiscountAmount: reward.maxDiscountAmount ?? null,
+                        active: true,
+                        expiresAt: new Date(candidate.claimUntil),
+                        applicableProducts: [
+                            ...(reward.applicableProducts ?? []),
+                        ],
+                        applicableCategories: [
+                            ...(reward.applicableCategories ?? []),
+                        ],
+                        applicableServices: [
+                            ...(reward.applicableServices ?? []),
+                        ],
+                        ownerId: null,
+                        isReward: false,
+                        isLoyaltyTemplate: true,
+                        sourceCouponId: null,
+                        usageLimit: null,
+                    });
+                }
+            } else {
+                await this.updateTemplate(tx, tenantId, templateId, {
+                    expiresAt: new Date(candidate.claimUntil),
+                });
+            }
+
+            const updateData: CampaignUpdateData = {};
+            if (data.name !== undefined) updateData.name = data.name.trim();
+            if (data.description !== undefined) {
+                updateData.description = data.description?.trim() || null;
+            }
+            if (data.source !== undefined) updateData.source = data.source;
+            if (data.metric !== undefined) updateData.metric = data.metric;
+            if (data.targetValue !== undefined) {
+                updateData.targetValue = new Prisma.Decimal(data.targetValue);
+            }
+            if (data.startsAt !== undefined) updateData.startsAt = data.startsAt;
+            if (data.endsAt !== undefined) updateData.endsAt = data.endsAt;
+            if (data.claimUntil !== undefined) {
+                updateData.claimUntil = data.claimUntil;
+            }
+            if (data.rewardValidDays !== undefined) {
+                updateData.rewardValidDays = data.rewardValidDays;
+            }
+            if (data.maxClaims !== undefined) updateData.maxClaims = data.maxClaims;
+
+            const result = await tx.loyaltyCampaign.updateMany({
+                where: {
+                    id: campaignId,
+                    tenantId,
+                    status: LoyaltyCampaignStatus.DRAFT,
+                },
+                data: updateData,
+            });
+            if (result.count === 0) {
+                throw new BusinessRuleViolationError(
+                    "The loyalty campaign is no longer DRAFT",
+                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
+                );
+            }
+            const updated = await tx.loyaltyCampaign.findFirst({
+                where: { id: campaignId, tenantId },
+                include: { rewardCoupon: true },
+            });
+            if (!updated) {
+                throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
+            }
+            return this.mapCampaign(updated);
         });
-        if (result.count === 0) {
-            throw new BusinessRuleViolationError(
-                "The loyalty campaign is no longer DRAFT",
-                "LOYALTY_CAMPAIGN_NOT_DRAFT",
-            );
-        }
-        const updated = await this.getCampaign(tenantId, campaignId);
-        if (!updated) {
-            throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
-        }
-        return updated;
     }
 
     async deleteCampaign(tenantId: string, campaignId: string): Promise<void> {
         this.validateIdentity(tenantId, campaignId);
-        const current = await this.getCampaign(tenantId, campaignId);
-        if (!current) {
-            throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
-        }
-        if (current.status !== LoyaltyCampaignStatus.DRAFT) {
-            throw new BusinessRuleViolationError(
-                "Only DRAFT loyalty campaigns can be deleted",
-                "LOYALTY_CAMPAIGN_NOT_DRAFT",
-            );
-        }
-        const result = await this.db.loyaltyCampaign.deleteMany({
-            where: {
-                id: campaignId,
-                tenantId,
-                status: LoyaltyCampaignStatus.DRAFT,
-            },
+        await this.db.$transaction(async (tx) => {
+            const currentRow = await tx.loyaltyCampaign.findFirst({
+                where: { id: campaignId, tenantId },
+                include: { rewardCoupon: true },
+            });
+            if (!currentRow) {
+                throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
+            }
+            const current = this.mapCampaign(currentRow);
+            if (current.status !== LoyaltyCampaignStatus.DRAFT) {
+                throw new BusinessRuleViolationError(
+                    "Only DRAFT loyalty campaigns can be deleted",
+                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
+                );
+            }
+            const result = await tx.loyaltyCampaign.deleteMany({
+                where: {
+                    id: campaignId,
+                    tenantId,
+                    status: LoyaltyCampaignStatus.DRAFT,
+                },
+            });
+            if (result.count === 0) {
+                throw new BusinessRuleViolationError(
+                    "The loyalty campaign is no longer DRAFT",
+                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
+                );
+            }
+            if (current.rewardCouponId && current.claimedCount === 0) {
+                await tx.coupon.deleteMany({
+                    where: {
+                        id: current.rewardCouponId,
+                        tenantId,
+                        ownerId: null,
+                        isReward: false,
+                        isLoyaltyTemplate: true,
+                    },
+                });
+            }
         });
-        if (result.count === 0) {
-            throw new BusinessRuleViolationError(
-                "The loyalty campaign is no longer DRAFT",
-                "LOYALTY_CAMPAIGN_NOT_DRAFT",
-            );
-        }
     }
 
     async listCampaigns(tenantId: string): Promise<LoyaltyCampaign[]> {
         this.validateIdentity(tenantId);
         const rows = await this.db.loyaltyCampaign.findMany({
             where: { tenantId },
+            include: { rewardCoupon: true },
             orderBy: { createdAt: "desc" },
         });
         return rows.map((row) => this.mapCampaign(row));
@@ -808,6 +1070,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         this.validateIdentity(tenantId, campaignId);
         const row = await this.db.loyaltyCampaign.findFirst({
             where: { id: campaignId, tenantId },
+            include: { rewardCoupon: true },
         });
         return row ? this.mapCampaign(row) : null;
     }
@@ -841,6 +1104,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 startsAt: { lte: at },
                 endsAt: { gt: at },
             },
+            include: { rewardCoupon: true },
             orderBy: { startsAt: "desc" },
         });
         return row ? this.mapCampaign(row) : null;
@@ -896,6 +1160,19 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         };
     }
 
+    async findCampaignRewardClaim(
+        tenantId: string,
+        campaignId: string,
+        userId: string,
+    ): Promise<LoyaltyCampaignRewardClaim | null> {
+        this.validateIdentity(tenantId, campaignId, userId);
+        const row = await this.db.loyaltyRewardClaim.findFirst({
+            where: { tenantId, campaignId, userId },
+            include: { coupon: true },
+        });
+        return row ? this.mapCampaignClaim(row) : null;
+    }
+
     async transitionCampaignStatus(
         tenantId: string,
         campaignId: string,
@@ -938,7 +1215,6 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 startsAt: current.startsAt,
                 endsAt: current.endsAt,
                 claimUntil: current.claimUntil,
-                rewardCouponId: current.rewardCouponId,
                 rewardValidDays: current.rewardValidDays,
                 maxClaims: current.maxClaims ?? null,
             });
@@ -984,6 +1260,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
 
                 const campaignRow = await tx.loyaltyCampaign.findFirst({
                     where: { id: campaignId, tenantId },
+                    include: { rewardCoupon: true },
                 });
                 if (!campaignRow) {
                     throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
