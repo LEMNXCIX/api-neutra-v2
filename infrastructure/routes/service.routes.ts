@@ -1,12 +1,16 @@
 import { Application, Router } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
-import { optionalAuthenticate } from "@/middleware/optional-authenticate.middleware";
+import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { ServiceController } from "@/interface-adapters/controllers/service.controller";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
 
-function services(app: Application, serviceController: ServiceController) {
+function services(
+    app: Application,
+    serviceController: ServiceController,
+    authenticate: RequestHandler,
+    optionalAuthenticate: RequestHandler,
+) {
     const router = Router();
     app.use("/api/services", router);
 

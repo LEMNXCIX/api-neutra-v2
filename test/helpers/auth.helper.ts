@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import config from '@/config/index.config';
 import { JWTPayload } from '@/types/rbac';
 import { RedisProvider } from '@/infrastructure/providers/redis.provider';
+import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
 
 export const getAuthToken = async (
     userId: string = 'test-user-id',
@@ -27,7 +28,7 @@ export const getAuthToken = async (
     };
 
     // Set permissions in Redis as the middleware expects
-    const redis = RedisProvider.getInstance();
+    const redis = new RedisProvider(new PinoLoggerProvider());
     const tenantId = 'test-tenant-id'; // Matching default tenant ID used in tests
     await redis.set(`user:permissions:${userId}:${tenantId}`, JSON.stringify(permissions), 3600);
 

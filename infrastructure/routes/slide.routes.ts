@@ -1,12 +1,16 @@
 import { Application, Router } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
-import { optionalAuthenticate } from "@/middleware/optional-authenticate.middleware";
+import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { SlideController } from "@/interface-adapters/controllers/slide.controller";
-import { requireTenantFeature } from "@/middleware/tenant-feature.middleware";
 
-function slide(app: Application, slideController: SlideController) {
+function slide(
+    app: Application,
+    slideController: SlideController,
+    authenticate: RequestHandler,
+    optionalAuthenticate: RequestHandler,
+    requireTenantFeature: (featureKey: string) => RequestHandler,
+) {
     const router = Router();
     app.use("/api/slide", router);
 

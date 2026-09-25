@@ -1,14 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
-import { PinoLoggerProvider } from '@/infrastructure/providers/pino-logger.provider';
+import type { ILogger } from '@/core/providers/logger.interface';
 
-const logger = new PinoLoggerProvider();
-
-export default function requestMiddleware(req: Request, res: Response, next: NextFunction) {
-    logger.logRequest({
-        method: req.method,
-        url: req.originalUrl,
-        body: req.body,
-        headers: req.headers
-    });
-    next();
+export function createRequestMiddleware(logger: ILogger) {
+    return function requestMiddleware(
+        req: Request,
+        res: Response,
+        next: NextFunction,
+    ) {
+        logger.logRequest({
+            method: req.method,
+            url: req.originalUrl,
+            body: req.body,
+            headers: req.headers as Record<string, string>
+        });
+        next();
+    };
 }
+
+export default createRequestMiddleware;

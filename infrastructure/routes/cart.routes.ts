@@ -1,9 +1,13 @@
 import { Application, Request, Response, Router } from 'express';
-import { authenticate } from '@/middleware/authenticate.middleware';
+import type { RequestHandler } from 'express';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { CartController } from '@/interface-adapters/controllers/cart.controller';
 
-function cart(app: Application, cartController: CartController) {
+function cart(
+    app: Application,
+    cartController: CartController,
+    authenticate: RequestHandler,
+) {
     const router = Router();
     app.use('/api/cart', router);
 

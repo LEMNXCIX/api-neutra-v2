@@ -6,24 +6,24 @@ import {
     ErrorDetail,
     SystemErrorCodes,
 } from "@/types/api-response";
-import { PinoLoggerProvider } from "@/infrastructure/providers/pino-logger.provider";
+import type { ILogger } from "@/core/providers/logger.interface";
 import config from "@/config/index.config";
 import { isProduction } from "@/core/domain/constants";
 import { DomainError } from "@/core/domain/errors/domain-errors";
 import { httpStatusFromDomainError } from "@/types/error-codes";
 
-const logger = new PinoLoggerProvider();
 const configIsProduction = isProduction(config.ENVIRONMENT);
 
 function makeTraceId(req: Request) {
     return `${req.method}-${req.path}-${Date.now()}`;
 }
 
-export default function responseMiddleware(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-) {
+export default function createResponseMiddleware(logger: ILogger) {
+    return function responseMiddleware(
+        req: Request,
+        res: Response,
+        next: NextFunction,
+    ) {
     const traceId = req.traceId || makeTraceId(req);
     req.traceId = traceId;
 
@@ -100,7 +100,11 @@ export default function responseMiddleware(
             res.status(statusCode);
         }
 
-        logger.logResponse({ statusCode, body: response });
+        // SAFETY: StandardResponse is a plain record-shaped response payload.
+        logger.logResponse({
+            statusCode,
+            body: response as unknown as Record<string, unknown>,
+        });
 
         return originalJson(response);
     } as any;
@@ -116,7 +120,11 @@ export default function responseMiddleware(
             statusCode,
             traceId,
         );
-        logger.logResponse({ statusCode, body: response });
+        // SAFETY: ApiResponse returns a plain record-shaped response payload.
+        logger.logResponse({
+            statusCode,
+            body: response as unknown as Record<string, unknown>,
+        });
         res.status(statusCode).json(response);
         return res;
     };
@@ -178,7 +186,8 @@ export default function responseMiddleware(
         return res;
     };
 
-    next();
+        next();
+    };
 }
 
 function normalizeErrors(errors: any): ErrorDetail[] {

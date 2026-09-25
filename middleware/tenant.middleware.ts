@@ -7,9 +7,8 @@ import {
     isTest,
 } from "@/core/domain/constants";
 import { TENANT_HTTP_CONSTANTS } from "@/config/infrastructure-constants";
-import { Container } from "@/infrastructure/config/container";
 import config from "@/config/index.config";
-import { logger } from "@/infrastructure/providers/logger.instance";
+import type { ILogger } from "@/core/providers/logger.interface";
 
 function isManagementRoute(normalizedPath: string): boolean {
     return TENANT_HTTP_CONSTANTS.MANAGEMENT_PATH_PREFIXES.some((prefix) =>
@@ -34,6 +33,7 @@ function extractSubdomain(host: string): string | null {
 export function createTenantMiddleware(deps: {
     tenantRepository: ITenantRepository;
     environment: string;
+    logger: ILogger;
 }) {
     return async (
         req: Request,
@@ -160,7 +160,7 @@ export function createTenantMiddleware(deps: {
 
             next();
         } catch (error) {
-            logger.error("Tenant middleware error", error);
+            deps.logger.error("Tenant middleware error", error);
             res.status(500).json({
                 success: false,
                 statusCode: 500,
@@ -175,8 +175,3 @@ export function createTenantMiddleware(deps: {
         }
     };
 }
-
-export const tenantMiddleware = createTenantMiddleware({
-    tenantRepository: Container.getTenantRepository(),
-    environment: config.ENVIRONMENT,
-});

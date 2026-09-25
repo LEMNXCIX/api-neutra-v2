@@ -1,10 +1,14 @@
 import { Application, Router } from 'express';
-import { authenticate } from '@/middleware/authenticate.middleware';
+import type { RequestHandler } from 'express';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { CouponController } from '@/interface-adapters/controllers/coupon.controller';
-import { requireTenantFeature } from "@/middleware/tenant-feature.middleware";
 
-function couponRoutes(app: Application, couponController: CouponController) {
+function couponRoutes(
+    app: Application,
+    couponController: CouponController,
+    authenticate: RequestHandler,
+    requireTenantFeature: (featureKey: string) => RequestHandler,
+) {
     const router = Router();
     app.use('/api/coupons', router);
 

@@ -1,57 +1,88 @@
-import { Job, Worker } from "bullmq";
-import { Container } from "@/infrastructure/config/container";
-import { logger } from "@/infrastructure/providers/logger.instance";
+import { Worker } from "bullmq";
+import type { Job } from "bullmq";
+import type { SweepAppointmentReviewsResult } from "@/core/application/booking/sweep-appointment-reviews.use-case";
+import type { ILogger } from "@/core/providers/logger.interface";
 import {
     APPOINTMENT_REVIEW_SWEEP_JOB_NAME,
     MAINTENANCE_QUEUE_NAME,
     redisOptions,
     scheduleAppointmentReviewSweep,
 } from "@/infrastructure/services/queue.service";
+import type { MaintenanceQueue } from "@/infrastructure/services/queue.service";
 
-const sweepAppointmentReviews = Container.getSweepAppointmentReviewsUseCase();
+export type AppointmentReviewSweep = {
+    execute(): Promise<SweepAppointmentReviewsResult>;
+};
 
-export const appointmentReviewWorker = new Worker(
-    MAINTENANCE_QUEUE_NAME,
-    async (job: Job) => {
-        if (job.name !== APPOINTMENT_REVIEW_SWEEP_JOB_NAME) {
-            logger.warn("Ignoring unsupported maintenance job", {
+export type AppointmentReviewWorkerDependencies = {
+    sweepAppointmentReviews: AppointmentReviewSweep;
+    logger: ILogger;
+    connection?: typeof redisOptions;
+    maintenanceQueue?: MaintenanceQueue;
+    schedule?: (maintenanceQueue: MaintenanceQueue) => Promise<void>;
+};
+
+export function createAppointmentReviewWorker({
+    sweepAppointmentReviews,
+    logger,
+    connection = redisOptions,
+    maintenanceQueue,
+    schedule = scheduleAppointmentReviewSweep,
+}: AppointmentReviewWorkerDependencies): Worker {
+    const appointmentReviewWorker = new Worker(
+        MAINTENANCE_QUEUE_NAME,
+        async (job: Job) => {
+            if (job.name !== APPOINTMENT_REVIEW_SWEEP_JOB_NAME) {
+                logger.warn("Ignoring unsupported maintenance job", {
+                    jobId: job.id,
+                    jobName: job.name,
+                });
+                return;
+            }
+
+            logger.info("Appointment review sweep started", {
                 jobId: job.id,
-                jobName: job.name,
             });
-            return;
-        }
+            const result = await sweepAppointmentReviews.execute();
+            logger.info("Appointment review sweep job completed", {
+                jobId: job.id,
+                candidates: result.candidates,
+                transitioned: result.transitioned,
+                conflicts: result.conflicts,
+            });
 
-        logger.info("Appointment review sweep started", { jobId: job.id });
-        const result = await sweepAppointmentReviews.execute();
-        logger.info("Appointment review sweep job completed", {
-            jobId: job.id,
-            candidates: result.candidates,
-            transitioned: result.transitioned,
-            conflicts: result.conflicts,
+            return result;
+        },
+        {
+            connection,
+            concurrency: 1,
+        },
+    );
+
+    appointmentReviewWorker.on("failed", (job, error) => {
+        logger.error("Appointment review sweep job failed", error, {
+            jobId: job?.id,
         });
-
-        return result;
-    },
-    {
-        connection: redisOptions,
-        concurrency: 1,
-    },
-);
-
-appointmentReviewWorker.on("failed", (job, error) => {
-    logger.error("Appointment review sweep job failed", error, {
-        jobId: job?.id,
     });
-});
 
-appointmentReviewWorker.on("error", (error) => {
-    logger.error("Appointment review worker error", error);
-});
-
-void scheduleAppointmentReviewSweep()
-    .then(() => {
-        logger.info("Appointment review sweep scheduler registered");
-    })
-    .catch((error: unknown) => {
-        logger.error("Failed to register appointment review scheduler", error);
+    appointmentReviewWorker.on("error", (error) => {
+        logger.error("Appointment review worker error", error);
     });
+
+    if (maintenanceQueue) {
+        void schedule(maintenanceQueue)
+            .then(() => {
+                logger.info(
+                    "Appointment review sweep scheduler registered",
+                );
+            })
+            .catch((error: unknown) => {
+                logger.error(
+                    "Failed to register appointment review scheduler",
+                    error,
+                );
+            });
+    }
+
+    return appointmentReviewWorker;
+}

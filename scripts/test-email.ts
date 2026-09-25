@@ -7,7 +7,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { emailService } from '../infrastructure/services/email.service';
+import { createEmailService } from '../infrastructure/services/email.service';
+import { PinoLoggerProvider } from '../infrastructure/providers/pino-logger.provider';
+
+const emailService = createEmailService(new PinoLoggerProvider());
 
 async function testEmailService() {
     console.log('🧪 Testing Email Service...\n');

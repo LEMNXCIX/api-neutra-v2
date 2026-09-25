@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { ProcessWhatsAppWebhookUseCase } from "@/core/application/whatsapp/process-whatsapp-webhook.use-case";
 import config from "@/config/index.config";
-import { logger } from "@/infrastructure/providers/logger.instance";
+import type { ILogger } from "@/core/providers/logger.interface";
 
 /**
  * Thin HTTP adapter for Meta WhatsApp webhooks.
@@ -10,6 +10,7 @@ import { logger } from "@/infrastructure/providers/logger.instance";
 export class WhatsAppWebhookController {
     constructor(
         private processWhatsAppWebhookUseCase: ProcessWhatsAppWebhookUseCase,
+        private readonly logger: ILogger,
     ) {}
 
     /**
@@ -41,7 +42,7 @@ export class WhatsAppWebhookController {
 
             return res.status(403).json({ error: "Verification failed" });
         } catch (error) {
-            logger.error("Webhook verification failed", error);
+            this.logger.error("Webhook verification failed", error);
             return res.status(500).json({ error: "Internal Server Error" });
         }
     }
@@ -63,7 +64,7 @@ export class WhatsAppWebhookController {
 
             return res.status(200).send("EVENT_RECEIVED");
         } catch (error) {
-            logger.error("Webhook event processing failed", error);
+            this.logger.error("Webhook event processing failed", error);
             return res.status(500).json({ error: "Internal Server Error" });
         }
     }

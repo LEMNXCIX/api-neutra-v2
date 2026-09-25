@@ -1,4 +1,6 @@
 import { PinoLoggerProvider } from "./pino-logger.provider";
 
-/** Shared application-wide logger instance. */
-export const logger = new PinoLoggerProvider();
+/** Create an application logger owned by the active runtime. */
+export function createLogger(): PinoLoggerProvider {
+    return new PinoLoggerProvider();
+}

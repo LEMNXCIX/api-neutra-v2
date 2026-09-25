@@ -46,7 +46,9 @@ afterAll(async () => {
     try {
         const { RedisProvider } =
             await import("@/infrastructure/providers/redis.provider");
-        const redis = RedisProvider.getInstance();
+        const { PinoLoggerProvider } =
+            await import("@/infrastructure/providers/pino-logger.provider");
+        const redis = new RedisProvider(new PinoLoggerProvider());
         await redis.quit();
     } catch {
         // Redis is mocked in test env, safe to ignore

@@ -1,14 +1,13 @@
 import { createClient, RedisClientType } from "redis";
 import config from "@/config/index.config";
-import { info, error as logError } from "@/helpers/logger.helpers";
 import { ICacheProvider } from "@/core/providers/cache-provider.interface";
+import type { ILogger } from "@/core/providers/logger.interface";
 
 export class RedisProvider implements ICacheProvider {
-    private static instance: RedisProvider;
     private client: RedisClientType;
     private isConnected: boolean = false;
 
-    private constructor() {
+    public constructor(private readonly logger: ILogger) {
         const url = `redis://${config.redisHost || "localhost"}:${config.redisPort || 6379}`;
 
         this.client = createClient({
@@ -17,23 +16,16 @@ export class RedisProvider implements ICacheProvider {
         });
 
         this.client.on("error", (err) => {
-            logError({ message: "Redis Client Error", error: err });
+            this.logger.error("Redis Client Error", err);
             this.isConnected = false;
         });
 
         this.client.on("connect", () => {
-            info({ message: "Redis Client Connected" });
+            this.logger.info("Redis Client Connected");
             this.isConnected = true;
         });
 
         this.connect();
-    }
-
-    public static getInstance(): RedisProvider {
-        if (!RedisProvider.instance) {
-            RedisProvider.instance = new RedisProvider();
-        }
-        return RedisProvider.instance;
     }
 
     private async connect() {
@@ -41,7 +33,7 @@ export class RedisProvider implements ICacheProvider {
             try {
                 await this.client.connect();
             } catch (err) {
-                logError({ message: "Failed to connect to Redis", error: err });
+                this.logger.error("Failed to connect to Redis", err);
             }
         }
     }
@@ -68,6 +60,12 @@ export class RedisProvider implements ICacheProvider {
     public async del(key: string): Promise<void> {
         if (!this.isConnected) await this.connect();
         await this.client.del(key);
+    }
+
+    public async ping(): Promise<string> {
+        if (!this.isConnected) await this.connect();
+
+        return this.client.ping();
     }
 
     public async quit(): Promise<void> {

@@ -1,11 +1,15 @@
 import { Application, Router } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
+import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { BannerController } from "@/interface-adapters/controllers/banner.controller";
-import { requireTenantFeature } from "@/middleware/tenant-feature.middleware";
 
-function bannerRoutes(app: Application, bannerController: BannerController) {
+function bannerRoutes(
+    app: Application,
+    bannerController: BannerController,
+    authenticate: RequestHandler,
+    requireTenantFeature: (featureKey: string) => RequestHandler,
+) {
     const router = Router();
     app.use("/api/banners", router);
 

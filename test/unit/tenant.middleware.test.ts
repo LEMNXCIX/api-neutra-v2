@@ -43,9 +43,18 @@ function setup(environment: string, repoOverrides?: Partial<{ findBySlug: unknow
         findBySlug: repoOverrides?.findBySlug ?? jest.fn().mockResolvedValue(null),
         findById: repoOverrides?.findById ?? jest.fn().mockResolvedValue(null),
     };
+    const logger = {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+        logRequest: jest.fn(),
+        logResponse: jest.fn(),
+    };
     const mw = createTenantMiddleware({
         tenantRepository: tenantRepository as never,
         environment,
+        logger,
     });
     return { mw, tenantRepository };
 }

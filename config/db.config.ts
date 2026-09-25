@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import config from '@/config/index.config';
-import { logger } from "@/infrastructure/providers/logger.instance";
+import type { ILogger } from "@/core/providers/logger.interface";
 
 const { dbUsername, dbPassword, dbHost, dbName } = config;
 
@@ -11,7 +11,7 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-const connection = async function () {
+const connection = async function (logger: ILogger) {
   try {
     await prisma.$connect();
     logger.info("Prisma Connected");
@@ -20,4 +20,8 @@ const connection = async function () {
   }
 };
 
-export { connection, prisma };
+const checkDatabaseConnection = async (): Promise<void> => {
+  await prisma.$queryRaw`SELECT 1`;
+};
+
+export { checkDatabaseConnection, connection, prisma };

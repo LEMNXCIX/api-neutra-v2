@@ -189,7 +189,7 @@ const ANY_PATTERNS = [
     { pattern: /:\s*any\b/, label: "': any'" },
 ];
 
-for (const { dir, label: dirLabel } of PROTECTED_DIRS) {
+for (const { dir } of PROTECTED_DIRS) {
     const fullPath = path.join(ROOT, dir);
     if (!fs.existsSync(fullPath)) continue;
 
@@ -216,15 +216,21 @@ for (const { dir, label: dirLabel } of PROTECTED_DIRS) {
     }
 }
 
-// Check for direct repository instantiation outside container
+// Check for direct repository instantiation outside runtime composition
 console.log(
-    "\n--- Instantiation Check: new Prisma* outside container.ts ---\n",
+    "\n--- Instantiation Check: new Prisma* outside runtime.ts ---\n",
 );
 
-const containerPath = path.join(ROOT, "infrastructure/config/container.ts");
+const runtimePath = path.join(ROOT, "infrastructure/config/runtime.ts");
 const scriptsPath = path.join(ROOT, "scripts");
+const testPath = path.join(ROOT, "test");
+// Tests intentionally exercise concrete Prisma adapters; this check enforces
+// production composition boundaries, not test doubles/fixtures.
 const allTsFiles = getAllTsFiles(ROOT).filter(
-    (f: string) => f !== containerPath && !f.startsWith(scriptsPath),
+    (f: string) =>
+        f !== runtimePath &&
+        !f.startsWith(scriptsPath) &&
+        !f.startsWith(testPath),
 );
 
 for (const file of allTsFiles) {
@@ -235,21 +241,21 @@ for (const file of allTsFiles) {
     for (let i = 0; i < lines.length; i++) {
         if (/new\s+Prisma\w+Repository\s*\(/.test(lines[i])) {
             console.log(
-                `VIOLATION: ${relativePath}:${i + 1} instantiates Prisma repository outside Container`,
+                `VIOLATION: ${relativePath}:${i + 1} instantiates Prisma repository outside runtime.ts`,
             );
             violations++;
         }
     }
 }
 
-// Check for direct prisma usage outside infrastructure/database and container
+// Check for direct prisma usage outside the explicit composition boundary
 console.log(
-    "\n--- Direct Prisma Access Check: prisma.* outside infrastructure/database/ ---\n",
+    "\n--- Direct Prisma Access Check: prisma.* outside runtime/database ---\n",
 );
 
 const allowedPrismaDirs = [
+    runtimePath,
     path.join(ROOT, "infrastructure/database"),
-    path.join(ROOT, "infrastructure/config"),
     path.join(ROOT, "infrastructure/providers"),
     path.join(ROOT, "infrastructure/services"),
     path.join(ROOT, "scripts"),
@@ -270,9 +276,55 @@ for (const file of allTsFiles) {
             !/\/\/.*prisma/.test(lines[i])
         ) {
             console.log(
-                `VIOLATION: ${relativePath}:${i + 1} uses direct prisma access — use Container/Repository instead`,
+                `VIOLATION: ${relativePath}:${i + 1} uses direct prisma access — use runtime/Repository instead`,
             );
             violations++;
+        }
+    }
+}
+
+// HTTP controller composition must remain a wiring-only layer.
+console.log("\n--- HTTP Controller Composition Check ---\n");
+
+const httpCompositionDirectory = path.join(
+    ROOT,
+    "infrastructure/config/http-controllers",
+);
+const httpCompositionFiles = [
+    path.join(ROOT, "infrastructure/config/http-controllers.ts"),
+    ...(fs.existsSync(httpCompositionDirectory)
+        ? getAllTsFiles(httpCompositionDirectory)
+        : []),
+];
+const httpCompositionPatterns = [
+    { pattern: /from\s+['"][^'"]*express['"]/i, name: "Express import" },
+    { pattern: /\b(?:Request|Response|Router|Express)\b/, name: "Express symbol" },
+    { pattern: /@prisma|config\/db\.config|infrastructure\/database|\bprisma\s*\./i, name: "direct Prisma access" },
+    { pattern: /infrastructure\/config\/container|\bContainer\b/, name: "Container reference" },
+    { pattern: /infrastructure\/routes|\bapp\.(?:get|post|put|delete|patch)\b|\brouter\./i, name: "HTTP route registration" },
+    { pattern: /@\/core\/(?:entities|domain)\//i, name: "core entity/domain import" },
+    { pattern: /\b(?:if|switch|for|while|try|catch|throw)\b/i, name: "business control flow" },
+];
+
+function stripComments(content: string): string {
+    return content
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "");
+}
+
+for (const file of httpCompositionFiles) {
+    const content = stripComments(fs.readFileSync(file, "utf-8"));
+    const relativePath = path.relative(ROOT, file).replace(/\\/g, "/");
+    const lines = content.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+        for (const { pattern, name } of httpCompositionPatterns) {
+            if (pattern.test(lines[i])) {
+                console.log(
+                    `VIOLATION: ${relativePath}:${i + 1} HTTP composition ${name}`,
+                );
+                violations++;
+            }
         }
     }
 }

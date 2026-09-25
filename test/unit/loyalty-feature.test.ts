@@ -1,22 +1,21 @@
+import { createRequireTenantFeature } from "@/middleware/tenant-feature.middleware";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+
+const getFeatureStatus = jest.fn();
 const mockFeatureRepository = {
-    getTenantFeatureStatus: jest.fn(),
-};
-
-jest.mock("@/infrastructure/config/container", () => ({
-    Container: {
-        getFeatureRepository: () => mockFeatureRepository,
-    },
-}));
-
-import { requireTenantFeature } from "@/middleware/tenant-feature.middleware";
+    getTenantFeatureStatus: getFeatureStatus,
+} as unknown as IFeatureRepository;
+const requireTenantFeature = createRequireTenantFeature({
+    featureRepository: mockFeatureRepository,
+});
 
 describe("LOYALTY feature middleware", () => {
     beforeEach(() => {
-        mockFeatureRepository.getTenantFeatureStatus.mockReset();
+        getFeatureStatus.mockReset();
     });
 
     test("rejects a tenant when LOYALTY is disabled", async () => {
-        mockFeatureRepository.getTenantFeatureStatus.mockResolvedValue({
+        getFeatureStatus.mockResolvedValue({
             LOYALTY: false,
         });
         const middleware = requireTenantFeature("LOYALTY");
@@ -40,7 +39,7 @@ describe("LOYALTY feature middleware", () => {
     });
 
     test("continues when LOYALTY is enabled", async () => {
-        mockFeatureRepository.getTenantFeatureStatus.mockResolvedValue({
+        getFeatureStatus.mockResolvedValue({
             LOYALTY: true,
         });
         const middleware = requireTenantFeature("LOYALTY");

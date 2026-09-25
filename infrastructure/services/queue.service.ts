@@ -1,28 +1,35 @@
-import { Queue } from 'bullmq';
+import { Queue } from "bullmq";
 
 export const redisOptions = {
-    host: process.env.REDIS_HOST || '127.0.0.1',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
+    host: process.env.REDIS_HOST || "127.0.0.1",
+    port: parseInt(process.env.REDIS_PORT || "6379"),
     // password: process.env.REDIS_PASSWORD // Add if needed
 };
 
-// Global queues. The maintenance queue hosts repeatable system jobs, not
-// per-entity delayed jobs.
-export const notificationQueue = new Queue('notifications', {
-    connection: redisOptions
-});
-
-export const MAINTENANCE_QUEUE_NAME = 'maintenance';
-export const APPOINTMENT_REVIEW_SWEEP_JOB_NAME = 'appointment-review-sweep';
+export const MAINTENANCE_QUEUE_NAME = "maintenance";
+export const APPOINTMENT_REVIEW_SWEEP_JOB_NAME =
+    "appointment-review-sweep";
 export const APPOINTMENT_REVIEW_SWEEP_SCHEDULER_ID =
-    'appointment-review-sweep-v1';
+    "appointment-review-sweep-v1";
 export const APPOINTMENT_REVIEW_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
-export const maintenanceQueue = new Queue(MAINTENANCE_QUEUE_NAME, {
-    connection: redisOptions
-});
+export type MaintenanceQueue = Pick<Queue, "upsertJobScheduler">;
 
-export async function scheduleAppointmentReviewSweep(): Promise<void> {
+export function createNotificationQueue(
+    connection = redisOptions,
+): Queue {
+    return new Queue("notifications", { connection });
+}
+
+export function createMaintenanceQueue(
+    connection = redisOptions,
+): Queue {
+    return new Queue(MAINTENANCE_QUEUE_NAME, { connection });
+}
+
+export async function scheduleAppointmentReviewSweep(
+    maintenanceQueue: MaintenanceQueue,
+): Promise<void> {
     await maintenanceQueue.upsertJobScheduler(
         APPOINTMENT_REVIEW_SWEEP_SCHEDULER_ID,
         { every: APPOINTMENT_REVIEW_SWEEP_INTERVAL_MS },
@@ -32,24 +39,12 @@ export async function scheduleAppointmentReviewSweep(): Promise<void> {
             opts: {
                 attempts: 3,
                 backoff: {
-                    type: 'exponential',
-                    delay: 5000
+                    type: "exponential",
+                    delay: 5000,
                 },
                 removeOnComplete: true,
-                removeOnFail: false
-            }
-        }
+                removeOnFail: false,
+            },
+        },
     );
 }
-
-export const addToQueue = async (jobName: string, data: any) => {
-    return notificationQueue.add(jobName, data, {
-        attempts: 3, // Retry failed jobs 3 times
-        backoff: {
-            type: 'exponential',
-            delay: 1000 // Initial delay 1s
-        },
-        removeOnComplete: true, // Keep Redis clean
-        removeOnFail: false // Keep failed jobs for inspection
-    });
-};

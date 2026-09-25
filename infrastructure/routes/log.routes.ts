@@ -1,9 +1,13 @@
 import { Application, Router } from "express";
+import type { RequestHandler } from "express";
 import { LogController } from "@/interface-adapters/controllers/log.controller";
-import { authenticate } from "@/middleware/authenticate.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
 
-export default function logRoutes(app: Application, controller: LogController) {
+export default function logRoutes(
+    app: Application,
+    controller: LogController,
+    authenticate: RequestHandler,
+) {
     const router = Router();
     app.use("/api/admin", router);
 

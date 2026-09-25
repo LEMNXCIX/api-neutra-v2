@@ -5,10 +5,9 @@ import {
     Response,
     Router,
 } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
+import type { RequestHandler } from "express";
 import {
     requireConcreteTenantContext,
-    requireTenantFeature,
     requireTenantType,
 } from "@/middleware/tenant-feature.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
@@ -65,6 +64,8 @@ function requireActiveTenant(
 export function loyaltyRoutes(
     app: Application,
     loyaltyController: LoyaltyController,
+    authenticate: RequestHandler,
+    requireTenantFeature: (featureKey: string) => RequestHandler,
 ): void {
     const router = Router();
     const tenantGates = [

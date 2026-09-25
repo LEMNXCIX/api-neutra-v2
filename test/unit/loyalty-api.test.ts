@@ -10,10 +10,8 @@ import { validate } from "class-validator";
 import { plainToInstance } from "class-transformer";
 import { LoyaltyController } from "@/interface-adapters/controllers/loyalty.controller";
 import { loyaltyRoutes } from "@/infrastructure/routes/loyalty.routes";
-import { authenticate } from "@/middleware/authenticate.middleware";
 import {
     requireConcreteTenantContext,
-    requireTenantFeature,
     requireTenantType,
 } from "@/middleware/tenant-feature.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
@@ -36,17 +34,9 @@ import {
 } from "@/core/application/dtos/requests/loyalty.request";
 import { ROLE_CONSTANTS } from "@/core/domain/constants";
 
-jest.mock("@/middleware/authenticate.middleware", () => ({
-    authenticate: jest.fn(
-        (_req: Request, _res: Response, next: NextFunction) => next(),
-    ),
-}));
 jest.mock("@/middleware/tenant-feature.middleware", () => ({
     requireConcreteTenantContext: jest.fn(
         (_req: Request, _res: Response, next: NextFunction) => next(),
-    ),
-    requireTenantFeature: jest.fn(
-        () => (_req: Request, _res: Response, next: NextFunction) => next(),
     ),
     requireTenantType: jest.fn(
         () => (_req: Request, _res: Response, next: NextFunction) => next(),
@@ -57,6 +47,14 @@ jest.mock("@/middleware/authorization.middleware", () => ({
         () => (_req: Request, _res: Response, next: NextFunction) => next(),
     ),
 }));
+
+const authenticate = jest.fn(
+    (_req: Request, _res: Response, next: NextFunction) => next(),
+);
+const requireTenantFeature = jest.fn(
+    (_featureKey: string) =>
+        (_req: Request, _res: Response, next: NextFunction) => next(),
+);
 
 function tenant(overrides: Partial<Tenant> = {}): Tenant {
     return {
@@ -274,7 +272,7 @@ describe("loyalty campaign HTTP API", () => {
             });
             next();
         });
-        loyaltyRoutes(app, setup.instance);
+        loyaltyRoutes(app, setup.instance, authenticate, requireTenantFeature);
         return app;
     }
 
@@ -426,7 +424,12 @@ describe("loyalty campaign HTTP API", () => {
         jest.clearAllMocks();
         const setup = controller();
         const app = { use: jest.fn() };
-        loyaltyRoutes(app as unknown as Application, setup.instance);
+        loyaltyRoutes(
+            app as unknown as Application,
+            setup.instance,
+            authenticate,
+            requireTenantFeature,
+        );
         const router = app.use.mock.calls[0]![1] as Router;
         type RouteLayer = {
             route?: {

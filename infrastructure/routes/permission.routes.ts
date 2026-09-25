@@ -1,9 +1,13 @@
 import { Application, Router } from 'express';
-import { authenticate } from '@/middleware/authenticate.middleware';
+import type { RequestHandler } from 'express';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { PermissionController } from '@/interface-adapters/controllers/permission.controller';
 
-function permissionRoutes(app: Application, permissionController: PermissionController) {
+function permissionRoutes(
+    app: Application,
+    permissionController: PermissionController,
+    authenticate: RequestHandler,
+) {
     const router = Router();
     app.use('/api/permissions', router);
 

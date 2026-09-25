@@ -1,5 +1,5 @@
 import { Application, Router } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
+import type { RequestHandler } from "express";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { AppointmentController } from "@/interface-adapters/controllers/appointment.controller";
 import {
@@ -15,6 +15,7 @@ import {
 function appointments(
     app: Application,
     appointmentController: AppointmentController,
+    authenticate: RequestHandler,
 ) {
     const router = Router();
     app.use("/api/appointments", router);

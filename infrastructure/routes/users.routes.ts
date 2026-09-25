@@ -1,9 +1,13 @@
 import { Application, Request, Response, Router } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
+import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { UserController } from "@/interface-adapters/controllers/user.controller";
 
-function users(app: Application, userController: UserController) {
+function users(
+    app: Application,
+    userController: UserController,
+    authenticate: RequestHandler,
+) {
     const router = Router();
     app.use("/api/users", router);
 

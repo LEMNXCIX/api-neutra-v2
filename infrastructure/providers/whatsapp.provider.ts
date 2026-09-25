@@ -2,21 +2,17 @@ import {
     INotificationProvider,
     NotificationMessage,
 } from "@/core/ports/notification-provider.interface";
-import { WhatsAppComponent } from "@/core/ports/whatsapp-service.interface";
+import { WhatsAppComponent, IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
 import { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
-import { WhatsAppService } from "@/infrastructure/services/whatsapp.service";
-import { WhatsAppConfigPrismaRepository } from "@/infrastructure/database/prisma/whatsapp-config.prisma-repository";
-import { WhatsAppMessagePrismaRepository } from "@/infrastructure/database/prisma/whatsapp-message.prisma-repository";
-import { prisma } from "@/config/db.config";
-import logger from "@/helpers/logger.helpers";
-
-// Manual DI for provider (single instance)
-const configRepo = new WhatsAppConfigPrismaRepository(prisma);
-const messageRepo = new WhatsAppMessagePrismaRepository(prisma);
-const whatsappService = new WhatsAppService(configRepo, messageRepo);
-const sendNotificationUseCase = new SendNotificationUseCase(whatsappService);
+import type { ILogger } from "@/core/providers/logger.interface";
 
 export class WhatsAppProvider implements INotificationProvider {
+    constructor(
+        private readonly whatsappService: IWhatsAppService,
+        private readonly sendNotificationUseCase: SendNotificationUseCase,
+        private readonly logger: ILogger,
+    ) {}
+
     async send(
         recipient: string,
         message: NotificationMessage,
@@ -26,7 +22,7 @@ export class WhatsAppProvider implements INotificationProvider {
             const tenantId = options?.tenantId;
 
             if (!tenantId) {
-                logger.warn(
+                this.logger.warn(
                     "[WhatsAppProvider] Missing tenantId in options. Cannot send WhatsApp message.",
                 );
                 return false;
@@ -39,7 +35,7 @@ export class WhatsAppProvider implements INotificationProvider {
 
             if (message.templateId) {
                 // Template Message
-                await sendNotificationUseCase.execute({
+                await this.sendNotificationUseCase.execute({
                     tenantId,
                     to: recipient,
                     templateName: message.templateId, // e.g. "appointment_confirmed"
@@ -49,20 +45,20 @@ export class WhatsAppProvider implements INotificationProvider {
                 });
             } else {
                 // Try sending text message (Might fail if 24h window is closed)
-                await whatsappService.sendTextMessage(
+                await this.whatsappService.sendTextMessage(
                     recipient,
                     message.body,
                     tenantId,
                 );
             }
 
-            logger.info(
+            this.logger.info(
                 `[WhatsAppProvider] WhatsApp message sent to ${recipient}`,
             );
             return true;
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            logger.error(
+            this.logger.error(
                 `[WhatsAppProvider] Error sending WhatsApp message: ${msg}`,
             );
             return false;
