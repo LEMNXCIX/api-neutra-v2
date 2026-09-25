@@ -76,6 +76,11 @@ export async function buildLoyaltyCampaignCustomerSummary(
     );
     return {
         campaignId: campaign.id,
+        name: campaign.name,
+        source: campaign.source,
+        startsAt: campaign.startsAt,
+        endsAt: campaign.endsAt,
+        claimUntil: campaign.claimUntil,
         metric: campaign.metric,
         progressValue,
         targetValue,

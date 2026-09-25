@@ -474,6 +474,20 @@ describe("loyalty campaign application services", () => {
         ).resolves.toMatchObject({
             data: {
                 campaignId: "campaign-1",
+                name: "Store rewards",
+                source: LoyaltyCampaignSource.STORE,
+                startsAt:
+                    expected === "NOT_STARTED"
+                        ? new Date("2030-02-02T00:00:00.000Z")
+                        : startsAt,
+                endsAt:
+                    expected === "NOT_STARTED"
+                        ? new Date("2030-03-01T00:00:00.000Z")
+                        : endsAt,
+                claimUntil:
+                    expected === "NOT_STARTED"
+                        ? new Date("2030-03-10T00:00:00.000Z")
+                        : claimUntil,
                 metric: LoyaltyCampaignMetric.COUNT,
                 progressValue,
                 targetValue: "10.00",
@@ -637,6 +651,11 @@ describe("loyalty campaign application services", () => {
         const presented =
             LoyaltyPresenter.toCustomerCampaignSummaryResponse({
             campaignId: "campaign-1",
+            name: "Store rewards",
+            source: LoyaltyCampaignSource.STORE,
+            startsAt,
+            endsAt,
+            claimUntil,
             metric: LoyaltyCampaignMetric.COUNT,
             progressValue: "10.00",
             targetValue: "10.00",
@@ -655,6 +674,14 @@ describe("loyalty campaign application services", () => {
                 coupon,
             },
             coupon,
+        });
+        expect(presented).toMatchObject({
+            campaignId: "campaign-1",
+            name: "Store rewards",
+            source: LoyaltyCampaignSource.STORE,
+            startsAt,
+            endsAt,
+            claimUntil,
         });
         expect(presented.claim).toMatchObject({
             id: "claim-1",
@@ -677,6 +704,11 @@ describe("loyalty campaign application services", () => {
         expect(
             LoyaltyPresenter.toCustomerCampaignSummaryResponse({
                 campaignId: "campaign-1",
+                name: "Store rewards",
+                source: LoyaltyCampaignSource.STORE,
+                startsAt,
+                endsAt,
+                claimUntil,
                 metric: LoyaltyCampaignMetric.COUNT,
                 progressValue: "4.00",
                 targetValue: "10.00",
@@ -686,6 +718,11 @@ describe("loyalty campaign application services", () => {
             }),
         ).toMatchObject({
             campaignId: "campaign-1",
+            name: "Store rewards",
+            source: LoyaltyCampaignSource.STORE,
+            startsAt,
+            endsAt,
+            claimUntil,
             progress: "4.00",
             target: "10.00",
             remaining: "6.00",

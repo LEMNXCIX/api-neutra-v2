@@ -414,6 +414,11 @@ export interface LoyaltyCampaignProgress {
 
 export interface LoyaltyCampaignCustomerSummary {
     campaignId: string;
+    name: string;
+    source: LoyaltyCampaignSource;
+    startsAt: Date;
+    endsAt: Date;
+    claimUntil: Date;
     metric: LoyaltyCampaignMetric;
     progressValue: string;
     targetValue: string;

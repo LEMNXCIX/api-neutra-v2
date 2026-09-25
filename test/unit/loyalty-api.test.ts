@@ -127,6 +127,11 @@ function campaign(overrides: Record<string, unknown> = {}) {
 function customerSummary(overrides: Record<string, unknown> = {}) {
     return {
         campaignId: "campaign-1",
+        name: "Store rewards",
+        source: LoyaltyCampaignSource.STORE,
+        startsAt: new Date("2030-01-01T00:00:00.000Z"),
+        endsAt: new Date("2030-01-31T00:00:00.000Z"),
+        claimUntil: new Date("2030-02-10T00:00:00.000Z"),
         metric: LoyaltyCampaignMetric.COUNT,
         progressValue: "4.00",
         targetValue: "10.00",
@@ -316,12 +321,30 @@ describe("loyalty campaign HTTP API", () => {
         );
         const app = appWith(setup);
 
-        await request(app)
+        const customerCampaignsResponse = await request(app)
             .get("/api/loyalty/me?userId=customer-2")
             .expect(200);
-        await request(app)
+        expect(customerCampaignsResponse.body.data[0]).toEqual(
+            expect.objectContaining({
+                name: selectedSummary.name,
+                source: selectedSummary.source,
+                startsAt: selectedSummary.startsAt.toISOString(),
+                endsAt: selectedSummary.endsAt.toISOString(),
+                claimUntil: selectedSummary.claimUntil.toISOString(),
+            }),
+        );
+        const customerCampaignResponse = await request(app)
             .get("/api/loyalty/me/campaigns/campaign-1")
             .expect(200);
+        expect(customerCampaignResponse.body.data).toEqual(
+            expect.objectContaining({
+                name: selectedSummary.name,
+                source: selectedSummary.source,
+                startsAt: selectedSummary.startsAt.toISOString(),
+                endsAt: selectedSummary.endsAt.toISOString(),
+                claimUntil: selectedSummary.claimUntil.toISOString(),
+            }),
+        );
         await request(app)
             .post("/api/loyalty/me/campaigns/campaign-1/claim?userId=customer-2")
             .send({ userId: "customer-2" })

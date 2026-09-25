@@ -46,6 +46,11 @@ export interface ILoyaltyCampaignRewardResponse {
 
 export interface ILoyaltyCustomerCampaignSummaryResponse {
     campaignId: string;
+    name: string;
+    source: LoyaltyCampaignSource;
+    startsAt: Date;
+    endsAt: Date;
+    claimUntil: Date;
     metric: LoyaltyCampaignMetric;
     progressValue: string;
     targetValue: string;
@@ -151,6 +156,11 @@ export class LoyaltyPresenter {
     ): ILoyaltyCustomerCampaignSummaryResponse {
         return {
             campaignId: summary.campaignId,
+            name: summary.name,
+            source: summary.source,
+            startsAt: summary.startsAt,
+            endsAt: summary.endsAt,
+            claimUntil: summary.claimUntil,
             metric: summary.metric,
             progressValue: summary.progressValue,
             targetValue: summary.targetValue,
