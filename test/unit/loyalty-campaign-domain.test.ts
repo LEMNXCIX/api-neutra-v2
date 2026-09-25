@@ -3,6 +3,7 @@ import {
     getEffectiveLoyaltyCampaignStatus,
     getLoyaltyCampaignContributionValue,
     getLoyaltyCampaignProgressValue,
+    getLoyaltyCampaignSource,
     isLoyaltyCampaignClaimable,
     isLoyaltyCampaignSourceCompatible,
     isValidLoyaltyCampaignDates,
@@ -14,6 +15,7 @@ import {
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
     LoyaltyCampaignStatus,
+    LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 import { TenantType } from "@/core/entities/tenant.entity";
 
@@ -188,6 +190,15 @@ describe("loyalty campaign domain validation", () => {
                 netTotal: "-2.50",
             }),
         ).toBe("0.00");
+    });
+
+    test("maps generic source types to their specific campaign source", () => {
+        expect(
+            getLoyaltyCampaignSource(LoyaltySourceType.APPOINTMENT),
+        ).toBe(LoyaltyCampaignSource.BOOKING);
+        expect(getLoyaltyCampaignSource(LoyaltySourceType.ORDER)).toBe(
+            LoyaltyCampaignSource.STORE,
+        );
     });
 
     test("matches campaign sources to tenant types", () => {

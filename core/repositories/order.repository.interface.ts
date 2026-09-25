@@ -7,7 +7,13 @@ export interface OrderCreateData {
 }
 
 export interface OrderUpdateData {
-    status?: OrderStatus;
+    trackingNumber?: string;
+}
+
+export interface OrderStatusUpdate {
+    expectedStatus: OrderStatus;
+    status: OrderStatus;
+    qualifyLoyalty?: true;
     trackingNumber?: string;
 }
 
@@ -57,8 +63,8 @@ export interface IOrderRepository {
     updateStatus(
         tenantId: string,
         id: string,
-        status: OrderStatus,
-    ): Promise<Order>;
+        data: OrderStatusUpdate,
+    ): Promise<Order | null>;
     update(tenantId: string, id: string, data: OrderUpdateData): Promise<Order>;
     getStats(
         tenantId: string,

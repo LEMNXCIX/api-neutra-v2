@@ -18,6 +18,14 @@ import {
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
 import {
+    getLoyaltyCampaignContributionValue,
+    getLoyaltyCampaignSource,
+    LoyaltyCampaignMetric,
+    LoyaltyCampaignSource,
+    LoyaltyLedgerEntryType,
+    LoyaltySourceType,
+} from "@/core/entities/loyalty.entity";
+import {
     BusinessRuleViolationError,
     DuplicateEntityError,
     EntityNotFoundError,
@@ -387,6 +395,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         data: AppointmentStatusUpdate,
     ): Promise<Appointment | null> {
         return prisma.$transaction(async (tx) => {
+            const eventAt = new Date();
             const result = await tx.appointment.updateMany({
                 where: {
                     id,
@@ -395,7 +404,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 },
                 data: {
                     status: data.status as PrismaAppointmentStatus,
-                    statusChangedAt: new Date(),
+                    statusChangedAt: eventAt,
                     statusChangeReason: data.reason ?? null,
                     statusChangedById: data.actorId ?? null,
                     ...(data.cancellationReason !== undefined && {
@@ -420,24 +429,70 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             if (
                 appointment &&
                 data.status === AppointmentStatus.COMPLETED &&
-                data.loyaltyAward
+                data.qualifyLoyalty
             ) {
-                await tx.loyaltyLedgerEntry.upsert({
-                    where: {
-                        tenantId_sourceAppointmentId: {
+                const loyaltyEnabled =
+                    (await tx.tenantFeature.findFirst({
+                        where: {
                             tenantId,
-                            sourceAppointmentId: id,
+                            enabled: true,
+                            feature: { key: "LOYALTY" },
                         },
-                    },
-                    create: {
-                        tenantId,
-                        userId: appointment.userId,
-                        sourceAppointmentId: id,
-                        points: data.loyaltyAward.points,
-                        reason: "appointment.completed",
-                    },
-                    update: {},
-                });
+                        select: { id: true },
+                    })) !== null;
+                const campaign = loyaltyEnabled
+                    ? await tx.loyaltyCampaign.findFirst({
+                          where: {
+                              tenantId,
+                              status: "ACTIVE",
+                              source: {
+                                  in: [
+                                      getLoyaltyCampaignSource(
+                                          LoyaltySourceType.APPOINTMENT,
+                                      ),
+                                      LoyaltyCampaignSource.ALL,
+                                  ],
+                              },
+                              startsAt: { lte: eventAt },
+                              endsAt: { gt: eventAt },
+                          },
+                          orderBy: { startsAt: "desc" },
+                          select: { id: true, metric: true },
+                      })
+                    : null;
+
+                if (campaign) {
+                    const value = getLoyaltyCampaignContributionValue({
+                        metric: campaign.metric as LoyaltyCampaignMetric,
+                        netTotal: new Prisma.Decimal(
+                            appointment.total,
+                        ).toFixed(2),
+                    });
+                    await tx.loyaltyLedgerEntry.upsert({
+                        where: {
+                            campaignId_sourceType_sourceId_entryType: {
+                                campaignId: campaign.id,
+                                sourceType: LoyaltySourceType.APPOINTMENT,
+                                sourceId: id,
+                                entryType: LoyaltyLedgerEntryType.ACCRUAL,
+                            },
+                        },
+                        create: {
+                            tenantId,
+                            campaignId: campaign.id,
+                            userId: appointment.userId,
+                            sourceType: LoyaltySourceType.APPOINTMENT,
+                            sourceId: id,
+                            value,
+                            entryType: LoyaltyLedgerEntryType.ACCRUAL,
+                            sourceAppointmentId: id,
+                            points: 1,
+                            reason: "appointment.completed",
+                            createdAt: eventAt,
+                        },
+                        update: {},
+                    });
+                }
             }
 
             return appointment ? this.mapToEntity(appointment) : null;

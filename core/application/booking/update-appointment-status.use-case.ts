@@ -77,7 +77,7 @@ export class UpdateAppointmentStatusUseCase {
                 actorId: actor.id,
                 ...(status === AppointmentStatus.COMPLETED &&
                     features?.LOYALTY === true && {
-                        loyaltyAward: { points: 1 as const },
+                        qualifyLoyalty: true as const,
                     }),
             },
         );

@@ -369,6 +369,10 @@ export class Container {
     }
 
     public static getOrderController(): OrderController {
+        const changeOrderStatusUseCase = new ChangeOrderStatusUseCase(
+            this.orderRepository,
+            this.featureRepository,
+        );
         return new OrderController(
             new CreateOrderUseCase(
                 this.orderRepository,
@@ -383,8 +387,11 @@ export class Container {
             new GetOrderUseCase(this.orderRepository),
             new GetUserOrdersUseCase(this.orderRepository),
             new GetOrdersPaginatedUseCase(this.orderRepository),
-            new ChangeOrderStatusUseCase(this.orderRepository),
-            new UpdateOrderUseCase(this.orderRepository),
+            changeOrderStatusUseCase,
+            new UpdateOrderUseCase(
+                this.orderRepository,
+                changeOrderStatusUseCase,
+            ),
             new GetOrderStatusesUseCase(),
             new GetOrderStatsUseCase(this.orderRepository),
         );

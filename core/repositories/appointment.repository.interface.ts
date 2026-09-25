@@ -25,17 +25,13 @@ export type AppointmentUpdateData = {
     cancellationReason?: string;
 };
 
-type AppointmentLoyaltyAward = {
-    points: 1;
-};
-
 export type AppointmentStatusUpdate = {
     expectedStatus: AppointmentStatus;
     status: AppointmentStatus;
     reason?: string;
     actorId?: string;
     cancellationReason?: string;
-    loyaltyAward?: AppointmentLoyaltyAward;
+    qualifyLoyalty?: true;
 };
 
 export type AppointmentFilters = {

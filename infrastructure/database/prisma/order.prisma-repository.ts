@@ -8,10 +8,19 @@ import { prisma } from "@/config/db.config";
 import {
     IOrderRepository,
     OrderCreateData,
+    OrderStatusUpdate,
     OrderUpdateData,
 } from "@/core/repositories/order.repository.interface";
 import { Order, OrderStatus, OrderItem } from "@/core/entities/order.entity";
 import { Product } from "@/core/entities/product.entity";
+import {
+    getLoyaltyCampaignContributionValue,
+    getLoyaltyCampaignSource,
+    LoyaltyCampaignMetric,
+    LoyaltyCampaignSource,
+    LoyaltyLedgerEntryType,
+    LoyaltySourceType,
+} from "@/core/entities/loyalty.entity";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
@@ -326,12 +335,33 @@ export class PrismaOrderRepository implements IOrderRepository {
     async updateStatus(
         tenantId: string,
         id: string,
-        status: OrderStatus,
-    ): Promise<Order> {
-        try {
-            const order = await prisma.order.update({
-                where: { id, tenantId },
-                data: { status: status as PrismaOrderStatus },
+        data: OrderStatusUpdate,
+    ): Promise<Order | null> {
+        return prisma.$transaction(async (tx) => {
+            const eventAt = new Date();
+            const result = await tx.order.updateMany({
+                where: {
+                    id,
+                    tenantId,
+                    status: data.expectedStatus as PrismaOrderStatus,
+                },
+                data: {
+                    status: data.status as PrismaOrderStatus,
+                    ...(data.trackingNumber !== undefined && {
+                        trackingNumber: data.trackingNumber,
+                    }),
+                },
+            });
+            if (result.count === 0) {
+                return null;
+            }
+
+            const order = await tx.order.findFirst({
+                where: {
+                    id,
+                    tenantId,
+                    status: data.status as PrismaOrderStatus,
+                },
                 include: {
                     items: {
                         include: {
@@ -346,16 +376,76 @@ export class PrismaOrderRepository implements IOrderRepository {
                     },
                 },
             });
-            return this.mapToEntity(order);
-        } catch (error: unknown) {
+
             if (
-                error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === "P2025"
+                order &&
+                data.status === "ENTREGADO" &&
+                data.qualifyLoyalty
             ) {
-                throw new EntityNotFoundError("Order", id);
+                const loyaltyEnabled =
+                    (await tx.tenantFeature.findFirst({
+                        where: {
+                            tenantId,
+                            enabled: true,
+                            feature: { key: "LOYALTY" },
+                        },
+                        select: { id: true },
+                    })) !== null;
+                const campaign = loyaltyEnabled
+                    ? await tx.loyaltyCampaign.findFirst({
+                          where: {
+                              tenantId,
+                              status: "ACTIVE",
+                              source: {
+                                  in: [
+                                      getLoyaltyCampaignSource(
+                                          LoyaltySourceType.ORDER,
+                                      ),
+                                      LoyaltyCampaignSource.ALL,
+                                  ],
+                              },
+                              startsAt: { lte: eventAt },
+                              endsAt: { gt: eventAt },
+                          },
+                          orderBy: { startsAt: "desc" },
+                          select: { id: true, metric: true },
+                      })
+                    : null;
+
+                if (campaign) {
+                    const value = getLoyaltyCampaignContributionValue({
+                        metric: campaign.metric as LoyaltyCampaignMetric,
+                        netTotal: new Prisma.Decimal(order.total).toFixed(
+                            2,
+                        ),
+                    });
+                    await tx.loyaltyLedgerEntry.upsert({
+                        where: {
+                            campaignId_sourceType_sourceId_entryType: {
+                                campaignId: campaign.id,
+                                sourceType: LoyaltySourceType.ORDER,
+                                sourceId: id,
+                                entryType: LoyaltyLedgerEntryType.ACCRUAL,
+                            },
+                        },
+                        create: {
+                            tenantId,
+                            campaignId: campaign.id,
+                            userId: order.userId,
+                            sourceType: LoyaltySourceType.ORDER,
+                            sourceId: id,
+                            value,
+                            entryType: LoyaltyLedgerEntryType.ACCRUAL,
+                            reason: "order.delivered",
+                            createdAt: eventAt,
+                        },
+                        update: {},
+                    });
+                }
             }
-            throw error;
-        }
+
+            return order ? this.mapToEntity(order) : null;
+        });
     }
 
     async update(
@@ -364,8 +454,6 @@ export class PrismaOrderRepository implements IOrderRepository {
         data: OrderUpdateData,
     ): Promise<Order> {
         const updateData: Prisma.OrderUpdateInput = {};
-        if (data.status !== undefined)
-            updateData.status = data.status as PrismaOrderStatus;
         if (data.trackingNumber !== undefined)
             updateData.trackingNumber = data.trackingNumber;
 

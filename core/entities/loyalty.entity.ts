@@ -177,6 +177,18 @@ export function isLoyaltyCampaignSourceCompatible(
     return false;
 }
 
+export function getLoyaltyCampaignSource(
+    sourceType: LoyaltySourceType,
+): LoyaltyCampaignSource {
+    if (sourceType === LoyaltySourceType.APPOINTMENT) {
+        return LoyaltyCampaignSource.BOOKING;
+    }
+    if (sourceType === LoyaltySourceType.ORDER) {
+        return LoyaltyCampaignSource.STORE;
+    }
+    throw new TypeError("Unsupported loyalty campaign source type");
+}
+
 function normalizeNonNegativeDecimal(value: string): string {
     const normalized = normalizeDecimalString(value);
     if (normalized === null) {

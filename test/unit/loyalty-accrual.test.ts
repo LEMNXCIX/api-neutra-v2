@@ -65,8 +65,14 @@ function useTransactionCallback() {
     return jest.spyOn(prisma, "$transaction") as unknown as jest.Mock;
 }
 
+function mockCommittedLoyaltyFeature(enabled = true) {
+    return jest
+        .spyOn(prisma.tenantFeature, "findFirst")
+        .mockResolvedValue(enabled ? ({ id: "feature-1" } as never) : null);
+}
+
 describe("appointment loyalty accrual use case", () => {
-    test("requests one point for COMPLETED only when LOYALTY is enabled", async () => {
+    test("requests loyalty qualification for COMPLETED only when LOYALTY is enabled", async () => {
         const {
             useCase,
             appointmentRepository,
@@ -96,7 +102,7 @@ describe("appointment loyalty accrual use case", () => {
                 status: AppointmentStatus.COMPLETED,
                 reason: undefined,
                 actorId: manager.id,
-                loyaltyAward: { points: 1 },
+                qualifyLoyalty: true,
             },
         );
         expect(featureRepository.getTenantFeatureStatus).toHaveBeenCalledTimes(
@@ -105,7 +111,7 @@ describe("appointment loyalty accrual use case", () => {
         expect(queueProvider.enqueue).not.toHaveBeenCalled();
     });
 
-    test("awards a point when NEEDS_REVIEW is resolved as COMPLETED", async () => {
+    test("requests qualification when NEEDS_REVIEW is resolved as COMPLETED", async () => {
         const {
             useCase,
             appointmentRepository,
@@ -131,7 +137,7 @@ describe("appointment loyalty accrual use case", () => {
             expect.objectContaining({
                 expectedStatus: AppointmentStatus.NEEDS_REVIEW,
                 status: AppointmentStatus.COMPLETED,
-                loyaltyAward: { points: 1 },
+                qualifyLoyalty: true,
             }),
         );
     });
@@ -156,7 +162,7 @@ describe("appointment loyalty accrual use case", () => {
         expect(appointmentRepository.updateStatus).toHaveBeenCalledTimes(1);
         expect(
             appointmentRepository.updateStatus.mock.calls[0][2],
-        ).not.toHaveProperty("loyaltyAward");
+        ).not.toHaveProperty("qualifyLoyalty");
     });
 
     test("does not write status when the COMPLETED feature lookup fails", async () => {
@@ -212,7 +218,7 @@ describe("appointment loyalty accrual use case", () => {
             );
             expect(
                 appointmentRepository.updateStatus.mock.calls[0][2],
-            ).not.toHaveProperty("loyaltyAward");
+            ).not.toHaveProperty("qualifyLoyalty");
             if (
                 nextStatus === AppointmentStatus.CONFIRMED ||
                 nextStatus === AppointmentStatus.CANCELLED
@@ -255,6 +261,10 @@ describe("Prisma appointment loyalty transaction", () => {
                     "appointment-user-1",
                 ) as never,
             );
+        const featureLookup = mockCommittedLoyaltyFeature();
+        const campaignLookup = jest
+            .spyOn(prisma.loyaltyCampaign, "findFirst")
+            .mockResolvedValue({ id: "campaign-1", metric: "COUNT" } as never);
         const upsert = jest
             .spyOn(prisma.loyaltyLedgerEntry, "upsert")
             .mockResolvedValue({} as never);
@@ -266,7 +276,7 @@ describe("Prisma appointment loyalty transaction", () => {
                 {
                     expectedStatus: AppointmentStatus.IN_PROGRESS,
                     status: AppointmentStatus.COMPLETED,
-                    loyaltyAward: { points: 1 },
+                    qualifyLoyalty: true,
                 },
             ),
         ).resolves.toMatchObject({
@@ -277,22 +287,124 @@ describe("Prisma appointment loyalty transaction", () => {
         expect(transaction).toHaveBeenCalledTimes(1);
         expect(updateMany).toHaveBeenCalledTimes(1);
         expect(findFirst).toHaveBeenCalledTimes(1);
+        expect(featureLookup).toHaveBeenCalledWith({
+            where: {
+                tenantId: "tenant-1",
+                enabled: true,
+                feature: { key: "LOYALTY" },
+            },
+            select: { id: true },
+        });
+        const eventAt = (
+            updateMany.mock.calls[0][0] as {
+                data: { statusChangedAt: Date };
+            }
+        ).data.statusChangedAt;
+        expect(campaignLookup).toHaveBeenCalledWith({
+            where: {
+                tenantId: "tenant-1",
+                status: "ACTIVE",
+                source: { in: ["BOOKING", "ALL"] },
+                startsAt: { lte: eventAt },
+                endsAt: { gt: eventAt },
+            },
+            orderBy: { startsAt: "desc" },
+            select: { id: true, metric: true },
+        });
         expect(upsert).toHaveBeenCalledWith({
             where: {
-                tenantId_sourceAppointmentId: {
-                    tenantId: "tenant-1",
-                    sourceAppointmentId: "appointment-1",
+                campaignId_sourceType_sourceId_entryType: {
+                    campaignId: "campaign-1",
+                    sourceType: "APPOINTMENT",
+                    sourceId: "appointment-1",
+                    entryType: "ACCRUAL",
                 },
             },
             create: {
                 tenantId: "tenant-1",
+                campaignId: "campaign-1",
                 userId: "appointment-user-1",
+                sourceType: "APPOINTMENT",
+                sourceId: "appointment-1",
+                value: "1.00",
+                entryType: "ACCRUAL",
                 sourceAppointmentId: "appointment-1",
                 points: 1,
                 reason: "appointment.completed",
+                createdAt: eventAt,
             },
             update: {},
         });
+    });
+
+    test("does not write a ledger entry without an active campaign", async () => {
+        const transaction = useTransactionCallback();
+        transaction.mockImplementation(
+            (callback: (tx: typeof prisma) => Promise<unknown>) =>
+                callback(prisma),
+        );
+        jest.spyOn(prisma.appointment, "updateMany").mockResolvedValue({
+            count: 1,
+        });
+        jest.spyOn(prisma.appointment, "findFirst").mockResolvedValue(
+            appointment(AppointmentStatus.COMPLETED) as never,
+        );
+        mockCommittedLoyaltyFeature();
+        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue(
+            null,
+        );
+        const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
+
+        await new PrismaAppointmentRepository().updateStatus(
+            "tenant-1",
+            "appointment-1",
+            {
+                expectedStatus: AppointmentStatus.IN_PROGRESS,
+                status: AppointmentStatus.COMPLETED,
+                qualifyLoyalty: true,
+            },
+        );
+
+        expect(upsert).not.toHaveBeenCalled();
+    });
+
+    test("commits completion without qualification when LOYALTY is disabled in-transaction", async () => {
+        const transaction = useTransactionCallback();
+        transaction.mockImplementation(
+            (callback: (tx: typeof prisma) => Promise<unknown>) =>
+                callback(prisma),
+        );
+        jest.spyOn(prisma.appointment, "updateMany").mockResolvedValue({
+            count: 1,
+        });
+        jest.spyOn(prisma.appointment, "findFirst").mockResolvedValue(
+            appointment(AppointmentStatus.COMPLETED) as never,
+        );
+        const featureLookup = mockCommittedLoyaltyFeature(false);
+        const campaignLookup = jest.spyOn(
+            prisma.loyaltyCampaign,
+            "findFirst",
+        );
+        const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
+
+        await expect(
+            new PrismaAppointmentRepository().updateStatus(
+                "tenant-1",
+                "appointment-1",
+                {
+                    expectedStatus: AppointmentStatus.IN_PROGRESS,
+                    status: AppointmentStatus.COMPLETED,
+                    qualifyLoyalty: true,
+                },
+            ),
+        ).resolves.toMatchObject({
+            status: AppointmentStatus.COMPLETED,
+        });
+
+        expect(transaction).toHaveBeenCalledTimes(1);
+        expect(featureLookup).toHaveBeenCalledTimes(1);
+        expect(campaignLookup).not.toHaveBeenCalled();
+        expect(upsert).not.toHaveBeenCalled();
     });
 
     test.each([
@@ -301,7 +413,7 @@ describe("Prisma appointment loyalty transaction", () => {
         AppointmentStatus.IN_PROGRESS,
         AppointmentStatus.CANCELLED,
         AppointmentStatus.NO_SHOW,
-    ])("does not award points for a %s update", async (status) => {
+    ])("does not qualify a %s update", async (status) => {
         const transaction = useTransactionCallback();
         transaction.mockImplementation(
             (callback: (tx: typeof prisma) => Promise<unknown>) =>
@@ -313,6 +425,10 @@ describe("Prisma appointment loyalty transaction", () => {
         jest.spyOn(prisma.appointment, "findFirst").mockResolvedValue(
             appointment(status) as never,
         );
+        const campaignLookup = jest.spyOn(
+            prisma.loyaltyCampaign,
+            "findFirst",
+        );
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
         await new PrismaAppointmentRepository().updateStatus(
@@ -321,14 +437,15 @@ describe("Prisma appointment loyalty transaction", () => {
             {
                 expectedStatus: AppointmentStatus.PENDING,
                 status,
-                loyaltyAward: { points: 1 },
+                qualifyLoyalty: true,
             },
         );
 
+        expect(campaignLookup).not.toHaveBeenCalled();
         expect(upsert).not.toHaveBeenCalled();
     });
 
-    test("does not award points when COMPLETED has no award input", async () => {
+    test("does not qualify COMPLETED without the marker", async () => {
         const transaction = useTransactionCallback();
         transaction.mockImplementation(
             (callback: (tx: typeof prisma) => Promise<unknown>) =>
@@ -339,6 +456,10 @@ describe("Prisma appointment loyalty transaction", () => {
         });
         jest.spyOn(prisma.appointment, "findFirst").mockResolvedValue(
             appointment(AppointmentStatus.COMPLETED) as never,
+        );
+        const campaignLookup = jest.spyOn(
+            prisma.loyaltyCampaign,
+            "findFirst",
         );
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
@@ -351,6 +472,7 @@ describe("Prisma appointment loyalty transaction", () => {
             },
         );
 
+        expect(campaignLookup).not.toHaveBeenCalled();
         expect(upsert).not.toHaveBeenCalled();
     });
 
@@ -366,6 +488,11 @@ describe("Prisma appointment loyalty transaction", () => {
         jest.spyOn(prisma.appointment, "findFirst").mockResolvedValue(
             appointment(AppointmentStatus.COMPLETED) as never,
         );
+        mockCommittedLoyaltyFeature();
+        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue({
+            id: "campaign-1",
+            metric: "COUNT",
+        } as never);
         const upsert = jest
             .spyOn(prisma.loyaltyLedgerEntry, "upsert")
             .mockResolvedValue({} as never);
@@ -373,7 +500,7 @@ describe("Prisma appointment loyalty transaction", () => {
         const update = {
             expectedStatus: AppointmentStatus.IN_PROGRESS,
             status: AppointmentStatus.COMPLETED,
-            loyaltyAward: { points: 1 as const },
+            qualifyLoyalty: true as const,
         };
 
         await repository.updateStatus("tenant-1", "appointment-1", update);
@@ -398,6 +525,11 @@ describe("Prisma appointment loyalty transaction", () => {
         jest.spyOn(prisma.appointment, "findFirst").mockResolvedValue(
             appointment(AppointmentStatus.COMPLETED) as never,
         );
+        mockCommittedLoyaltyFeature();
+        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue({
+            id: "campaign-1",
+            metric: "COUNT",
+        } as never);
         const upsert = jest
             .spyOn(prisma.loyaltyLedgerEntry, "upsert")
             .mockResolvedValue({} as never);
@@ -405,7 +537,7 @@ describe("Prisma appointment loyalty transaction", () => {
         const update = {
             expectedStatus: AppointmentStatus.IN_PROGRESS,
             status: AppointmentStatus.COMPLETED,
-            loyaltyAward: { points: 1 as const },
+            qualifyLoyalty: true as const,
         };
 
         const results = await Promise.all([
@@ -449,6 +581,11 @@ describe("Prisma appointment loyalty transaction", () => {
             "findFirst",
         ) as unknown as jest.Mock;
         findFirst.mockImplementation(async () => appointment(currentStatus));
+        mockCommittedLoyaltyFeature();
+        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue({
+            id: "campaign-1",
+            metric: "COUNT",
+        } as never);
         jest.spyOn(prisma.loyaltyLedgerEntry, "upsert").mockRejectedValue(
             error,
         );
@@ -460,7 +597,7 @@ describe("Prisma appointment loyalty transaction", () => {
                 {
                     expectedStatus: AppointmentStatus.IN_PROGRESS,
                     status: AppointmentStatus.COMPLETED,
-                    loyaltyAward: { points: 1 },
+                    qualifyLoyalty: true,
                 },
             ),
         ).rejects.toBe(error);
