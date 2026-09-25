@@ -27,14 +27,13 @@ export interface IOrderRepository {
      * Creates an order and adjusts product inventory atomically.
      * Each stock adjustment is guarded (stock >= amount); if any product
      * lacks sufficient stock the whole operation rolls back.
-     * When couponId is provided, its usage counter is incremented in the
-     * same transaction.
+     * When couponId is provided, it is revalidated and consumed in the same
+     * transaction before the order totals are persisted.
      */
     createWithInventoryAdjustment(
         tenantId: string,
         data: OrderCreateData,
         adjustments: Array<{ productId: string; amount: number }>,
-        couponId?: string,
     ): Promise<Order>;
     findById(tenantId: string, id: string): Promise<Order | null>;
     findByUserId(

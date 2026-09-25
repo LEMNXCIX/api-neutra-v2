@@ -58,11 +58,11 @@ export class OrderController {
     async create(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const userId = req.user!.id;
-        const { couponId } = req.body;
+        const { couponCode } = req.body;
         const result = await this.createOrderUseCase.execute(
             tenantId,
             userId,
-            couponId,
+            couponCode,
         );
         return res.status(201).json(present(result, OrderPresenter.toResponse));
     }

@@ -64,6 +64,7 @@ export interface ILoyaltyRepository {
     ): Promise<LoyaltyCampaign>;
     deleteCampaign(tenantId: string, campaignId: string): Promise<void>;
     listCampaigns(tenantId: string): Promise<LoyaltyCampaign[]>;
+    hasLiveLoyaltyObligations(tenantId: string): Promise<boolean>;
     getCampaign(
         tenantId: string,
         campaignId: string,

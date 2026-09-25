@@ -7,7 +7,7 @@ export interface CreateOrderDTO {
         amount: number;
         price: number;
     }[];
-    couponId?: string;
+    couponCode?: string;
 }
 
 export interface UpdateOrderDTO {

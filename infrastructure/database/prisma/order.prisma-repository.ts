@@ -14,6 +14,16 @@ import {
 import { Order, OrderStatus, OrderItem } from "@/core/entities/order.entity";
 import { Product } from "@/core/entities/product.entity";
 import {
+    hasReachedUsageLimit,
+    isApplicableToCategory,
+    isApplicableToProduct,
+    isCouponOwnedBy,
+    isExpired,
+    isLoyaltyTemplateCoupon,
+    isPersonalCoupon,
+    isRewardCoupon,
+} from "@/core/entities/coupon.entity";
+import {
     getLoyaltyCampaignContributionValue,
     getLoyaltyCampaignSource,
     LoyaltyCampaignMetric,
@@ -119,10 +129,172 @@ export class PrismaOrderRepository implements IOrderRepository {
         tenantId: string,
         data: OrderCreateData,
         adjustments: Array<{ productId: string; amount: number }>,
-        couponId?: string,
     ): Promise<Order> {
         return prisma.$transaction(async (tx) => {
-            // Atomic, guarded stock decrement: fails if stock is insufficient
+            const subtotal = data.items.reduce(
+                (sum, item) =>
+                    sum.plus(
+                        new Prisma.Decimal(item.price).mul(item.amount),
+                    ),
+                new Prisma.Decimal(0),
+            );
+            let discountAmount = new Prisma.Decimal(0);
+
+            const coupon = data.couponId
+                ? await tx.coupon.findFirst({
+                      where: { id: data.couponId, tenantId },
+                  })
+                : null;
+
+            if (data.couponId && !coupon) {
+                throw new EntityNotFoundError("Coupon", data.couponId);
+            }
+
+            if (coupon) {
+                if (isLoyaltyTemplateCoupon(coupon)) {
+                    throw new BusinessRuleViolationError(
+                        "Loyalty reward templates cannot be redeemed",
+                        "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
+                    );
+                }
+                if (!isCouponOwnedBy(coupon, data.userId)) {
+                    throw new BusinessRuleViolationError(
+                        "Coupon is not available for this user",
+                        "COUPON_NOT_OWNED",
+                    );
+                }
+                if (isRewardCoupon(coupon) && !isPersonalCoupon(coupon)) {
+                    throw new BusinessRuleViolationError(
+                        "Reward coupon is not assigned to a customer",
+                        "REWARD_COUPON_NOT_OWNED",
+                    );
+                }
+                if (!coupon.active) {
+                    throw new BusinessRuleViolationError(
+                        "Coupon is not active",
+                    );
+                }
+                if (isExpired(coupon)) {
+                    throw new BusinessRuleViolationError("Coupon has expired");
+                }
+                if (
+                    hasReachedUsageLimit({
+                        usageCount: coupon.usageCount,
+                        usageLimit: coupon.usageLimit ?? undefined,
+                    })
+                ) {
+                    throw new BusinessRuleViolationError(
+                        "Coupon usage limit reached",
+                    );
+                }
+
+                const productIds = [
+                    ...new Set(data.items.map((item) => item.productId)),
+                ];
+                const products = await tx.product.findMany({
+                    where: {
+                        id: { in: productIds },
+                        tenantId,
+                    },
+                    select: {
+                        id: true,
+                        categories: { select: { id: true } },
+                    },
+                });
+                const foundProductIds = new Set(
+                    products.map((product) => product.id),
+                );
+                const missingProductId = productIds.find(
+                    (id) => !foundProductIds.has(id),
+                );
+                if (missingProductId) {
+                    throw new EntityNotFoundError(
+                        "Product",
+                        missingProductId,
+                    );
+                }
+
+                if (
+                    productIds.length > 0 &&
+                    !productIds.some((id) =>
+                        isApplicableToProduct(coupon, id),
+                    )
+                ) {
+                    throw new BusinessRuleViolationError(
+                        "Coupon not applicable to products in cart",
+                    );
+                }
+
+                const categoryIds = [
+                    ...new Set(
+                        products.flatMap((product) =>
+                            product.categories.map(({ id }) => id),
+                        ),
+                    ),
+                ];
+                if (
+                    coupon.applicableCategories.length > 0 &&
+                    !categoryIds.some((id) =>
+                        isApplicableToCategory(coupon, id),
+                    )
+                ) {
+                    throw new BusinessRuleViolationError(
+                        "Coupon not applicable to product categories in cart",
+                    );
+                }
+                if (
+                    coupon.applicableServices.length > 0 &&
+                    coupon.applicableProducts.length === 0 &&
+                    coupon.applicableCategories.length === 0
+                ) {
+                    throw new BusinessRuleViolationError(
+                        "Coupon is only applicable to services",
+                    );
+                }
+
+                if (
+                    coupon.minPurchaseAmount !== null &&
+                    subtotal.lessThan(coupon.minPurchaseAmount)
+                ) {
+                    throw new BusinessRuleViolationError(
+                        `Minimum purchase amount of $${coupon.minPurchaseAmount} required`,
+                    );
+                }
+
+                discountAmount =
+                    coupon.type === "PERCENT"
+                        ? subtotal.mul(coupon.value).div(100)
+                        : new Prisma.Decimal(coupon.value);
+                if (
+                    coupon.maxDiscountAmount !== null &&
+                    discountAmount.greaterThan(coupon.maxDiscountAmount)
+                ) {
+                    discountAmount = new Prisma.Decimal(
+                        coupon.maxDiscountAmount,
+                    );
+                }
+                if (discountAmount.greaterThan(subtotal)) {
+                    discountAmount = subtotal;
+                }
+            }
+
+            if (coupon) {
+                const couponsEnabled = await tx.tenantFeature.findFirst({
+                    where: {
+                        tenantId,
+                        enabled: true,
+                        feature: { key: "COUPONS" },
+                    },
+                    select: { id: true },
+                });
+                if (!couponsEnabled) {
+                    throw new BusinessRuleViolationError(
+                        "Coupon validation is not available for this tenant",
+                        "COUPONS_FEATURE_REQUIRED",
+                    );
+                }
+            }
+
             for (const adjustment of adjustments) {
                 const result = await tx.product.updateMany({
                     where: {
@@ -140,29 +312,47 @@ export class PrismaOrderRepository implements IOrderRepository {
                 }
             }
 
-            if (couponId) {
-                await tx.coupon.update({
-                    where: { id: couponId, tenantId },
+            if (coupon) {
+                const usage = await tx.coupon.updateMany({
+                    where: {
+                        id: coupon.id,
+                        tenantId,
+                        usageCount: coupon.usageCount,
+                        usageLimit: coupon.usageLimit,
+                        updatedAt: coupon.updatedAt,
+                        active: true,
+                        expiresAt: { gt: new Date() },
+                        isLoyaltyTemplate: false,
+                        ...(coupon.isReward
+                            ? { ownerId: data.userId, isReward: true }
+                            : {
+                                  isReward: false,
+                                  OR: [
+                                      { ownerId: null },
+                                      { ownerId: data.userId },
+                                  ],
+                              }),
+                    },
                     data: { usageCount: { increment: 1 } },
                 });
+                if (usage.count === 0) {
+                    throw new BusinessRuleViolationError(
+                        "The coupon is not available for this user",
+                        "COUPON_UNAVAILABLE",
+                    );
+                }
             }
 
-            const subtotal = data.items.reduce(
-                (sum, item) => sum + item.price * item.amount,
-                0,
-            );
-            const discountAmount = 0;
-            const total = subtotal - discountAmount;
-
+            const total = subtotal.minus(discountAmount);
             const order = await tx.order.create({
                 data: {
                     userId: data.userId,
                     tenantId,
                     status: "PENDIENTE" as PrismaOrderStatus,
-                    couponId: data.couponId,
-                    subtotal,
-                    total,
-                    discountAmount,
+                    couponId: coupon?.id,
+                    subtotal: subtotal.toNumber(),
+                    total: total.toNumber(),
+                    discountAmount: discountAmount.toNumber(),
                     items: {
                         create: data.items.map((item) => ({
                             productId: item.productId,

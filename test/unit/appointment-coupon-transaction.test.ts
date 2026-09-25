@@ -1,6 +1,33 @@
 import { prisma } from "@/config/db.config";
 import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
 
+function couponRow(overrides: Record<string, unknown> = {}) {
+    return {
+        id: "coupon-1",
+        code: "REWARD-1",
+        type: "PERCENT",
+        value: 10,
+        description: null,
+        minPurchaseAmount: null,
+        maxDiscountAmount: null,
+        usageLimit: 1,
+        usageCount: 0,
+        active: true,
+        expiresAt: new Date("2999-01-01"),
+        tenantId: "tenant-1",
+        ownerId: "customer-1",
+        isReward: true,
+        isLoyaltyTemplate: false,
+        sourceCouponId: "template-1",
+        applicableProducts: [],
+        applicableCategories: [],
+        applicableServices: ["service-1"],
+        createdAt: new Date("2020-01-01"),
+        updatedAt: new Date("2020-01-02"),
+        ...overrides,
+    } as never;
+}
+
 function appointmentRow() {
     return {
         id: "appointment-1",
@@ -33,11 +60,34 @@ function data(overrides: Record<string, unknown> = {}) {
         staffId: "staff-1",
         startTime: new Date("2099-01-01T10:00:00.000Z"),
         couponId: "coupon-1",
-        discountAmount: 10,
-        subtotal: 100,
-        total: 90,
+        discountAmount: 1,
+        subtotal: 50,
+        total: 49,
         ...overrides,
     } as never;
+}
+
+function mockService() {
+    jest.spyOn(prisma.service, "findUnique").mockResolvedValue({
+        duration: 30,
+    } as never);
+    jest.spyOn(prisma.service, "findFirst").mockResolvedValue({
+        price: 100,
+    } as never);
+}
+
+function mockCouponsFeature(enabled = true) {
+    return jest
+        .spyOn(prisma.tenantFeature, "findFirst")
+        .mockResolvedValue(enabled ? ({ id: "feature-1" } as never) : null);
+}
+
+function passTransaction(couponsEnabled = true) {
+    jest.spyOn(prisma, "$transaction").mockImplementation(
+        async (callback: (tx: typeof prisma) => Promise<unknown>) =>
+            callback(prisma),
+    );
+    mockCouponsFeature(couponsEnabled);
 }
 
 describe("Prisma appointment coupon transaction", () => {
@@ -45,13 +95,10 @@ describe("Prisma appointment coupon transaction", () => {
         jest.restoreAllMocks();
     });
 
-    test("increments a personal reward coupon and creates the appointment together", async () => {
+    test("revalidates and recalculates a personal service reward atomically", async () => {
         let inTransaction = false;
-        const transaction = jest.spyOn(
-            prisma,
-            "$transaction",
-        ) as unknown as jest.Mock;
-        transaction.mockImplementation(
+        mockCouponsFeature();
+        jest.spyOn(prisma, "$transaction").mockImplementation(
             async (callback: (tx: typeof prisma) => Promise<unknown>) => {
                 inTransaction = true;
                 try {
@@ -61,9 +108,9 @@ describe("Prisma appointment coupon transaction", () => {
                 }
             },
         );
-        jest.spyOn(prisma.service, "findUnique").mockResolvedValue({
-            duration: 30,
-        } as never);
+        mockService();
+        const coupon = couponRow();
+        jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(coupon);
         const usage = jest.spyOn(
             prisma.coupon,
             "updateMany",
@@ -83,17 +130,21 @@ describe("Prisma appointment coupon transaction", () => {
 
         await new PrismaAppointmentRepository().create("tenant-1", data());
 
+        expect(prisma.coupon.findFirst).toHaveBeenCalledWith({
+            where: { id: "coupon-1", tenantId: "tenant-1" },
+        });
         expect(usage).toHaveBeenCalledWith({
             where: expect.objectContaining({
                 id: "coupon-1",
                 tenantId: "tenant-1",
-                OR: expect.arrayContaining([
-                    expect.objectContaining({
-                        ownerId: "customer-1",
-                        isReward: true,
-                        usageCount: { lt: 1 },
-                    }),
-                ]),
+                usageCount: 0,
+                usageLimit: 1,
+                updatedAt: expect.any(Date),
+                active: true,
+                expiresAt: { gt: expect.any(Date) },
+                isLoyaltyTemplate: false,
+                ownerId: "customer-1",
+                isReward: true,
             }),
             data: { usageCount: { increment: 1 } },
         });
@@ -101,26 +152,127 @@ describe("Prisma appointment coupon transaction", () => {
             expect.objectContaining({
                 data: expect.objectContaining({
                     couponId: "coupon-1",
-                    discountAmount: 10,
                     subtotal: 100,
+                    discountAmount: 10,
                     total: 90,
                 }),
             }),
         );
     });
 
-    test("does not create an appointment when the personal reward is already consumed", async () => {
-        const transaction = jest.spyOn(
-            prisma,
-            "$transaction",
-        ) as unknown as jest.Mock;
-        transaction.mockImplementation(
-            async (callback: (tx: typeof prisma) => Promise<unknown>) =>
-                callback(prisma),
+    test("rolls back when COUPONS is disabled before consumption", async () => {
+        passTransaction(false);
+        mockService();
+        jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(
+            couponRow() as never,
         );
-        jest.spyOn(prisma.service, "findUnique").mockResolvedValue({
-            duration: 30,
+        const usage = jest.spyOn(prisma.coupon, "updateMany");
+        const create = jest.spyOn(prisma.appointment, "create");
+
+        await expect(
+            new PrismaAppointmentRepository().create(
+                "tenant-1",
+                data(),
+            ),
+        ).rejects.toMatchObject({ code: "COUPONS_FEATURE_REQUIRED" });
+        expect(usage).not.toHaveBeenCalled();
+        expect(create).not.toHaveBeenCalled();
+    });
+
+    test("allows a hybrid coupon whose service side matches", async () => {
+        passTransaction();
+        mockService();
+        jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(
+            couponRow({ applicableProducts: ["product-1"] }) as never,
+        );
+        jest.spyOn(prisma.coupon, "updateMany").mockResolvedValue({
+            count: 1,
         } as never);
+        jest.spyOn(prisma.appointment, "create").mockResolvedValue(
+            appointmentRow(),
+        );
+
+        await expect(
+            new PrismaAppointmentRepository().create("tenant-1", data()),
+        ).resolves.toEqual(expect.objectContaining({ id: "appointment-1" }));
+    });
+
+    test.each([
+        ["deactivated", { active: false }, "Coupon is not active"],
+        [
+            "expired",
+            { expiresAt: new Date("2000-01-01") },
+            "Coupon has expired",
+        ],
+        [
+            "usage limit reached",
+            { usageLimit: 1, usageCount: 1 },
+            "Coupon usage limit reached",
+        ],
+        [
+            "service mismatch",
+            { applicableServices: ["service-2"] },
+            "Coupon not applicable to this service",
+        ],
+        [
+            "product-only",
+            { applicableServices: [], applicableProducts: ["product-1"] },
+            "Coupon is only applicable to products",
+        ],
+        [
+            "category-only",
+            { applicableServices: [], applicableCategories: ["category-1"] },
+            "Coupon is only applicable to products",
+        ],
+        [
+            "loyalty template",
+            { isLoyaltyTemplate: true },
+            "Loyalty reward templates cannot be redeemed",
+        ],
+    ])(
+        "rejects a transaction-time %s coupon before usage or appointment writes",
+        async (_, overrides, message) => {
+            passTransaction();
+            mockService();
+            jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(
+                couponRow(overrides) as never,
+            );
+            const usage = jest.spyOn(prisma.coupon, "updateMany");
+            const create = jest.spyOn(prisma.appointment, "create");
+
+            await expect(
+                new PrismaAppointmentRepository().create(
+                    "tenant-1",
+                    data(),
+                ),
+            ).rejects.toThrow(message);
+            expect(usage).not.toHaveBeenCalled();
+            expect(create).not.toHaveBeenCalled();
+        },
+    );
+
+    test("rejects a coupon reloaded for another owner", async () => {
+        passTransaction();
+        mockService();
+        jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(
+            couponRow({ ownerId: "customer-2" }) as never,
+        );
+        const usage = jest.spyOn(prisma.coupon, "updateMany");
+        const create = jest.spyOn(prisma.appointment, "create");
+
+        await expect(
+            new PrismaAppointmentRepository().create("tenant-1", data()),
+        ).rejects.toMatchObject({ code: "COUPON_NOT_OWNED" });
+        expect(usage).not.toHaveBeenCalled();
+        expect(create).not.toHaveBeenCalled();
+    });
+
+    test("does not create an appointment when the compare-and-set loses", async () => {
+        passTransaction();
+        mockService();
+        jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(
+            couponRow() as never,
+        );
         jest.spyOn(prisma.coupon, "updateMany").mockResolvedValue({
             count: 0,
         } as never);
@@ -134,13 +286,10 @@ describe("Prisma appointment coupon transaction", () => {
 
     test("rolls back coupon usage when appointment creation fails", async () => {
         const error = new Error("appointment write failed");
+        mockCouponsFeature();
         let usageCount = 0;
         let appointmentCreated = false;
-        const transaction = jest.spyOn(
-            prisma,
-            "$transaction",
-        ) as unknown as jest.Mock;
-        transaction.mockImplementation(
+        jest.spyOn(prisma, "$transaction").mockImplementation(
             async (callback: (tx: typeof prisma) => Promise<unknown>) => {
                 const usageBefore = usageCount;
                 const appointmentBefore = appointmentCreated;
@@ -153,9 +302,10 @@ describe("Prisma appointment coupon transaction", () => {
                 }
             },
         );
-        jest.spyOn(prisma.service, "findUnique").mockResolvedValue({
-            duration: 30,
-        } as never);
+        mockService();
+        jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(
+            couponRow() as never,
+        );
         (
             jest.spyOn(prisma.coupon, "updateMany") as unknown as jest.Mock
         ).mockImplementation(async () => {

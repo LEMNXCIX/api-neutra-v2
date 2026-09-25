@@ -175,13 +175,14 @@ type CampaignUpdateData = {
 };
 
 type RewardCouponWhere = {
-    id: string;
+    id?: string;
     tenantId: string;
-    ownerId: null;
-    isReward?: false;
-    isLoyaltyTemplate?: true;
+    ownerId: null | { not: null };
+    isReward?: boolean;
+    isLoyaltyTemplate?: boolean;
     active: boolean;
-    expiresAt: { gte: Date };
+    usageCount?: number;
+    expiresAt: { gte?: Date; gt?: Date };
 };
 
 type RewardCouponCreateData = {
@@ -759,6 +760,45 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             orderBy: { createdAt: "desc" },
         });
         return rows.map((row) => this.mapCampaign(row));
+    }
+
+    async hasLiveLoyaltyObligations(tenantId: string): Promise<boolean> {
+        this.validateIdentity(tenantId);
+        const now = new Date();
+        const [campaign, rewardCoupon] = await Promise.all([
+            this.db.loyaltyCampaign.findFirst({
+                where: {
+                    tenantId,
+                    status: {
+                        in: [
+                            LoyaltyCampaignStatus.ACTIVE,
+                            LoyaltyCampaignStatus.ENDED,
+                        ],
+                    },
+                    OR: [
+                        {
+                            status: LoyaltyCampaignStatus.ACTIVE,
+                        },
+                        {
+                            status: LoyaltyCampaignStatus.ENDED,
+                            claimUntil: { gt: now },
+                        },
+                    ],
+                },
+            }),
+            this.db.coupon.findFirst({
+                where: {
+                    tenantId,
+                    ownerId: { not: null },
+                    isReward: true,
+                    isLoyaltyTemplate: false,
+                    active: true,
+                    usageCount: 0,
+                    expiresAt: { gt: now },
+                },
+            }),
+        ]);
+        return Boolean(campaign || rewardCoupon);
     }
 
     async getCampaign(

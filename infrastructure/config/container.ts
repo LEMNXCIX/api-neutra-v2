@@ -378,6 +378,8 @@ export class Container {
                 this.orderRepository,
                 new GetCartUseCase(this.cartRepository),
                 new ClearCartUseCase(this.cartRepository),
+                new ValidateCouponUseCase(this.couponRepository),
+                this.productRepository,
                 this.userRepository,
                 emailService,
                 this.featureRepository,
@@ -583,10 +585,17 @@ export class Container {
             new GetTenantsUseCase(this.tenantRepository),
             new GetTenantByIdUseCase(this.tenantRepository),
             new GetTenantBySlugUseCase(this.tenantRepository),
-            new UpdateTenantUseCase(this.tenantRepository, this.featureRepository),
+            new UpdateTenantUseCase(
+                this.tenantRepository,
+                this.featureRepository,
+                this.loyaltyRepository,
+            ),
             new DeleteTenantUseCase(this.tenantRepository),
             new GetTenantFeaturesUseCase(this.featureRepository),
-            new UpdateTenantFeaturesUseCase(this.featureRepository),
+            new UpdateTenantFeaturesUseCase(
+                this.featureRepository,
+                this.loyaltyRepository,
+            ),
         );
     }
 

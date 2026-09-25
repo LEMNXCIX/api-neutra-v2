@@ -18,6 +18,14 @@ import {
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
 import {
+    hasReachedUsageLimit,
+    isCouponOwnedBy,
+    isExpired,
+    isLoyaltyTemplateCoupon,
+    isPersonalCoupon,
+    isRewardCoupon,
+} from "@/core/entities/coupon.entity";
+import {
     getLoyaltyCampaignContributionValue,
     getLoyaltyCampaignSource,
     LoyaltyCampaignMetric,
@@ -148,7 +156,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         const endTime = new Date(data.startTime);
         endTime.setMinutes(endTime.getMinutes() + service.duration);
 
-        const appointmentData = {
+        const baseAppointmentData = {
             tenantId,
             userId: data.userId,
             serviceId: data.serviceId,
@@ -166,23 +174,159 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         };
         const createAppointment = (
             client: Pick<Prisma.TransactionClient, "appointment">,
-        ) => client.appointment.create({ data: appointmentData });
+            values: typeof baseAppointmentData = baseAppointmentData,
+        ) => client.appointment.create({ data: values });
 
+        const couponId = data.couponId;
         try {
-            const appointment = data.couponId
+            const appointment = couponId
                 ? await prisma.$transaction(async (tx) => {
+                      const coupon = await tx.coupon.findFirst({
+                          where: { id: couponId, tenantId },
+                      });
+                      if (!coupon) {
+                          throw new EntityNotFoundError("Coupon", couponId);
+                      }
+                      if (isLoyaltyTemplateCoupon(coupon)) {
+                          throw new BusinessRuleViolationError(
+                              "Loyalty reward templates cannot be redeemed",
+                              "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
+                          );
+                      }
+                      if (!isCouponOwnedBy(coupon, data.userId)) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon is not available for this user",
+                              "COUPON_NOT_OWNED",
+                          );
+                      }
+                      if (
+                          isRewardCoupon(coupon) &&
+                          !isPersonalCoupon(coupon)
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              "Reward coupon is not assigned to a customer",
+                              "REWARD_COUPON_NOT_OWNED",
+                          );
+                      }
+                      if (!coupon.active) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon is not active",
+                          );
+                      }
+                      if (isExpired(coupon)) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon has expired",
+                          );
+                      }
+                      if (
+                          hasReachedUsageLimit({
+                              usageCount: coupon.usageCount,
+                              usageLimit: coupon.usageLimit ?? undefined,
+                          })
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon usage limit reached",
+                          );
+                      }
+                      if (
+                          coupon.applicableServices.length > 0 &&
+                          !coupon.applicableServices.includes(data.serviceId)
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon not applicable to this service",
+                          );
+                      }
+                      if (
+                          coupon.applicableServices.length === 0 &&
+                          (coupon.applicableProducts.length > 0 ||
+                              coupon.applicableCategories.length > 0)
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon is only applicable to products",
+                          );
+                      }
+
+                      const service = await tx.service.findFirst({
+                          where: { id: data.serviceId, tenantId },
+                          select: { price: true },
+                      });
+                      if (!service) {
+                          throw new EntityNotFoundError(
+                              "Service",
+                              data.serviceId,
+                          );
+                      }
+                      const subtotal = new Prisma.Decimal(service.price);
+                      if (
+                          coupon.minPurchaseAmount !== null &&
+                          subtotal.lessThan(coupon.minPurchaseAmount)
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              `Minimum purchase amount of $${coupon.minPurchaseAmount} required`,
+                          );
+                      }
+
+                      let discountAmount =
+                          coupon.type === "PERCENT"
+                              ? subtotal.mul(coupon.value).div(100)
+                              : new Prisma.Decimal(coupon.value);
+                      if (
+                          coupon.maxDiscountAmount !== null &&
+                          discountAmount.greaterThan(coupon.maxDiscountAmount)
+                      ) {
+                          discountAmount = new Prisma.Decimal(
+                              coupon.maxDiscountAmount,
+                          );
+                      }
+                      if (discountAmount.greaterThan(subtotal)) {
+                          discountAmount = subtotal;
+                      }
+                      const total = subtotal.minus(discountAmount);
+                      const appointmentData = {
+                          ...baseAppointmentData,
+                          discountAmount: discountAmount.toNumber(),
+                          subtotal: subtotal.toNumber(),
+                          total: total.toNumber(),
+                      };
+
+                      const couponsEnabled =
+                          await tx.tenantFeature.findFirst({
+                              where: {
+                                  tenantId,
+                                  enabled: true,
+                                  feature: { key: "COUPONS" },
+                              },
+                              select: { id: true },
+                          });
+                      if (!couponsEnabled) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon validation is not available for this tenant",
+                              "COUPONS_FEATURE_REQUIRED",
+                          );
+                      }
+
                       const usage = await tx.coupon.updateMany({
                           where: {
-                              id: data.couponId,
+                              id: coupon.id,
                               tenantId,
-                              OR: [
-                                  { ownerId: null },
-                                  {
-                                      ownerId: data.userId,
-                                      isReward: true,
-                                      usageCount: { lt: 1 },
-                                  },
-                              ],
+                              usageCount: coupon.usageCount,
+                              usageLimit: coupon.usageLimit,
+                              updatedAt: coupon.updatedAt,
+                              active: true,
+                              expiresAt: { gt: new Date() },
+                              isLoyaltyTemplate: false,
+                              ...(coupon.isReward
+                                  ? {
+                                        ownerId: data.userId,
+                                        isReward: true,
+                                    }
+                                  : {
+                                        isReward: false,
+                                        OR: [
+                                            { ownerId: null },
+                                            { ownerId: data.userId },
+                                        ],
+                                    }),
                           },
                           data: { usageCount: { increment: 1 } },
                       });
@@ -192,7 +336,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                               "COUPON_UNAVAILABLE",
                           );
                       }
-                      return createAppointment(tx);
+                      return createAppointment(tx, appointmentData);
                   })
                 : await createAppointment(prisma);
 

@@ -13,12 +13,6 @@ import {
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
 
-type PrismaCouponWithPersonalFields = PrismaCoupon & {
-    ownerId?: string | null;
-    isReward?: boolean | null;
-    sourceCouponId?: string | null;
-};
-
 type CouponWhereInput = Prisma.CouponWhereInput & {
     ownerId?: Prisma.StringNullableFilter<"Coupon"> | string | null;
     isReward?: Prisma.BoolFilter<"Coupon"> | boolean;
@@ -52,7 +46,7 @@ function couponOwnerFilters(
 }
 
 export class PrismaCouponRepository implements ICouponRepository {
-    private mapToEntity(data: PrismaCouponWithPersonalFields): Coupon {
+    private mapToEntity(data: PrismaCoupon): Coupon {
         return {
             id: data.id,
             code: data.code,
@@ -61,6 +55,7 @@ export class PrismaCouponRepository implements ICouponRepository {
             description: data.description ?? undefined,
             ownerId: data.ownerId ?? undefined,
             isReward: data.isReward ?? false,
+            isLoyaltyTemplate: data.isLoyaltyTemplate ?? false,
             sourceCouponId: data.sourceCouponId ?? undefined,
             minPurchaseAmount: data.minPurchaseAmount ?? undefined,
             maxDiscountAmount: data.maxDiscountAmount ?? undefined,
