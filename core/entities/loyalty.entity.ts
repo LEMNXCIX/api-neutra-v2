@@ -178,6 +178,21 @@ export function getLoyaltyCampaignSource(
     throw new TypeError("Unsupported loyalty campaign source type");
 }
 
+export function getLoyaltyCampaignSourceTypes(
+    source: LoyaltyCampaignSource,
+): LoyaltySourceType[] {
+    if (source === LoyaltyCampaignSource.BOOKING) {
+        return [LoyaltySourceType.APPOINTMENT];
+    }
+    if (source === LoyaltyCampaignSource.STORE) {
+        return [LoyaltySourceType.ORDER];
+    }
+    if (source === LoyaltyCampaignSource.ALL) {
+        return [LoyaltySourceType.APPOINTMENT, LoyaltySourceType.ORDER];
+    }
+    throw new TypeError("Unsupported loyalty campaign source");
+}
+
 export function assertLoyaltyCampaignFeatures(
     features: Record<string, boolean> | null | undefined,
 ): void {

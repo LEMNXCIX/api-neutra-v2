@@ -5,6 +5,8 @@ import {
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
     LoyaltyCampaignStatus,
+    LoyaltyLedgerEntryType,
+    LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
 
@@ -93,6 +95,14 @@ function setup(
     netTotal = "10.00",
 ) {
     const ledger = {
+        count: jest.fn().mockImplementation(
+            async ({
+                where,
+            }: {
+                where: { entryType: LoyaltyLedgerEntryType };
+            }) =>
+                where.entryType === LoyaltyLedgerEntryType.REVERSAL ? 0 : 10,
+        ),
         aggregate: jest.fn().mockResolvedValue({
             _sum: { value: new Prisma.Decimal(netTotal) },
         }),
@@ -160,10 +170,15 @@ describe("loyalty claim transaction", () => {
         jest.useRealTimers();
     });
 
-    test("claims campaign progress and reserves maxClaims in the same transaction", async () => {
-        const { repository, campaigns, claims, coupons, ledger } = setup(
-            { maxClaims: 2 },
-            "10.00",
+    test("claims source-aware campaign progress and reserves maxClaims in the same transaction", async () => {
+        const { repository, campaigns, claims, coupons, ledger } = setup({
+            maxClaims: 2,
+        });
+        ledger.count.mockImplementation(async ({ where }) =>
+            where.entryType === LoyaltyLedgerEntryType.ACCRUAL &&
+            where.sourceType.in.includes(LoyaltySourceType.APPOINTMENT)
+                ? 10
+                : 0,
         );
 
         const result = await repository.claimCampaignReward(
@@ -172,14 +187,25 @@ describe("loyalty claim transaction", () => {
             "customer-1",
         );
 
-        expect(ledger.aggregate).toHaveBeenCalledWith({
+        expect(ledger.count).toHaveBeenCalledWith({
             where: {
                 tenantId: "tenant-1",
                 campaignId: "campaign-1",
                 userId: "customer-1",
+                sourceType: { in: [LoyaltySourceType.APPOINTMENT] },
+                entryType: LoyaltyLedgerEntryType.ACCRUAL,
             },
-            _sum: { value: true },
         });
+        expect(ledger.count).toHaveBeenCalledWith({
+            where: {
+                tenantId: "tenant-1",
+                campaignId: "campaign-1",
+                userId: "customer-1",
+                sourceType: { in: [LoyaltySourceType.APPOINTMENT] },
+                entryType: LoyaltyLedgerEntryType.REVERSAL,
+            },
+        });
+        expect(ledger.aggregate).not.toHaveBeenCalled();
         expect(campaigns.updateMany).toHaveBeenCalledWith({
             where: {
                 id: "campaign-1",
@@ -254,8 +280,11 @@ describe("loyalty claim transaction", () => {
         expect(coupons.create).not.toHaveBeenCalled();
     });
 
-    test("rejects a campaign whose Decimal progress is below target", async () => {
-        const { repository, campaigns, coupons } = setup({}, "9.99");
+    test("rejects a campaign whose COUNT progress is below target", async () => {
+        const { repository, campaigns, coupons, ledger } = setup();
+        ledger.count
+            .mockResolvedValueOnce(9)
+            .mockResolvedValueOnce(0);
 
         await expect(
             repository.claimCampaignReward(
@@ -264,6 +293,7 @@ describe("loyalty claim transaction", () => {
                 "customer-1",
             ),
         ).rejects.toMatchObject({ code: "LOYALTY_TARGET_NOT_REACHED" });
+        expect(ledger.aggregate).not.toHaveBeenCalled();
         expect(campaigns.updateMany).not.toHaveBeenCalled();
         expect(coupons.create).not.toHaveBeenCalled();
     });

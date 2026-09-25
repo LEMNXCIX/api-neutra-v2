@@ -4,6 +4,7 @@ import {
     getLoyaltyCampaignContributionValue,
     getLoyaltyCampaignProgressValue,
     getLoyaltyCampaignSource,
+    getLoyaltyCampaignSourceTypes,
     isLoyaltyCampaignClaimable,
     isLoyaltyCampaignSourceCompatible,
     isValidLoyaltyCampaignDates,
@@ -198,6 +199,22 @@ describe("loyalty campaign domain validation", () => {
         ).toBe(LoyaltyCampaignSource.BOOKING);
         expect(getLoyaltyCampaignSource(LoyaltySourceType.ORDER)).toBe(
             LoyaltyCampaignSource.STORE,
+        );
+    });
+
+    test.each([
+        [LoyaltyCampaignSource.BOOKING, [LoyaltySourceType.APPOINTMENT]],
+        [LoyaltyCampaignSource.STORE, [LoyaltySourceType.ORDER]],
+        [
+            LoyaltyCampaignSource.ALL,
+            [LoyaltySourceType.APPOINTMENT, LoyaltySourceType.ORDER],
+        ],
+    ])("maps %s progress to its compatible ledger sources", (
+        campaignSource,
+        sourceTypes,
+    ) => {
+        expect(getLoyaltyCampaignSourceTypes(campaignSource)).toEqual(
+            sourceTypes,
         );
     });
 

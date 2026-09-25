@@ -5,6 +5,7 @@ import {
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
     LoyaltyCampaignStatus,
+    LoyaltyLedgerEntryType,
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
@@ -104,6 +105,7 @@ function campaignClaimRow(
 
 function setup() {
     const ledger = {
+        count: jest.fn().mockResolvedValue(10),
         aggregate: jest.fn().mockResolvedValue({
             _sum: { value: new Prisma.Decimal("10.00") },
         }),
@@ -502,20 +504,34 @@ describe("PrismaLoyaltyRepository", () => {
     );
 
     test.each([
-        [LoyaltyCampaignMetric.COUNT, "10.00", "10.00", true],
-        [LoyaltyCampaignMetric.SPEND, "19.95", "19.90", false],
+        [
+            LoyaltyCampaignSource.BOOKING,
+            [LoyaltySourceType.APPOINTMENT],
+            "1.00",
+        ],
+        [LoyaltyCampaignSource.STORE, [LoyaltySourceType.ORDER], "2.00"],
+        [
+            LoyaltyCampaignSource.ALL,
+            [LoyaltySourceType.APPOINTMENT, LoyaltySourceType.ORDER],
+            "3.00",
+        ],
     ])(
-        "maps Decimal %s campaign progress without floating point",
-        async (metric, targetValue, progressValue, reachedTarget) => {
+        "counts only compatible source rows for %s progress",
+        async (source, sourceTypes, progressValue) => {
             const { repository, campaigns, ledger } = setup();
             campaigns.findFirst.mockResolvedValue(
-                campaignRow({
-                    metric,
-                    targetValue: new Prisma.Decimal(targetValue),
-                }),
+                campaignRow({ source }),
             );
-            ledger.aggregate.mockResolvedValue({
-                _sum: { value: new Prisma.Decimal(progressValue) },
+            ledger.count.mockImplementation(async ({ where }) => {
+                if (where.entryType === LoyaltyLedgerEntryType.REVERSAL) {
+                    return 0;
+                }
+                return where.sourceType.in.reduce(
+                    (count: number, sourceType: LoyaltySourceType) =>
+                        count +
+                        (sourceType === LoyaltySourceType.APPOINTMENT ? 1 : 2),
+                    0,
+                );
             });
 
             await expect(
@@ -524,19 +540,106 @@ describe("PrismaLoyaltyRepository", () => {
                     "campaign-1",
                     "user-1",
                 ),
-            ).resolves.toEqual({
-                campaignId: "campaign-1",
-                userId: "user-1",
-                metric,
-                progressValue,
-                targetValue,
-                reachedTarget,
+            ).resolves.toMatchObject({ progressValue });
+            expect(ledger.count).toHaveBeenCalledWith({
+                where: {
+                    tenantId: "tenant-1",
+                    campaignId: "campaign-1",
+                    userId: "user-1",
+                    sourceType: { in: sourceTypes },
+                    entryType: LoyaltyLedgerEntryType.ACCRUAL,
+                },
             });
+            expect(ledger.count).toHaveBeenCalledWith({
+                where: {
+                    tenantId: "tenant-1",
+                    campaignId: "campaign-1",
+                    userId: "user-1",
+                    sourceType: { in: sourceTypes },
+                    entryType: LoyaltyLedgerEntryType.REVERSAL,
+                },
+            });
+        },
+    );
+
+    test.each([
+        [3, 1, "2.00", true],
+        [1, 2, "0.00", false],
+    ])(
+        "derives COUNT progress from %i accruals and %i reversals without trusting values",
+        async (accrualCount, reversalCount, progressValue, reachedTarget) => {
+            const { repository, campaigns, ledger } = setup();
+            campaigns.findFirst.mockResolvedValue(
+                campaignRow({ targetValue: new Prisma.Decimal("2.00") }),
+            );
+            ledger.count.mockImplementation(async ({ where }) =>
+                where.entryType === LoyaltyLedgerEntryType.ACCRUAL
+                    ? accrualCount
+                    : reversalCount,
+            );
+            ledger.aggregate.mockResolvedValue({
+                _sum: { value: new Prisma.Decimal("999999.00") },
+            });
+
+            await expect(
+                repository.getCampaignProgress(
+                    "tenant-1",
+                    "campaign-1",
+                    "user-1",
+                ),
+            ).resolves.toMatchObject({ progressValue, reachedTarget });
+            expect(ledger.aggregate).not.toHaveBeenCalled();
+        },
+    );
+
+    test.each([
+        ["19.95", "19.95"],
+        ["-0.01", "0.00"],
+    ])(
+        "sums compatible SPEND Decimal values from %s and clamps progress",
+        async (netTotal, progressValue) => {
+            const { repository, campaigns, ledger } = setup();
+            campaigns.findFirst.mockResolvedValue(
+                campaignRow({
+                    source: LoyaltyCampaignSource.ALL,
+                    metric: LoyaltyCampaignMetric.SPEND,
+                    targetValue: new Prisma.Decimal("20.00"),
+                }),
+            );
+            ledger.aggregate.mockResolvedValue({
+                _sum: { value: new Prisma.Decimal(netTotal) },
+            });
+
+            await expect(
+                repository.getCampaignProgress(
+                    "tenant-1",
+                    "campaign-1",
+                    "user-1",
+                ),
+            ).resolves.toMatchObject({
+                metric: LoyaltyCampaignMetric.SPEND,
+                progressValue,
+                targetValue: "20.00",
+                reachedTarget: false,
+            });
+            expect(ledger.count).not.toHaveBeenCalled();
             expect(ledger.aggregate).toHaveBeenCalledWith({
                 where: {
                     tenantId: "tenant-1",
                     campaignId: "campaign-1",
                     userId: "user-1",
+                    sourceType: {
+                        in: [
+                            LoyaltySourceType.APPOINTMENT,
+                            LoyaltySourceType.ORDER,
+                        ],
+                    },
+                    entryType: {
+                        in: [
+                            LoyaltyLedgerEntryType.ACCRUAL,
+                            LoyaltyLedgerEntryType.REVERSAL,
+                        ],
+                    },
                 },
                 _sum: { value: true },
             });

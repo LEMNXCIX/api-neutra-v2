@@ -11,6 +11,7 @@ import {
 import {
     canTransitionLoyaltyCampaignStatus,
     getLoyaltyCampaignProgressValue,
+    getLoyaltyCampaignSourceTypes,
     isLoyaltyCampaignClaimable,
     isValidLoyaltyCampaignDates,
     isValidLoyaltyCampaignMaxClaims,
@@ -24,6 +25,7 @@ import {
     LoyaltyCampaignSource,
     LoyaltyCampaignStats,
     LoyaltyCampaignStatus,
+    LoyaltyLedgerEntryType,
     LoyaltyRewardClaimStatus,
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
@@ -167,13 +169,20 @@ type RewardCouponCreateData = {
     sourceCouponId: string | null;
 };
 
+type LoyaltyLedgerWhere = {
+    tenantId: string;
+    campaignId: string;
+    userId: string;
+    sourceType: { in: LoyaltySourceType[] };
+    entryType:
+        | LoyaltyLedgerEntryType
+        | { in: LoyaltyLedgerEntryType[] };
+};
+
 type LoyaltyLedgerDelegate = {
+    count(args: { where: LoyaltyLedgerWhere }): Promise<number>;
     aggregate(args: {
-        where: {
-            tenantId: string;
-            campaignId: string;
-            userId: string;
-        };
+        where: LoyaltyLedgerWhere;
         _sum: { value: true };
     }): Promise<{
         _sum: { value: Prisma.Decimal | null };
@@ -261,7 +270,7 @@ function hasMethods(value: unknown, methods: readonly string[]): boolean {
 function isLoyaltyDatabase(value: unknown): value is LoyaltyDatabase {
     return (
         isRecord(value) &&
-        hasMethods(value.loyaltyLedgerEntry, ["aggregate"]) &&
+        hasMethods(value.loyaltyLedgerEntry, ["aggregate", "count"]) &&
         hasMethods(value.loyaltyCampaign, [
             "create",
             "findMany",
@@ -982,6 +991,64 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         return row ? this.mapCampaign(row) : null;
     }
 
+    private async calculateCampaignProgressValue(
+        ledger: LoyaltyLedgerDelegate,
+        tenantId: string,
+        campaign: LoyaltyCampaign,
+        userId: string,
+    ): Promise<string> {
+        const where = {
+            tenantId,
+            campaignId: campaign.id,
+            userId,
+            sourceType: {
+                in: getLoyaltyCampaignSourceTypes(campaign.source),
+            },
+        };
+
+        if (campaign.metric === LoyaltyCampaignMetric.COUNT) {
+            const accrualCount = await ledger.count({
+                where: {
+                    ...where,
+                    entryType: LoyaltyLedgerEntryType.ACCRUAL,
+                },
+            });
+            const reversalCount = await ledger.count({
+                where: {
+                    ...where,
+                    entryType: LoyaltyLedgerEntryType.REVERSAL,
+                },
+            });
+            return getLoyaltyCampaignProgressValue(
+                campaign.metric,
+                toFixedDecimalString(
+                    new Prisma.Decimal(
+                        Math.max(accrualCount - reversalCount, 0),
+                    ),
+                ),
+            );
+        }
+
+        const aggregate = await ledger.aggregate({
+            where: {
+                ...where,
+                entryType: {
+                    in: [
+                        LoyaltyLedgerEntryType.ACCRUAL,
+                        LoyaltyLedgerEntryType.REVERSAL,
+                    ],
+                },
+            },
+            _sum: { value: true },
+        });
+        return getLoyaltyCampaignProgressValue(
+            campaign.metric,
+            toFixedDecimalString(
+                aggregate._sum.value ?? new Prisma.Decimal(0),
+            ),
+        );
+    }
+
     async getCampaignProgress(
         tenantId: string,
         campaignId: string,
@@ -992,13 +1059,11 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         if (!campaign) {
             throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
         }
-        const aggregate = await this.db.loyaltyLedgerEntry.aggregate({
-            where: { tenantId, campaignId, userId },
-            _sum: { value: true },
-        });
-        const progressValue = getLoyaltyCampaignProgressValue(
-            campaign.metric,
-            toFixedDecimalString(aggregate._sum.value ?? new Prisma.Decimal(0)),
+        const progressValue = await this.calculateCampaignProgressValue(
+            this.db.loyaltyLedgerEntry,
+            tenantId,
+            campaign,
+            userId,
         );
         return {
             campaignId,
@@ -1161,12 +1226,14 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     );
                 }
 
-                const progress = await tx.loyaltyLedgerEntry.aggregate({
-                    where: { tenantId, campaignId, userId },
-                    _sum: { value: true },
-                });
-                const netTotal = progress._sum.value ?? new Prisma.Decimal(0);
-                if (!new Prisma.Decimal(netTotal).gte(new Prisma.Decimal(campaign.targetValue))) {
+                const progressValue =
+                    await this.calculateCampaignProgressValue(
+                        tx.loyaltyLedgerEntry,
+                        tenantId,
+                        campaign,
+                        userId,
+                    );
+                if (!new Prisma.Decimal(progressValue).gte(new Prisma.Decimal(campaign.targetValue))) {
                     throw new BusinessRuleViolationError(
                         "The loyalty campaign target has not been reached",
                         "LOYALTY_TARGET_NOT_REACHED",
