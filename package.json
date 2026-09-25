@@ -13,6 +13,7 @@
         "test:ci": "cross-env NODE_ENV=test jest --runInBand --forceExit",
         "build": "tsc -p tsconfig.json && tsx ./scripts/verify-production-build.ts --rewrite",
         "verify:production": "tsx ./scripts/verify-production-build.ts",
+        "doctor": "tsx ./scripts/api-doctor/cli.ts",
         "start": "tsx ./app.ts",
         "dev": "cross-env NODE_ENV=development tsx ./app.ts",
         "dev:watch": "cross-env NODE_ENV=development nodemon --watch \"./**/*.ts\" --exec \"tsx ./app.ts\"",
