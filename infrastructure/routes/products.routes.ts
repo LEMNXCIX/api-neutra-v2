@@ -1,12 +1,15 @@
 import { Application, Router } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
+import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { ProductController } from "@/interface-adapters/controllers/product.controller";
 
-import { optionalAuthenticate } from "@/middleware/optional-authenticate.middleware";
-
-function products(app: Application, productController: ProductController) {
+function products(
+    app: Application,
+    productController: ProductController,
+    authenticate: RequestHandler,
+    optionalAuthenticate: RequestHandler,
+) {
     const router = Router();
     app.use("/api/products", router);
 

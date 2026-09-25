@@ -6,23 +6,48 @@ export {};
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { cookieOptions } = require("@/helpers/authResponse.helpers");
 
-function reqWithHost(host?: string) {
-    return { get: (_name: string) => host } as never;
+function reqWithHost(host?: string, originalOrigin?: string) {
+    const headers: Record<string, string | undefined> = {
+        host,
+        "x-original-origin": originalOrigin,
+    };
+
+    return { get: (name: string) => headers[name.toLowerCase()] } as never;
 }
 
 describe("cookieOptions domain scoping", () => {
-    test("bare localhost shares the cookie across subdomains", () => {
+    test("bare localhost uses a host-only cookie", () => {
         const opts = cookieOptions(reqWithHost("localhost:3000"));
-        expect(opts.domain).toBe("localhost");
+        expect(opts.domain).toBeUndefined();
     });
 
-    test("subdomain of localhost gets .localhost", () => {
+    test("localhost subdomains use host-only cookies", () => {
         expect(
             cookieOptions(reqWithHost("default.localhost:3000")).domain,
-        ).toBe(".localhost");
+        ).toBeUndefined();
         expect(
             cookieOptions(reqWithHost("superadmin.localhost")).domain,
-        ).toBe(".localhost");
+        ).toBeUndefined();
+    });
+
+    test("proxied localhost origin does not broaden cookie scope", () => {
+        expect(
+            cookieOptions(
+                reqWithHost(
+                    "localhost:3000",
+                    "http://superadmin.localhost:3001",
+                ),
+            ).domain,
+        ).toBeUndefined();
+    });
+
+    test.each([
+        ["non-local", "https://example.com"],
+        ["malformed", "not a valid origin"],
+    ])("ignores a %s proxied origin", (_label, originalOrigin) => {
+        expect(
+            cookieOptions(reqWithHost("localhost:3000", originalOrigin)).domain,
+        ).toBeUndefined();
     });
 
     test("nip.io with IP gets the last 6 parts as domain", () => {

@@ -1,9 +1,10 @@
 import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
 import {
     AppointmentStatus,
-    isModifiable,
-    hasStarted,
+    canTransitionAppointmentStatus,
+    isAppointmentStatus,
 } from "@/core/entities/appointment.entity";
+import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
 import { IQueueProvider } from "@/core/providers/queue-provider.interface";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
@@ -11,6 +12,8 @@ import {
     EntityNotFoundError,
     InvalidStateError,
     BusinessRuleViolationError,
+    UnauthorizedError,
+    ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
 
 export class UpdateAppointmentStatusUseCase {
@@ -23,11 +26,24 @@ export class UpdateAppointmentStatusUseCase {
     async execute(
         tenantId: string,
         id: string,
-        status: AppointmentStatus,
+        status: unknown,
+        actor: AppointmentMutationActor,
+        reason?: string,
         origin?: string,
     ): Promise<UseCaseResult> {
-        if (!status) {
-            throw new BusinessRuleViolationError("Status is required");
+        if (!actor?.id) {
+            throw new UnauthorizedError();
+        }
+        if (!actor.canManage) {
+            throw new ForbiddenError(
+                "You need 'appointments:write' permission to update appointments",
+            );
+        }
+        if (!isAppointmentStatus(status)) {
+            throw new BusinessRuleViolationError(
+                "Invalid appointment status",
+                "INVALID_APPOINTMENT_STATUS",
+            );
         }
 
         const appointment = await this.appointmentRepository.findById(
@@ -39,32 +55,43 @@ export class UpdateAppointmentStatusUseCase {
             throw new EntityNotFoundError("Appointment", id);
         }
 
-        if (!isModifiable(appointment.status)) {
+        if (!canTransitionAppointmentStatus(appointment.status, status)) {
             throw new InvalidStateError(
-                `Appointment with status '${appointment.status}' cannot be modified`,
+                `Appointment cannot transition from '${appointment.status}' to '${status}'`,
                 "INVALID_STATUS_TRANSITION",
             );
         }
 
-        if (
-            status === AppointmentStatus.IN_PROGRESS &&
-            !hasStarted(appointment.status)
-        ) {
-            throw new InvalidStateError(
-                `Appointment cannot transition to IN_PROGRESS from '${appointment.status}'`,
-                "INVALID_STATUS_TRANSITION",
-            );
-        }
+        const features =
+            status === AppointmentStatus.COMPLETED
+                ? await this.featureRepository.getTenantFeatureStatus(tenantId)
+                : undefined;
 
         const updated = await this.appointmentRepository.updateStatus(
             tenantId,
             id,
-            status,
+            {
+                expectedStatus: appointment.status,
+                status,
+                reason,
+                actorId: actor.id,
+                ...(status === AppointmentStatus.COMPLETED &&
+                    features?.LOYALTY === true && {
+                        qualifyLoyalty: true as const,
+                    }),
+            },
         );
+        if (!updated) {
+            throw new InvalidStateError(
+                "Appointment status changed before the update could be applied",
+                "APPOINTMENT_STATUS_CONFLICT",
+            );
+        }
 
-        const features =
-            await this.featureRepository.getTenantFeatureStatus(tenantId);
-        const emailEnabled = features["EMAIL_NOTIFICATIONS"];
+        const resolvedFeatures =
+            features ??
+            (await this.featureRepository.getTenantFeatureStatus(tenantId));
+        const emailEnabled = resolvedFeatures["EMAIL_NOTIFICATIONS"];
 
         if (emailEnabled) {
             if (status === AppointmentStatus.CONFIRMED) {

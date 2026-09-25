@@ -1,11 +1,15 @@
 /// <reference path="../../types/request-dto.ts" />
 import { Application, Router } from "express";
+import type { RequestHandler } from "express";
 import passport from "passport";
 import { AuthController } from "@/interface-adapters/controllers/auth.controller";
-import { authenticate } from "@/middleware/authenticate.middleware";
 import { authLimiter } from "@/middleware/rateLimit.middleware";
 
-function auth(app: Application, authController: AuthController) {
+function auth(
+    app: Application,
+    authController: AuthController,
+    authenticate: RequestHandler,
+) {
     const router = Router();
     app.use("/api/auth", router);
 

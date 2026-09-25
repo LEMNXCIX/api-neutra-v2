@@ -9,4 +9,6 @@ export interface IConfigProvider {
     /** Comma-separated CORS allowlist (optional) */
     getAllowedOrigins(): string;
     getWhatsAppVerifyToken(): string;
+    /** Optional absolute instant for appointment review sweep activation. */
+    getAppointmentReviewSweepActivationCutoff(): string | undefined;
 }

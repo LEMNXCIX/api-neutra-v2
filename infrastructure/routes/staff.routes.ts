@@ -1,11 +1,15 @@
 import { Application, Router } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
+import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { StaffController } from "@/interface-adapters/controllers/staff.controller";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
 
-function staff(app: Application, staffController: StaffController) {
+function staff(
+    app: Application,
+    staffController: StaffController,
+    authenticate: RequestHandler,
+) {
     const router = Router();
     app.use("/api/staff", router);
 

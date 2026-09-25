@@ -1,20 +1,15 @@
-import { requireTenantFeature, requireTenantType } from "@/middleware/tenant-feature.middleware";
+import {
+    createRequireTenantFeature,
+    requireTenantType,
+} from "@/middleware/tenant-feature.middleware";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import type { Request, Response, NextFunction } from "express";
 
-import { Container } from "@/infrastructure/config/container";
-
-// Override the static factory instead of mocking the module: bun's jest.mock
-// hoisting does not support outer-scope references.
 const getFeatureStatus = jest.fn();
-const originalGetFeatureRepository = Container.getFeatureRepository;
-beforeEach(() => {
-    (Container as { getFeatureRepository: unknown }).getFeatureRepository =
-        jest.fn().mockReturnValue({ getTenantFeatureStatus: getFeatureStatus });
-});
-afterAll(() => {
-    (Container as { getFeatureRepository: unknown }).getFeatureRepository =
-        originalGetFeatureRepository;
-});
+const featureRepository = {
+    getTenantFeatureStatus: getFeatureStatus,
+} as unknown as IFeatureRepository;
+const requireTenantFeature = createRequireTenantFeature({ featureRepository });
 
 function createRes() {
     const res: Partial<Response> & { statusCode?: number; body?: unknown } = {};
@@ -46,8 +41,6 @@ const regularAdmin = { role: { name: "ADMIN" } };
 
 beforeEach(() => {
     jest.clearAllMocks();
-    (Container as { getFeatureRepository: unknown }).getFeatureRepository =
-        jest.fn().mockReturnValue({ getTenantFeatureStatus: getFeatureStatus });
 });
 
 describe("requireTenantFeature", () => {

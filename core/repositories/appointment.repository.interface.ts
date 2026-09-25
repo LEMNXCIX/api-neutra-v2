@@ -10,15 +10,28 @@ export type AppointmentCreateData = {
     startTime: Date;
     notes?: string;
     couponCode?: string;
+    couponId?: string;
+    discountAmount?: number;
+    subtotal?: number;
+    total?: number;
+    statusChangedById?: string;
 };
 
 export type AppointmentUpdateData = {
     startTime?: Date;
     serviceId?: string;
     staffId?: string;
-    status?: AppointmentStatus;
     notes?: string;
     cancellationReason?: string;
+};
+
+export type AppointmentStatusUpdate = {
+    expectedStatus: AppointmentStatus;
+    status: AppointmentStatus;
+    reason?: string;
+    actorId?: string;
+    cancellationReason?: string;
+    qualifyLoyalty?: true;
 };
 
 export type AppointmentFilters = {
@@ -28,6 +41,20 @@ export type AppointmentFilters = {
     status?: AppointmentStatus;
     startDate?: Date;
     endDate?: Date;
+};
+
+export type AppointmentReviewCandidate = {
+    id: string;
+    tenantId: string;
+    status: AppointmentStatus;
+    endTime: Date;
+    tenantTimezone: string | null;
+};
+
+export type AppointmentReviewCandidateQuery = {
+    activationCutoff: Date;
+    eligibleThrough: Date;
+    limit: number;
 };
 
 /**
@@ -69,8 +96,21 @@ export interface IAppointmentRepository {
     updateStatus(
         tenantId: string,
         id: string,
-        status: AppointmentStatus,
-    ): Promise<Appointment>;
+        data: AppointmentStatusUpdate,
+    ): Promise<Appointment | null>;
+    findReviewCandidates(
+        query: AppointmentReviewCandidateQuery,
+    ): Promise<AppointmentReviewCandidate[]>;
+    /** Internal maintenance transition; public status mutations must not call this. */
+    markNeedsReview(
+        tenantId: string,
+        id: string,
+        expectedStatus: AppointmentStatus,
+        activationCutoff: Date,
+        eligibleThrough: Date,
+        changedAt: Date,
+        reason: string,
+    ): Promise<boolean>;
     delete(tenantId: string, id: string): Promise<void>;
 
     // Availability checking

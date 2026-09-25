@@ -5,6 +5,15 @@ import { ForbiddenError } from "@/core/domain/errors/domain-errors";
 import { AUTH_CONSTANTS } from "@/core/domain/constants";
 import type { Request, Response, NextFunction } from "express";
 
+const logger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    logRequest: jest.fn(),
+    logResponse: jest.fn(),
+};
+
 function createRes() {
     const res: Partial<Response> & {
         statusCode?: number;
@@ -113,6 +122,7 @@ describe("optionalAuthenticate middleware (smoke)", () => {
         const resolveUser = { execute: jest.fn() };
         const mw = createOptionalAuthenticateMiddleware({
             resolveUser: resolveUser as never,
+            logger,
         });
         const req = mockReq({});
         const res = createRes();
@@ -131,6 +141,7 @@ describe("optionalAuthenticate middleware (smoke)", () => {
         };
         const mw = createOptionalAuthenticateMiddleware({
             resolveUser: resolveUser as never,
+            logger,
         });
         const req = mockReq({
             headers: { authorization: "Bearer expired" },

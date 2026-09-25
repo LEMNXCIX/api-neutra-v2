@@ -1,10 +1,14 @@
 import { Application, Router } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
+import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
 import { OrderController } from "@/interface-adapters/controllers/order.controller";
 
-function order(app: Application, orderController: OrderController) {
+function order(
+    app: Application,
+    orderController: OrderController,
+    authenticate: RequestHandler,
+) {
     const router = Router();
     app.use("/api/order", router);
 

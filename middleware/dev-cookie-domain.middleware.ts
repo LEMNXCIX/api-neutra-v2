@@ -8,9 +8,8 @@ import {
 const isProd = checkProduction(config.ENVIRONMENT);
 
 /**
- * In local multi-subdomain setups (*.localhost), re-set the auth cookie with
- * a shared domain so tenants on different subdomains keep the session.
- * Delivery-layer concern only (not business logic).
+ * In local multi-subdomain setups (*.localhost), re-set the auth cookie as a
+ * host-only cookie. Delivery-layer concern only (not business logic).
  */
 export function devCookieDomainMiddleware(
     req: Request,
@@ -25,7 +24,6 @@ export function devCookieDomainMiddleware(
     const host = req.get("host");
     if (host && host.includes(".localhost")) {
         res.cookie(AUTH_CONSTANTS.COOKIE_NAME, req.cookies.token, {
-            domain: AUTH_CONSTANTS.LOCAL_DOMAIN,
             path: "/",
             httpOnly: true,
             secure: false,

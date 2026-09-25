@@ -1,23 +1,27 @@
 import { INotificationProvider, NotificationMessage } from '@/core/ports/notification-provider.interface';
-import { emailService } from '@/infrastructure/services/email.service';
-import { logger } from "@/infrastructure/providers/logger.instance";
+import type { IEmailService } from '@/core/ports/email.port';
+import type { ILogger } from '@/core/providers/logger.interface';
 
 export class EmailProvider implements INotificationProvider {
+    constructor(
+        private readonly emailService: IEmailService,
+        private readonly logger: ILogger,
+    ) {}
+
     async send(recipient: string, message: NotificationMessage, options?: any): Promise<boolean> {
         try {
-            // Use existing emailService
-            // Mapping generic NotificationMessage to emailService parameters
-            // If templateId is provided, use it, otherwise use a generic template or raw body is not directly supported by current interface?
-            // Current emailService methods are specific (sendWelcomeEmail, sendAppointmentConfirmation, etc.)
-            // But it also has sendEmail generic method.
+            // Use the runtime-owned email service.
+            // Mapping generic NotificationMessage to emailService parameters.
+            // The email port exposes a generic sendEmail, so the template id is
+            // forwarded as-is and `data` carries the template payload.
 
             const subject = message.subject || 'Notification';
-            const template = message.templateId || 'general-notification'; // Assuming a generic template exists or will be handled
+            const template = message.templateId || 'general-notification';
             const data = message.data || { body: message.body };
 
-            logger.info('Sending email', { recipient, subject });
+            this.logger.info('Sending email', { recipient, subject });
 
-            return await emailService.sendEmail(
+            return await this.emailService.sendEmail(
                 recipient,
                 subject,
                 template,
@@ -26,7 +30,7 @@ export class EmailProvider implements INotificationProvider {
                 message.attachments
             );
         } catch (error) {
-            logger.error('Error sending email', error);
+            this.logger.error('Error sending email', error);
             return false;
         }
     }

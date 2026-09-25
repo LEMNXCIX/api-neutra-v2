@@ -34,7 +34,18 @@ function setup(useCaseResult?: { handled: boolean }) {
     const processWhatsAppWebhookUseCase = {
         execute: jest.fn().mockResolvedValue(useCaseResult ?? { handled: true }),
     };
-    const controller = new WhatsAppWebhookController(processWhatsAppWebhookUseCase as never);
+    const logger = {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+        logRequest: jest.fn(),
+        logResponse: jest.fn(),
+    };
+    const controller = new WhatsAppWebhookController(
+        processWhatsAppWebhookUseCase as never,
+        logger,
+    );
     return { controller, processWhatsAppWebhookUseCase };
 }
 

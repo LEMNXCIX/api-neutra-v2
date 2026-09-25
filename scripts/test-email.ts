@@ -1,13 +1,16 @@
 /**
  * Email Service Test Script
- * Run with: npx ts-node scripts/test-email.ts
+ * Run with: npx tsx scripts/test-email.ts
  */
 
 // Load environment variables from .env file
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { emailService } from '../infrastructure/services/email.service';
+import { createEmailService } from '../infrastructure/services/email.service';
+import { PinoLoggerProvider } from '../infrastructure/providers/pino-logger.provider';
+
+const emailService = createEmailService(new PinoLoggerProvider());
 
 async function testEmailService() {
     console.log('🧪 Testing Email Service...\n');

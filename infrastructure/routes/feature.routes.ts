@@ -1,9 +1,13 @@
 import { Application, Router } from "express";
-import { authenticate } from "@/middleware/authenticate.middleware";
+import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { FeatureController } from "@/interface-adapters/controllers/feature.controller";
 
-function featureRoutes(app: Application, featureController: FeatureController) {
+function featureRoutes(
+    app: Application,
+    featureController: FeatureController,
+    authenticate: RequestHandler,
+) {
     const router = Router();
     app.use("/api/features", router);
 

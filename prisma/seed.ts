@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import { prisma } from '../config/db.config';
 
 
@@ -159,9 +160,19 @@ const FEATURES = [
     { key: 'COUPONS', name: 'Coupons Management', description: 'Permite la gestion de cupones', category: 'MODULE', price: 0.5 },
     { key: 'EMAIL_NOTIFICATIONS', name: 'Email Notifications', description: 'Enable email notifications', category: 'INTEGRATION', price: 0 },
     { key: 'WHATSAPP_API', name: 'WhatsApp API Integration', description: 'Integración con la API de WhatsApp', category: 'INTEGRATION', price: 5 },
+    { key: 'LOYALTY', name: 'Loyalty Program', description: 'Enable customer loyalty rewards', category: 'MODULE', price: 3 },
 ];
 
 async function main() {
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'fake@mail.com';
+    const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
+
+    if (!superAdminPassword?.trim()) {
+        throw new Error('SUPER_ADMIN_PASSWORD is required');
+    }
+
+    const superAdminPasswordHash = await bcrypt.hash(superAdminPassword, 10);
+
     // 0. Crear Features
     for (const feature of FEATURES) {
         await prisma.feature.upsert({
@@ -269,12 +280,15 @@ async function main() {
     const leonardoUserId = 'ebd39837-ed6f-4f24-b0cb-77150ed18b86';
     const user = await (prisma as any).user.upsert({
         where: { id: leonardoUserId },
-        update: {},
+        update: {
+            email: superAdminEmail,
+            password: superAdminPasswordHash,
+        },
         create: {
             id: leonardoUserId,
             name: 'Leonardo',
-            email: 'fake@mail.com',
-            password: '$2b$10$abXpKeqGisX8Jbabh1uUK.75UcjwddFT0qRQxFpVBhdTLeLfH/2be',
+            email: superAdminEmail,
+            password: superAdminPasswordHash,
             profilePic: 'data:image/png;base64,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',
             active: true,
         },

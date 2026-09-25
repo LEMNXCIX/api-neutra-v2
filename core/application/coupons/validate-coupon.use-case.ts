@@ -2,12 +2,15 @@ import { ICouponRepository } from "@/core/repositories/coupon.repository.interfa
 import { ValidateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
 import { CouponValidationResult } from "@/core/application/dtos/responses/coupon/coupon-validation.response";
 import {
-    CouponType,
     isExpired,
     hasReachedUsageLimit,
     isApplicableToProduct,
     isApplicableToCategory,
     calculateDiscount,
+    isCouponOwnedBy,
+    isPersonalCoupon,
+    isRewardCoupon,
+    isLoyaltyTemplateCoupon,
 } from "@/core/entities/coupon.entity";
 import {
     EntityNotFoundError,
@@ -21,14 +24,37 @@ export class ValidateCouponUseCase {
     async execute(
         tenantId: string,
         data: ValidateCouponDTO,
+        userId?: string,
     ): Promise<UseCaseResult<CouponValidationResult>> {
         const coupon = await this.couponRepository.findByCode(
             tenantId,
             data.code,
+            userId,
         );
 
         if (!coupon) {
             throw new EntityNotFoundError("Coupon", data.code);
+        }
+
+        if (isLoyaltyTemplateCoupon(coupon)) {
+            throw new BusinessRuleViolationError(
+                "Loyalty reward templates cannot be redeemed",
+                "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
+            );
+        }
+
+        if (!isCouponOwnedBy(coupon, userId)) {
+            throw new BusinessRuleViolationError(
+                "Coupon is not available for this user",
+                "COUPON_NOT_OWNED",
+            );
+        }
+
+        if (isRewardCoupon(coupon) && !isPersonalCoupon(coupon)) {
+            throw new BusinessRuleViolationError(
+                "Reward coupon is not assigned to a customer",
+                "REWARD_COUPON_NOT_OWNED",
+            );
         }
 
         if (!coupon.active) {
@@ -52,57 +78,67 @@ export class ValidateCouponUseCase {
             );
         }
 
-        if (data.productIds && data.productIds.length > 0) {
-            const hasApplicableProduct = data.productIds.some((id) =>
-                isApplicableToProduct(coupon, id),
-            );
-            if (!hasApplicableProduct) {
-                throw new BusinessRuleViolationError(
-                    "Coupon not applicable to products in cart",
-                );
-            }
-        }
+        const productIds = data.productIds ?? [];
+        const categoryIds = data.categoryIds ?? [];
+        const serviceIds = data.serviceIds ?? [];
+        const hasProductContext = productIds.length > 0;
+        const hasCategoryContext = categoryIds.length > 0;
+        const hasServiceContext = serviceIds.length > 0;
 
-        if (data.categoryIds && data.categoryIds.length > 0) {
-            const hasApplicableCategory = data.categoryIds.some((id) =>
-                isApplicableToCategory(coupon, id),
+        if (
+            hasProductContext &&
+            !productIds.some((id) => isApplicableToProduct(coupon, id))
+        ) {
+            throw new BusinessRuleViolationError(
+                "Coupon not applicable to products in cart",
             );
-            if (!hasApplicableCategory) {
-                throw new BusinessRuleViolationError(
-                    "Coupon not applicable to product categories in cart",
-                );
-            }
         }
 
         if (
-            coupon.applicableServices &&
-            coupon.applicableServices.length > 0 &&
-            data.serviceIds &&
-            data.serviceIds.length > 0
+            hasCategoryContext &&
+            !categoryIds.some((id) => isApplicableToCategory(coupon, id))
         ) {
-            const hasApplicableService = data.serviceIds.some((id) =>
-                coupon.applicableServices.includes(id),
+            throw new BusinessRuleViolationError(
+                "Coupon not applicable to product categories in cart",
             );
+        }
+
+        if (hasServiceContext) {
+            const hasApplicableService =
+                coupon.applicableServices.length === 0 ||
+                serviceIds.some((id) => coupon.applicableServices.includes(id));
             if (!hasApplicableService) {
                 throw new BusinessRuleViolationError(
                     "Coupon not applicable to this service",
                 );
             }
-        } else if (
-            coupon.applicableServices &&
-            coupon.applicableServices.length > 0 &&
-            (!data.serviceIds || data.serviceIds.length === 0)
-        ) {
             if (
-                data.productIds &&
-                data.productIds.length > 0 &&
-                coupon.applicableProducts.length === 0 &&
-                coupon.applicableCategories.length === 0
+                coupon.applicableServices.length === 0 &&
+                (coupon.applicableProducts.length > 0 ||
+                    coupon.applicableCategories.length > 0)
             ) {
                 throw new BusinessRuleViolationError(
-                    "Coupon is only applicable to services",
+                    "Coupon is only applicable to products",
                 );
             }
+        } else if (
+            coupon.applicableServices.length > 0 &&
+            coupon.applicableProducts.length === 0 &&
+            coupon.applicableCategories.length === 0 &&
+            (hasProductContext || hasCategoryContext)
+        ) {
+            throw new BusinessRuleViolationError(
+                "Coupon is only applicable to services",
+            );
+        } else if (
+            !hasProductContext &&
+            !hasCategoryContext &&
+            (coupon.applicableProducts.length > 0 ||
+                coupon.applicableCategories.length > 0)
+        ) {
+            throw new BusinessRuleViolationError(
+                "Coupon is only applicable to products",
+            );
         }
 
         const discountAmount = calculateDiscount(coupon, data.orderTotal);

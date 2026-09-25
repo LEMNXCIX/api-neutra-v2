@@ -14,11 +14,15 @@ function setup(existingTenant?: unknown) {
         getTenantFeatureStatus: jest.fn(),
         updateTenantFeatures: jest.fn().mockResolvedValue(undefined),
     };
+    const loyaltyRepository = {
+        hasLiveLoyaltyObligations: jest.fn().mockResolvedValue(false),
+    };
     const useCase = new UpdateTenantUseCase(
         tenantRepository as never,
         featureRepository as never,
+        loyaltyRepository as never,
     );
-    return { useCase, tenantRepository, featureRepository };
+    return { useCase, tenantRepository, featureRepository, loyaltyRepository };
 }
 
 const EXISTING = {

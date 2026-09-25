@@ -9,6 +9,10 @@ export interface Coupon {
     type: CouponType;
     value: number;
     description?: string;
+    ownerId?: string;
+    isReward?: boolean;
+    isLoyaltyTemplate?: boolean;
+    sourceCouponId?: string;
     minPurchaseAmount?: number;
     maxDiscountAmount?: number;
     usageLimit?: number;
@@ -22,17 +26,44 @@ export interface Coupon {
     updatedAt: Date;
 }
 
-export function isExpired(coupon: Coupon): boolean {
+export function isPersonalCoupon(
+    coupon: { ownerId?: string | null },
+): boolean {
+    return coupon.ownerId !== undefined && coupon.ownerId !== null;
+}
+
+export function isCouponOwnedBy(
+    coupon: { ownerId?: string | null },
+    userId?: string,
+): boolean {
+    return !isPersonalCoupon(coupon) || coupon.ownerId === userId;
+}
+
+export function isRewardCoupon(
+    coupon: Pick<Coupon, "isReward">,
+): boolean {
+    return coupon.isReward === true;
+}
+
+export function isLoyaltyTemplateCoupon(
+    coupon: Pick<Coupon, "isLoyaltyTemplate">,
+): boolean {
+    return coupon.isLoyaltyTemplate === true;
+}
+
+export function isExpired(coupon: Pick<Coupon, "expiresAt">): boolean {
     return new Date() > coupon.expiresAt;
 }
 
-export function hasReachedUsageLimit(coupon: Coupon): boolean {
+export function hasReachedUsageLimit(
+    coupon: Pick<Coupon, "usageCount" | "usageLimit">,
+): boolean {
     if (coupon.usageLimit === undefined) return false;
     return coupon.usageCount >= coupon.usageLimit;
 }
 
 export function isApplicableToProduct(
-    coupon: Coupon,
+    coupon: Pick<Coupon, "applicableProducts">,
     productId: string,
 ): boolean {
     if (coupon.applicableProducts.length === 0) return true;
@@ -40,7 +71,7 @@ export function isApplicableToProduct(
 }
 
 export function isApplicableToCategory(
-    coupon: Coupon,
+    coupon: Pick<Coupon, "applicableCategories">,
     categoryId: string,
 ): boolean {
     if (coupon.applicableCategories.length === 0) return true;

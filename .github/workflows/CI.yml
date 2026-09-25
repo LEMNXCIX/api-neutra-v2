@@ -18,12 +18,15 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       JWT_SECRET: ci-secret
       SESSION_SECRET: ci-secret
+      POSTGRES_USER: ci
+      POSTGRES_PASSWORD: ci
+      POSTGRES_DB: ci
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.x
           cache: npm
 
       - uses: oven-sh/setup-bun@v2
@@ -36,8 +39,5 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Typecheck
-        run: npx tsc --noEmit
-
-      - name: Unit tests
-        run: npm run test:unit
+      - name: API Doctor
+        run: npm run doctor -- --profile ci --format text

@@ -11,9 +11,13 @@ import { ServiceMinimalResponse } from "../shared/service-minimal.response";
 
 export interface IAppointmentResponse {
     id: string;
+    userId: string;
     startTime: Date;
     endTime: Date;
     status: AppointmentStatus;
+    statusChangedAt?: Date | null;
+    statusChangeReason?: string | null;
+    statusChangedById?: string | null;
     notes?: string;
     cancellationReason?: string | null;
     discountAmount: number;
@@ -30,9 +34,13 @@ export class AppointmentResponse {
     static fromEntity(appointment: Appointment): IAppointmentResponse {
         return {
             id: appointment.id,
+            userId: appointment.userId,
             startTime: appointment.startTime,
             endTime: appointment.endTime,
             status: appointment.status,
+            statusChangedAt: appointment.statusChangedAt ?? null,
+            statusChangeReason: appointment.statusChangeReason ?? null,
+            statusChangedById: appointment.statusChangedById ?? null,
             notes: appointment.notes,
             cancellationReason: appointment.cancellationReason ?? null,
             discountAmount: appointment.discountAmount ?? 0,

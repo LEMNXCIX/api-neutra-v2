@@ -7,8 +7,16 @@ import { corsMiddleware } from "@/middleware/cors.middleware";
  */
 function buildApp(isProduction: boolean) {
     const app = express();
+    const logger = {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+        logRequest: jest.fn(),
+        logResponse: jest.fn(),
+    };
     app.use(
-        corsMiddleware({
+        corsMiddleware(logger, {
             isProduction,
             allowedOrigins: isProduction
                 ? "https://neutra.ec,https://admin.neutra.ec"

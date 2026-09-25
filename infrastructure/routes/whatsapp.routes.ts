@@ -1,12 +1,11 @@
 import { Application, Router } from "express";
+import type { RequestHandler } from "express";
 import { WhatsAppWebhookController } from "@/infrastructure/webhooks/whatsapp-webhook.controller";
 
 import { WhatsAppConfigController } from "@/interface-adapters/controllers/whatsapp-config.controller";
 import { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.controller";
-import { authenticate } from "@/middleware/authenticate.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { validateDto } from "@/middleware/validation.middleware";
-import { requireTenantFeature } from "@/middleware/tenant-feature.middleware";
 import { ConfigureWhatsAppDto } from "@/core/application/dtos/requests/whatsapp.request";
 
 function whatsappRoutes(
@@ -14,6 +13,8 @@ function whatsappRoutes(
     whatsappWebhookController: WhatsAppWebhookController,
     whatsappConfigController: WhatsAppConfigController,
     whatsappController: WhatsAppController,
+    authenticate: RequestHandler,
+    requireTenantFeature: (featureKey: string) => RequestHandler,
 ) {
     const router = Router();
 

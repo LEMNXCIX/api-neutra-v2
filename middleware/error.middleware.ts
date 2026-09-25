@@ -7,18 +7,16 @@ import {
 } from "@/types/error-codes";
 import { DomainError } from "@/core/domain/errors/domain-errors";
 import { isProduction } from "@/core/domain/constants";
-import { PinoLoggerProvider } from "@/infrastructure/providers/pino-logger.provider";
+import type { ILogger } from "@/core/providers/logger.interface";
 import config from "@/config/index.config";
 
-const logger = new PinoLoggerProvider();
 const showStack = !isProduction(config.ENVIRONMENT);
 
-export const errorMiddleware = (
-    err: any,
+export const createErrorMiddleware = (logger: ILogger) => (
+    (err: any,
     req: Request,
     res: Response,
-    next: NextFunction,
-) => {
+    _next: NextFunction) => {
     const traceId = req.traceId;
 
     let statusCode = 500;
@@ -73,4 +71,5 @@ export const errorMiddleware = (
 
     const response = ApiResponse.error(message, errors, statusCode, traceId);
     return res.status(statusCode).json(response);
-};
+    }
+);

@@ -1,7 +1,7 @@
 import { IWhatsAppConversationRepository } from "@/core/repositories/whatsapp-conversation.repository.interface";
 import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
 import { WhatsAppService } from "./whatsapp.service";
-import logger from "@/helpers/logger.helpers";
+import type { ILogger } from "@/core/providers/logger.interface";
 import { IWhatsAppBotService } from "@/core/ports/whatsapp-bot-service.interface";
 
 export class WhatsAppBotService implements IWhatsAppBotService {
@@ -9,6 +9,7 @@ export class WhatsAppBotService implements IWhatsAppBotService {
         private conversationRepository: IWhatsAppConversationRepository,
         private messageRepository: IWhatsAppMessageRepository,
         private whatsappService: WhatsAppService,
+        private readonly logger: ILogger,
     ) {}
 
     async processIncomingMessage(
@@ -66,7 +67,7 @@ export class WhatsAppBotService implements IWhatsAppBotService {
                 }
             }
         } catch (error: any) {
-            logger.error(`Error processing bot message: ${error.message}`);
+            this.logger.error(`Error processing bot message: ${error.message}`);
         }
     }
 }

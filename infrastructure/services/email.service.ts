@@ -1,21 +1,12 @@
 import { NodemailerProvider } from '@/infrastructure/providers/nodemailer.provider';
 import { IEmailService } from '@/core/ports/email.port';
+import type { ILogger } from '@/core/providers/logger.interface';
 
 /**
- * Email Service Singleton
- * Provides a single instance of the email service throughout the application
+ * Email service factory.
+ * Ownership lives in the composition root (see infrastructure/config/runtime.ts);
+ * nothing here is instantiated at module load.
  */
-class EmailServiceSingleton {
-    private static instance: IEmailService | null = null;
-
-    private constructor() { }
-
-    public static getInstance(): IEmailService {
-        if (!EmailServiceSingleton.instance) {
-            EmailServiceSingleton.instance = new NodemailerProvider();
-        }
-        return EmailServiceSingleton.instance;
-    }
+export function createEmailService(logger: ILogger): IEmailService {
+    return new NodemailerProvider(logger);
 }
-
-export const emailService = EmailServiceSingleton.getInstance();

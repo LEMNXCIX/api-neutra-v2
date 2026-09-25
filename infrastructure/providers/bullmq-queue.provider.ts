@@ -1,18 +1,21 @@
-import { IQueueProvider } from '@/core/providers/queue-provider.interface';
-import { notificationQueue } from '@/infrastructure/services/queue.service';
+import { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import type { Queue } from "bullmq";
 
 export class BullMQQueueProvider implements IQueueProvider {
-    async enqueue(queueName: string, data: any): Promise<void> {
-        // For now we assume queueName is always 'notifications' as it's the only one we have
-        // But we can adapt it if we add more queues
-        await notificationQueue.add(queueName, data, {
+    constructor(private readonly queue: Pick<Queue, "add">) {}
+
+    async enqueue(
+        queueName: string,
+        data: Record<string, unknown>,
+    ): Promise<void> {
+        await this.queue.add(queueName, data, {
             attempts: 3,
             backoff: {
-                type: 'exponential',
-                delay: 1000
+                type: "exponential",
+                delay: 1000,
             },
             removeOnComplete: true,
-            removeOnFail: false
+            removeOnFail: false,
         });
     }
 }

@@ -7,18 +7,23 @@ import helmet from "helmet";
 import config from "@/config/index.config";
 import { connection } from "@/config/db.config";
 import rateLimiter from "@/middleware/rateLimit.middleware";
-import responseMiddleware from "@/middleware/response.middleware";
+import createResponseMiddleware from "@/middleware/response.middleware";
 import { isProduction as checkProduction } from "@/core/domain/constants";
-import requestMiddleware from "@/middleware/request.middleware";
+import createRequestMiddleware from "@/middleware/request.middleware";
 import wideLogMiddleware from "@/middleware/wide-log.middleware";
 import { contextMiddleware } from "@/middleware/context.middleware";
 import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
-import { tenantMiddleware } from "@/middleware/tenant.middleware";
-import { corsMiddleware } from "@/middleware/cors.middleware";
+import { createTenantMiddleware } from "@/middleware/tenant.middleware";
+import { createAuthenticateMiddleware } from "@/middleware/authenticate.middleware";
+import { createOptionalAuthenticateMiddleware } from "@/middleware/optional-authenticate.middleware";
+import { createRequireTenantFeature } from "@/middleware/tenant-feature.middleware";
+import { corsMiddleware as createCorsMiddleware } from "@/middleware/cors.middleware";
 import { devCookieDomainMiddleware } from "@/middleware/dev-cookie-domain.middleware";
-import { Container } from "@/infrastructure/config/container";
-import { errorMiddleware } from "@/middleware/error.middleware";
-import { logger } from "@/infrastructure/providers/logger.instance";
+import { createRuntime } from "@/infrastructure/config/runtime";
+import { createHttpControllers } from "@/infrastructure/config/http-controllers/index";
+import { createErrorMiddleware } from "@/middleware/error.middleware";
+import healthRoutes from "@/infrastructure/routes/health.routes";
+import { scheduleAppointmentReviewSweep } from "@/infrastructure/services/queue.service";
 
 // Rutas
 import auth from "@/infrastructure/routes/auth.routes";
@@ -43,11 +48,35 @@ import { apiReference } from "@scalar/express-api-reference";
 import serviceRoutes from "@/infrastructure/routes/service.routes";
 import staffRoutes from "@/infrastructure/routes/staff.routes";
 import appointmentRoutes from "@/infrastructure/routes/appointment.routes";
+import loyaltyRoutes from "@/infrastructure/routes/loyalty.routes";
 
 const { port, ENVIRONMENT } = config;
 
+const runtime = createRuntime();
+const controllers = createHttpControllers(runtime);
+const logger = runtime.providers.logger;
+const authenticate = createAuthenticateMiddleware({
+    resolveUser: runtime.useCases.resolveAuthenticatedUser,
+});
+const optionalAuthenticate = createOptionalAuthenticateMiddleware({
+    resolveUser: runtime.useCases.resolveAuthenticatedUser,
+    logger: runtime.providers.logger,
+});
+const requireTenantFeature = createRequireTenantFeature({
+    featureRepository: runtime.repositories.feature,
+});
+const tenantMiddleware = createTenantMiddleware({
+    tenantRepository: runtime.repositories.tenant,
+    environment: ENVIRONMENT,
+    logger: runtime.providers.logger,
+});
+const requestMiddleware = createRequestMiddleware(runtime.providers.logger);
+const responseMiddleware = createResponseMiddleware(runtime.providers.logger);
+const corsMiddleware = createCorsMiddleware(runtime.providers.logger);
+const errorMiddleware = createErrorMiddleware(runtime.providers.logger);
+
 // Process-level failure handlers: log and keep serving; a graceful exit is
-// preferable to a silent hang (Node 20 keeps running on unhandled rejections).
+// preferable to a silent hang (Node 22 keeps running on unhandled rejections).
 process.on("unhandledRejection", (reason) => {
     logger.error("Unhandled promise rejection", reason);
 });
@@ -80,7 +109,9 @@ app.use(
 
 // Middlewares (orden: contexto > logging > parsing > security > custom)
 app.use(contextMiddleware);
-app.use(wideLogMiddleware(Container.getLogRepository()));
+app.use(
+    wideLogMiddleware(runtime.repositories.log, runtime.providers.logger),
+);
 if (!checkProduction(ENVIRONMENT)) {
     app.use(morgan("dev"));
 }
@@ -108,8 +139,11 @@ if (checkProduction(ENVIRONMENT)) {
 
 app.use(rateLimiter());
 app.use(responseMiddleware);
-app.use(corsMiddleware());
+app.use(corsMiddleware);
 app.use(devCookieDomainMiddleware);
+
+// Public health routes are registered before tenant/authenticated routes.
+healthRoutes(app, controllers.health);
 
 // Public / Global routes (no tenant context)
 app.get("/", (_req: Request, res: Response) => {
@@ -117,36 +151,75 @@ app.get("/", (_req: Request, res: Response) => {
 });
 
 // Tenant-agnostic routes (before tenant middleware)
-tenants(app, Container.getTenantController());
+tenants(app, controllers.tenant, authenticate);
 
 // Tenant resolution for /api/* (before authenticated business routes)
 app.use(tenantMiddleware);
 
 // Domain routes (composition root)
-auth(app, Container.getAuthController());
-users(app, Container.getUserController());
-products(app, Container.getProductController());
-slide(app, Container.getSlideController());
-cart(app, Container.getCartController());
-order(app, Container.getOrderController());
-category(app, Container.getCategoryController());
-role(app, Container.getRoleController());
-permission(app, Container.getPermissionController());
+auth(app, controllers.auth, authenticate);
+users(app, controllers.user, authenticate);
+products(
+    app,
+    controllers.product,
+    authenticate,
+    optionalAuthenticate,
+);
+slide(
+    app,
+    controllers.slide,
+    authenticate,
+    optionalAuthenticate,
+    requireTenantFeature,
+);
+cart(app, controllers.cart, authenticate);
+order(app, controllers.order, authenticate);
+category(
+    app,
+    controllers.category,
+    authenticate,
+    optionalAuthenticate,
+);
+role(app, controllers.role, authenticate);
+permission(app, controllers.permission, authenticate);
 
 // Booking Module
-serviceRoutes(app, Container.getServiceController());
-staffRoutes(app, Container.getStaffController());
-appointmentRoutes(app, Container.getAppointmentController());
-banner(app, Container.getBannerController());
-coupon(app, Container.getCouponController());
-features(app, Container.getFeatureController());
+serviceRoutes(
+    app,
+    controllers.service,
+    authenticate,
+    optionalAuthenticate,
+);
+staffRoutes(app, controllers.staff, authenticate);
+appointmentRoutes(app, controllers.appointment, authenticate);
+loyaltyRoutes(
+    app,
+    controllers.loyalty,
+    authenticate,
+    requireTenantFeature,
+);
+banner(
+    app,
+    controllers.banner,
+    authenticate,
+    requireTenantFeature,
+);
+coupon(
+    app,
+    controllers.coupon,
+    authenticate,
+    requireTenantFeature,
+);
+features(app, controllers.feature, authenticate);
 whatsappRoutes(
     app,
-    Container.getWhatsAppWebhookController(),
-    Container.getWhatsAppConfigController(),
-    Container.getWhatsAppController(),
+    controllers.whatsappWebhook,
+    controllers.whatsappConfig,
+    controllers.whatsapp,
+    authenticate,
+    requireTenantFeature,
 );
-logRoutes(app, Container.getLogController());
+logRoutes(app, controllers.log, authenticate);
 
 // Documentation
 app.use(
@@ -165,10 +238,29 @@ app.use(errorMiddleware);
 
 // Server entrypoint only (avoids workers/DB side-effects when tests import app)
 if (require.main === module) {
-    connection();
+    connection(runtime.providers.logger);
     // Background workers only when running as the process entry
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require("./infrastructure/workers/notification.worker");
+    const { createNotificationWorker } =
+        require("./infrastructure/workers/notification.worker");
+    createNotificationWorker({
+        appointmentRepository: runtime.repositories.appointment,
+        tenantRepository: runtime.repositories.tenant,
+        emailService: runtime.services.email,
+        notificationService: runtime.services.notification,
+        logger: runtime.providers.logger,
+        connection: runtime.connections.redis,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createAppointmentReviewWorker } =
+        require("./infrastructure/workers/appointment-review.worker");
+    createAppointmentReviewWorker({
+        sweepAppointmentReviews: runtime.useCases.sweepAppointmentReviews,
+        logger: runtime.providers.logger,
+        connection: runtime.connections.redis,
+        maintenanceQueue: runtime.queues.maintenance,
+        schedule: scheduleAppointmentReviewSweep,
+    });
 
     const portNumber = typeof port === "string" ? parseInt(port, 10) : port;
     app.listen(portNumber, "0.0.0.0", () => {

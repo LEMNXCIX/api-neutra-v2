@@ -360,6 +360,21 @@ export class CreateOrderDto {
  *           type: string
  *         couponId:
  *           type: string
+ *     GetAppointmentsAttentionDto:
+ *       type: object
+ *       properties:
+ *         page:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         limit:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         tenantId:
+ *           type: string
+ *           description: Concrete tenant ID for SUPER_ADMIN; "all" is not allowed
  *     UpdateAppointmentStatusDto:
  *       type: object
  *       required:
@@ -368,6 +383,8 @@ export class CreateOrderDto {
  *         status:
  *           type: string
  *           enum: [PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW]
+ *         reason:
+ *           type: string
  *     CreateServiceDto:
  *       type: object
  *       required:

@@ -1,6 +1,7 @@
 import { ILogger, LogLevel, LogOptions } from '@/core/providers/logger.interface';
-import logger from '@/helpers/logger.helpers'; // Existing Pino wrapper
+import pino, { type Logger } from 'pino';
 import config from '@/config/index.config';
+import { isProduction } from '@/core/domain/constants';
 import { RequestContext } from '@/infrastructure/context/request-context';
 import { SECURITY_CONSTANTS } from '@/core/domain/constants';
 
@@ -9,6 +10,7 @@ export class PinoLoggerProvider implements ILogger {
     private readonly logResponses: boolean;
     private readonly logHeaders: boolean;
     private readonly logLevel: LogLevel;
+    private readonly logger: Logger;
 
     constructor() {
         // Configuración desde variables de entorno
@@ -16,6 +18,13 @@ export class PinoLoggerProvider implements ILogger {
         this.logResponses = process.env.LOG_RESPONSES === 'true';
         this.logHeaders = process.env.LOG_HEADERS === 'true';
         this.logLevel = (process.env.LOG_LEVEL as LogLevel) || LogLevel.INFO;
+        const transport = isProduction(config.ENVIRONMENT)
+            ? undefined
+            : pino.transport({
+                  target: "pino-pretty",
+                  options: { colorize: true, translateTime: "SYS:standard" },
+              });
+        this.logger = pino(transport);
     }
 
     info(message: string, metadata?: any, options?: LogOptions): void {
@@ -23,9 +32,9 @@ export class PinoLoggerProvider implements ILogger {
         const sanitizedMetadata = shouldLog ? this.sanitize(metadata, options) : undefined;
         // Pino accepts (obj, msg) or (msg)
         if (sanitizedMetadata) {
-            logger.info({ msg: message, ...sanitizedMetadata });
+            this.logger.info({ msg: message, ...sanitizedMetadata });
         } else {
-            logger.info(message);
+            this.logger.info(message);
         }
     }
 
@@ -33,9 +42,9 @@ export class PinoLoggerProvider implements ILogger {
         const shouldLog = this.shouldLogMetadata(options);
         const sanitizedMetadata = shouldLog ? this.sanitize(metadata, options) : undefined;
         if (sanitizedMetadata) {
-            logger.warn({ msg: message, ...sanitizedMetadata });
+            this.logger.warn({ msg: message, ...sanitizedMetadata });
         } else {
-            logger.warn(message);
+            this.logger.warn(message);
         }
     }
 
@@ -65,7 +74,7 @@ export class PinoLoggerProvider implements ILogger {
             RequestContext.setError(errorObj);
         }
 
-        logger.error(logPayload);
+        this.logger.error(logPayload);
     }
 
     debug(message: string, metadata?: any, options?: LogOptions): void {
@@ -78,9 +87,9 @@ export class PinoLoggerProvider implements ILogger {
             const shouldLog = this.shouldLogMetadata(options);
             const sanitizedMetadata = shouldLog ? this.sanitize(metadata, options) : undefined;
             if (sanitizedMetadata) {
-                logger.info({ level: 'DEBUG', msg: message, ...sanitizedMetadata });
+                this.logger.info({ level: 'DEBUG', msg: message, ...sanitizedMetadata });
             } else {
-                logger.info({ level: 'DEBUG', msg: message });
+                this.logger.info({ level: 'DEBUG', msg: message });
             }
         }
     }

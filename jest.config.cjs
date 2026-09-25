@@ -1,5 +1,3 @@
-const path = require("path");
-
 module.exports = {
     testEnvironment: "node",
     rootDir: __dirname,
@@ -13,10 +11,21 @@ module.exports = {
     modulePathIgnorePatterns: ["<rootDir>/dist/"],
     transform: {
         "^.+\\.tsx?$": [
-            "ts-jest",
+            "@swc/jest",
             {
-                tsconfig: path.join(__dirname, "tsconfig.json"),
-                diagnostics: false,
+                jsc: {
+                    parser: {
+                        syntax: "typescript",
+                        decorators: true,
+                    },
+                    target: "es2020",
+                    transform: {
+                        legacyDecorator: true,
+                    },
+                },
+                module: {
+                    type: "commonjs",
+                },
             },
         ],
     },

@@ -1,6 +1,6 @@
 import { Application, Router } from "express";
+import type { RequestHandler } from "express";
 import { TenantController } from "@/interface-adapters/controllers/tenant.controller";
-import { authenticate } from "@/middleware/authenticate.middleware";
 import { serviceTokenOr } from "@/middleware/service-token.middleware";
 import { validateDto } from "@/middleware/validation.middleware";
 import {
@@ -9,7 +9,11 @@ import {
     UpdateTenantFeaturesDto,
 } from "@/core/application/dtos/requests/tenant.dto";
 
-function tenants(app: Application, tenantController: TenantController) {
+function tenants(
+    app: Application,
+    tenantController: TenantController,
+    authenticate: RequestHandler,
+) {
     const router = Router();
 
     /**

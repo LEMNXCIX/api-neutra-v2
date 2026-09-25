@@ -2,7 +2,13 @@ import swaggerJSDoc from 'swagger-jsdoc';
 import path from 'path';
 import config from '@/config/index.config';
 const { port } = config;
+const routeExtension =
+    path.extname(__filename).toLowerCase() === ".ts" ? "ts" : "js";
 
+export const swaggerApis = [
+    path.join(__dirname, `../routes/*.${routeExtension}`),
+    path.join(__dirname, `../../types/*.${routeExtension}`),
+];
 
 const options: swaggerJSDoc.Options = {
     definition: {
@@ -40,10 +46,7 @@ const options: swaggerJSDoc.Options = {
             },
         ],
     },
-    apis: [
-        path.join(__dirname, '../../infrastructure/routes/*.ts'),
-        path.join(__dirname, '../../types/*.ts'),
-    ],
+    apis: swaggerApis,
 };
 
 export const swaggerSpec = swaggerJSDoc(options);

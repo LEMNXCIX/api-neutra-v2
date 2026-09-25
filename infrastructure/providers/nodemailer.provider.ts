@@ -3,13 +3,13 @@ import handlebars from 'handlebars';
 import fs from 'fs';
 import path from 'path';
 import { IEmailService, TenantEmailConfig } from '@/core/ports/email.port';
-import { logger } from "@/infrastructure/providers/logger.instance";
+import type { ILogger } from "@/core/providers/logger.interface";
 
 export class NodemailerProvider implements IEmailService {
     private transporter: Transporter;
     private templatesPath: string;
 
-    constructor() {
+    constructor(private readonly logger: ILogger) {
         // Initialize SMTP transporter
         this.transporter = nodemailer.createTransport({
             host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -32,7 +32,7 @@ export class NodemailerProvider implements IEmailService {
         to: string,
         subject: string,
         template: string,
-        data: Record<string, any>,
+        data: Record<string, unknown>,
         tenantConfig?: TenantEmailConfig,
         attachments?: any[]
     ): Promise<boolean> {
@@ -41,7 +41,7 @@ export class NodemailerProvider implements IEmailService {
             const templatePath = path.join(this.templatesPath, `${template}.hbs`);
 
             if (!fs.existsSync(templatePath)) {
-                logger.error(`Email template not found: ${templatePath}`);
+                this.logger.error(`Email template not found: ${templatePath}`);
                 return false;
             }
 
@@ -72,7 +72,7 @@ export class NodemailerProvider implements IEmailService {
                     content: contentHtml,
                 });
             } else {
-                logger.warn('Base layout not found, sending content only');
+                this.logger.warn('Base layout not found, sending content only');
             }
 
             // Send email
@@ -84,10 +84,10 @@ export class NodemailerProvider implements IEmailService {
                 attachments,
             });
 
-            logger.info('Email sent successfully', { messageId: info.messageId });
+            this.logger.info('Email sent successfully', { messageId: info.messageId });
             return true;
         } catch (error) {
-            logger.error('Error sending email', error);
+            this.logger.error('Error sending email', error);
             return false;
         }
     }

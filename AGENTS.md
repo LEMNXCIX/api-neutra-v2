@@ -4,7 +4,7 @@
 Este archivo es la referencia principal para agentes de IA que trabajen en este repositorio. Sirve como base compartida para Copilot, OpenCode y otras herramientas que lean contexto del proyecto.
 
 ## Stack principal
-- Node.js 20
+- Node.js 22
 - TypeScript
 - Express 5
 - Prisma 7

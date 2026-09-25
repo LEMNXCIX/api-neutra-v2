@@ -1,12 +1,13 @@
 import { IOrderRepository, OrderCreateData } from "@/core/repositories/order.repository.interface";
 import { GetCartUseCase } from "@/core/application/cart/get-cart.use-case";
 import { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
-import { CreateOrderDTO } from "@/core/application/dtos/requests/order.request";
+import { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
 import { IEmailService } from "@/core/ports/email.port";
+import { IProductRepository } from "@/core/repositories/product.repository.interface";
 import { IUserRepository } from "@/core/repositories/user.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
@@ -29,6 +30,8 @@ export class CreateOrderUseCase {
         private orderRepository: IOrderRepository,
         private getCartUseCase: GetCartUseCase,
         private clearCartUseCase: ClearCartUseCase,
+        private validateCouponUseCase: ValidateCouponUseCase,
+        private productRepository: IProductRepository,
         private userRepository: IUserRepository,
         private emailService: IEmailService,
         private featureRepository: IFeatureRepository,
@@ -39,7 +42,7 @@ export class CreateOrderUseCase {
     async execute(
         tenantId: string,
         userId: string,
-        couponId?: string,
+        couponCode?: string,
     ): Promise<UseCaseResult> {
         let cartResponse;
         try {
@@ -66,6 +69,71 @@ export class CreateOrderUseCase {
         }
 
         const cartItems = cartResponse.data as CartProductItem[];
+        let couponId: string | undefined;
+
+        if (couponCode) {
+            const features =
+                await this.featureRepository.getTenantFeatureStatus(tenantId);
+            if (!features["COUPONS"]) {
+                throw new BusinessRuleViolationError(
+                    "Coupon validation is not available for this tenant",
+                    "COUPONS_FEATURE_REQUIRED",
+                );
+            }
+
+            const products = await Promise.all(
+                cartItems.map((item) =>
+                    this.productRepository.findById(tenantId, item.id),
+                ),
+            );
+            const missingProductIndex = products.findIndex(
+                (product) => !product,
+            );
+            if (missingProductIndex >= 0) {
+                throw new EntityNotFoundError(
+                    "Product",
+                    cartItems[missingProductIndex].id,
+                );
+            }
+
+            const productIds = cartItems.map((item) => item.id);
+            const categoryIds = [
+                ...new Set(
+                    products.flatMap(
+                        (product) =>
+                            product?.categories?.map(({ id }) => id) ?? [],
+                    ),
+                ),
+            ];
+            const subtotal = cartItems.reduce(
+                (sum, item) =>
+                    sum + parseFloat(String(item.price)) * item.amount,
+                0,
+            );
+            const validationResult =
+                await this.validateCouponUseCase.execute(
+                    tenantId,
+                    {
+                        code: couponCode,
+                        orderTotal: subtotal,
+                        productIds,
+                        categoryIds,
+                    },
+                    userId,
+                );
+
+            if (
+                !validationResult.success ||
+                !validationResult.data?.valid ||
+                !validationResult.data.coupon
+            ) {
+                throw new BusinessRuleViolationError(
+                    validationResult.message || "The provided coupon is invalid",
+                    "INVALID_COUPON",
+                );
+            }
+            couponId = validationResult.data.coupon.id;
+        }
 
         const orderData: OrderCreateData = {
             userId,
@@ -84,7 +152,6 @@ export class CreateOrderUseCase {
                 productId: item.id,
                 amount: item.amount,
             })),
-            couponId,
         );
 
         await this.clearCartUseCase.execute(tenantId, userId);

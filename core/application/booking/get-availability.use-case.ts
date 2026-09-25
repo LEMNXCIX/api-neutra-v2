@@ -50,14 +50,26 @@ export class GetAvailabilityUseCase {
             throw new EntityNotFoundError("Staff", data.staffId);
         }
 
-        // ponytail: working hours are interpreted in server-local wall clock,
-        // same frame as the legacy 9-17 grid; per-client TZ handling unchanged.
-        // Date-only strings parse as UTC midnight → in TZ<UTC the local
-        // weekday shifts a day. Noon keeps the intended calendar day.
-        const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(data.date)
-            ? new Date(`${data.date}T12:00:00`)
-            : new Date(data.date);
-        if (isNaN(targetDate.getTime())) {
+        const dateParts = /^(\d{4})-(\d{2})-(\d{2})(?=$|T|\s)/
+            .exec(data.date)
+            ?.slice(1)
+            .map(Number);
+        if (!dateParts) {
+            throw new ValidationError("Invalid Date");
+        }
+
+        const [calendarYear, calendarMonth, calendarDay] = dateParts;
+        const targetDate = new Date(
+            calendarYear,
+            calendarMonth - 1,
+            calendarDay,
+            12,
+        );
+        if (
+            targetDate.getFullYear() !== calendarYear ||
+            targetDate.getMonth() !== calendarMonth - 1 ||
+            targetDate.getDate() !== calendarDay
+        ) {
             throw new ValidationError("Invalid Date");
         }
 
@@ -80,13 +92,23 @@ export class GetAvailabilityUseCase {
             ? ranges
             : [{ start: "09:00", end: "17:00" }];
 
-        const startOfDay = new Date(targetDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        startOfDay.setDate(startOfDay.getDate() - 1);
+        const offset = data.timezoneOffset ? Number(data.timezoneOffset) : 0;
+        const wallClockToInstant = (minutes: number) =>
+            Date.UTC(
+                calendarYear,
+                calendarMonth - 1,
+                calendarDay,
+                Math.floor(minutes / 60),
+                minutes % 60,
+            ) +
+            offset * 60_000;
 
-        const endOfDay = new Date(targetDate);
-        endOfDay.setHours(23, 59, 59, 999);
-        endOfDay.setDate(endOfDay.getDate() + 1);
+        const startOfDay = new Date(
+            wallClockToInstant(0) - 24 * 60 * 60 * 1000,
+        );
+        const endOfDay = new Date(
+            wallClockToInstant(24 * 60) + 24 * 60 * 60 * 1000,
+        );
 
         const appointments = await this.appointmentRepository.findByStaff(
             tenantId,
@@ -100,36 +122,27 @@ export class GetAvailabilityUseCase {
         );
 
         const interval = 30;
-        const offset = data.timezoneOffset ? Number(data.timezoneOffset) : 0;
-
         const availableSlots: string[] = [];
 
         const openFrom = Math.min(
             ...workRanges.map((r) => toMinutes(r.start)),
         );
         const openTo = Math.max(...workRanges.map((r) => toMinutes(r.end)));
+        const now = new Date();
 
-        const currentSlot = new Date(targetDate);
-        currentSlot.setHours(Math.floor(openFrom / 60), openFrom % 60, 0, 0);
-
-        const endWorkTime = new Date(targetDate);
-        endWorkTime.setHours(Math.floor(openTo / 60), openTo % 60, 0, 0);
-
-        while (currentSlot < endWorkTime) {
-            const slotGeneric = new Date(currentSlot);
-            const slotStartMin =
-                slotGeneric.getHours() * 60 + slotGeneric.getMinutes();
+        for (
+            let slotStartMin = openFrom;
+            slotStartMin < openTo;
+            slotStartMin += interval
+        ) {
             const slotEndMin = slotStartMin + service.duration;
-            const slotStartUTC = new Date(
-                slotGeneric.getTime() + offset * 60000,
-            );
-            const slotEndUTC = new Date(
-                slotStartUTC.getTime() + service.duration * 60000,
+            // Date.getTimezoneOffset is UTC - local minutes, so add it.
+            const slotStart = new Date(wallClockToInstant(slotStartMin));
+            const slotEnd = new Date(
+                slotStart.getTime() + service.duration * 60_000,
             );
 
-            const now = new Date();
-            if (slotStartUTC < now) {
-                currentSlot.setMinutes(currentSlot.getMinutes() + interval);
+            if (slotStart <= now) {
                 continue;
             }
 
@@ -138,21 +151,17 @@ export class GetAvailabilityUseCase {
                 !activeAppointments.some((app) => {
                     const appStart = new Date(app.startTime);
                     const appEnd = new Date(app.endTime);
-                    return slotStartUTC < appEnd && slotEndUTC > appStart;
+                    return slotStart < appEnd && slotEnd > appStart;
                 })
             ) {
-                const hours = slotGeneric
-                    .getHours()
+                const hours = Math.floor(slotStartMin / 60)
                     .toString()
                     .padStart(2, "0");
-                const minutes = slotGeneric
-                    .getMinutes()
+                const minutes = (slotStartMin % 60)
                     .toString()
                     .padStart(2, "0");
                 availableSlots.push(`${hours}:${minutes}`);
             }
-
-            currentSlot.setMinutes(currentSlot.getMinutes() + interval);
         }
 
         return Success(availableSlots);

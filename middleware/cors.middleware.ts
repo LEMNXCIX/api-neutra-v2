@@ -3,7 +3,7 @@ import { RequestHandler } from "express";
 import config from "@/config/index.config";
 import { isProduction as checkProduction } from "@/core/domain/constants";
 import { CORS_CONSTANTS } from "@/config/infrastructure-constants";
-import logger from "@/helpers/logger.helpers";
+import type { ILogger } from "@/core/providers/logger.interface";
 
 export type CorsPolicyOptions = {
     isProduction: boolean;
@@ -76,6 +76,7 @@ export function isOriginAllowed(
  * Build cors package options from policy (testable without Express).
  */
 export function createCorsOptions(
+    logger: ILogger,
     policy: CorsPolicyOptions = {
         isProduction: checkProduction(config.ENVIRONMENT),
         allowedOrigins: config.allowedOrigins,
@@ -108,9 +109,10 @@ export function createCorsOptions(
  * with credentials:true (e.g. Allow-Origin: * is invalid with credentials).
  */
 export function corsMiddleware(
+    logger: ILogger,
     policy?: CorsPolicyOptions,
 ): RequestHandler {
-    return cors(createCorsOptions(policy));
+    return cors(createCorsOptions(logger, policy));
 }
 
 export default corsMiddleware;

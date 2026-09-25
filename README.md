@@ -150,3 +150,32 @@ Los permisos siguen el formato `resource:action`:
 4. **Fase 5**: Actualizar frontend para soporte RBAC
 
 Para más detalles, consulta la documentación en `types/rbac.ts`.
+
+---
+
+## Health checks
+
+- `GET /health` confirma que el proceso está vivo y no consulta PostgreSQL ni Redis.
+- `GET /ready` confirma que PostgreSQL y Redis están disponibles; responde `503` si alguna dependencia falla.
+
+La verificación del artefacto de producción comprueba las rutas compiladas y el documento OpenAPI:
+
+```bash
+npm run build
+npm run verify:production
+```
+
+---
+
+## API Doctor
+
+`npm run doctor` ejecuta verificaciones deterministas del proyecto sin importar el arranque de la aplicación.
+
+- `--profile default|ci|full` selecciona el nivel de verificación.
+- `--format text|json|sarif` selecciona el formato del reporte.
+- `--runtime-url URL` habilita las comprobaciones HTTP de `/health` y `/ready`.
+- `--include-integration` habilita explícitamente la suite de integración; no se usa `npm test`.
+
+Los estados son `PASS`, `WARN`, `FAIL` y `SKIP`. El comando termina con código `0` cuando no hay `FAIL` bloqueante, `1` cuando existe un `FAIL` bloqueante y `2` para argumentos o configuración inválidos.
+
+El Doctor no ejecuta migraciones, resets, `db push`, seeds ni otros comandos que modifiquen datos. En los perfiles `default` y `ci` se intenta validar Docker Compose cuando Docker está disponible; si no está disponible, el check queda como `SKIP`. Las comprobaciones HTTP en vivo requieren `--runtime-url` y la integración requiere `--include-integration`.

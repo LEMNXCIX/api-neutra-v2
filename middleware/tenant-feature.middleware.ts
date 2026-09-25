@@ -1,6 +1,41 @@
 import { Request, Response, NextFunction } from "express";
-import { Container } from "@/infrastructure/config/container";
 import { ROLE_CONSTANTS } from "@/core/domain/constants";
+import { TenantErrorCodes } from "@/types/error-codes";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+
+function hasConcreteTenant(req: Request): boolean {
+    if (typeof req.tenantId !== "string") return false;
+
+    const tenantId = req.tenantId.trim();
+    return tenantId.length > 0 && tenantId.toLowerCase() !== "all";
+}
+
+/**
+ * Rejects cross-tenant (`all`) or missing tenant context for routes that
+ * must always query one tenant.
+ */
+export function requireConcreteTenantContext(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) {
+    if (!hasConcreteTenant(req)) {
+        return res.status(400).json({
+            success: false,
+            statusCode: 400,
+            message: "A concrete tenant context is required",
+            errors: [
+                {
+                    code: TenantErrorCodes.TENANT_REQUIRED,
+                    message:
+                        "Provide a concrete tenant via tenantId or x-tenant-id; 'all' is not allowed.",
+                },
+            ],
+        });
+    }
+
+    next();
+}
 
 function isSuperAdmin(req: Request): boolean {
     const role = (req.user as { role?: { name?: string } } | undefined)?.role;
@@ -13,43 +48,46 @@ function isSuperAdmin(req: Request): boolean {
  * updateTenantFeatures/getTenantFeatureStatus if this ever shows up
  * under load.
  */
-export function requireTenantFeature(featureKey: string) {
-    return async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            if (isSuperAdmin(req)) return next();
+export function createRequireTenantFeature(deps: {
+    featureRepository: IFeatureRepository;
+}) {
+    return (featureKey: string) =>
+        async (req: Request, res: Response, next: NextFunction) => {
+            try {
+                if (isSuperAdmin(req)) return next();
 
-            const tenantId = req.tenantId;
-            if (!tenantId) {
-                return res.status(400).json({
-                    success: false,
-                    statusCode: 400,
-                    message: "Tenant context required",
-                });
+                const tenantId = req.tenantId;
+                if (!tenantId) {
+                    return res.status(400).json({
+                        success: false,
+                        statusCode: 400,
+                        message: "Tenant context required",
+                    });
+                }
+
+                const features =
+                    await deps.featureRepository.getTenantFeatureStatus(
+                        tenantId,
+                    );
+                if (!features[featureKey]) {
+                    return res.status(403).json({
+                        success: false,
+                        statusCode: 403,
+                        message: `This feature (${featureKey}) is not enabled for your plan.`,
+                        errors: [
+                            {
+                                code: "FEATURE_NOT_ENABLED",
+                                message: `The ${featureKey} feature is not enabled for this tenant.`,
+                            },
+                        ],
+                    });
+                }
+
+                next();
+            } catch (error) {
+                next(error);
             }
-
-            const features =
-                await Container.getFeatureRepository().getTenantFeatureStatus(
-                    tenantId,
-                );
-            if (!features[featureKey]) {
-                return res.status(403).json({
-                    success: false,
-                    statusCode: 403,
-                    message: `This feature (${featureKey}) is not enabled for your plan.`,
-                    errors: [
-                        {
-                            code: "FEATURE_NOT_ENABLED",
-                            message: `The ${featureKey} feature is not enabled for this tenant.`,
-                        },
-                    ],
-                });
-            }
-
-            next();
-        } catch (error) {
-            next(error);
-        }
-    };
+        };
 }
 
 /**

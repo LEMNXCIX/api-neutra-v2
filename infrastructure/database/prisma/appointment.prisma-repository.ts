@@ -9,25 +9,54 @@ import {
     AppointmentCreateData,
     AppointmentUpdateData,
     AppointmentFilters,
+    AppointmentStatusUpdate,
+    AppointmentReviewCandidate,
+    AppointmentReviewCandidateQuery,
 } from "@/core/repositories/appointment.repository.interface";
 import {
     Appointment,
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
 import {
+    hasReachedUsageLimit,
+    isCouponOwnedBy,
+    isExpired,
+    isLoyaltyTemplateCoupon,
+    isPersonalCoupon,
+    isRewardCoupon,
+} from "@/core/entities/coupon.entity";
+import {
+    getLoyaltyCampaignContributionValue,
+    getLoyaltyCampaignSource,
+    LoyaltyCampaignMetric,
+    LoyaltyCampaignSource,
+    LoyaltyLedgerEntryType,
+    LoyaltySourceType,
+} from "@/core/entities/loyalty.entity";
+import {
+    BusinessRuleViolationError,
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import { extractTenantTimezone } from "@/core/utils/tenant-time";
+
+type AppointmentStatusAuditFields = {
+    statusChangedAt?: Date | null;
+    statusChangeReason?: string | null;
+    statusChangedById?: string | null;
+};
 
 type AppointmentWithIncludes = Prisma.AppointmentGetPayload<{
     include: { user: true; service: true; staff: true; coupon: true; tenant: true };
-}>;
+}> &
+    AppointmentStatusAuditFields;
 
 type AppointmentWithCoupon = Prisma.AppointmentGetPayload<{
     include: { coupon: true };
-}>;
+}> &
+    AppointmentStatusAuditFields;
 
-type AppointmentBase = PrismaAppointment;
+type AppointmentBase = PrismaAppointment & AppointmentStatusAuditFields;
 
 export class PrismaAppointmentRepository implements IAppointmentRepository {
     private mapToEntity(
@@ -45,6 +74,9 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             startTime: appointment.startTime,
             endTime: appointment.endTime,
             status: appointment.status as AppointmentStatus,
+            statusChangedAt: appointment.statusChangedAt ?? undefined,
+            statusChangeReason: appointment.statusChangeReason ?? undefined,
+            statusChangedById: appointment.statusChangedById ?? undefined,
             notes: appointment.notes ?? undefined,
             cancellationReason: appointment.cancellationReason ?? undefined,
             confirmationSent: appointment.confirmationSent,
@@ -124,23 +156,189 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         const endTime = new Date(data.startTime);
         endTime.setMinutes(endTime.getMinutes() + service.duration);
 
+        const baseAppointmentData = {
+            tenantId,
+            userId: data.userId,
+            serviceId: data.serviceId,
+            staffId: data.staffId,
+            startTime: data.startTime,
+            endTime,
+            notes: data.notes,
+            status: "PENDING" as PrismaAppointmentStatus,
+            statusChangedAt: new Date(),
+            statusChangedById: data.statusChangedById,
+            couponId: data.couponId,
+            discountAmount: data.discountAmount ?? 0,
+            subtotal: data.subtotal ?? 0,
+            total: data.total ?? 0,
+        };
+        const createAppointment = (
+            client: Pick<Prisma.TransactionClient, "appointment">,
+            values: typeof baseAppointmentData = baseAppointmentData,
+        ) => client.appointment.create({ data: values });
+
+        const couponId = data.couponId;
         try {
-            const appointment = await prisma.appointment.create({
-                data: {
-                    tenantId,
-                    userId: data.userId,
-                    serviceId: data.serviceId,
-                    staffId: data.staffId,
-                    startTime: data.startTime,
-                    endTime,
-                    notes: data.notes,
-                    status: "PENDING" as PrismaAppointmentStatus,
-                    couponId: data.couponCode ? undefined : undefined,
-                    discountAmount: 0,
-                    subtotal: 0,
-                    total: 0,
-                },
-            });
+            const appointment = couponId
+                ? await prisma.$transaction(async (tx) => {
+                      const coupon = await tx.coupon.findFirst({
+                          where: { id: couponId, tenantId },
+                      });
+                      if (!coupon) {
+                          throw new EntityNotFoundError("Coupon", couponId);
+                      }
+                      if (isLoyaltyTemplateCoupon(coupon)) {
+                          throw new BusinessRuleViolationError(
+                              "Loyalty reward templates cannot be redeemed",
+                              "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
+                          );
+                      }
+                      if (!isCouponOwnedBy(coupon, data.userId)) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon is not available for this user",
+                              "COUPON_NOT_OWNED",
+                          );
+                      }
+                      if (
+                          isRewardCoupon(coupon) &&
+                          !isPersonalCoupon(coupon)
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              "Reward coupon is not assigned to a customer",
+                              "REWARD_COUPON_NOT_OWNED",
+                          );
+                      }
+                      if (!coupon.active) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon is not active",
+                          );
+                      }
+                      if (isExpired(coupon)) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon has expired",
+                          );
+                      }
+                      if (
+                          hasReachedUsageLimit({
+                              usageCount: coupon.usageCount,
+                              usageLimit: coupon.usageLimit ?? undefined,
+                          })
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon usage limit reached",
+                          );
+                      }
+                      if (
+                          coupon.applicableServices.length > 0 &&
+                          !coupon.applicableServices.includes(data.serviceId)
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon not applicable to this service",
+                          );
+                      }
+                      if (
+                          coupon.applicableServices.length === 0 &&
+                          (coupon.applicableProducts.length > 0 ||
+                              coupon.applicableCategories.length > 0)
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon is only applicable to products",
+                          );
+                      }
+
+                      const service = await tx.service.findFirst({
+                          where: { id: data.serviceId, tenantId },
+                          select: { price: true },
+                      });
+                      if (!service) {
+                          throw new EntityNotFoundError(
+                              "Service",
+                              data.serviceId,
+                          );
+                      }
+                      const subtotal = new Prisma.Decimal(service.price);
+                      if (
+                          coupon.minPurchaseAmount !== null &&
+                          subtotal.lessThan(coupon.minPurchaseAmount)
+                      ) {
+                          throw new BusinessRuleViolationError(
+                              `Minimum purchase amount of $${coupon.minPurchaseAmount} required`,
+                          );
+                      }
+
+                      let discountAmount =
+                          coupon.type === "PERCENT"
+                              ? subtotal.mul(coupon.value).div(100)
+                              : new Prisma.Decimal(coupon.value);
+                      if (
+                          coupon.maxDiscountAmount !== null &&
+                          discountAmount.greaterThan(coupon.maxDiscountAmount)
+                      ) {
+                          discountAmount = new Prisma.Decimal(
+                              coupon.maxDiscountAmount,
+                          );
+                      }
+                      if (discountAmount.greaterThan(subtotal)) {
+                          discountAmount = subtotal;
+                      }
+                      const total = subtotal.minus(discountAmount);
+                      const appointmentData = {
+                          ...baseAppointmentData,
+                          discountAmount: discountAmount.toNumber(),
+                          subtotal: subtotal.toNumber(),
+                          total: total.toNumber(),
+                      };
+
+                      const couponsEnabled =
+                          await tx.tenantFeature.findFirst({
+                              where: {
+                                  tenantId,
+                                  enabled: true,
+                                  feature: { key: "COUPONS" },
+                              },
+                              select: { id: true },
+                          });
+                      if (!couponsEnabled) {
+                          throw new BusinessRuleViolationError(
+                              "Coupon validation is not available for this tenant",
+                              "COUPONS_FEATURE_REQUIRED",
+                          );
+                      }
+
+                      const usage = await tx.coupon.updateMany({
+                          where: {
+                              id: coupon.id,
+                              tenantId,
+                              usageCount: coupon.usageCount,
+                              usageLimit: coupon.usageLimit,
+                              updatedAt: coupon.updatedAt,
+                              active: true,
+                              expiresAt: { gt: new Date() },
+                              isLoyaltyTemplate: false,
+                              ...(coupon.isReward
+                                  ? {
+                                        ownerId: data.userId,
+                                        isReward: true,
+                                    }
+                                  : {
+                                        isReward: false,
+                                        OR: [
+                                            { ownerId: null },
+                                            { ownerId: data.userId },
+                                        ],
+                                    }),
+                          },
+                          data: { usageCount: { increment: 1 } },
+                      });
+                      if (usage.count === 0) {
+                          throw new BusinessRuleViolationError(
+                              "The coupon is not available for this appointment",
+                              "COUPON_UNAVAILABLE",
+                          );
+                      }
+                      return createAppointment(tx, appointmentData);
+                  })
+                : await createAppointment(prisma);
 
             return this.mapToEntity(appointment);
         } catch (error: unknown) {
@@ -268,8 +466,6 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             updateData.service = { connect: { id: data.serviceId } };
         if (data.staffId !== undefined)
             updateData.staff = { connect: { id: data.staffId } };
-        if (data.status !== undefined)
-            updateData.status = data.status as PrismaAppointmentStatus;
         if (data.notes !== undefined) updateData.notes = data.notes;
         if (data.cancellationReason !== undefined)
             updateData.cancellationReason = data.cancellationReason;
@@ -340,25 +536,178 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
     async updateStatus(
         tenantId: string,
         id: string,
-        status: AppointmentStatus,
-    ): Promise<Appointment> {
-        try {
-            const appointment = await prisma.appointment.update({
-                where: { id, tenantId },
-                data: { status: status as PrismaAppointmentStatus },
+        data: AppointmentStatusUpdate,
+    ): Promise<Appointment | null> {
+        return prisma.$transaction(async (tx) => {
+            const eventAt = new Date();
+            const result = await tx.appointment.updateMany({
+                where: {
+                    id,
+                    tenantId,
+                    status: data.expectedStatus as PrismaAppointmentStatus,
+                },
+                data: {
+                    status: data.status as PrismaAppointmentStatus,
+                    statusChangedAt: eventAt,
+                    statusChangeReason: data.reason ?? null,
+                    statusChangedById: data.actorId ?? null,
+                    ...(data.cancellationReason !== undefined && {
+                        cancellationReason: data.cancellationReason,
+                    }),
+                },
+            });
+
+            if (result.count === 0) {
+                return null;
+            }
+
+            const appointment = await tx.appointment.findFirst({
+                where: {
+                    id,
+                    tenantId,
+                    status: data.status as PrismaAppointmentStatus,
+                },
                 include: { coupon: true },
             });
 
-            return this.mapToEntity(appointment);
-        } catch (error: unknown) {
             if (
-                error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === "P2025"
+                appointment &&
+                data.status === AppointmentStatus.COMPLETED &&
+                data.qualifyLoyalty
             ) {
-                throw new EntityNotFoundError("Appointment", id);
+                const loyaltyEnabled =
+                    (await tx.tenantFeature.findFirst({
+                        where: {
+                            tenantId,
+                            enabled: true,
+                            feature: { key: "LOYALTY" },
+                        },
+                        select: { id: true },
+                    })) !== null;
+                const campaign = loyaltyEnabled
+                    ? await tx.loyaltyCampaign.findFirst({
+                          where: {
+                              tenantId,
+                              status: "ACTIVE",
+                              source: {
+                                  in: [
+                                      getLoyaltyCampaignSource(
+                                          LoyaltySourceType.APPOINTMENT,
+                                      ),
+                                      LoyaltyCampaignSource.ALL,
+                                  ],
+                              },
+                              startsAt: { lte: eventAt },
+                              endsAt: { gt: eventAt },
+                          },
+                          orderBy: { startsAt: "desc" },
+                          select: { id: true, metric: true },
+                      })
+                    : null;
+
+                if (campaign) {
+                    const value = getLoyaltyCampaignContributionValue({
+                        metric: campaign.metric as LoyaltyCampaignMetric,
+                        netTotal: new Prisma.Decimal(
+                            appointment.total,
+                        ).toFixed(2),
+                    });
+                    await tx.loyaltyLedgerEntry.upsert({
+                        where: {
+                            campaignId_sourceType_sourceId_entryType: {
+                                campaignId: campaign.id,
+                                sourceType: LoyaltySourceType.APPOINTMENT,
+                                sourceId: id,
+                                entryType: LoyaltyLedgerEntryType.ACCRUAL,
+                            },
+                        },
+                        create: {
+                            tenantId,
+                            campaignId: campaign.id,
+                            userId: appointment.userId,
+                            sourceType: LoyaltySourceType.APPOINTMENT,
+                            sourceId: id,
+                            value,
+                            entryType: LoyaltyLedgerEntryType.ACCRUAL,
+                            reason: "appointment.completed",
+                            createdAt: eventAt,
+                        },
+                        update: {},
+                    });
+                }
             }
-            throw error;
-        }
+
+            return appointment ? this.mapToEntity(appointment) : null;
+        });
+    }
+
+    async findReviewCandidates({
+        activationCutoff,
+        eligibleThrough,
+        limit,
+    }: AppointmentReviewCandidateQuery): Promise<AppointmentReviewCandidate[]> {
+        const appointments = await prisma.appointment.findMany({
+            where: {
+                tenant: {
+                    is: {
+                        active: true,
+                        type: { in: ["BOOKING", "HYBRID"] },
+                    },
+                },
+                status: {
+                    in: ["PENDING", "CONFIRMED", "IN_PROGRESS"],
+                },
+                // The lower bound excludes appointments that started before this
+                // deployment; the upper bound is the absolute grace deadline.
+                startTime: { gte: activationCutoff },
+                endTime: { lte: eligibleThrough },
+            },
+            select: {
+                id: true,
+                tenantId: true,
+                status: true,
+                endTime: true,
+                tenant: { select: { config: true } },
+            },
+            orderBy: { endTime: "asc" },
+            take: limit,
+        });
+
+        return appointments.map((appointment) => ({
+            id: appointment.id,
+            tenantId: appointment.tenantId,
+            status: appointment.status as AppointmentStatus,
+            endTime: appointment.endTime,
+            tenantTimezone: extractTenantTimezone(appointment.tenant.config),
+        }));
+    }
+
+    async markNeedsReview(
+        tenantId: string,
+        id: string,
+        expectedStatus: AppointmentStatus,
+        activationCutoff: Date,
+        eligibleThrough: Date,
+        changedAt: Date,
+        reason: string,
+    ): Promise<boolean> {
+        const result = await prisma.appointment.updateMany({
+            where: {
+                id,
+                tenantId,
+                status: expectedStatus as PrismaAppointmentStatus,
+                startTime: { gte: activationCutoff },
+                endTime: { lte: eligibleThrough },
+            },
+            data: {
+                status: "NEEDS_REVIEW" as PrismaAppointmentStatus,
+                statusChangedAt: changedAt,
+                statusChangeReason: reason,
+                statusChangedById: null,
+            },
+        });
+
+        return result.count === 1;
     }
 
     async delete(tenantId: string, id: string): Promise<void> {

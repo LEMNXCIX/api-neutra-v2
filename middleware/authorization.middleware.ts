@@ -11,23 +11,40 @@ function isSuperAdmin(user: AuthenticatedUser | undefined): boolean {
     return user?.role?.name === ROLE_CONSTANTS.SUPER_ADMIN;
 }
 
+export const APPOINTMENT_OPERATIONAL_ROLES = [
+    "STAFF",
+    "MANAGER",
+    "ADMIN",
+] as const;
+
+export function hasPermission(
+    user: AuthenticatedUser | undefined,
+    permission: string,
+): boolean {
+    if (!user?.role) return false;
+    if (isSuperAdmin(user)) return true;
+    return user.role.permissions?.includes(permission) ?? false;
+}
+
+export function hasAnyRole(
+    user: AuthenticatedUser | undefined,
+    roles: readonly string[],
+): boolean {
+    if (!user?.role) return false;
+    return isSuperAdmin(user) || roles.includes(user.role.name);
+}
+
 export function requirePermission(permission: string) {
     return (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as AuthenticatedUser;
+        const user = req.user;
 
-        if (!user || !user.role || !user.role.permissions) {
+        if (!user?.role) {
             throw new UnauthorizedError(
                 "You must be logged in to access this resource",
             );
         }
 
-        if (isSuperAdmin(user)) {
-            return next();
-        }
-
-        const hasPermission = user.role.permissions.includes(permission);
-
-        if (!hasPermission) {
+        if (!hasPermission(user, permission)) {
             throw new ForbiddenError(
                 `You need '${permission}' permission to access this resource`,
             );
@@ -39,7 +56,7 @@ export function requirePermission(permission: string) {
 
 export function requireAnyPermission(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as AuthenticatedUser;
+        const user = req.user;
 
         if (!user || !user.role || !user.role.permissions) {
             throw new UnauthorizedError("You must be logged in");
@@ -65,7 +82,7 @@ export function requireAnyPermission(permissions: string[]) {
 
 export function requireAllPermissions(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as AuthenticatedUser;
+        const user = req.user;
 
         if (!user || !user.role || !user.role.permissions) {
             throw new UnauthorizedError("You must be logged in");
@@ -92,9 +109,27 @@ export function requireAllPermissions(permissions: string[]) {
     };
 }
 
+export function requireAnyRole(roles: readonly string[]) {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const user = req.user;
+
+        if (!user?.role) {
+            throw new UnauthorizedError("You must be logged in");
+        }
+
+        if (!hasAnyRole(user, roles)) {
+            throw new ForbiddenError(
+                `You need one of these roles: ${roles.join(", ")}`,
+            );
+        }
+
+        next();
+    };
+}
+
 export function requireRole(minLevel: number) {
     return (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as AuthenticatedUser;
+        const user = req.user;
 
         if (!user || !user.role) {
             throw new UnauthorizedError("You must be logged in");
@@ -118,7 +153,7 @@ export function requireOwnership(
     getResourceOwnerId: (req: Request) => Promise<string | null>,
 ) {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as unknown as AuthenticatedUser;
+        const user = req.user;
 
         if (!user) {
             throw new UnauthorizedError("You must be logged in");

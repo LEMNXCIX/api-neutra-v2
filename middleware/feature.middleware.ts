@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import { ICacheProvider } from "@/core/providers/cache-provider.interface";
-import { info } from "@/helpers/logger.helpers";
-import { Container } from "@/infrastructure/config/container";
+import type { ILogger } from "@/core/providers/logger.interface";
 
 export function createRequireFeature(deps: {
     featureRepository: IFeatureRepository;
     cache: ICacheProvider;
+    logger: ILogger;
 }) {
     return (featureKey: string) => {
         return async (req: Request, res: Response, next: NextFunction) => {
@@ -50,7 +50,7 @@ export function createRequireFeature(deps: {
                     return next();
                 }
 
-                info(
+                deps.logger.info(
                     `[RequireFeature] Access denied. Tenant ${tenantId} missing feature ${featureKey}`,
                 );
 
@@ -74,8 +74,3 @@ export function createRequireFeature(deps: {
         };
     };
 }
-
-export const requireFeature = createRequireFeature({
-    featureRepository: Container.getFeatureRepository(),
-    cache: Container.getCacheProvider(),
-});

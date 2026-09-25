@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
 import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
-import logger from "@/helpers/logger.helpers";
+import type { ILogger } from "@/core/providers/logger.interface";
 import { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
 import type { MetaMessageResponse, MetaTemplateComponent } from "@/types/whatsapp-meta.types";
 
@@ -12,6 +12,7 @@ export class WhatsAppService implements IWhatsAppService {
     constructor(
         private whatsappConfigRepository: IWhatsAppConfigRepository,
         private whatsappMessageRepository: IWhatsAppMessageRepository,
+        private readonly logger: ILogger,
     ) {
         this.apiVersion = process.env.WHATSAPP_API_VERSION || "v21.0";
         this.apiBaseUrl =
@@ -71,7 +72,7 @@ export class WhatsAppService implements IWhatsAppService {
 
             return waMessageId;
         } catch (error) {
-            logger.error(`Error sending WhatsApp message: ${(error as Error).message}`);
+            this.logger.error(`Error sending WhatsApp message: ${(error as Error).message}`);
             throw error;
         }
     }
@@ -132,7 +133,7 @@ export class WhatsAppService implements IWhatsAppService {
 
             return waMessageId;
         } catch (error) {
-            logger.error(`Error sending WhatsApp template: ${(error as Error).message}`);
+            this.logger.error(`Error sending WhatsApp template: ${(error as Error).message}`);
             throw error;
         }
     }
