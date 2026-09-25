@@ -1,4 +1,5 @@
 import { AppointmentStatus } from "@/core/entities/appointment.entity";
+import { IConfigProvider } from "@/core/providers/config-provider.interface";
 import { ILogger } from "@/core/providers/logger.interface";
 import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
 import { formatInstantInTenantTimezone } from "@/core/utils/tenant-time";
@@ -56,6 +57,7 @@ export class SweepAppointmentReviewsUseCase {
     constructor(
         private readonly appointmentRepository: IAppointmentRepository,
         private readonly logger: ILogger,
+        private readonly configProvider: IConfigProvider,
         options: SweepAppointmentReviewsOptions = {},
     ) {
         this.now = options.now ?? (() => new Date());
@@ -65,7 +67,7 @@ export class SweepAppointmentReviewsUseCase {
             options.activationCutoff &&
             Number.isFinite(options.activationCutoff.getTime())
                 ? options.activationCutoff.toISOString()
-                : process.env.APPOINTMENT_REVIEW_SWEEP_ACTIVATION_CUTOFF;
+                : this.configProvider.getAppointmentReviewSweepActivationCutoff();
         const resolvedCutoff = resolveAppointmentReviewActivationCutoff(
             configuredCutoff,
             options.processStartedAt ?? new Date(),

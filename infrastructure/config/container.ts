@@ -232,6 +232,8 @@ import { WhatsAppBotService } from "../services/whatsapp-bot.service";
  * Container is the Composition Root for the application.
  */
 export class Container {
+    private static configProvider = new EnvConfigProvider();
+
     // Repositories (Singletons)
     private static userRepository = new PrismaUserRepository();
     private static logger = new PinoLoggerProvider();
@@ -251,6 +253,7 @@ export class Container {
         new SweepAppointmentReviewsUseCase(
             this.appointmentRepository,
             this.logger,
+            this.configProvider,
         );
     private static serviceRepository = new PrismaServiceRepository();
     private static permissionRepository = new PrismaPermissionRepository();
@@ -270,7 +273,6 @@ export class Container {
     private static tokenGenerator = new JwtProvider();
     private static queueProvider = new BullMQQueueProvider();
     private static cacheProvider = RedisProvider.getInstance();
-    private static configProvider = new EnvConfigProvider();
     private static uidProvider = new UuidProvider();
     private static cryptoProvider = new NodeCryptoProvider();
 

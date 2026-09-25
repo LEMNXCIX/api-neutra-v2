@@ -9,7 +9,7 @@
     "scripts": {
         "pretest": "tsx ./scripts/clean-dist.ts",
         "test": "cross-env NODE_ENV=test jest --runInBand",
-        "test:unit": "cross-env NODE_ENV=test bun test ./test/unit ./test/architecture",
+        "test:unit": "cross-env NODE_ENV=test jest --config jest.unit.config.cjs --runInBand",
         "test:ci": "cross-env NODE_ENV=test jest --runInBand --forceExit",
         "build": "tsc -p tsconfig.json",
         "start": "tsx ./app.ts",

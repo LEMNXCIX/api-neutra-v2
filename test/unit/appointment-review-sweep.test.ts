@@ -4,6 +4,7 @@ import {
     SweepAppointmentReviewsUseCase,
 } from "@/core/application/booking/sweep-appointment-reviews.use-case";
 import { AppointmentStatus } from "@/core/entities/appointment.entity";
+import { IConfigProvider } from "@/core/providers/config-provider.interface";
 import { ILogger } from "@/core/providers/logger.interface";
 import {
     AppointmentReviewCandidate,
@@ -21,6 +22,15 @@ const createLogger = (): ILogger => ({
     logRequest: jest.fn(),
     logResponse: jest.fn(),
 });
+
+const createConfigProvider = (
+    activationCutoff?: string,
+): jest.Mocked<IConfigProvider> =>
+    ({
+        getAppointmentReviewSweepActivationCutoff: jest
+            .fn()
+            .mockReturnValue(activationCutoff),
+    }) as unknown as jest.Mocked<IConfigProvider>;
 
 const createRepository = (): jest.Mocked<IAppointmentRepository> =>
     ({
@@ -44,14 +54,15 @@ describe("SweepAppointmentReviewsUseCase", () => {
         const repository = createRepository();
         const changedAt = new Date("2030-01-01T12:00:00.000Z");
         const activationCutoff = new Date("2029-12-31T00:00:00.000Z");
+        const configProvider = createConfigProvider(activationCutoff.toISOString());
         repository.findReviewCandidates.mockResolvedValue([
             candidate({ endTime: new Date("2030-01-01T10:00:00.000Z") }),
         ]);
         const useCase = new SweepAppointmentReviewsUseCase(
             repository,
             createLogger(),
+            configProvider,
             {
-                activationCutoff,
                 now: () => changedAt,
             },
         );
@@ -72,6 +83,9 @@ describe("SweepAppointmentReviewsUseCase", () => {
             changedAt,
             APPOINTMENT_REVIEW_SYSTEM_REASON,
         );
+        expect(
+            configProvider.getAppointmentReviewSweepActivationCutoff,
+        ).toHaveBeenCalledTimes(1);
         expect(result.transitioned).toBe(1);
     });
 
@@ -117,6 +131,7 @@ describe("SweepAppointmentReviewsUseCase", () => {
         const useCase = new SweepAppointmentReviewsUseCase(
             repository,
             createLogger(),
+            createConfigProvider(),
             {
                 activationCutoff: new Date("2030-01-01T00:00:00.000Z"),
                 now: () => now,
@@ -143,6 +158,7 @@ describe("SweepAppointmentReviewsUseCase", () => {
         const useCase = new SweepAppointmentReviewsUseCase(
             repository,
             createLogger(),
+            createConfigProvider(),
             {
                 activationCutoff: new Date("2030-01-01T00:00:00.000Z"),
                 now: () => new Date("2030-01-01T13:00:00.000Z"),

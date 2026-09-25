@@ -24,4 +24,8 @@ export class EnvConfigProvider implements IConfigProvider {
     getWhatsAppVerifyToken(): string {
         return config.whatsappVerifyToken;
     }
+
+    getAppointmentReviewSweepActivationCutoff(): string | undefined {
+        return process.env.APPOINTMENT_REVIEW_SWEEP_ACTIVATION_CUTOFF;
+    }
 }
