@@ -111,6 +111,8 @@ export interface ILoyaltyTenantCampaignOverviewResponse {
         endedCampaignCount: number;
         archivedCampaignCount: number;
         totalClaims: number;
+        totalPoints: number;
+        activeCustomers: number;
     };
 }
 
@@ -182,7 +184,11 @@ export class LoyaltyPresenter {
             claimUntil: campaign.claimUntil,
             rewardCouponId: campaign.rewardCouponId,
             ...(campaign.reward
-                ? { reward: this.toCampaignRewardResponse(campaign.reward) }
+                ? {
+                      reward: LoyaltyPresenter.toCampaignRewardResponse(
+                          campaign.reward,
+                      ),
+                  }
                 : {}),
             rewardValidDays: campaign.rewardValidDays,
             maxClaims: campaign.maxClaims,
@@ -210,7 +216,9 @@ export class LoyaltyPresenter {
     static toCampaignListResponse(
         campaigns: LoyaltyCampaign[],
     ): ILoyaltyCampaignResponse[] {
-        return campaigns.map((campaign) => this.toCampaignResponse(campaign));
+        return campaigns.map((campaign) =>
+            LoyaltyPresenter.toCampaignResponse(campaign),
+        );
     }
 
     static toCustomerSummaryResponse(
@@ -251,13 +259,21 @@ export class LoyaltyPresenter {
     static toCustomerCampaignSummaryResponse(
         summary: LoyaltyCampaignCustomerSummary,
     ): ILoyaltyCustomerCampaignSummaryResponse {
-        return this.toCustomerSummaryResponse(summary);
+        return LoyaltyPresenter.toCustomerSummaryResponse(summary);
+    }
+
+    static toCustomerSummaryListResponse(
+        summaries: LoyaltyCampaignCustomerSummary[],
+    ): ILoyaltyCustomerCampaignSummaryResponse[] {
+        return summaries.map((summary) =>
+            LoyaltyPresenter.toCustomerSummaryResponse(summary),
+        );
     }
 
     static toCustomerCampaignResponse(
         summary: LoyaltyCampaignCustomerSummary,
     ): ILoyaltyCustomerCampaignSummaryResponse {
-        return this.toCustomerSummaryResponse(summary);
+        return LoyaltyPresenter.toCustomerSummaryResponse(summary);
     }
 
     static toCampaignClaimResponse(
@@ -374,7 +390,9 @@ export class LoyaltyPresenter {
             slug: overview.slug,
             type: overview.type,
             active: overview.active,
-            campaigns: this.toCampaignListResponse(overview.campaigns),
+            campaigns: LoyaltyPresenter.toCampaignListResponse(
+                overview.campaigns,
+            ),
             stats: overview.stats,
         };
     }
@@ -392,7 +410,7 @@ export class LoyaltyPresenter {
         recentClaims?: LoyaltyRewardClaim[];
     }): ILoyaltyTenantOverviewResponse | ILoyaltyTenantCampaignOverviewResponse {
         if (overview.campaigns) {
-            return this.toTenantCampaignOverviewResponse({
+            return LoyaltyPresenter.toTenantCampaignOverviewResponse({
                 tenantId: overview.tenantId,
                 name: overview.name,
                 slug: overview.slug,

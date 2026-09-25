@@ -1,19 +1,68 @@
+import express, {
+    Application,
+    NextFunction,
+    Request,
+    Response,
+    Router,
+} from "express";
+import request from "supertest";
+import { validate } from "class-validator";
+import { plainToInstance } from "class-transformer";
 import { LoyaltyController } from "@/interface-adapters/controllers/loyalty.controller";
+import { loyaltyRoutes } from "@/infrastructure/routes/loyalty.routes";
+import { authenticate } from "@/middleware/authenticate.middleware";
+import {
+    requireConcreteTenantContext,
+    requireTenantFeature,
+    requireTenantType,
+} from "@/middleware/tenant-feature.middleware";
+import { requirePermission } from "@/middleware/authorization.middleware";
 import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
 import { ClaimLoyaltyRewardUseCase } from "@/core/application/loyalty/claim-loyalty-reward.use-case";
 import { GetTenantLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
-import { GetLoyaltyConfigUseCase } from "@/core/application/loyalty/get-loyalty-config.use-case";
 import { UpdateLoyaltyConfigUseCase } from "@/core/application/loyalty/update-loyalty-config.use-case";
 import { GetAllTenantsLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-all-tenants-loyalty-overview.use-case";
 import { Tenant, TenantType } from "@/core/entities/tenant.entity";
-import { LoyaltyStatus, LoyaltyRewardClaimStatus } from "@/core/entities/loyalty.entity";
+import {
+    LoyaltyCampaignMetric,
+    LoyaltyCampaignSource,
+    LoyaltyCampaignStatus,
+    LoyaltyRewardClaimStatus,
+    LoyaltyStatus,
+    MAX_LOYALTY_PRISMA_INT,
+} from "@/core/entities/loyalty.entity";
 import { CouponType } from "@/core/entities/coupon.entity";
 import { Success } from "@/core/utils/use-case-result";
 import {
+    CreateLoyaltyCampaignDto,
+    LoyaltyRewardDefinitionDto,
+    UpdateLoyaltyCampaignDto,
     UpdateLoyaltyConfigDTO,
     UpdateLoyaltyConfigDto,
 } from "@/core/application/dtos/requests/loyalty.request";
-import { plainToInstance } from "class-transformer";
+import { ROLE_CONSTANTS } from "@/core/domain/constants";
+
+jest.mock("@/middleware/authenticate.middleware", () => ({
+    authenticate: jest.fn(
+        (_req: Request, _res: Response, next: NextFunction) => next(),
+    ),
+}));
+jest.mock("@/middleware/tenant-feature.middleware", () => ({
+    requireConcreteTenantContext: jest.fn(
+        (_req: Request, _res: Response, next: NextFunction) => next(),
+    ),
+    requireTenantFeature: jest.fn(
+        () => (_req: Request, _res: Response, next: NextFunction) => next(),
+    ),
+    requireTenantType: jest.fn(
+        () => (_req: Request, _res: Response, next: NextFunction) => next(),
+    ),
+}));
+jest.mock("@/middleware/authorization.middleware", () => ({
+    requirePermission: jest.fn(
+        () => (_req: Request, _res: Response, next: NextFunction) => next(),
+    ),
+}));
 
 function tenant(overrides: Partial<Tenant> = {}): Tenant {
     return {
@@ -53,6 +102,94 @@ function coupon(overrides: Record<string, unknown> = {}) {
         createdAt: new Date("2030-01-01T00:00:00.000Z"),
         updatedAt: new Date("2030-01-01T00:00:00.000Z"),
         ...overrides,
+    };
+}
+
+function campaign(overrides: Record<string, unknown> = {}) {
+    return {
+        id: "campaign-1",
+        tenantId: "tenant-1",
+        name: "Store rewards",
+        description: null,
+        source: LoyaltyCampaignSource.STORE,
+        metric: LoyaltyCampaignMetric.COUNT,
+        targetValue: "10.00",
+        status: LoyaltyCampaignStatus.DRAFT,
+        startsAt: new Date("2030-01-01T00:00:00.000Z"),
+        endsAt: new Date("2030-01-31T00:00:00.000Z"),
+        claimUntil: new Date("2030-02-10T00:00:00.000Z"),
+        rewardCouponId: "template-1",
+        reward: {
+            type: CouponType.PERCENT,
+            value: 10,
+            description: "Reward",
+            minPurchaseAmount: null,
+            maxDiscountAmount: null,
+            applicableProducts: [],
+            applicableCategories: [],
+            applicableServices: [],
+        },
+        rewardValidDays: 30,
+        maxClaims: null,
+        claimedCount: 0,
+        createdAt: new Date("2030-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2030-01-01T00:00:00.000Z"),
+        ...overrides,
+    };
+}
+
+function customerSummary(overrides: Record<string, unknown> = {}) {
+    return {
+        campaignId: "campaign-1",
+        metric: LoyaltyCampaignMetric.COUNT,
+        progressValue: "4.00",
+        targetValue: "10.00",
+        remainingValue: "6.00",
+        lifecycleStatus: LoyaltyCampaignStatus.ACTIVE,
+        customerStatus: LoyaltyStatus.IN_PROGRESS,
+        ...overrides,
+    };
+}
+
+function tenantCampaignOverview(overrides: Record<string, unknown> = {}) {
+    return {
+        tenantId: "tenant-1",
+        name: "Tenant One",
+        slug: "tenant-one",
+        type: TenantType.STORE,
+        active: true,
+        campaigns: [campaign()],
+        stats: {
+            campaignCount: 1,
+            activeCampaignCount: 0,
+            endedCampaignCount: 0,
+            archivedCampaignCount: 0,
+            totalClaims: 0,
+            totalPoints: 0,
+            activeCustomers: 0,
+        },
+        ...overrides,
+    };
+}
+
+function campaignRequest() {
+    return {
+        name: "Store rewards",
+        description: "Reward visits",
+        source: LoyaltyCampaignSource.STORE,
+        metric: LoyaltyCampaignMetric.COUNT,
+        targetValue: "10",
+        startsAt: "2030-01-01T00:00:00.000Z",
+        endsAt: "2030-01-31T00:00:00.000Z",
+        claimUntil: "2030-02-10T00:00:00.000Z",
+        reward: {
+            type: CouponType.PERCENT,
+            value: 10,
+            applicableProducts: [],
+            applicableCategories: [],
+            applicableServices: [],
+        },
+        rewardValidDays: 30,
     };
 }
 
@@ -418,120 +555,261 @@ describe("cross-tenant loyalty overview", () => {
     });
 });
 
-describe("loyalty controller identity and scope", () => {
+describe("loyalty campaign HTTP API", () => {
     function controller() {
-        const summary = { execute: jest.fn() };
-        const claim = { execute: jest.fn() };
+        const customer = {
+            executeList: jest.fn(),
+            executeCampaign: jest.fn(),
+        };
+        const claim = { executeCampaign: jest.fn() };
+        const campaigns = { execute: jest.fn() };
+        const create = { execute: jest.fn() };
+        const update = { execute: jest.fn() };
+        const transition = {
+            execute: jest.fn(),
+            deleteDraft: jest.fn(),
+        };
         const tenantOverview = { execute: jest.fn() };
-        const config = { execute: jest.fn() };
-        const updateConfig = { execute: jest.fn() };
         const allTenants = { execute: jest.fn() };
         return {
-            summary,
+            customer,
             claim,
+            campaigns,
+            create,
+            update,
+            transition,
             tenantOverview,
-            config,
-            updateConfig,
             allTenants,
             instance: new LoyaltyController(
-                summary as never,
+                customer as never,
                 claim as never,
+                campaigns as never,
+                create as never,
+                update as never,
+                transition as never,
                 tenantOverview as never,
-                config as never,
-                updateConfig as never,
                 allTenants as never,
             ),
         };
     }
 
-    test("never takes customer identity from the claim body or query", async () => {
-        const setup = controller();
-        setup.claim.execute.mockResolvedValue(
-            Success({
-                claim: {
-                    id: "claim-1",
-                    tenantId: "tenant-1",
-                    userId: "customer-1",
-                    milestone: 10,
-                    couponId: "coupon-1",
-                    status: LoyaltyRewardClaimStatus.CLAIMED,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
+    function appWith(setup: ReturnType<typeof controller>) {
+        const app = express();
+        app.use(express.json());
+        app.use((req, _res, next) => {
+            Object.assign(req, {
+                tenantId: "tenant-1",
+                tenant: {
+                    id: "tenant-1",
+                    type: TenantType.STORE,
+                    active: true,
                 },
+                user: {
+                    id: "customer-1",
+                    role: {
+                        name: ROLE_CONSTANTS.SUPER_ADMIN,
+                        permissions: [],
+                    },
+                },
+            });
+            next();
+        });
+        loyaltyRoutes(app, setup.instance);
+        return app;
+    }
+
+    test("maps campaign endpoints to use cases with authenticated identity and HTTP status codes", async () => {
+        const setup = controller();
+        const selectedCampaign = campaign();
+        const selectedSummary = customerSummary();
+        const claim = {
+            id: "claim-1",
+            campaignId: "campaign-1",
+            couponId: "coupon-1",
+            status: LoyaltyRewardClaimStatus.CLAIMED,
+            createdAt: new Date("2030-01-15T00:00:00.000Z"),
+            updatedAt: new Date("2030-01-15T00:00:00.000Z"),
+        };
+        setup.customer.executeList.mockResolvedValue(
+            Success([selectedSummary]),
+        );
+        setup.customer.executeCampaign.mockResolvedValue(
+            Success(selectedSummary),
+        );
+        setup.claim.executeCampaign.mockResolvedValue(
+            Success({
+                claim,
                 coupon: coupon({ ownerId: "customer-1", isReward: true }),
             }),
         );
-        const response = { json: jest.fn().mockReturnThis() } as never;
+        setup.campaigns.execute.mockResolvedValue(Success([selectedCampaign]));
+        setup.create.execute.mockResolvedValue(Success(selectedCampaign));
+        setup.update.execute.mockResolvedValue(Success(selectedCampaign));
+        setup.transition.execute.mockResolvedValue(Success(selectedCampaign));
+        setup.transition.deleteDraft.mockResolvedValue(Success(null));
+        setup.tenantOverview.execute.mockResolvedValue(
+            Success(tenantCampaignOverview()),
+        );
+        setup.allTenants.execute.mockResolvedValue(
+            Success([
+                tenantCampaignOverview(),
+                tenantCampaignOverview({
+                    tenantId: "tenant-disabled",
+                    active: false,
+                }),
+            ]),
+        );
+        const app = appWith(setup);
 
-        await setup.instance.claimReward(
-            {
-                tenantId: "tenant-1",
-                user: { id: "customer-1" },
-                body: { userId: "customer-2" },
-                query: { userId: "customer-2" },
-            } as never,
-            response,
+        await request(app)
+            .get("/api/loyalty/me?userId=customer-2")
+            .expect(200);
+        await request(app)
+            .get("/api/loyalty/me/campaigns/campaign-1")
+            .expect(200);
+        await request(app)
+            .post("/api/loyalty/me/campaigns/campaign-1/claim?userId=customer-2")
+            .send({ userId: "customer-2" })
+            .expect(200);
+        await request(app).get("/api/loyalty/admin/campaigns").expect(200);
+        await request(app)
+            .post("/api/loyalty/admin/campaigns")
+            .send(campaignRequest())
+            .expect(201);
+        await request(app)
+            .get("/api/loyalty/admin/campaigns/campaign-1")
+            .expect(200);
+        await request(app)
+            .patch("/api/loyalty/admin/campaigns/campaign-1")
+            .send({ name: "Updated rewards" })
+            .expect(200);
+        await request(app)
+            .delete("/api/loyalty/admin/campaigns/campaign-1")
+            .expect(200);
+        await request(app)
+            .post("/api/loyalty/admin/campaigns/campaign-1/activate")
+            .expect(200);
+        await request(app)
+            .post("/api/loyalty/admin/campaigns/campaign-1/end")
+            .expect(200);
+        await request(app)
+            .post("/api/loyalty/admin/campaigns/campaign-1/archive")
+            .expect(200);
+        await request(app).get("/api/loyalty/admin/summary").expect(200);
+        const crossTenant = await request(app)
+            .get("/api/loyalty/admin/tenants")
+            .expect(200);
+        expect(crossTenant.body.data).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    tenantId: "tenant-disabled",
+                    active: false,
+                }),
+            ]),
         );
 
-        expect(setup.claim.execute).toHaveBeenCalledWith(
+        expect(setup.customer.executeList).toHaveBeenCalledWith(
             "tenant-1",
             "customer-1",
         );
-    });
-
-    test("presents the tenant overview with safe ledger and claim data", async () => {
-        const setup = controller();
-        setup.tenantOverview.execute.mockResolvedValue(
-            Success({
-                tenantId: "tenant-1",
-                name: "Tenant One",
-                slug: "tenant-one",
-                type: "BOOKING",
-                active: true,
-                config: { targetPoints: 10, rewardCouponId: "template-1" },
-                stats: {
-                    tenantId: "tenant-1",
-                    totalPoints: 10,
-                    totalClaims: 1,
-                    activeCustomers: 1,
-                },
-                recentLedger: [
-                    {
-                        id: "entry-1",
-                        tenantId: "tenant-1",
-                        userId: "customer-1",
-                        sourceAppointmentId: "appointment-1",
-                        points: 10,
-                        reason: "appointment.completed",
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                    },
-                ],
-                recentClaims: [],
-            }),
+        expect(setup.customer.executeCampaign).toHaveBeenCalledWith(
+            "tenant-1",
+            "campaign-1",
+            "customer-1",
         );
-        const response = { json: jest.fn().mockReturnThis() };
-
-        await setup.instance.getTenantSummary(
-            { tenantId: "tenant-1" } as never,
-            response as never,
+        expect(setup.claim.executeCampaign).toHaveBeenCalledWith(
+            "tenant-1",
+            "campaign-1",
+            "customer-1",
         );
-
-        expect(response.json).toHaveBeenCalledWith(
+        expect(setup.create.execute).toHaveBeenCalledWith(
+            "tenant-1",
             expect.objectContaining({
-                data: expect.objectContaining({
-                    tenantId: "tenant-1",
-                    recentLedger: [
-                        expect.objectContaining({
-                            sourceAppointmentId: "appointment-1",
-                        }),
-                    ],
-                }),
+                reward: expect.objectContaining({ type: CouponType.PERCENT }),
             }),
         );
+        expect(setup.update.execute).toHaveBeenCalledWith(
+            "tenant-1",
+            "campaign-1",
+            expect.objectContaining({ name: "Updated rewards" }),
+        );
+        expect(setup.transition.deleteDraft).toHaveBeenCalledWith(
+            "tenant-1",
+            "campaign-1",
+        );
+        expect(setup.transition.execute.mock.calls.map((call) => call[2])).toEqual([
+            "activate",
+            "end",
+            "archive",
+        ]);
     });
 
-    test("requires a super administrator for cross-tenant overview", async () => {
+    test("registers only campaign routes and applies tenant gates to tenant-scoped routes", () => {
+        jest.clearAllMocks();
+        const setup = controller();
+        const app = { use: jest.fn() };
+        loyaltyRoutes(app as unknown as Application, setup.instance);
+        const router = app.use.mock.calls[0]![1] as Router;
+        type RouteLayer = {
+            route?: {
+                path: string;
+                methods: Record<string, boolean>;
+                stack: Array<{ handle: unknown }>;
+            };
+        };
+        const routeLayers = (router as unknown as { stack: RouteLayer[] }).stack.filter(
+            (layer) => layer.route,
+        );
+        const routes = routeLayers.flatMap((layer) =>
+            Object.entries(layer.route!.methods)
+                .filter(([, enabled]) => enabled)
+                .map(([method]) => `${method.toUpperCase()} ${layer.route!.path}`),
+        );
+
+        expect(routes).toEqual([
+            "GET /me",
+            "GET /me/campaigns/:campaignId",
+            "POST /me/campaigns/:campaignId/claim",
+            "GET /admin/summary",
+            "GET /admin/campaigns",
+            "POST /admin/campaigns",
+            "GET /admin/campaigns/:campaignId",
+            "PATCH /admin/campaigns/:campaignId",
+            "DELETE /admin/campaigns/:campaignId",
+            "POST /admin/campaigns/:campaignId/activate",
+            "POST /admin/campaigns/:campaignId/end",
+            "POST /admin/campaigns/:campaignId/archive",
+            "GET /admin/tenants",
+        ]);
+        expect(routes).not.toEqual(
+            expect.arrayContaining([
+                expect.stringMatching(/\/admin\/config/),
+                expect.stringMatching(/\/admin\/tenants\/:tenantId\/config/),
+            ]),
+        );
+
+        const customerRoute = routeLayers.find(
+            (layer) => layer.route?.path === "/me",
+        )!.route!;
+        expect(customerRoute.stack).toHaveLength(6);
+        expect(customerRoute.stack[0]!.handle).toBe(authenticate);
+        expect(customerRoute.stack[1]!.handle).toBe(
+            requireConcreteTenantContext,
+        );
+        expect(
+            (customerRoute.stack[2]!.handle as { name: string }).name,
+        ).toBe("requireActiveTenant");
+        expect(requireTenantType).toHaveBeenCalledWith(
+            "STORE",
+            "BOOKING",
+            "HYBRID",
+        );
+        expect(requireTenantFeature).toHaveBeenCalledWith("LOYALTY");
+        expect(requirePermission).toHaveBeenCalledWith("appointments:read");
+        expect(requirePermission).toHaveBeenCalledWith("appointments:write");
+    });
+
+    test("requires a super administrator for the cross-tenant controller", async () => {
         const setup = controller();
         const response = { json: jest.fn().mockReturnThis() } as never;
 
@@ -548,4 +826,71 @@ describe("loyalty controller identity and scope", () => {
         ).rejects.toMatchObject({ code: "FORBIDDEN" });
         expect(setup.allTenants.execute).not.toHaveBeenCalled();
     });
+});
+
+describe("loyalty campaign request DTO validation", () => {
+    const dtoBuilders = [
+        [
+            "create",
+            (data: Record<string, unknown>) =>
+                plainToInstance(CreateLoyaltyCampaignDto, data),
+        ],
+        [
+            "update",
+            (data: Record<string, unknown>) =>
+                plainToInstance(UpdateLoyaltyCampaignDto, data),
+        ],
+    ] as const;
+
+    test.each(dtoBuilders)(
+        "%s transforms a valid reward without modifying global Reflect",
+        (_label, build) => {
+            const reflect = Reflect as typeof Reflect & {
+                getMetadata?: unknown;
+            };
+            const getMetadata = reflect.getMetadata;
+            const dto = build({ reward: campaignRequest().reward });
+
+            expect(dto.reward).toBeInstanceOf(LoyaltyRewardDefinitionDto);
+            expect(reflect.getMetadata).toBe(getMetadata);
+            expect(getMetadata).toBeUndefined();
+        },
+    );
+
+    test.each(dtoBuilders)(
+        "%s rejects invalid fields inside the nested reward",
+        async (_label, build) => {
+            const errors = await validate(
+                build({ reward: { type: CouponType.PERCENT } }),
+            );
+
+            expect(errors).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        property: "reward",
+                        children: expect.arrayContaining([
+                            expect.objectContaining({ property: "value" }),
+                        ]),
+                    }),
+                ]),
+            );
+        },
+    );
+
+    test.each(dtoBuilders)(
+        "caps %s integer fields at the Prisma Int maximum",
+        async (_label, build) => {
+            const errors = await validate(
+                build({
+                    ...campaignRequest(),
+                    rewardValidDays: MAX_LOYALTY_PRISMA_INT + 1,
+                    maxClaims: MAX_LOYALTY_PRISMA_INT + 1,
+                }),
+            );
+
+            expect(errors.map((error) => error.property)).toEqual(
+                expect.arrayContaining(["rewardValidDays", "maxClaims"]),
+            );
+        },
+    );
 });

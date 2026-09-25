@@ -10,14 +10,17 @@ import {
     IsOptional,
     IsString,
     Min,
+    Max,
     ValidateIf,
+    ValidateNested,
 } from "class-validator";
-import { Transform } from "class-transformer";
+import { plainToInstance, Transform } from "class-transformer";
 import { CouponType } from "@/core/entities/coupon.entity";
 import {
     LoyaltyCampaignAction,
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
+    MAX_LOYALTY_PRISMA_INT,
 } from "@/core/entities/loyalty.entity";
 
 export interface UpdateLoyaltyConfigDTO {
@@ -134,16 +137,24 @@ export class CreateLoyaltyCampaignDto implements CreateLoyaltyCampaignDTO {
 
     @IsDefined()
     @IsObject()
+    @ValidateNested()
+    @Transform(
+        ({ value }) =>
+            plainToInstance(LoyaltyRewardDefinitionDto, value),
+        { toClassOnly: true },
+    )
     reward!: LoyaltyRewardDefinitionDto;
 
     @IsInt()
     @Min(1)
+    @Max(MAX_LOYALTY_PRISMA_INT)
     rewardValidDays!: number;
 
     @IsOptional()
     @ValidateIf((_object, value) => value !== null)
     @IsInt()
     @Min(1)
+    @Max(MAX_LOYALTY_PRISMA_INT)
     maxClaims?: number | null;
 }
 
@@ -198,17 +209,25 @@ export class UpdateLoyaltyCampaignDto implements UpdateLoyaltyCampaignDTO {
 
     @IsOptional()
     @IsObject()
+    @ValidateNested()
+    @Transform(
+        ({ value }) =>
+            plainToInstance(LoyaltyRewardDefinitionDto, value),
+        { toClassOnly: true },
+    )
     reward?: LoyaltyRewardDefinitionDto;
 
     @IsOptional()
     @IsInt()
     @Min(1)
+    @Max(MAX_LOYALTY_PRISMA_INT)
     rewardValidDays?: number;
 
     @IsOptional()
     @ValidateIf((_object, value) => value !== null)
     @IsInt()
     @Min(1)
+    @Max(MAX_LOYALTY_PRISMA_INT)
     maxClaims?: number | null;
 }
 

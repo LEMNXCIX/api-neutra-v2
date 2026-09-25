@@ -13,13 +13,15 @@ import {
 } from "@/middleware/tenant-feature.middleware";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { LoyaltyController } from "@/interface-adapters/controllers/loyalty.controller";
-import { UpdateLoyaltyConfigDto } from "@/core/application/dtos/requests/loyalty.request";
+import {
+    CreateLoyaltyCampaignDto,
+    UpdateLoyaltyCampaignDto,
+} from "@/core/application/dtos/requests/loyalty.request";
 import { validateDto } from "@/middleware/validation.middleware";
 import { ROLE_CONSTANTS } from "@/core/domain/constants";
 import {
     ForbiddenError,
     UnauthorizedError,
-    ValidationError,
 } from "@/core/domain/errors/domain-errors";
 
 function requireSuperAdmin(
@@ -60,84 +62,101 @@ function requireActiveTenant(
     return next();
 }
 
-function requireConcreteTenantParam(
-    req: Request,
-    _res: Response,
-    next: NextFunction,
-): void {
-    const rawTenantId = req.params?.tenantId;
-    const tenantId =
-        typeof rawTenantId === "string" ? rawTenantId.trim() : "";
-    if (!tenantId || tenantId.toLowerCase() === "all") {
-        return next(
-            new ValidationError(
-                "A concrete tenant path is required",
-                "TENANT_REQUIRED",
-            ),
-        );
-    }
-    return next();
-}
-
 export function loyaltyRoutes(
     app: Application,
     loyaltyController: LoyaltyController,
 ): void {
     const router = Router();
+    const tenantGates = [
+        authenticate,
+        requireConcreteTenantContext,
+        requireActiveTenant,
+        requireTenantType("STORE", "BOOKING", "HYBRID"),
+        requireTenantFeature("LOYALTY"),
+    ];
     app.use("/api/loyalty", router);
 
     router.get(
         "/me",
-        authenticate,
-        requireConcreteTenantContext,
-        requireActiveTenant,
-        requireTenantType("BOOKING", "HYBRID"),
-        requireTenantFeature("LOYALTY"),
-        loyaltyController.getCustomerSummary,
+        ...tenantGates,
+        loyaltyController.getCustomerCampaigns,
+    );
+
+    router.get(
+        "/me/campaigns/:campaignId",
+        ...tenantGates,
+        loyaltyController.getCustomerCampaign,
     );
 
     router.post(
-        "/me/claim",
-        authenticate,
-        requireConcreteTenantContext,
-        requireActiveTenant,
-        requireTenantType("BOOKING", "HYBRID"),
-        requireTenantFeature("LOYALTY"),
-        loyaltyController.claimReward,
+        "/me/campaigns/:campaignId/claim",
+        ...tenantGates,
+        loyaltyController.claimCustomerCampaign,
     );
 
     router.get(
         "/admin/summary",
-        authenticate,
-        requireConcreteTenantContext,
-        requireActiveTenant,
-        requireTenantType("BOOKING", "HYBRID"),
-        requireTenantFeature("LOYALTY"),
+        ...tenantGates,
         requirePermission("appointments:read"),
         loyaltyController.getTenantSummary,
     );
 
     router.get(
-        "/admin/config",
-        authenticate,
-        requireConcreteTenantContext,
-        requireActiveTenant,
-        requireTenantType("BOOKING", "HYBRID"),
-        requireTenantFeature("LOYALTY"),
+        "/admin/campaigns",
+        ...tenantGates,
         requirePermission("appointments:read"),
-        loyaltyController.getConfig,
+        loyaltyController.getCampaigns,
     );
 
-    router.put(
-        "/admin/config",
-        authenticate,
-        requireConcreteTenantContext,
-        requireActiveTenant,
-        requireTenantType("BOOKING", "HYBRID"),
-        requireTenantFeature("LOYALTY"),
+    router.post(
+        "/admin/campaigns",
+        ...tenantGates,
         requirePermission("appointments:write"),
-        validateDto(UpdateLoyaltyConfigDto),
-        loyaltyController.updateConfig,
+        validateDto(CreateLoyaltyCampaignDto),
+        loyaltyController.createCampaign,
+    );
+
+    router.get(
+        "/admin/campaigns/:campaignId",
+        ...tenantGates,
+        requirePermission("appointments:read"),
+        loyaltyController.getCampaign,
+    );
+
+    router.patch(
+        "/admin/campaigns/:campaignId",
+        ...tenantGates,
+        requirePermission("appointments:write"),
+        validateDto(UpdateLoyaltyCampaignDto),
+        loyaltyController.updateCampaign,
+    );
+
+    router.delete(
+        "/admin/campaigns/:campaignId",
+        ...tenantGates,
+        requirePermission("appointments:write"),
+        loyaltyController.deleteCampaign,
+    );
+
+    router.post(
+        "/admin/campaigns/:campaignId/activate",
+        ...tenantGates,
+        requirePermission("appointments:write"),
+        loyaltyController.activateCampaign,
+    );
+
+    router.post(
+        "/admin/campaigns/:campaignId/end",
+        ...tenantGates,
+        requirePermission("appointments:write"),
+        loyaltyController.endCampaign,
+    );
+
+    router.post(
+        "/admin/campaigns/:campaignId/archive",
+        ...tenantGates,
+        requirePermission("appointments:write"),
+        loyaltyController.archiveCampaign,
     );
 
     router.get(
@@ -145,23 +164,6 @@ export function loyaltyRoutes(
         authenticate,
         requireSuperAdmin,
         loyaltyController.getAllTenants,
-    );
-
-    router.get(
-        "/admin/tenants/:tenantId/config",
-        authenticate,
-        requireSuperAdmin,
-        requireConcreteTenantParam,
-        loyaltyController.getTenantConfig,
-    );
-
-    router.put(
-        "/admin/tenants/:tenantId/config",
-        authenticate,
-        requireSuperAdmin,
-        requireConcreteTenantParam,
-        validateDto(UpdateLoyaltyConfigDto),
-        loyaltyController.updateTenantConfig,
     );
 }
 

@@ -174,9 +174,11 @@ import { SweepAppointmentReviewsUseCase } from "@/core/application/booking/sweep
 // Use Cases - Loyalty
 import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
 import { ClaimLoyaltyRewardUseCase } from "@/core/application/loyalty/claim-loyalty-reward.use-case";
+import { GetLoyaltyCampaignsUseCase } from "@/core/application/loyalty/get-loyalty-campaigns.use-case";
+import { CreateLoyaltyCampaignUseCase } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import { UpdateLoyaltyCampaignUseCase } from "@/core/application/loyalty/update-loyalty-campaign.use-case";
+import { TransitionLoyaltyCampaignUseCase } from "@/core/application/loyalty/transition-loyalty-campaign.use-case";
 import { GetTenantLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
-import { GetLoyaltyConfigUseCase } from "@/core/application/loyalty/get-loyalty-config.use-case";
-import { UpdateLoyaltyConfigUseCase } from "@/core/application/loyalty/update-loyalty-config.use-case";
 import { GetAllTenantsLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-all-tenants-loyalty-overview.use-case";
 
 // Use Cases - Role
@@ -500,15 +502,30 @@ export class Container {
                 this.tenantRepository,
                 this.featureRepository,
             ),
-            new GetTenantLoyaltyOverviewUseCase(
+            new GetLoyaltyCampaignsUseCase(
                 this.loyaltyRepository,
                 this.tenantRepository,
                 this.featureRepository,
             ),
-            new GetLoyaltyConfigUseCase(this.tenantRepository),
-            new UpdateLoyaltyConfigUseCase(
+            new CreateLoyaltyCampaignUseCase(
+                this.loyaltyRepository,
                 this.tenantRepository,
-                this.couponRepository,
+                this.featureRepository,
+            ),
+            new UpdateLoyaltyCampaignUseCase(
+                this.loyaltyRepository,
+                this.tenantRepository,
+                this.featureRepository,
+            ),
+            new TransitionLoyaltyCampaignUseCase(
+                this.loyaltyRepository,
+                this.tenantRepository,
+                this.featureRepository,
+            ),
+            new GetTenantLoyaltyOverviewUseCase(
+                this.loyaltyRepository,
+                this.tenantRepository,
+                this.featureRepository,
             ),
             new GetAllTenantsLoyaltyOverviewUseCase(
                 this.loyaltyRepository,
