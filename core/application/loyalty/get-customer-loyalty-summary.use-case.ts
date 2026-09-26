@@ -1,6 +1,7 @@
 import {
     LoyaltyCampaign,
     LoyaltyCampaignCustomerSummary,
+    LoyaltyCampaignProgress,
     LoyaltyCampaignRewardClaim,
     LoyaltyCampaignStatus,
 } from "@/core/entities/loyalty.entity";
@@ -37,13 +38,16 @@ export async function buildLoyaltyCampaignCustomerSummary(
     userId: string,
     now = new Date(),
     knownClaim?: LoyaltyCampaignRewardClaim | null,
+    knownProgress?: LoyaltyCampaignProgress,
 ): Promise<LoyaltyCampaignCustomerSummary> {
-    const progress = await loyaltyRepository.getCampaignProgress(
-        tenantId,
-        campaign.id,
-        userId,
-        campaign,
-    );
+    const progress =
+        knownProgress ??
+        (await loyaltyRepository.getCampaignProgress(
+            tenantId,
+            campaign.id,
+            userId,
+            campaign,
+        ));
     const claim =
         knownClaim === undefined
             ? await loyaltyRepository.findCampaignRewardClaim(
@@ -160,41 +164,80 @@ export class GetCustomerLoyaltySummaryUseCase {
         validateIdentity(tenantId, userId);
         await this.assertTenantAccess(tenantId);
         const now = new Date();
-        const campaigns = await this.loyaltyRepository.listCampaigns(tenantId);
-        const summaries = await Promise.all(
-            campaigns.map(async (campaign) => {
-                if (campaign.status === LoyaltyCampaignStatus.DRAFT) {
-                    return null;
-                }
-                const claim =
-                    campaign.status === LoyaltyCampaignStatus.ARCHIVED
-                        ? await this.loyaltyRepository.findCampaignRewardClaim(
-                              tenantId,
-                              campaign.id,
-                              userId,
-                          )
-                        : undefined;
-                if (
-                    campaign.status === LoyaltyCampaignStatus.ARCHIVED &&
-                    !claim
-                ) {
-                    return null;
-                }
-                return buildLoyaltyCampaignCustomerSummary(
-                    this.loyaltyRepository,
-                    tenantId,
-                    campaign,
-                    userId,
-                    now,
-                    claim,
-                );
-            }),
+        const allCampaigns = await this.loyaltyRepository.listCampaigns(
+            tenantId,
         );
-        return Success(
-            summaries.filter(
-                (summary): summary is LoyaltyCampaignCustomerSummary =>
-                    summary !== null,
+        // A DRAFT campaign is invisible, and an ARCHIVED one only exists for a
+        // customer who already claimed it. Both are dropped before any ledger
+        // or claim read, so neither costs a query.
+        const visible = allCampaigns.filter(
+            (campaign) => campaign.status !== LoyaltyCampaignStatus.DRAFT,
+        );
+        const archivedIds = visible
+            .filter(
+                (campaign) =>
+                    campaign.status === LoyaltyCampaignStatus.ARCHIVED,
+            )
+            .map((campaign) => campaign.id);
+        // One ledger read per (metric, source) pair and one claim read for every
+        // archived campaign, instead of two ledger reads per COUNT campaign,
+        // one per SPEND campaign and one claim read per archived campaign.
+        const [progressByCampaign, archivedClaims] = await Promise.all([
+            this.loyaltyRepository.getCampaignsProgressForCustomer(
+                tenantId,
+                userId,
+                visible,
             ),
+            this.loyaltyRepository.findCampaignRewardClaimsForCustomer(
+                tenantId,
+                userId,
+                archivedIds,
+            ),
+        ]);
+        const claimByCampaign = new Map(
+            archivedClaims.map((claim) => [claim.campaignId, claim]),
+        );
+
+        const summaries = (
+            await Promise.all(
+                visible.map((campaign) => {
+                    if (
+                        campaign.status ===
+                            LoyaltyCampaignStatus.ARCHIVED &&
+                        !claimByCampaign.has(campaign.id)
+                    ) {
+                        return null;
+                    }
+                    // `null`, not `undefined`: a non-archived campaign has no
+                    // claim by definition, and `undefined` is the "not looked
+                    // up, fetch it" signal that would send us back to the
+                    // database.
+                    const knownClaim =
+                        campaign.status ===
+                        LoyaltyCampaignStatus.ARCHIVED
+                            ? (claimByCampaign.get(campaign.id) ?? null)
+                            : null;
+                    return buildLoyaltyCampaignCustomerSummary(
+                        this.loyaltyRepository,
+                        tenantId,
+                        campaign,
+                        userId,
+                        now,
+                        knownClaim,
+                        progressByCampaign.find(
+                            (progress) =>
+                                progress.campaignId === campaign.id,
+                        ),
+                    );
+                }),
+            )
+        ).filter(
+            (summary): summary is LoyaltyCampaignCustomerSummary =>
+                summary !== null,
+        );
+
+        return Success(
+            summaries,
             "Loyalty campaign summaries retrieved successfully",
         );
     }

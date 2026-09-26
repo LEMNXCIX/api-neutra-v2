@@ -183,7 +183,8 @@ type RewardCouponCreateData = {
 
 type LoyaltyLedgerWhere = {
     tenantId: string;
-    campaignId: string;
+    /** A single campaign, or a set for the batched progress read. */
+    campaignId: string | { in: string[] };
     userId: string;
     sourceType: { in: LoyaltySourceType[] };
     entryType:
@@ -199,6 +200,33 @@ type LoyaltyLedgerDelegate = {
     }): Promise<{
         _sum: { value: Prisma.Decimal | null };
     }>;
+    /**
+     * Prisma exposes one heavily overloaded `groupBy`. These two call
+     * signatures are the shapes this repository uses; they must both be called
+     * `groupBy`, because a delegate assembled as an object literal here has to
+     * stay callable as the real Prisma delegate it stands in for.
+     */
+    groupBy(args: {
+        by: ["campaignId", "entryType"];
+        where: LoyaltyLedgerWhere;
+        _count: { _all: true };
+    }): Promise<
+        Array<{
+            campaignId: string;
+            entryType: LoyaltyLedgerEntryType;
+            _count: { _all: number };
+        }>
+    >;
+    groupBy(args: {
+        by: ["campaignId"];
+        where: LoyaltyLedgerWhere;
+        _sum: { value: true };
+    }): Promise<
+        Array<{
+            campaignId: string;
+            _sum: { value: Prisma.Decimal | null };
+        }>
+    >;
 };
 
 type LoyaltyCampaignDelegate = {
@@ -231,6 +259,14 @@ type LoyaltyRewardClaimDelegate = {
         where: ClaimWhere;
         include: { coupon: true };
     }): Promise<ClaimRecord | null>;
+    findMany(args: {
+        where: {
+            tenantId: string;
+            userId: string;
+            campaignId: { in: string[] };
+        };
+        include: { coupon: true };
+    }): Promise<ClaimRecord[]>;
     create(args: {
         data: ClaimCreateData;
         include: { coupon: true };
@@ -898,14 +934,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     entryType: LoyaltyLedgerEntryType.REVERSAL,
                 },
             });
-            return getLoyaltyCampaignProgressValue(
-                campaign.metric,
-                toFixedDecimalString(
-                    new Prisma.Decimal(
-                        Math.max(accrualCount - reversalCount, 0),
-                    ),
-                ),
-            );
+            return this.countProgressValue(campaign, accrualCount, reversalCount);
         }
 
         const aggregate = await ledger.aggregate({
@@ -920,12 +949,62 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             },
             _sum: { value: true },
         });
+        return this.spendProgressValue(campaign, aggregate._sum.value);
+    }
+
+    /**
+     * Normalisation for a COUNT campaign's ledger activity. Shared with the
+     * batched path so a customer's progress cannot differ between reading one
+     * campaign and reading many.
+     */
+    private countProgressValue(
+        campaign: LoyaltyCampaign,
+        accrualCount: number,
+        reversalCount: number,
+    ): string {
         return getLoyaltyCampaignProgressValue(
             campaign.metric,
             toFixedDecimalString(
-                aggregate._sum.value ?? new Prisma.Decimal(0),
+                new Prisma.Decimal(
+                    Math.max(accrualCount - reversalCount, 0),
+                ),
             ),
         );
+    }
+
+    /**
+     * Normalisation for a SPEND campaign's ledger activity, shared with the
+     * batched path for the same reason.
+     */
+    private spendProgressValue(
+        campaign: LoyaltyCampaign,
+        total: Prisma.Decimal | null,
+    ): string {
+        return getLoyaltyCampaignProgressValue(
+            campaign.metric,
+            toFixedDecimalString(total ?? new Prisma.Decimal(0)),
+        );
+    }
+
+    /**
+     * Builds the progress record for one campaign. Shared with the batched path
+     * so `reachedTarget` is decided identically in both.
+     */
+    private toCampaignProgress(
+        campaign: LoyaltyCampaign,
+        userId: string,
+        progressValue: string,
+    ): LoyaltyCampaignProgress {
+        return {
+            campaignId: campaign.id,
+            userId,
+            metric: campaign.metric,
+            progressValue,
+            targetValue: campaign.targetValue,
+            reachedTarget: new Prisma.Decimal(progressValue).gte(
+                new Prisma.Decimal(campaign.targetValue),
+            ),
+        };
     }
 
     async getCampaignProgress(
@@ -948,16 +1027,141 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             campaign,
             userId,
         );
-        return {
-            campaignId,
-            userId,
-            metric: campaign.metric,
-            progressValue,
-            targetValue: campaign.targetValue,
-            reachedTarget: new Prisma.Decimal(progressValue).gte(
-                new Prisma.Decimal(campaign.targetValue),
-            ),
-        };
+        return this.toCampaignProgress(campaign, userId, progressValue);
+    }
+
+    async getCampaignsProgressForCustomer(
+        tenantId: string,
+        userId: string,
+        campaigns: LoyaltyCampaign[],
+    ): Promise<LoyaltyCampaignProgress[]> {
+        this.validateIdentity(tenantId, userId);
+        if (campaigns.length === 0) {
+            return [];
+        }
+        // One read per (metric, source) pair rather than per campaign. The
+        // source cannot be collapsed across campaigns: a groupBy that widened
+        // sourceType to the union of the batch would count an ORDER entry
+        // towards a BOOKING campaign, so campaigns are grouped by the exact
+        // source set the single-campaign path would have used.
+        const groups = new Map<string, LoyaltyCampaign[]>();
+        for (const campaign of campaigns) {
+            const key = `${campaign.metric}:${campaign.source}`;
+            const group = groups.get(key);
+            if (group) {
+                group.push(campaign);
+            } else {
+                groups.set(key, [campaign]);
+            }
+        }
+
+        const progressByCampaign = new Map<string, LoyaltyCampaignProgress>();
+        for (const group of groups.values()) {
+            const sample = group[0];
+            const campaignIds = group.map((campaign) => campaign.id);
+            // `entryType` is added per call, once the metric decides which entry
+            // types count, so the shared base is the where-clause without it.
+            const where: Omit<LoyaltyLedgerWhere, "entryType"> = {
+                tenantId,
+                userId,
+                campaignId: { in: campaignIds },
+                sourceType: {
+                    in: getLoyaltyCampaignSourceTypes(sample.source),
+                },
+            };
+
+            if (sample.metric === LoyaltyCampaignMetric.COUNT) {
+                const rows = await this.db.loyaltyLedgerEntry.groupBy({
+                    by: ["campaignId", "entryType"],
+                    where: {
+                        ...where,
+                        entryType: {
+                            in: [
+                                LoyaltyLedgerEntryType.ACCRUAL,
+                                LoyaltyLedgerEntryType.REVERSAL,
+                            ],
+                        },
+                    },
+                    _count: { _all: true },
+                });
+                const counts = new Map<string, { accrual: number; reversal: number }>();
+                for (const row of rows) {
+                    const current = counts.get(row.campaignId) ?? {
+                        accrual: 0,
+                        reversal: 0,
+                    };
+                    if (row.entryType === LoyaltyLedgerEntryType.ACCRUAL) {
+                        current.accrual = row._count._all;
+                    } else {
+                        current.reversal = row._count._all;
+                    }
+                    counts.set(row.campaignId, current);
+                }
+                for (const campaign of group) {
+                    const current = counts.get(campaign.id);
+                    const progressValue = this.countProgressValue(
+                        campaign,
+                        current?.accrual ?? 0,
+                        current?.reversal ?? 0,
+                    );
+                    progressByCampaign.set(
+                        campaign.id,
+                        this.toCampaignProgress(campaign, userId, progressValue),
+                    );
+                }
+                continue;
+            }
+
+            const rows = await this.db.loyaltyLedgerEntry.groupBy({
+                by: ["campaignId"],
+                where: {
+                    ...where,
+                    entryType: {
+                        in: [
+                            LoyaltyLedgerEntryType.ACCRUAL,
+                            LoyaltyLedgerEntryType.REVERSAL,
+                        ],
+                    },
+                },
+                _sum: { value: true },
+            });
+            const sums = new Map<string, Prisma.Decimal | null>();
+            for (const row of rows) {
+                sums.set(row.campaignId, row._sum.value);
+            }
+            for (const campaign of group) {
+                const progressValue = this.spendProgressValue(
+                    campaign,
+                    sums.get(campaign.id) ?? null,
+                );
+                progressByCampaign.set(
+                    campaign.id,
+                    this.toCampaignProgress(campaign, userId, progressValue),
+                );
+            }
+        }
+
+        return campaigns.map(
+            (campaign) =>
+                progressByCampaign.get(campaign.id) ??
+                this.toCampaignProgress(campaign, userId, "0.00"),
+        );
+    }
+
+    async findCampaignRewardClaimsForCustomer(
+        tenantId: string,
+        userId: string,
+        campaignIds: string[],
+    ): Promise<LoyaltyCampaignRewardClaim[]> {
+        this.validateIdentity(tenantId, userId);
+        if (campaignIds.length === 0) {
+            return [];
+        }
+        const rows = await this.db.loyaltyRewardClaim.findMany({
+            where: { tenantId, userId, campaignId: { in: campaignIds } },
+            include: { coupon: true },
+        });
+        return rows.map((row) => this.mapCampaignClaim(row));
     }
 
     async getCampaignStats(

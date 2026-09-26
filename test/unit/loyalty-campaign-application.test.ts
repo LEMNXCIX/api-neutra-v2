@@ -613,17 +613,31 @@ describe("loyalty campaign application services", () => {
             getCampaign: jest.fn().mockImplementation(async (_tenantId, campaignId) =>
                 campaign({ id: campaignId, status: campaignId === "draft" ? LoyaltyCampaignStatus.DRAFT : LoyaltyCampaignStatus.ARCHIVED }),
             ),
-            getCampaignProgress: jest.fn().mockResolvedValue({
-                campaignId: "campaign-1",
-                userId: "customer-1",
-                metric: LoyaltyCampaignMetric.COUNT,
-                progressValue: "0.00",
-                targetValue: "10.00",
-                reachedTarget: false,
-            }),
-            findCampaignRewardClaim: jest.fn().mockImplementation(async (_tenantId, campaignId) =>
-                campaignId === "archived-claimed" ? archivedClaim : null,
-            ),
+              getCampaignProgress: jest.fn().mockResolvedValue({
+                  campaignId: "campaign-1",
+                  userId: "customer-1",
+                  metric: LoyaltyCampaignMetric.COUNT,
+                  progressValue: "0.00",
+                  targetValue: "10.00",
+                  reachedTarget: false,
+              }),
+              getCampaignsProgressForCustomer: jest.fn().mockImplementation(
+                  async (_tenantId: string, _userId: string, campaigns: Array<{ id: string }>) =>
+                      campaigns.map((entry) => ({
+                          campaignId: entry.id,
+                          userId: "customer-1",
+                          metric: LoyaltyCampaignMetric.COUNT,
+                          progressValue: "0.00",
+                          targetValue: "10.00",
+                          reachedTarget: false,
+                      })),
+              ),
+              findCampaignRewardClaimsForCustomer: jest
+                  .fn()
+                  .mockResolvedValue([archivedClaim]),
+              findCampaignRewardClaim: jest.fn().mockImplementation(async (_tenantId, campaignId) =>
+                  campaignId === "archived-claimed" ? archivedClaim : null,
+              ),
         };
         const useCase = new GetCustomerLoyaltySummaryUseCase(
             repository as never,

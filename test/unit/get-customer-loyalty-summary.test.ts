@@ -80,9 +80,48 @@ function countingDatabase(rows: ReturnType<typeof campaignRow>[]) {
         loyaltyLedgerEntry: {
             count: ledgerCount,
             aggregate: ledgerAggregate,
+            /**
+             * One call per (metric, source) group, replacing the per-campaign
+             * reads. The label carries the group so a regression that splits
+             * the group back up is visible in the query list.
+             */
+            groupBy: async (args: {
+                by: string[];
+                where: { campaignId: { in: string[] } };
+            }) => {
+                const ids = args.where.campaignId.in;
+                const group = rows.filter((row) => ids.includes(row.id));
+                const metric = group[0]?.metric ?? "?";
+                const source = group[0]?.source ?? "?";
+                queries.push(`ledger.groupBy:${metric}:${source}`);
+                if (args.by.includes("entryType")) {
+                    return group.flatMap((row) => [
+                        {
+                            campaignId: row.id,
+                            entryType: "ACCRUAL",
+                            _count: { _all: 3 },
+                        },
+                        {
+                            campaignId: row.id,
+                            entryType: "REVERSAL",
+                            _count: { _all: 1 },
+                        },
+                    ]);
+                }
+                return group.map((row) => ({
+                    campaignId: row.id,
+                    _sum: { value: new Prisma.Decimal("4.00") },
+                }));
+            },
         },
         loyaltyRewardClaim: {
             findFirst: record("claim.findFirst", null),
+            findMany: async (args: {
+                where: { campaignId: { in: string[] } };
+            }) => {
+                queries.push(`claim.findMany:${args.where.campaignId.in.length}`);
+                return [];
+            },
         },
         coupon: {
             findFirst: record("coupon.findFirst", null),
@@ -142,22 +181,19 @@ describe("customer loyalty summary query count", () => {
         }),
     ];
 
-    test("reads each COUNT campaign once and only its ledger and claim", async () => {
+    test("reads COUNT campaigns in one grouped ledger query, not two each", async () => {
         const { database, queries } = countingDatabase(countCampaigns);
 
         await expect(
             useCaseFor(database).executeList("tenant-1", "customer-1"),
         ).resolves.toMatchObject({ success: true });
 
+        // Was seven reads: the campaign list, two ledger counts per campaign,
+        // and a claim lookup per campaign that an ACTIVE campaign never needed.
         expect([...queries].sort()).toEqual(
             [
                 "campaign.findMany",
-                "ledger.count:count-1",
-                "ledger.count:count-1",
-                "ledger.count:count-2",
-                "ledger.count:count-2",
-                "claim.findFirst",
-                "claim.findFirst",
+                "ledger.groupBy:COUNT:STORE",
             ].sort(),
         );
         expect(queries.filter((q) => q.startsWith("campaign.findFirst"))).toEqual(
@@ -165,20 +201,46 @@ describe("customer loyalty summary query count", () => {
         );
     });
 
-    test("reads each SPEND campaign once and only its aggregate and claim", async () => {
+    test("reads SPEND campaigns in one grouped ledger query, not one each", async () => {
         const { database, queries } = countingDatabase(spendCampaigns);
 
         await useCaseFor(database).executeList("tenant-1", "customer-1");
 
         expect([...queries].sort()).toEqual(
-            [
-                "campaign.findMany",
-                "ledger.aggregate:spend-1",
-                "ledger.aggregate:spend-2",
-                "claim.findFirst",
-                "claim.findFirst",
-            ].sort(),
+            ["campaign.findMany", "ledger.groupBy:SPEND:STORE"].sort(),
         );
+    });
+
+    test("a DRAFT campaign is dropped before any ledger or claim read", async () => {
+        const { database, queries } = countingDatabase([
+            ...countCampaigns,
+            campaignRow({
+                id: "draft-1",
+                status: LoyaltyCampaignStatus.DRAFT,
+            }),
+        ]);
+
+        const result = await useCaseFor(database).executeList(
+            "tenant-1",
+            "customer-1",
+        );
+
+        expect(result.data).toHaveLength(2);
+        expect(queries).not.toContain("claim.findMany:3");
+    });
+
+    test("archived campaigns are the only ones whose claims are read", async () => {
+        const { database, queries } = countingDatabase([
+            campaignRow({ id: "count-1" }),
+            campaignRow({
+                id: "archived-1",
+                status: LoyaltyCampaignStatus.ARCHIVED,
+            }),
+        ]);
+
+        await useCaseFor(database).executeList("tenant-1", "customer-1");
+
+        expect(queries).toContain("claim.findMany:1");
     });
 
     test("returns the same COUNT summaries as the per-campaign reads did", async () => {

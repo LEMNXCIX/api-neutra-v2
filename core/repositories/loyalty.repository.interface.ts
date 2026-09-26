@@ -61,6 +61,27 @@ export interface ILoyaltyRepository {
         userId: string,
         knownCampaign?: LoyaltyCampaign,
     ): Promise<LoyaltyCampaignProgress>;
+    /**
+     * Progress for every campaign in one pass, so a caller holding a list of
+     * campaigns does not pay two ledger reads per COUNT campaign and one per
+     * SPEND campaign. Returns one entry per campaign, including the campaigns
+     * with no ledger activity, which report zero exactly as the single-campaign
+     * path does.
+     */
+    getCampaignsProgressForCustomer(
+        tenantId: string,
+        userId: string,
+        campaigns: LoyaltyCampaign[],
+    ): Promise<LoyaltyCampaignProgress[]>;
+    /**
+     * Every reward claim this customer holds across the given campaigns, in
+     * one read. Campaigns with no claim are absent from the result.
+     */
+    findCampaignRewardClaimsForCustomer(
+        tenantId: string,
+        userId: string,
+        campaignIds: string[],
+    ): Promise<LoyaltyCampaignRewardClaim[]>;
     getCampaignStats(
         tenantId: string,
         campaignId: string,
