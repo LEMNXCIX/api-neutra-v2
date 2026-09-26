@@ -22,7 +22,12 @@ export interface TenantConfig {
     features?: Record<string, boolean>;
 }
 
-export class Tenant {
+/**
+ * Tenant behaviour lives in `core/domain/tenant/tenant.policy.ts`; an entity
+ * module holds types only. Read a tenant's type with `isBookingType` and
+ * `isStoreType` there, not by comparing `type` inline.
+ */
+export interface Tenant {
     id: string;
     name: string;
     slug: string;
@@ -31,40 +36,4 @@ export class Tenant {
     active: boolean;
     createdAt: Date;
     updatedAt: Date;
-
-    constructor(
-        id: string,
-        name: string,
-        slug: string,
-        type: TenantType,
-        active: boolean,
-        config: TenantConfig | undefined,
-        createdAt: Date,
-        updatedAt: Date,
-    ) {
-        this.id = id;
-        this.name = name;
-        this.slug = slug;
-        this.type = type;
-        this.active = active;
-        this.config = config;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-    }
-
-    isBookingType(): boolean {
-        return (
-            this.type === TenantType.BOOKING || this.type === TenantType.HYBRID
-        );
-    }
-
-    isStoreType(): boolean {
-        return (
-            this.type === TenantType.STORE || this.type === TenantType.HYBRID
-        );
-    }
-
-    isFeatureEnabled(featureKey: string): boolean {
-        return this.config?.features?.[featureKey] === true;
-    }
 }

@@ -5,10 +5,10 @@ export interface ICouponResponse {
     code: string;
     type: CouponType;
     value: number;
-    description?: string;
-    minPurchaseAmount?: number;
-    maxDiscountAmount?: number;
-    usageLimit?: number;
+    description?: string | null;
+    minPurchaseAmount?: number | null;
+    maxDiscountAmount?: number | null;
+    usageLimit?: number | null;
     usageCount: number;
     active: boolean;
     expiresAt: Date;

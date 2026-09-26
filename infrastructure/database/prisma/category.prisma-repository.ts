@@ -11,6 +11,18 @@ import {
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
 
+/** Prove a row's category is a real member before narrowing the domain enum. */
+function isCategoryType(value: string): value is CategoryType {
+    return (Object.values(CategoryType) as string[]).includes(value);
+}
+
+function toCategoryType(value: string): CategoryType {
+    if (!isCategoryType(value)) {
+        throw new Error(`Unsupported category type: ${value}`);
+    }
+    return value;
+}
+
 export class PrismaCategoryRepository implements ICategoryRepository {
     private mapToEntity(
         category: PrismaCategory & {
@@ -22,7 +34,7 @@ export class PrismaCategoryRepository implements ICategoryRepository {
             id: category.id,
             name: category.name,
             description: category.description,
-            type: category.type as CategoryType,
+            type: toCategoryType(category.type),
             active: category.active,
             tenantId: category.tenantId,
             tenant: category.tenant

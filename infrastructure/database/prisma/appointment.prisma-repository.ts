@@ -57,6 +57,23 @@ type AppointmentWithCoupon = Prisma.AppointmentGetPayload<{
 
 type AppointmentBase = PrismaAppointment & AppointmentStatusAuditFields;
 
+/**
+ * Prisma's AppointmentStatus and the domain enum are declared separately
+ * (core/ may not import @prisma/client), so the row value is proven to be a
+ * real member before narrowing. A value outside the enum is a schema/domain
+ * disagreement and must surface rather than be silently relabelled.
+ */
+function isAppointmentStatus(value: string): value is AppointmentStatus {
+    return (Object.values(AppointmentStatus) as string[]).includes(value);
+}
+
+function toAppointmentStatus(value: string): AppointmentStatus {
+    if (!isAppointmentStatus(value)) {
+        throw new Error(`Unsupported appointment status: ${value}`);
+    }
+    return value;
+}
+
 export class PrismaAppointmentRepository implements IAppointmentRepository {
     private mapToEntity(
         appointment:
@@ -72,7 +89,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             staffId: appointment.staffId,
             startTime: appointment.startTime,
             endTime: appointment.endTime,
-            status: appointment.status as AppointmentStatus,
+            status: toAppointmentStatus(appointment.status),
             statusChangedAt: appointment.statusChangedAt ?? undefined,
             statusChangeReason: appointment.statusChangeReason ?? undefined,
             statusChangedById: appointment.statusChangedById ?? undefined,
@@ -633,7 +650,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         return appointments.map((appointment) => ({
             id: appointment.id,
             tenantId: appointment.tenantId,
-            status: appointment.status as AppointmentStatus,
+            status: toAppointmentStatus(appointment.status),
             endTime: appointment.endTime,
             tenantTimezone: extractTenantTimezone(appointment.tenant.config),
         }));

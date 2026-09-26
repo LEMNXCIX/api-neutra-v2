@@ -45,6 +45,29 @@ type OrderWithIncludes = Prisma.OrderGetPayload<{
 
 type OrderItemWithProduct = OrderWithIncludes["items"][number];
 
+/**
+ * OrderStatus is a string union in the domain, so membership is checked against
+ * an explicit list typed as the union: a typo fails to compile, and the list
+ * cannot admit a value the domain does not model.
+ */
+const ORDER_STATUSES: readonly OrderStatus[] = [
+    "PENDIENTE",
+    "PAGADO",
+    "ENVIADO",
+    "ENTREGADO",
+];
+
+function isOrderStatus(value: string): value is OrderStatus {
+    return (ORDER_STATUSES as string[]).includes(value);
+}
+
+function toOrderStatus(value: string): OrderStatus {
+    if (!isOrderStatus(value)) {
+        throw new Error(`Unsupported order status: ${value}`);
+    }
+    return value;
+}
+
 export class PrismaOrderRepository implements IOrderRepository {
     private mapOrderItem(item: OrderItemWithProduct): OrderItem {
         return {
@@ -70,7 +93,7 @@ export class PrismaOrderRepository implements IOrderRepository {
         return {
             id: prismaOrder.id,
             userId: prismaOrder.userId,
-            status: prismaOrder.status as OrderStatus,
+            status: toOrderStatus(prismaOrder.status),
             trackingNumber: prismaOrder.trackingNumber,
             subtotal: Number(prismaOrder.subtotal),
             total: Number(prismaOrder.total),

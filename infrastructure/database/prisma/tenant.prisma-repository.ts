@@ -11,22 +11,39 @@ import {
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
 
+/**
+ * Prisma's TenantType and the domain enum are declared separately (core/ may
+ * not import @prisma/client), so the mapper has to prove the row value is a
+ * real member before narrowing it. A row that drifts out of the enum is a
+ * schema/domain disagreement and must surface, not be silently relabelled.
+ */
+function isTenantType(value: string): value is TenantType {
+    return (Object.values(TenantType) as string[]).includes(value);
+}
+
+function toTenantType(value: string): TenantType {
+    if (!isTenantType(value)) {
+        throw new Error(`Unsupported tenant type: ${value}`);
+    }
+    return value;
+}
+
 export class TenantPrismaRepository implements ITenantRepository {
     private prisma = prisma;
 
     constructor() {}
 
     private toEntity(data: PrismaTenant): Tenant {
-        return new Tenant(
-            data.id,
-            data.name,
-            data.slug,
-            data.type as TenantType,
-            data.active,
-            (data.config as TenantConfig | null) ?? {},
-            data.createdAt,
-            data.updatedAt,
-        );
+        return {
+            id: data.id,
+            name: data.name,
+            slug: data.slug,
+            type: toTenantType(data.type),
+            active: data.active,
+            config: (data.config as TenantConfig | null) ?? {},
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+        };
     }
 
     async findById(id: string): Promise<Tenant | null> {

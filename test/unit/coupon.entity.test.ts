@@ -48,6 +48,12 @@ describe("calculateDiscount", () => {
             calculateDiscount(coupon({ type: CouponType.PERCENT, value: 50, maxDiscountAmount: 20 }), 100),
         ).toBe(20);
     });
+
+    test("null cap does not cap the discount", () => {
+        expect(
+            calculateDiscount(coupon({ type: CouponType.PERCENT, value: 50, maxDiscountAmount: null }), 100),
+        ).toBe(50);
+    });
 });
 
 describe("isExpired / hasReachedUsageLimit", () => {
@@ -58,6 +64,12 @@ describe("isExpired / hasReachedUsageLimit", () => {
 
     test("no limit means never reached", () => {
         expect(hasReachedUsageLimit(coupon({ usageLimit: undefined }))).toBe(false);
+    });
+
+    test("null limit means unlimited, not limit-reached", () => {
+        // Prisma stores "unlimited" as null. `usageCount >= null` coerces to
+        // `usageCount >= 0`, so before the fix this read as limit-reached.
+        expect(hasReachedUsageLimit(coupon({ usageLimit: null, usageCount: 3 }))).toBe(false);
     });
 
     test("reached at usageCount >= usageLimit", () => {

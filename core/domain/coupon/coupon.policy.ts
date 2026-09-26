@@ -33,8 +33,12 @@ export function isExpired(coupon: Pick<Coupon, "expiresAt">): boolean {
 export function hasReachedUsageLimit(
     coupon: Pick<Coupon, "usageCount" | "usageLimit">,
 ): boolean {
-    if (coupon.usageLimit === undefined) return false;
-    return coupon.usageCount >= coupon.usageLimit;
+    const { usageLimit } = coupon;
+    // "Unlimited" reaches the domain as null (Prisma) or undefined (optional
+    // field). Both must short-circuit: `usageCount >= null` coerces to
+    // `usageCount >= 0` and would falsely reject every unlimited coupon.
+    if (usageLimit === null || usageLimit === undefined) return false;
+    return coupon.usageCount >= usageLimit;
 }
 
 /** The coupon fields the redemption guard reads. */
@@ -130,9 +134,11 @@ export function isApplicableToCategory(
 }
 
 export function calculateDiscount(coupon: Coupon, subtotal: number): number {
+    const { minPurchaseAmount, maxDiscountAmount } = coupon;
     if (
-        coupon.minPurchaseAmount !== undefined &&
-        subtotal < coupon.minPurchaseAmount
+        minPurchaseAmount !== undefined &&
+        minPurchaseAmount !== null &&
+        subtotal < minPurchaseAmount
     )
         return 0;
 
@@ -144,10 +150,11 @@ export function calculateDiscount(coupon: Coupon, subtotal: number): number {
     }
 
     if (
-        coupon.maxDiscountAmount !== undefined &&
-        discount > coupon.maxDiscountAmount
+        maxDiscountAmount !== undefined &&
+        maxDiscountAmount !== null &&
+        discount > maxDiscountAmount
     ) {
-        discount = coupon.maxDiscountAmount;
+        discount = maxDiscountAmount;
     }
 
     return Math.min(discount, subtotal);

@@ -58,10 +58,7 @@ describe("architecture.rules", () => {
         // below is cleared by its own work unit; when the list is empty the
         // assertion becomes a plain PASS, which is the state the ci profile
         // gate requires. Never add an entry here to silence a new finding.
-        const knownDebt: Array<{ rule: string; subject: RegExp; clearedBy: string }> = [
-            // T7: core/entities must hold types only.
-            { rule: "R2", subject: /^R2 core\/entities\/tenant\.entity\.ts:/, clearedBy: "T7" },
-        ];
+        const knownDebt: Array<{ rule: string; subject: RegExp; clearedBy: string }> = [];
 
         // No violation may fall outside the known set. Asserting the empty
         // array keeps the offending detail in the jest diff.
