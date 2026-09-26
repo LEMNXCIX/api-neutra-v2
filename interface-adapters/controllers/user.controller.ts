@@ -12,7 +12,10 @@ import { AssignRoleToUserUseCase } from "@/core/application/users/assign-role.us
 import { present } from "@/core/utils/use-case-result";
 import { UserResponse } from "@/core/application/dtos/responses/user/user.response";
 import { UserPublicResponse } from "@/core/application/dtos/responses/user/user-public.response";
-import { UpdateUserDTO } from "@/core/application/dtos/requests/user.request";
+import {
+    AssignRoleDTO,
+    UpdateUserDTO,
+} from "@/core/application/dtos/requests/user.request";
 
 export class UserController {
     constructor(
@@ -122,7 +125,7 @@ export class UserController {
     assignRole = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const { id } = req.params;
-        const { roleId } = req.body;
+        const { roleId } = req.validatedBody as AssignRoleDTO;
         const result = await this.assignRoleToUserUseCase.execute(
             tenantId,
             id,

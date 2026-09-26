@@ -8,7 +8,13 @@ import { GetAvailabilityUseCase } from "@/core/application/booking/get-availabil
 import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
 import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";
 import { assertAppointmentStatus } from "@/core/domain/appointment/appointment.policy";
-import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
+import {
+    AppointmentMutationActor,
+    CancelAppointmentDTO,
+    CreateAppointmentDTO,
+    CreateAppointmentDto,
+    UpdateAppointmentStatusDto,
+} from "@/core/application/dtos/requests/appointment.request";
 import { AuthenticatedUser } from "@/types/rbac";
 import { APPOINTMENT_OPERATIONAL_ROLES } from "@/middleware/authorization.middleware";
 import {
@@ -53,14 +59,19 @@ export class AppointmentController {
         const tenantId = req.tenantId!;
         const actor = getAppointmentActor(req.user!);
         const origin = resolveRequestOrigin(req);
-        const requestedUserId = req.body.userId;
+        const body = req.validatedBody as CreateAppointmentDto;
+        // The body may carry `userId`, and it is honoured only when the actor
+        // holds `appointments:write` and can manage. The override order is not
+        // what protects this: the computed value always wins over the spread,
+        // so the protection is the `canManage` test, not the ordering.
+        const requestedUserId = body.userId;
         const userId =
             actor.canManage && typeof requestedUserId === "string"
                 ? requestedUserId
                 : actor.id;
         const result = await this.createAppointmentUseCase.execute(
             tenantId,
-            { ...req.body, userId },
+            { ...body, userId } as CreateAppointmentDTO,
             origin,
             actor.id,
         );
@@ -174,7 +185,7 @@ export class AppointmentController {
     async cancel(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
-        const { reason } = req.body;
+        const { reason } = req.validatedBody as CancelAppointmentDTO;
 
         const result = await this.cancelAppointmentUseCase.execute(
             tenantId,
@@ -188,7 +199,8 @@ export class AppointmentController {
     async updateStatus(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
-        const { status, reason } = req.body;
+        const { status, reason } =
+            req.validatedBody as UpdateAppointmentStatusDto;
 
         const origin = resolveRequestOrigin(req);
         const result = await this.updateAppointmentStatusUseCase.execute(

@@ -4,6 +4,11 @@ import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { ServiceController } from "@/interface-adapters/controllers/service.controller";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    CreateServiceDto,
+    UpdateServiceDto,
+} from "@/core/application/dtos/requests/service.request";
 
 function services(
     app: Application,
@@ -84,6 +89,7 @@ function services(
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("services:write"),
+        validateDto(CreateServiceDto),
         (req, res) => serviceController.create(req, res),
     );
 
@@ -157,6 +163,7 @@ function services(
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("services:write"),
+        validateDto(UpdateServiceDto),
         (req, res) => serviceController.update(req, res),
     );
 

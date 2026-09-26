@@ -35,6 +35,12 @@ jest.mock("@/config/db.config", () => {
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+        // The role writes are scoped single statements now, so `update` and
+        // `delete` on an id-only predicate are no longer what this repository
+        // issues. The `where: { id, tenantId }` form is not a valid unique
+        // selector, so `updateMany`/`deleteMany` are the statements used.
+        updateMany: jest.fn(),
+        deleteMany: jest.fn(),
     };
     const tx = { permission, role, rolePermission };
     return { prisma: { ...tx, $transaction: jest.fn() } };
@@ -141,6 +147,8 @@ function setup() {
         roleRow({ name: data.name }),
     );
     prismaDb.role.update.mockResolvedValue(roleRow());
+    prismaDb.role.updateMany.mockResolvedValue({ count: 1 });
+    prismaDb.role.deleteMany.mockResolvedValue({ count: 1 });
     prismaDb.rolePermission.create.mockResolvedValue({});
     prismaDb.rolePermission.createMany.mockResolvedValue({ count: 0 });
     prismaDb.rolePermission.deleteMany.mockResolvedValue({ count: 0 });

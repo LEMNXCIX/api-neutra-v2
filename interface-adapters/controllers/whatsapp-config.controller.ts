@@ -3,6 +3,7 @@ import { GetWhatsAppConfigUseCase } from "@/core/application/whatsapp/get-whatsa
 import { ConfigureWhatsAppUseCase } from "@/core/application/whatsapp/configure-whatsapp.use-case";
 import { WhatsAppConfigResponse } from "@/core/application/dtos/responses/whatsapp/whatsapp-config.response";
 import { present } from "@/core/utils/use-case-result";
+import { ConfigureWhatsAppDTO } from "@/core/application/dtos/requests/whatsapp.request";
 
 export class WhatsAppConfigController {
     constructor(
@@ -26,7 +27,7 @@ export class WhatsAppConfigController {
 
         const result = await this.configureWhatsAppUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as ConfigureWhatsAppDTO,
         );
         return res.json(
             present(result, (data) =>

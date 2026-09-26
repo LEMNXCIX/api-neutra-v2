@@ -3,6 +3,12 @@ import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
 import { OrderController } from "@/interface-adapters/controllers/order.controller";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    ChangeOrderStatusDto,
+    CreateOrderDto,
+    UpdateOrderDto,
+} from "@/core/application/dtos/requests/order.request";
 
 function order(
     app: Application,
@@ -95,7 +101,7 @@ function order(
      */
     router.post(
         "/",
-        requireTenantType("STORE", "HYBRID"), authenticate, orderController.create);
+        requireTenantType("STORE", "HYBRID"), authenticate, validateDto(CreateOrderDto), orderController.create);
 
     /**
      * @swagger
@@ -287,6 +293,7 @@ function order(
         requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:write"),
+        validateDto(ChangeOrderStatusDto),
         orderController.changeStatus,
     );
 
@@ -326,6 +333,7 @@ function order(
         requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:write"),
+        validateDto(UpdateOrderDto),
         orderController.update,
     );
 

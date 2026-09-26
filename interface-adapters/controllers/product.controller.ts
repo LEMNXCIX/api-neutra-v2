@@ -10,6 +10,11 @@ import { GetProductSummaryStatsUseCase } from "@/core/application/products/get-p
 
 import { ProductResponse } from "@/core/application/dtos/responses/product/product.response";
 import { present } from "@/core/utils/use-case-result";
+import {
+    CreateProductDto,
+    SearchProductDto,
+    UpdateProductDTO,
+} from "@/core/application/dtos/requests/product.request";
 
 export class ProductController {
     constructor(
@@ -57,7 +62,9 @@ export class ProductController {
     async create(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const result = await this.createProductUseCase.execute(tenantId, {
-            ...req.body,
+            ...(req.validatedBody as CreateProductDto),
+            // `ownerId` is the authenticated author, not a body field: it is
+            // spread last, so a body carrying one cannot claim the product.
             ownerId: req.user!.id,
         });
         return res
@@ -71,7 +78,7 @@ export class ProductController {
         const result = await this.updateProductUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateProductDTO,
         );
         return res.json(present(result, ProductResponse.fromEntity));
     }
@@ -90,7 +97,7 @@ export class ProductController {
 
     async search(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const name = req.body.name;
+        const name = (req.validatedBody as SearchProductDto).name;
         const result = await this.searchProductsUseCase.execute(tenantId, name);
         return res.json(
             present(result, (products) =>

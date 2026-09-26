@@ -8,6 +8,10 @@ import { GetCartStatsUseCase } from "@/core/application/cart/get-cart-stats.use-
 import { CreateCartUseCase } from "@/core/application/cart/create-cart.use-case";
 import { CartResponse } from "@/core/application/dtos/responses/cart/cart.response";
 import { present } from "@/core/utils/use-case-result";
+import {
+    AddToCartDTO,
+    RemoveFromCartDTO,
+} from "@/core/application/dtos/requests/cart.request";
 
 export class CartController {
     constructor(
@@ -32,7 +36,7 @@ export class CartController {
     addToCart = async (req: Request, res: Response) => {
         const { id } = req.user!;
         const tenantId = req.tenantId!;
-        const { productId, amount } = req.body;
+        const { productId, amount } = req.validatedBody as AddToCartDTO;
         const result = await this.addToCartUseCase.execute(
             tenantId,
             id,
@@ -52,7 +56,7 @@ export class CartController {
     removeFromCart = async (req: Request, res: Response) => {
         const { id } = req.user!;
         const tenantId = req.tenantId!;
-        const { id: idProduct } = req.body; // Assuming body based on previous fix
+        const { id: idProduct } = req.validatedBody as RemoveFromCartDTO;
         const result = await this.removeFromCartUseCase.execute(
             tenantId,
             id,

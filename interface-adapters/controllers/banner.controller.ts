@@ -7,6 +7,10 @@ import { TrackBannerAnalyticsUseCase } from "@/core/application/banners/track-ba
 import { GetBannerStatsUseCase } from "@/core/application/banners/get-banner-stats.use-case";
 import { BannerResponse } from "@/core/application/dtos/responses/banner/banner.response";
 import { present } from "@/core/utils/use-case-result";
+import {
+    CreateBannerDTO,
+    UpdateBannerDTO,
+} from "@/core/application/dtos/requests/banner.request";
 
 export class BannerController {
     constructor(
@@ -22,7 +26,7 @@ export class BannerController {
         const tenantId = req.tenantId!;
         const result = await this.createBannerUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as CreateBannerDTO,
         );
         return res
             .status(201)
@@ -67,7 +71,7 @@ export class BannerController {
         const result = await this.updateBannerUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateBannerDTO,
         );
         return res.json(present(result, BannerResponse.fromEntity));
     };

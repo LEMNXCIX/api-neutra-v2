@@ -1,4 +1,11 @@
 import { CategoryType } from "@/core/entities/category.entity";
+import {
+    IsBoolean,
+    IsEnum,
+    IsNotEmpty,
+    IsOptional,
+    IsString,
+} from "class-validator";
 
 export interface CreateCategoryDTO {
     name: string;
@@ -11,5 +18,42 @@ export interface UpdateCategoryDTO {
     name?: string;
     description?: string;
     type?: CategoryType;
+    active?: boolean;
+}
+
+/** The four columns `PrismaCategoryRepository.create` copies. */
+export class CreateCategoryDto implements CreateCategoryDTO {
+    @IsString()
+    @IsNotEmpty()
+    name!: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsOptional()
+    @IsEnum(CategoryType)
+    type?: CategoryType;
+
+    @IsOptional()
+    @IsBoolean()
+    active?: boolean;
+}
+
+export class UpdateCategoryDto implements UpdateCategoryDTO {
+    @IsOptional()
+    @IsString()
+    name?: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsOptional()
+    @IsEnum(CategoryType)
+    type?: CategoryType;
+
+    @IsOptional()
+    @IsBoolean()
     active?: boolean;
 }

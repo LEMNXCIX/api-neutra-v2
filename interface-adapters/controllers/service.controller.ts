@@ -5,6 +5,10 @@ import { UpdateServiceUseCase } from "@/core/application/booking/update-service.
 import { DeleteServiceUseCase } from "@/core/application/booking/delete-service.use-case";
 import { ServiceResponse } from "@/core/application/dtos/responses/service/service.response";
 import { present } from "@/core/utils/use-case-result";
+import {
+    CreateServiceDTO,
+    UpdateServiceDTO,
+} from "@/core/application/dtos/requests/service.request";
 
 export class ServiceController {
     constructor(
@@ -18,7 +22,7 @@ export class ServiceController {
         const tenantId = req.tenantId!;
         const result = await this.createServiceUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as CreateServiceDTO,
         );
         return res
             .status(201)
@@ -48,7 +52,7 @@ export class ServiceController {
         const result = await this.updateServiceUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateServiceDTO,
         );
         return res.status(200).json(present(result, ServiceResponse.fromEntity));
     }

@@ -6,6 +6,10 @@ import { DeletePermissionUseCase } from "@/core/application/permissions/delete-p
 import { GetPermissionsPaginatedUseCase } from "@/core/application/permissions/get-permissions-paginated.use-case";
 import { PermissionResponse } from "@/core/application/dtos/responses/permission/permission.response";
 import { present } from "@/core/utils/use-case-result";
+import {
+    CreatePermissionDTO,
+    UpdatePermissionDTO,
+} from "@/core/application/dtos/requests/permission.request";
 
 export class PermissionController {
     constructor(
@@ -20,7 +24,7 @@ export class PermissionController {
         const tenantId = req.tenantId!;
         const result = await this.createPermissionUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as CreatePermissionDTO,
         );
         return res
             .status(201)
@@ -81,7 +85,7 @@ export class PermissionController {
         const result = await this.updatePermissionUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdatePermissionDTO,
         );
         return res.json(present(result, PermissionResponse.fromEntity));
     };

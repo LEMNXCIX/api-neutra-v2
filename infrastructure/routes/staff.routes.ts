@@ -4,6 +4,13 @@ import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { StaffController } from "@/interface-adapters/controllers/staff.controller";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    AssignStaffServiceDto,
+    CreateStaffDto,
+    SyncStaffServicesDto,
+    UpdateStaffDto,
+} from "@/core/application/dtos/requests/staff.request";
 
 function staff(
     app: Application,
@@ -114,6 +121,7 @@ function staff(
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("staff:write"),
+        validateDto(CreateStaffDto),
         (req, res) => staffController.create(req, res),
     );
 
@@ -189,6 +197,7 @@ function staff(
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("staff:write"),
+        validateDto(AssignStaffServiceDto),
         (req, res) => staffController.assignService(req, res),
     );
 
@@ -228,6 +237,7 @@ function staff(
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("staff:write"),
+        validateDto(SyncStaffServicesDto),
         (req, res) => staffController.syncServices(req, res),
     );
 
@@ -271,6 +281,7 @@ function staff(
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         requirePermission("staff:write"),
+        validateDto(UpdateStaffDto),
         (req, res) => staffController.update(req, res),
     );
 

@@ -1,6 +1,8 @@
 import { Application, Router } from 'express';
 import type { RequestHandler } from 'express';
 import { requirePermission } from '@/middleware/authorization.middleware';
+import { validateDto } from '@/middleware/validation.middleware';
+import { CreatePermissionDto, UpdatePermissionDto } from '@/core/application/dtos/requests/permission.request';
 import { PermissionController } from '@/interface-adapters/controllers/permission.controller';
 
 function permissionRoutes(
@@ -111,7 +113,7 @@ function permissionRoutes(
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('permissions:write'), permissionController.create);
+    router.post('/', authenticate, requirePermission('permissions:write'), validateDto(CreatePermissionDto), permissionController.create);
 
     /**
      * @swagger
@@ -148,7 +150,7 @@ function permissionRoutes(
      *       404:
      *         description: Permission not found
      */
-    router.put('/:id', authenticate, requirePermission('permissions:write'), permissionController.update);
+    router.put('/:id', authenticate, requirePermission('permissions:write'), validateDto(UpdatePermissionDto), permissionController.update);
 
     /**
      * @swagger

@@ -2,6 +2,11 @@ import { Application, Request, Response, Router } from "express";
 import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { UserController } from "@/interface-adapters/controllers/user.controller";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    AssignRoleDto,
+    UpdateUserDto,
+} from "@/core/application/dtos/requests/user.request";
 
 function users(
     app: Application,
@@ -196,6 +201,7 @@ function users(
         "/:id",
         authenticate,
         requirePermission("users:manage"),
+        validateDto(UpdateUserDto),
         userController.update,
     );
 
@@ -237,6 +243,7 @@ function users(
         "/:id/role",
         authenticate,
         requirePermission("users:manage"),
+        validateDto(AssignRoleDto),
         userController.assignRole,
     );
 

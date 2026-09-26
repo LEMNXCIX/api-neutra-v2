@@ -10,6 +10,10 @@ import { GetOrderStatusesUseCase } from "@/core/application/order/get-order-stat
 import { GetOrderStatsUseCase } from "@/core/application/order/get-order-stats.use-case";
 import { OrderResponse } from "@/core/application/dtos/responses/order/order.response";
 import { present } from "@/core/utils/use-case-result";
+import {
+    ChangeOrderStatusDto,
+    UpdateOrderDTO,
+} from "@/core/application/dtos/requests/order.request";
 
 export class OrderController {
     constructor(
@@ -132,7 +136,8 @@ export class OrderController {
 
     async changeStatus(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const { idOrder, status } = req.body;
+        const { idOrder, status } =
+            req.validatedBody as ChangeOrderStatusDto;
         const result = await this.changeOrderStatusUseCase.execute(
             tenantId,
             idOrder,
@@ -147,7 +152,7 @@ export class OrderController {
         const result = await this.updateOrderUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateOrderDTO,
         );
         return res.json(present(result, OrderResponse.fromEntity));
     }

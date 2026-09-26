@@ -2,6 +2,12 @@ import { Application, Router } from 'express';
 import type { RequestHandler } from 'express';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { CouponController } from '@/interface-adapters/controllers/coupon.controller';
+import { validateDto } from '@/middleware/validation.middleware';
+import {
+    CreateCouponDto,
+    UpdateCouponDto,
+    ValidateCouponDto,
+} from '@/core/application/dtos/requests/coupon.request';
 
 function couponRoutes(
     app: Application,
@@ -73,7 +79,7 @@ function couponRoutes(
     router.post(
         '/validate',
         requireTenantFeature("COUPONS"),
-        authenticate, couponController.validate);
+        authenticate, validateDto(ValidateCouponDto), couponController.validate);
 
     // Admin routes
     /**
@@ -231,7 +237,7 @@ function couponRoutes(
     router.post(
         '/',
         requireTenantFeature("COUPONS"),
-        authenticate, requirePermission('coupons:write'), couponController.create);
+        authenticate, requirePermission('coupons:write'), validateDto(CreateCouponDto), couponController.create);
 
     /**
      * @swagger
@@ -276,7 +282,7 @@ function couponRoutes(
     router.put(
         '/:id',
         requireTenantFeature("COUPONS"),
-        authenticate, requirePermission('coupons:write'), couponController.update);
+        authenticate, requirePermission('coupons:write'), validateDto(UpdateCouponDto), couponController.update);
 
     /**
      * @swagger

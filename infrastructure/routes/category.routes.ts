@@ -2,6 +2,8 @@ import { Application, Router } from 'express';
 import type { RequestHandler } from 'express';
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { requirePermission } from '@/middleware/authorization.middleware';
+import { validateDto } from '@/middleware/validation.middleware';
+import { CreateCategoryDto, UpdateCategoryDto } from '@/core/application/dtos/requests/category.request';
 import { CategoryController } from '@/interface-adapters/controllers/category.controller';
 
 function categoryRoutes(
@@ -138,7 +140,7 @@ function categoryRoutes(
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('categories:write'), categoryController.create);
+    router.post('/', authenticate, requirePermission('categories:write'), validateDto(CreateCategoryDto), categoryController.create);
 
     /**
      * @swagger
@@ -177,7 +179,7 @@ function categoryRoutes(
      *       404:
      *         description: Category not found
      */
-    router.put('/:id', authenticate, requirePermission('categories:write'), categoryController.update);
+    router.put('/:id', authenticate, requirePermission('categories:write'), validateDto(UpdateCategoryDto), categoryController.update);
 
     /**
      * @swagger

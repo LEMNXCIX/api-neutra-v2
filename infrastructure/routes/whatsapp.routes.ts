@@ -6,7 +6,7 @@ import { WhatsAppConfigController } from "@/interface-adapters/controllers/whats
 import { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { validateDto } from "@/middleware/validation.middleware";
-import { ConfigureWhatsAppDto } from "@/core/application/dtos/requests/whatsapp.request";
+import { ConfigureWhatsAppDto, SendNotificationDto } from "@/core/application/dtos/requests/whatsapp.request";
 
 function whatsappRoutes(
     app: Application,
@@ -203,6 +203,7 @@ function whatsappRoutes(
         authenticate,
         requirePermission("whatsapp:write"),
         requireTenantFeature("WHATSAPP_API"),
+        validateDto(SendNotificationDto),
         (req, res) => whatsappController.sendTemplate(req, res),
     );
 

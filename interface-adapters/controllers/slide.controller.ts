@@ -6,6 +6,10 @@ import { DeleteSlideUseCase } from "@/core/application/slide/delete-slide.use-ca
 import { GetSliderStatsUseCase } from "@/core/application/slide/get-slider-stats.use-case";
 import { SlideResponse } from "@/core/application/dtos/responses/slide/slide.response";
 import { present } from "@/core/utils/use-case-result";
+import {
+    CreateSlideshowDTO,
+    UpdateSlideshowDTO,
+} from "@/core/application/dtos/requests/slide.request";
 
 export class SlideController {
     constructor(
@@ -41,7 +45,7 @@ export class SlideController {
         const tenantId = req.tenantId!;
         const result = await this.createSlideUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as CreateSlideshowDTO,
         );
         return res.status(201).json(present(result, SlideResponse.fromEntity));
     }
@@ -52,7 +56,7 @@ export class SlideController {
         const result = await this.updateSlideUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateSlideshowDTO,
         );
         return res.json(present(result, SlideResponse.fromEntity));
     }

@@ -254,7 +254,7 @@ describe("catalog write routes carry the gate", () => {
 
             expect(block).toMatch(
                 new RegExp(
-                    `authenticate,\\s*requirePermission\\("${permission}"\\),\\s*requireSuperAdmin,\\s*${handler.replace(
+                    `authenticate,\\s*requirePermission\\("${permission}"\\),\\s*requireSuperAdmin,\\s*(?:validateDto\\(\\w+\\),\\s*)?${handler.replace(
                         /\./g,
                         "\\.",
                     )}`,

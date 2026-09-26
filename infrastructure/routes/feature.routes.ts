@@ -5,6 +5,11 @@ import {
     requireSuperAdmin,
 } from "@/middleware/authorization.middleware";
 import { FeatureController } from "@/interface-adapters/controllers/feature.controller";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    CreateFeatureDto,
+    UpdateFeatureDto,
+} from "@/core/application/dtos/requests/feature.request";
 
 function featureRoutes(
     app: Application,
@@ -118,6 +123,7 @@ function featureRoutes(
         authenticate,
         requirePermission("features:write"),
         requireSuperAdmin,
+        validateDto(CreateFeatureDto),
         featureController.create,
     );
 
@@ -161,6 +167,7 @@ function featureRoutes(
         authenticate,
         requirePermission("features:write"),
         requireSuperAdmin,
+        validateDto(UpdateFeatureDto),
         featureController.update,
     );
 

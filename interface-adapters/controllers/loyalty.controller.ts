@@ -149,7 +149,11 @@ export class LoyaltyController {
     createCampaign = async (req: Request, res: Response) => {
         const result = await this.createLoyaltyCampaignUseCase.execute(
             requireTenantId(req),
-            (req.validatedBody ?? req.body) as CreateLoyaltyCampaignDTO,
+            // No `?? req.body` fallback: both campaign writes sit behind
+            // `validateDto`, so a missing `validatedBody` means the middleware
+            // was bypassed, and silently falling back to the raw body is
+            // exactly how an unvalidated write gets through.
+            req.validatedBody as CreateLoyaltyCampaignDTO,
         );
         return res
             .status(201)
@@ -160,7 +164,7 @@ export class LoyaltyController {
         const result = await this.updateLoyaltyCampaignUseCase.execute(
             requireTenantId(req),
             requireCampaignId(req),
-            (req.validatedBody ?? req.body) as UpdateLoyaltyCampaignDTO,
+            req.validatedBody as UpdateLoyaltyCampaignDTO,
         );
         return res.json(
             present(result, LoyaltyPresenter.toCampaignResponse),

@@ -10,6 +10,12 @@ import { StaffResponse } from "@/core/application/dtos/responses/staff/staff.res
 import { present } from "@/core/utils/use-case-result";
 import { AppError } from "@/types/api-response";
 import { AuthErrorCodes } from "@/types/error-codes";
+import {
+    AssignStaffServiceDTO,
+    CreateStaffDTO,
+    SyncStaffServicesDTO,
+    UpdateStaffDTO,
+} from "@/core/application/dtos/requests/staff.request";
 
 export class StaffController {
     constructor(
@@ -26,7 +32,7 @@ export class StaffController {
         const tenantId = req.tenantId!;
         const result = await this.createStaffUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as CreateStaffDTO,
         );
         return res.status(201).json(present(result, StaffResponse.fromEntity));
     }
@@ -51,7 +57,7 @@ export class StaffController {
         const result = await this.updateStaffUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateStaffDTO,
         );
         return res.status(200).json(present(result, StaffResponse.fromEntity));
     }
@@ -66,7 +72,7 @@ export class StaffController {
     async assignService(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { staffId } = req.params;
-        const { serviceId } = req.body;
+        const { serviceId } = req.validatedBody as AssignStaffServiceDTO;
 
         const result = await this.assignStaffServiceUseCase.execute(
             tenantId,
@@ -79,7 +85,7 @@ export class StaffController {
     async syncServices(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { staffId } = req.params;
-        const { serviceIds } = req.body;
+        const { serviceIds } = req.validatedBody as SyncStaffServicesDTO;
 
         const result = await this.syncStaffServicesUseCase.execute(
             tenantId,

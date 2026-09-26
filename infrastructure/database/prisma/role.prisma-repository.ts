@@ -1,8 +1,7 @@
-import { Role as PrismaRole, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
 import { IRoleRepository, RoleCreateData, RoleUpdateData } from "@/core/repositories/role.repository.interface";
 import { Role } from "@/core/entities/role.entity";
-import { Permission } from "@/core/entities/permission.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
@@ -226,6 +225,28 @@ export class PrismaRoleRepository implements IRoleRepository {
         }
     }
 
+    /**
+     * The scope the four writes below share with every read: the acting
+     * tenant's own rows plus the global ones (`tenantId` NULL, per the schema
+     * comment). `Role.tenantId` is nullable, so `{ id, tenantId }` is not a
+     * unique selector Prisma will take in `where`; `buildTenantWhere` is the
+     * form that does carry it, and it is also the same scope `findById` reads
+     * with, so a role the tenant cannot see is one it cannot write.
+     *
+     * Reused rather than narrowed, deliberately: `assignPermission` and
+     * `resolvePermissionIds` already write *through* a global role on this
+     * branch, so a narrower write scope here would make `PUT /roles/:id` the
+     * only role write a global row is refused by. Whether a tenant may mutate
+     * a global row at all is an authorization-layer question, not a
+     * repository one.
+     */
+    private buildWriteWhere(
+        tenantId: string | undefined,
+        id: string,
+    ): Prisma.RoleWhereInput {
+        return { id, ...this.buildTenantWhere(tenantId) };
+    }
+
     async update(
         tenantId: string | undefined,
         id: string,
@@ -233,10 +254,8 @@ export class PrismaRoleRepository implements IRoleRepository {
     ): Promise<Role> {
         const { permissionIds, ...roleData } = data;
 
-        const where: Prisma.RoleWhereInput = {
-            id,
-            ...this.buildTenantWhere(tenantId),
-        };
+        const where: Prisma.RoleWhereInput =
+            this.buildWriteWhere(tenantId, id);
         const existingRole = await prisma.role.findFirst({ where });
 
         if (!existingRole) {
@@ -254,15 +273,18 @@ export class PrismaRoleRepository implements IRoleRepository {
                     permissionIds,
                 );
 
-                await tx.role.update({
-                    where: { id },
-                    data: {
-                        name: roleData.name,
-                        description: roleData.description,
-                        level: roleData.level,
-                        active: roleData.active,
-                    },
+                // The scoped statement. `update` would need a unique `where`
+                // and `Role.tenantId` is nullable, so the tenant reaches the
+                // write through `updateMany` and the count answers whether the
+                // row was still in scope when the write landed.
+                const { count } = await tx.role.updateMany({
+                    where,
+                    data: roleData,
                 });
+
+                if (count === 0) {
+                    throw new EntityNotFoundError("Role", id);
+                }
 
                 await tx.rolePermission.deleteMany({
                     where: { roleId: id },
@@ -277,39 +299,52 @@ export class PrismaRoleRepository implements IRoleRepository {
                     });
                 }
 
-                const updatedRole = await tx.role.findUnique({
-                    where: { id },
+                const updatedRole = await tx.role.findFirst({
+                    where,
                     include: { permissions: { include: { permission: true } } },
                 });
-                return this.mapToEntity(updatedRole!);
+                if (!updatedRole) {
+                    throw new EntityNotFoundError("Role", id);
+                }
+                return this.mapToEntity(updatedRole);
             });
         } else {
-            const role = await prisma.role.update({
-                where: { id },
-                data: {
-                    name: roleData.name,
-                    description: roleData.description,
-                    level: roleData.level,
-                    active: roleData.active,
-                },
-                include: { permissions: { include: { permission: true } } },
+            const { count } = await prisma.role.updateMany({
+                where,
+                data: roleData,
             });
-            return this.mapToEntity(role);
+
+            if (count === 0) {
+                throw new EntityNotFoundError("Role", id);
+            }
+
+            const updatedRole = await this.findById(tenantId, id);
+
+            if (!updatedRole) {
+                throw new EntityNotFoundError("Role", id);
+            }
+
+            return updatedRole;
         }
     }
 
     async delete(tenantId: string | undefined, id: string): Promise<void> {
-        const where: Prisma.RoleWhereInput = {
-            id,
-            ...this.buildTenantWhere(tenantId),
-        };
+        const where: Prisma.RoleWhereInput =
+            this.buildWriteWhere(tenantId, id);
         const existingRole = await prisma.role.findFirst({ where });
 
         if (!existingRole) {
             throw new EntityNotFoundError("Role", id);
         }
 
-        await prisma.role.delete({ where: { id } });
+        // One scoped statement rather than a read followed by an unscoped
+        // delete. `RolePermission.role` is `onDelete: Cascade`, and
+        // `deleteMany` issues the same DELETE, so the cascade is unchanged.
+        const { count } = await prisma.role.deleteMany({ where });
+
+        if (count === 0) {
+            throw new EntityNotFoundError("Role", id);
+        }
     }
 
     async createWithPermissions(

@@ -8,6 +8,10 @@ import { GetCategoryStatsUseCase } from "@/core/application/categories/get-categ
 import { CategoryType } from "@/core/entities/category.entity";
 import { CategoryResponse } from "@/core/application/dtos/responses/category/category.response";
 import { present } from "@/core/utils/use-case-result";
+import {
+    CreateCategoryDTO,
+    UpdateCategoryDTO,
+} from "@/core/application/dtos/requests/category.request";
 
 export class CategoryController {
     constructor(
@@ -22,7 +26,7 @@ export class CategoryController {
         const tenantId = req.tenantId!;
         const result = await this.createCategoryUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as CreateCategoryDTO,
         );
         return res
             .status(201)
@@ -81,7 +85,7 @@ export class CategoryController {
         const result = await this.updateCategoryUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateCategoryDTO,
         );
         return res.json(present(result, CategoryResponse.fromEntity));
     };

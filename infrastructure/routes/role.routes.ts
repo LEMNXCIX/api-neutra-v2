@@ -1,6 +1,8 @@
 import { Application, Router } from 'express';
 import type { RequestHandler } from 'express';
 import { requirePermission } from '@/middleware/authorization.middleware';
+import { validateDto } from '@/middleware/validation.middleware';
+import { CreateRoleDto, UpdateRoleDto } from '@/core/application/dtos/requests/role.request';
 import { RoleController } from '@/interface-adapters/controllers/role.controller';
 
 function roleRoutes(
@@ -115,7 +117,7 @@ function roleRoutes(
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('roles:write'), roleController.create);
+    router.post('/', authenticate, requirePermission('roles:write'), validateDto(CreateRoleDto), roleController.create);
 
     /**
      * @swagger
@@ -154,7 +156,7 @@ function roleRoutes(
      *       404:
      *         description: Role not found
      */
-    router.put('/:id', authenticate, requirePermission('roles:write'), roleController.update);
+    router.put('/:id', authenticate, requirePermission('roles:write'), validateDto(UpdateRoleDto), roleController.update);
 
     /**
      * @swagger

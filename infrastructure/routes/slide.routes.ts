@@ -3,6 +3,11 @@ import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { SlideController } from "@/interface-adapters/controllers/slide.controller";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    CreateSlideshowDto,
+    UpdateSlideshowDto,
+} from "@/core/application/dtos/requests/slide.request";
 
 function slide(
     app: Application,
@@ -77,6 +82,7 @@ function slide(
         authenticate,
         requireTenantFeature("SLIDES"),
         requirePermission("banners:write"),
+        validateDto(CreateSlideshowDto),
         slideController.create,
     );
 
@@ -124,6 +130,7 @@ function slide(
         authenticate,
         requireTenantFeature("SLIDES"),
         requirePermission("banners:write"),
+        validateDto(UpdateSlideshowDto),
         slideController.update,
     );
 

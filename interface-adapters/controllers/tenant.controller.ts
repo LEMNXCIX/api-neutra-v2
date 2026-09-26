@@ -11,6 +11,11 @@ import { TenantResponse } from "@/core/application/dtos/responses/tenant/tenant.
 import { present } from "@/core/utils/use-case-result";
 import { AppError } from "@/types/api-response";
 import { AuthErrorCodes } from "@/types/error-codes";
+import {
+    CreateTenantDTO,
+    UpdateTenantDTO,
+    UpdateTenantFeaturesDTO,
+} from "@/core/application/dtos/requests/tenant.request";
 
 export class TenantController {
     constructor(
@@ -34,7 +39,7 @@ export class TenantController {
             );
         }
         const result = await this.createTenantUseCase.execute(
-            req.body,
+            req.validatedBody as CreateTenantDTO,
             creatorId,
         );
         return res
@@ -42,7 +47,9 @@ export class TenantController {
             .json(present(result, TenantResponse.fromEntity));
     }
 
-    async getAll(req: Request, res: Response) {
+    // `_req`: the tenant list is the whole platform, so this handler needs
+    // nothing off the request. Same spelling `health.controller.ts` uses.
+    async getAll(_req: Request, res: Response) {
         const result = await this.getTenantsUseCase.execute();
         return res.json(
             present(result, (tenants) =>
@@ -68,7 +75,7 @@ export class TenantController {
     async update(req: Request, res: Response) {
         const result = await this.updateTenantUseCase.execute(
             req.params.id,
-            req.body,
+            req.validatedBody as UpdateTenantDTO,
         );
         return res.json(present(result, TenantResponse.fromEntity));
     }
@@ -82,7 +89,7 @@ export class TenantController {
     async updateFeatures(req: Request, res: Response) {
         const tenantId = req.params.id;
         // Body matches UpdateTenantFeaturesDto: { features: { KEY: bool } }
-        const { features } = req.body;
+        const { features } = req.validatedBody as UpdateTenantFeaturesDTO;
         const result = await this.updateTenantFeaturesUseCase.execute(
             tenantId,
             { features },

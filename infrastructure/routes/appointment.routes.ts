@@ -11,6 +11,12 @@ import {
     requireAnyRole,
     requirePermission,
 } from "@/middleware/authorization.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    CancelAppointmentDto,
+    CreateAppointmentDto,
+    UpdateAppointmentStatusDto,
+} from "@/core/application/dtos/requests/appointment.request";
 
 function appointments(
     app: Application,
@@ -161,7 +167,8 @@ function appointments(
     router.post(
         "/",
         requireTenantType("BOOKING", "HYBRID"),
-        authenticate, (req, res) =>
+        authenticate,
+        validateDto(CreateAppointmentDto), (req, res) =>
         appointmentController.create(req, res),
     );
 
@@ -360,7 +367,8 @@ function appointments(
     router.put(
         "/:id/cancel",
         requireTenantType("BOOKING", "HYBRID"),
-        authenticate, (req, res) =>
+        authenticate,
+        validateDto(CancelAppointmentDto), (req, res) =>
         appointmentController.cancel(req, res),
     );
 
@@ -405,6 +413,7 @@ function appointments(
         authenticate,
         requirePermission("appointments:write"),
         requireAnyRole(APPOINTMENT_OPERATIONAL_ROLES),
+        validateDto(UpdateAppointmentStatusDto),
         (req, res) => appointmentController.updateStatus(req, res),
     );
 

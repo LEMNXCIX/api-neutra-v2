@@ -1,6 +1,8 @@
 import { Application, Request, Response, Router } from 'express';
 import type { RequestHandler } from 'express';
 import { requirePermission } from '@/middleware/authorization.middleware';
+import { validateDto } from '@/middleware/validation.middleware';
+import { AddToCartDto, RemoveFromCartDto } from '@/core/application/dtos/requests/cart.request';
 import { CartController } from '@/interface-adapters/controllers/cart.controller';
 
 function cart(
@@ -104,7 +106,7 @@ function cart(
      *       400:
      *         description: Invalid input
      */
-    router.post('/add', authenticate, requirePermission('cart:write'), cartController.addToCart);
+    router.post('/add', authenticate, requirePermission('cart:write'), validateDto(AddToCartDto), cartController.addToCart);
 
     /**
      * @swagger
@@ -131,7 +133,7 @@ function cart(
      *       401:
      *         description: Unauthorized
      */
-    router.put('/remove', authenticate, requirePermission('cart:write'), cartController.removeFromCart);
+    router.put('/remove', authenticate, requirePermission('cart:write'), validateDto(RemoveFromCartDto), cartController.removeFromCart);
 
     /**
      * @swagger

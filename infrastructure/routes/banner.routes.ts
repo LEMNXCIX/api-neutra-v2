@@ -3,6 +3,11 @@ import type { RequestHandler } from "express";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { BannerController } from "@/interface-adapters/controllers/banner.controller";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    CreateBannerDto,
+    UpdateBannerDto,
+} from "@/core/application/dtos/requests/banner.request";
 
 function bannerRoutes(
     app: Application,
@@ -232,6 +237,7 @@ function bannerRoutes(
         authenticate,
         requireTenantFeature("BANNERS"),
         requirePermission("banners:write"),
+        validateDto(CreateBannerDto),
         bannerController.create,
     );
 
@@ -281,6 +287,7 @@ function bannerRoutes(
         authenticate,
         requireTenantFeature("BANNERS"),
         requirePermission("banners:write"),
+        validateDto(UpdateBannerDto),
         bannerController.update,
     );
 

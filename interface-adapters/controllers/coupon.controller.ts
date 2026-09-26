@@ -8,6 +8,11 @@ import { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupo
 import { GetCouponStatsUseCase } from "@/core/application/coupons/get-coupon-stats.use-case";
 import { CouponResponse } from "@/core/application/dtos/responses/coupon/coupon.response";
 import { present } from "@/core/utils/use-case-result";
+import {
+    CreateCouponDTO,
+    UpdateCouponDTO,
+    ValidateCouponDTO,
+} from "@/core/application/dtos/requests/coupon.request";
 
 export class CouponController {
     constructor(
@@ -24,7 +29,7 @@ export class CouponController {
         const tenantId = req.tenantId!;
         const result = await this.createCouponUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as CreateCouponDTO,
         );
         return res
             .status(201)
@@ -101,7 +106,7 @@ export class CouponController {
         const result = await this.updateCouponUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateCouponDTO,
         );
         return res.json(present(result, CouponResponse.fromEntity));
     };
@@ -117,7 +122,7 @@ export class CouponController {
         const tenantId = req.tenantId!;
         const result = await this.validateCouponUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as ValidateCouponDTO,
         );
 
         return res.json(
