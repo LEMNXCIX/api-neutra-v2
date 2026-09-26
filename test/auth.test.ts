@@ -35,6 +35,10 @@ describe('Auth routes', () => {
       expect(res.body?.errors?.[0]?.code).not.toBe(
         'VALIDATION_INVALID_FORMAT',
       );
+      // A rejected credential must say so. UnauthorizedError defaults to
+      // AUTH_UNAUTHORIZED, which the client reads as "you need to sign in", so a
+      // login failure would tell a user who just signed in to sign in again.
+      expect(res.body?.errors?.[0]?.code).toBe('AUTH_INVALID_CREDENTIALS');
     });
 
     test('the error is about the credentials, not the password length', async () => {

@@ -11,6 +11,7 @@ import {
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
 import { LoginDTO } from "@/core/application/dtos/requests/auth.request";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 export class LoginUseCase {
     constructor(
@@ -36,7 +37,10 @@ export class LoginUseCase {
         });
 
         if (!user || !user.password) {
-            throw new UnauthorizedError("Invalid credentials");
+            throw new UnauthorizedError(
+                "Invalid credentials",
+                AuthErrorCodes.INVALID_CREDENTIALS,
+            );
         }
 
         const isValid = await this.passwordHasher.compare(
@@ -45,7 +49,10 @@ export class LoginUseCase {
         );
 
         if (!isValid) {
-            throw new UnauthorizedError("Invalid credentials");
+            throw new UnauthorizedError(
+                "Invalid credentials",
+                AuthErrorCodes.INVALID_CREDENTIALS,
+            );
         }
 
         let userTenant = user.tenants?.find(
