@@ -10,6 +10,7 @@ import {
     UnauthorizedError,
 } from "@/core/domain/errors/domain-errors";
 import { AuthenticatedUser } from "@/core/domain/auth.types";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 export type ResolveAuthInput = {
     token: string;
@@ -54,7 +55,10 @@ export class ResolveAuthenticatedUserUseCase {
             }
 
             if (!user.active) {
-                throw new ForbiddenError("Account is inactive");
+                throw new ForbiddenError(
+                    "Account is inactive",
+                    AuthErrorCodes.ACCOUNT_INACTIVE,
+                );
             }
 
             let userTenant = user.tenants?.find(

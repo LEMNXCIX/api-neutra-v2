@@ -18,6 +18,12 @@ export enum AuthErrorCodes {
     PERMISSION_DENIED = "AUTH_PERMISSION_DENIED",
     ACCOUNT_INACTIVE = "AUTH_ACCOUNT_INACTIVE",
     USER_ALREADY_EXISTS = "AUTH_USER_ALREADY_EXISTS",
+    // Distinguished from FORBIDDEN: the caller is authenticated and the failure
+    // is about the subject of the request, not a missing role. FORBIDDEN was
+    // covering five unrelated situations and the client could only answer
+    // "you do not have permission", which sent users to the wrong remedy.
+    RESOURCE_NOT_OWNED = "AUTH_RESOURCE_NOT_OWNED",
+    SUPER_ADMIN_REQUIRED = "AUTH_SUPER_ADMIN_REQUIRED",
 }
 
 // Validation Errors (VALIDATION_*)
@@ -64,6 +70,10 @@ export enum TenantErrorCodes {
     TENANT_SLUG_EXISTS = "TENANT_SLUG_EXISTS",
     FEATURE_NOT_ENABLED = "TENANT_FEATURE_NOT_ENABLED",
     TYPE_NOT_ALLOWED = "TENANT_TYPE_NOT_ALLOWED",
+    // The user authenticated successfully and then turned out not to belong to
+    // the tenant they asked for. Not a permission problem: the remedy is adding
+    // them to the organization, not granting a role.
+    MEMBERSHIP_REQUIRED = "TENANT_MEMBERSHIP_REQUIRED",
 }
 
 // Business Logic Errors (BUSINESS_*)
@@ -243,6 +253,12 @@ export function getHttpStatusFromErrorCode(errorCode: ErrorCode): number {
     // Auth errors -> 401
     if (errorCode.startsWith("AUTH_")) {
         if (errorCode === AuthErrorCodes.FORBIDDEN) return 403;
+        if (errorCode === AuthErrorCodes.RESOURCE_NOT_OWNED) return 403;
+        if (errorCode === AuthErrorCodes.SUPER_ADMIN_REQUIRED) return 403;
+        // Thrown as ForbiddenError, so the class resolver already answers 403.
+        // It was declared but never emitted, so the two resolvers had never been
+        // compared for it.
+        if (errorCode === AuthErrorCodes.ACCOUNT_INACTIVE) return 403;
         return 401;
     }
 
@@ -265,6 +281,10 @@ export function getHttpStatusFromErrorCode(errorCode: ErrorCode): number {
     if (errorCode.startsWith("TENANT_")) {
         if (errorCode === "TENANT_NOT_FOUND") return 404;
         if (errorCode === "TENANT_INACTIVE") return 403;
+        // Authenticated but not a member: ForbiddenError already yields 403
+        // through httpStatusFromDomainError, and this keeps the two resolvers
+        // from disagreeing for the same code.
+        if (errorCode === TenantErrorCodes.MEMBERSHIP_REQUIRED) return 403;
         return 400;
     }
 

@@ -11,7 +11,7 @@ import {
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
 import { LoginDTO } from "@/core/application/dtos/requests/auth.request";
-import { AuthErrorCodes } from "@/types/error-codes";
+import { AuthErrorCodes, TenantErrorCodes } from "@/types/error-codes";
 
 export class LoginUseCase {
     constructor(
@@ -70,7 +70,10 @@ export class LoginUseCase {
         }
 
         if (!userTenant || !userTenant.role) {
-            throw new ForbiddenError("User is not authorized for this tenant");
+            throw new ForbiddenError(
+                "User is not authorized for this tenant",
+                TenantErrorCodes.MEMBERSHIP_REQUIRED,
+            );
         }
 
         const permissions =

@@ -10,6 +10,7 @@ import {
     hasPermission,
     isSuperAdmin,
 } from "@/core/domain/rbac/access-policy";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 export const APPOINTMENT_OPERATIONAL_ROLES = [
     "STAFF",
@@ -150,7 +151,10 @@ export function requireSuperAdmin(
 
     if (!isSuperAdmin(req.user)) {
         return next(
-            new ForbiddenError("Super administrator access is required"),
+            new ForbiddenError(
+                "Super administrator access is required",
+                AuthErrorCodes.SUPER_ADMIN_REQUIRED,
+            ),
         );
     }
 
@@ -173,6 +177,7 @@ export function requireOwnership(
             if (ownerId !== user.id) {
                 throw new ForbiddenError(
                     "You can only access your own resources",
+                    AuthErrorCodes.RESOURCE_NOT_OWNED,
                 );
             }
 

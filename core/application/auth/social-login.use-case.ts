@@ -91,7 +91,10 @@ export class SocialLoginUseCase {
         );
 
         if (!userTenant || !userTenant.role) {
-            throw new ForbiddenError("User not authorized for this tenant");
+            throw new ForbiddenError(
+                "User not authorized for this tenant",
+                TenantErrorCodes.MEMBERSHIP_REQUIRED,
+            );
         }
 
         const token = this.tokenGenerator.generate({
