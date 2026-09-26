@@ -7,6 +7,7 @@ import {
     isTest,
 } from "@/core/domain/constants";
 import { TENANT_HTTP_CONSTANTS } from "@/config/infrastructure-constants";
+import { evaluateTenantActive } from "@/core/domain/tenant/feature-policy";
 import config from "@/config/index.config";
 import type { ILogger } from "@/core/providers/logger.interface";
 
@@ -134,15 +135,16 @@ export function createTenantMiddleware(deps: {
                 return;
             }
 
-            if (!tenant.active) {
+            const activity = evaluateTenantActive({ active: tenant.active });
+            if (!activity.allowed) {
                 res.status(403).json({
                     success: false,
                     statusCode: 403,
                     message: "Tenant is inactive. Please contact support.",
                     errors: [
                         {
-                            code: ErrorCodes.TENANT_INACTIVE,
-                            message: "Tenant is inactive.",
+                            code: activity.code,
+                            message: activity.message,
                         },
                     ],
                 });

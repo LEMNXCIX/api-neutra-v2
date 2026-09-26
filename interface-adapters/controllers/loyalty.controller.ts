@@ -19,7 +19,7 @@ import {
     UnauthorizedError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
-import { ROLE_CONSTANTS } from "@/core/domain/constants";
+import { isSuperAdmin } from "@/core/domain/rbac/access-policy";
 import { AuthenticatedUser } from "@/types/rbac";
 
 function requireUserId(req: Request): string {
@@ -60,7 +60,7 @@ function requireSuperAdmin(user: AuthenticatedUser | undefined): void {
     if (!user?.role) {
         throw new UnauthorizedError();
     }
-    if (user.role.name !== ROLE_CONSTANTS.SUPER_ADMIN) {
+    if (!isSuperAdmin(user)) {
         throw new ForbiddenError(
             "Super administrator access is required",
             "FORBIDDEN",

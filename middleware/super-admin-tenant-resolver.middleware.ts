@@ -1,18 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "@/types/api-response";
 import { TenantErrorCodes } from "@/types/error-codes";
-import { ROLE_CONSTANTS } from "@/core/domain/constants";
+import { isSuperAdmin } from "@/core/domain/rbac/access-policy";
 
 export function resolveSuperAdminTenant(
     req: Request,
     res: Response,
     next: NextFunction,
 ) {
-    const user = req.user;
-    const isSuperAdmin =
-        user && user.role && user.role.name === ROLE_CONSTANTS.SUPER_ADMIN;
-
-    if (isSuperAdmin) {
+    if (isSuperAdmin(req.user)) {
         const queryTenantId = req.query.tenantId as string | undefined;
         if (queryTenantId) {
             req.tenantId = queryTenantId === "all" ? undefined : queryTenantId;

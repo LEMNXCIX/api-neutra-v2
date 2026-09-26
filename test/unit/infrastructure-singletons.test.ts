@@ -248,7 +248,6 @@ describe("infrastructure composition has no module-level singletons", () => {
             "infrastructure/providers/pino-logger.provider.ts",
             "infrastructure/providers/redis.provider.ts",
             "middleware/optional-authenticate.factory.ts",
-            "middleware/feature.middleware.ts",
             "infrastructure/services/whatsapp.service.ts",
             "infrastructure/services/whatsapp-bot.service.ts",
             "app.ts",

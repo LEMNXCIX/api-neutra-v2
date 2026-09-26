@@ -20,6 +20,17 @@ export function evaluateFeatureEnabled(params: {
     };
 }
 
+export function evaluateTenantActive(params: {
+    active: boolean;
+}): TenantGateDecision {
+    if (params.active) return { allowed: true };
+    return {
+        allowed: false,
+        code: "TENANT_INACTIVE",
+        message: "Tenant is inactive.",
+    };
+}
+
 export function evaluateTenantType(params: {
     type: string | undefined;
     allowed: readonly string[];
