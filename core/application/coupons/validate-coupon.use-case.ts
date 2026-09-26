@@ -11,7 +11,7 @@ import {
     isPersonalCoupon,
     isRewardCoupon,
     isLoyaltyTemplateCoupon,
-} from "@/core/entities/coupon.entity";
+} from "@/core/domain/coupon/coupon.policy";
 import {
     EntityNotFoundError,
     BusinessRuleViolationError,

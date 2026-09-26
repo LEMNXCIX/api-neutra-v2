@@ -16,7 +16,7 @@ export interface TenantConfig {
         currency?: string;
         language?: string;
         timezone?: string;
-        businessHours?: import("@/core/utils/working-hours").WorkingHours;
+        businessHours?: import("@/core/domain/booking/working-hours").WorkingHours;
         holidays?: string[]; // "YYYY-MM-DD"
     };
     features?: Record<string, boolean>;

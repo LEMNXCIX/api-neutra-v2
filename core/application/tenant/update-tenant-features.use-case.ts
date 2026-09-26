@@ -3,7 +3,7 @@ import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.inter
 import {
     assertTenantFeatureDependencies,
     isLoyaltyOrCouponsDisabling,
-} from "@/core/entities/feature.entity";
+} from "@/core/domain/feature/feature.policy";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { UpdateTenantFeaturesDTO } from "@/core/application/dtos/requests/tenant.request";

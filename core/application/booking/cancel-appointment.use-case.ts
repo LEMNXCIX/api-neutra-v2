@@ -3,9 +3,11 @@ import { IFeatureRepository } from "@/core/repositories/feature.repository.inter
 import { IQueueProvider } from "@/core/providers/queue-provider.interface";
 import {
     AppointmentStatus,
+} from "@/core/entities/appointment.entity";
+import {
     isCancellable,
     isCustomerCancellable,
-} from "@/core/entities/appointment.entity";
+} from "@/core/domain/appointment/appointment.policy";
 import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {

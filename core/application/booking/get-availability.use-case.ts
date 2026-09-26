@@ -15,7 +15,7 @@ import {
     intersectRanges,
     isHoliday,
     toMinutes,
-} from "@/core/utils/working-hours";
+} from "@/core/domain/booking/working-hours";
 
 export class GetAvailabilityUseCase {
     constructor(

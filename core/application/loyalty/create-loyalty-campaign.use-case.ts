@@ -3,14 +3,16 @@ import { ITenantRepository } from "@/core/repositories/tenant.repository.interfa
 import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
 import { Tenant } from "@/core/entities/tenant.entity";
 import {
+    LoyaltyCampaign,
+} from "@/core/entities/loyalty.entity";
+import {
     assertLoyaltyCampaignFeatures,
     assertLoyaltyCampaignSourceCompatible,
     isValidLoyaltyCampaignDates,
     isValidLoyaltyCampaignMaxClaims,
     isValidLoyaltyCampaignTarget,
     isValidLoyaltyRewardValidDays,
-    LoyaltyCampaign,
-} from "@/core/entities/loyalty.entity";
+} from "@/core/domain/loyalty/loyalty.policy";
 import { CouponType } from "@/core/entities/coupon.entity";
 import {
     EntityNotFoundError,

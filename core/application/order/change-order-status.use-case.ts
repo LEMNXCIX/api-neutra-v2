@@ -1,5 +1,6 @@
 import { IOrderRepository } from "@/core/repositories/order.repository.interface";
-import { OrderStatus, canTransitionTo } from "@/core/entities/order.entity";
+import { OrderStatus } from "@/core/entities/order.entity";
+import { canTransitionTo } from "@/core/domain/order/order.policy";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { InvalidStateError } from "@/core/domain/errors/domain-errors";

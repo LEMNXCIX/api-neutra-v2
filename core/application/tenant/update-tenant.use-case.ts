@@ -11,7 +11,7 @@ import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.inter
 import {
     assertTenantFeatureDependencies,
     isLoyaltyOrCouponsDisabling,
-} from "@/core/entities/feature.entity";
+} from "@/core/domain/feature/feature.policy";
 
 export class UpdateTenantUseCase {
     constructor(

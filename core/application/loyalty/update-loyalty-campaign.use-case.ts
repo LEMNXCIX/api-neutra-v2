@@ -2,14 +2,16 @@ import { IFeatureRepository } from "@/core/repositories/feature.repository.inter
 import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
 import {
+    LoyaltyCampaign,
+    LoyaltyCampaignStatus,
+} from "@/core/entities/loyalty.entity";
+import {
     assertLoyaltyCampaignSourceCompatible,
     isValidLoyaltyCampaignDates,
     isValidLoyaltyCampaignMaxClaims,
     isValidLoyaltyCampaignTarget,
     isValidLoyaltyRewardValidDays,
-    LoyaltyCampaign,
-    LoyaltyCampaignStatus,
-} from "@/core/entities/loyalty.entity";
+} from "@/core/domain/loyalty/loyalty.policy";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,

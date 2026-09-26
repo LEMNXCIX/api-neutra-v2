@@ -1,4 +1,6 @@
-import { assertLoyaltyCampaignFeatures } from "@/core/entities/loyalty.entity";
+import {
+    assertLoyaltyCampaignFeatures,
+} from "@/core/domain/loyalty/loyalty.policy";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import {
     ILoyaltyRepository,

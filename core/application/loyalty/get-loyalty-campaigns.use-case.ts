@@ -2,11 +2,13 @@ import { IFeatureRepository } from "@/core/repositories/feature.repository.inter
 import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
 import {
-    assertLoyaltyCampaignSourceCompatible,
     LoyaltyCampaign,
     LoyaltyCampaignSource,
     LoyaltyCampaignStatus,
 } from "@/core/entities/loyalty.entity";
+import {
+    assertLoyaltyCampaignSourceCompatible,
+} from "@/core/domain/loyalty/loyalty.policy";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
 import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";

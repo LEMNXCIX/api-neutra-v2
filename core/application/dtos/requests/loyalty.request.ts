@@ -20,8 +20,10 @@ import {
     LoyaltyCampaignAction,
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
-    MAX_LOYALTY_PRISMA_INT,
 } from "@/core/entities/loyalty.entity";
+import {
+    MAX_LOYALTY_PRISMA_INT,
+} from "@/core/domain/loyalty/loyalty.policy";
 
 export interface LoyaltyRewardDefinitionDTO {
     type: CouponType;

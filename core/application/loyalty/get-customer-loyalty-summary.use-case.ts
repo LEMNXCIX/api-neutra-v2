@@ -1,14 +1,16 @@
 import {
-    assertLoyaltyCampaignFeatures,
-    getEffectiveLoyaltyCampaignStatus,
-    getLoyaltyCampaignCustomerStatus,
-    getLoyaltyCampaignProgressValue,
-    getLoyaltyCampaignRemainingValue,
     LoyaltyCampaign,
     LoyaltyCampaignCustomerSummary,
     LoyaltyCampaignRewardClaim,
     LoyaltyCampaignStatus,
 } from "@/core/entities/loyalty.entity";
+import {
+    assertLoyaltyCampaignFeatures,
+    getEffectiveLoyaltyCampaignStatus,
+    getLoyaltyCampaignCustomerStatus,
+    getLoyaltyCampaignProgressValue,
+    getLoyaltyCampaignRemainingValue,
+} from "@/core/domain/loyalty/loyalty.policy";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
 import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";

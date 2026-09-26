@@ -7,7 +7,9 @@ import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
 import { CreateTenantDTO } from "@/core/application/dtos/requests/tenant.request";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { assertTenantFeatureDependencies } from "@/core/entities/feature.entity";
+import {
+    assertTenantFeatureDependencies,
+} from "@/core/domain/feature/feature.policy";
 
 export class CreateTenantUseCase {
     constructor(
