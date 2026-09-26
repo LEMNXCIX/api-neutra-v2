@@ -82,6 +82,10 @@ export interface ILoyaltyRepository {
         userId: string,
         campaignIds: string[],
     ): Promise<LoyaltyCampaignRewardClaim[]>;
+    /**
+     * How many reward claims the tenant holds, in one read.
+     */
+    countCampaignRewardClaims(tenantId: string): Promise<number>;
     getCampaignStats(
         tenantId: string,
         campaignId: string,

@@ -267,6 +267,7 @@ type LoyaltyRewardClaimDelegate = {
         };
         include: { coupon: true };
     }): Promise<ClaimRecord[]>;
+    count(args: { where: { tenantId: string } }): Promise<number>;
     create(args: {
         data: ClaimCreateData;
         include: { coupon: true };
@@ -1162,6 +1163,19 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             include: { coupon: true },
         });
         return rows.map((row) => this.mapCampaignClaim(row));
+    }
+
+    /**
+     * How many reward claims a tenant holds, in one query.
+     *
+     * This counts claim rows rather than summing each campaign's claimedCount
+     * column, so a tenant whose claims were removed by a cascading user delete
+     * reports the number that is actually there. Summing the column would
+     * report the stale one.
+     */
+    async countCampaignRewardClaims(tenantId: string): Promise<number> {
+        this.validateIdentity(tenantId);
+        return this.db.loyaltyRewardClaim.count({ where: { tenantId } });
     }
 
     async getCampaignStats(

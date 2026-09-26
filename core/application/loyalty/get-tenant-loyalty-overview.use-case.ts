@@ -37,11 +37,13 @@ export async function buildLoyaltyCampaignTenantOverview(
     loyaltyRepository: ILoyaltyRepository,
 ): Promise<LoyaltyCampaignTenantOverview> {
     const campaigns = await loyaltyRepository.listCampaigns(tenant.id);
-    const campaignStats = await Promise.all(
-        campaigns.map((campaign) =>
-            loyaltyRepository.getCampaignStats(tenant.id, campaign.id),
-        ),
-    );
+    // One claim count for the tenant, not one statistics read per campaign:
+    // getCampaignStats re-reads the campaign to reach a claimedCount that this
+    // list already holds, so the loop bought a query per campaign and nothing
+    // else. Counting claim rows is also the honest total when a campaign's
+    // claimedCount has drifted from its claims.
+    const totalClaims =
+        await loyaltyRepository.countCampaignRewardClaims(tenant.id);
     return {
         tenantId: tenant.id,
         name: tenant.name,
@@ -60,10 +62,7 @@ export async function buildLoyaltyCampaignTenantOverview(
             archivedCampaignCount: campaigns.filter(
                 (campaign) => campaign.status === LoyaltyCampaignStatus.ARCHIVED,
             ).length,
-            totalClaims: campaignStats.reduce(
-                (total, stat) => total + stat.claimedCount,
-                0,
-            ),
+            totalClaims,
         },
     };
 }

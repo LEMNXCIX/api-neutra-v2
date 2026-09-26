@@ -195,6 +195,7 @@ describe("cross-tenant loyalty overview", () => {
         const loyaltyRepository = {
             listCampaigns: jest.fn().mockResolvedValue([]),
             getCampaignStats: jest.fn(),
+            countCampaignRewardClaims: jest.fn().mockResolvedValue(0),
         };
         const useCase = new GetAllTenantsLoyaltyOverviewUseCase(
             loyaltyRepository as never,

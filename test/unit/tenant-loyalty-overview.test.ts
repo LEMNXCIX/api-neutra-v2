@@ -92,18 +92,29 @@ function setup(options: SetupOptions = {}) {
         async (tenantId: string): Promise<LoyaltyCampaign[]> =>
             tenantId === TENANT_ID ? campaigns : [],
     );
-    const getCampaignStats = jest.fn(
-        async (
-            tenantId: string,
-            campaignId: string,
-        ): Promise<LoyaltyCampaignStats> =>
-            makeStats({
-                campaignId,
-                claimedCount: claimed[campaignId] ?? 0,
-                maxClaims: null,
-                remainingClaims: null,
-            }),
-    );
+      const getCampaignStats = jest.fn(
+          async (
+              tenantId: string,
+              campaignId: string,
+          ): Promise<LoyaltyCampaignStats> =>
+              makeStats({
+                  campaignId,
+                  claimedCount: claimed[campaignId] ?? 0,
+                  maxClaims: null,
+                  remainingClaims: null,
+              }),
+      );
+      // The overview counts the tenant's claims in one read now, so the
+      // expectation is the sum the per-campaign loop used to produce.
+      const countCampaignRewardClaims = jest.fn(
+          async (tenantId: string): Promise<number> =>
+              tenantId === TENANT_ID
+                  ? Object.values(claimed).reduce(
+                        (total, value) => total + value,
+                        0,
+                    )
+                  : 0,
+      );
     const findById = jest.fn(
         async (id: string): Promise<Tenant | null> =>
             id === TENANT_ID ? tenant : null,
@@ -116,10 +127,11 @@ function setup(options: SetupOptions = {}) {
     return {
         listCampaigns,
         getCampaignStats,
+        countCampaignRewardClaims,
         findById,
         getTenantFeatureStatus,
         useCase: new GetTenantLoyaltyOverviewUseCase(
-            { listCampaigns, getCampaignStats } as never,
+            { listCampaigns, getCampaignStats, countCampaignRewardClaims } as never,
             { findById } as never,
             { getTenantFeatureStatus } as never,
         ),
@@ -293,7 +305,9 @@ describe("GetTenantLoyaltyOverviewUseCase", () => {
     });
 
     test("returns zeroed statistics for a tenant with no campaigns", async () => {
-        const { useCase, getCampaignStats } = setup({ campaigns: [] });
+        const { useCase, countCampaignRewardClaims } = setup({
+            campaigns: [],
+        });
 
         const result = await useCase.execute(TENANT_ID);
 
@@ -306,30 +320,31 @@ describe("GetTenantLoyaltyOverviewUseCase", () => {
             archivedCampaignCount: 0,
             totalClaims: 0,
         });
-        expect(getCampaignStats).not.toHaveBeenCalled();
+        expect(countCampaignRewardClaims).toHaveBeenCalledWith(TENANT_ID);
     });
 
-    test("reads campaign statistics once per listed campaign, scoped to the tenant", async () => {
+    test("counts the tenant's claims in one read, not one statistics read per campaign", async () => {
         const campaigns = lifecycleCampaigns();
-        const { useCase, listCampaigns, getCampaignStats } = setup({
+        const { useCase, listCampaigns, countCampaignRewardClaims, getCampaignStats } =
+            setup({
             campaigns,
             claimed: lifecycleClaims,
-        });
+            });
 
-        await useCase.execute(TENANT_ID);
+        const result = await useCase.execute(TENANT_ID);
 
         expect(listCampaigns).toHaveBeenCalledTimes(1);
         expect(listCampaigns).toHaveBeenCalledWith(TENANT_ID);
-        expect(getCampaignStats).toHaveBeenCalledTimes(campaigns.length);
-        expect(getCampaignStats.mock.calls).toEqual([
-            [TENANT_ID, "campaign-draft"],
-            [TENANT_ID, "campaign-active"],
-            [TENANT_ID, "campaign-ended"],
-            [TENANT_ID, "campaign-archived"],
-        ]);
-        expect(getCampaignStats).not.toHaveBeenCalledWith(
-            TENANT_ID,
-            "campaign-of-another-tenant",
+        // Was four reads, one per listed campaign, each re-reading a campaign
+        // to reach a claimedCount the list already held.
+        expect(countCampaignRewardClaims).toHaveBeenCalledTimes(1);
+        expect(countCampaignRewardClaims).toHaveBeenCalledWith(TENANT_ID);
+        expect(getCampaignStats).not.toHaveBeenCalled();
+        expect(result.data?.stats.totalClaims).toBe(
+            Object.values(lifecycleClaims).reduce(
+            (total, value) => total + value,
+            0,
+            ),
         );
     });
 });
