@@ -9,14 +9,6 @@ import {
     UpdateLoyaltyCampaignData,
 } from "@/core/repositories/loyalty.repository.interface";
 import {
-    canTransitionLoyaltyCampaignStatus,
-    getLoyaltyCampaignProgressValue,
-    getLoyaltyCampaignSourceTypes,
-    isLoyaltyCampaignClaimable,
-    isValidLoyaltyCampaignDates,
-    isValidLoyaltyCampaignMaxClaims,
-    isValidLoyaltyCampaignTarget,
-    isValidLoyaltyRewardValidDays,
     LoyaltyCampaign,
     LoyaltyCampaignMetric,
     LoyaltyCampaignReward,
@@ -29,6 +21,16 @@ import {
     LoyaltyRewardClaimStatus,
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
+import {
+    canTransitionLoyaltyCampaignStatus,
+    getLoyaltyCampaignProgressValue,
+    getLoyaltyCampaignSourceTypes,
+    isLoyaltyCampaignClaimable,
+    isValidLoyaltyCampaignDates,
+    isValidLoyaltyCampaignMaxClaims,
+    isValidLoyaltyCampaignTarget,
+    isValidLoyaltyRewardValidDays,
+} from "@/core/domain/loyalty/loyalty.policy";
 import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
     BusinessRuleViolationError,

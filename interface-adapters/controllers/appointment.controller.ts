@@ -7,7 +7,7 @@ import { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appo
 import { GetAvailabilityUseCase } from "@/core/application/booking/get-availability.use-case";
 import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
 import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";
-import { isAppointmentStatus } from "@/core/entities/appointment.entity";
+import { isAppointmentStatus } from "@/core/domain/appointment/appointment.policy";
 import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
 import { AuthenticatedUser } from "@/types/rbac";
 import {

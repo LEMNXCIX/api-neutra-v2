@@ -23,8 +23,10 @@ import {
     LoyaltyCampaignStatus,
     LoyaltyRewardClaimStatus,
     LoyaltyStatus,
-    MAX_LOYALTY_PRISMA_INT,
 } from "@/core/entities/loyalty.entity";
+import {
+    MAX_LOYALTY_PRISMA_INT,
+} from "@/core/domain/loyalty/loyalty.policy";
 import { CouponType } from "@/core/entities/coupon.entity";
 import { Success } from "@/core/utils/use-case-result";
 import {

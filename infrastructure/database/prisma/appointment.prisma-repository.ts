@@ -18,21 +18,19 @@ import {
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
 import {
-    hasReachedUsageLimit,
-    isCouponOwnedBy,
-    isExpired,
-    isLoyaltyTemplateCoupon,
-    isPersonalCoupon,
-    isRewardCoupon,
-} from "@/core/entities/coupon.entity";
+    assertCouponRedeemable,
+    toRedeemableCoupon,
+} from "@/core/domain/coupon/coupon.policy";
 import {
-    getLoyaltyCampaignContributionValue,
-    getLoyaltyCampaignSource,
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
     LoyaltyLedgerEntryType,
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
+import {
+    getLoyaltyCampaignContributionValue,
+    getLoyaltyCampaignSource,
+} from "@/core/domain/loyalty/loyalty.policy";
 import {
     BusinessRuleViolationError,
     DuplicateEntityError,
@@ -187,47 +185,10 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                       if (!coupon) {
                           throw new EntityNotFoundError("Coupon", couponId);
                       }
-                      if (isLoyaltyTemplateCoupon(coupon)) {
-                          throw new BusinessRuleViolationError(
-                              "Loyalty reward templates cannot be redeemed",
-                              "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
-                          );
-                      }
-                      if (!isCouponOwnedBy(coupon, data.userId)) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon is not available for this user",
-                              "COUPON_NOT_OWNED",
-                          );
-                      }
-                      if (
-                          isRewardCoupon(coupon) &&
-                          !isPersonalCoupon(coupon)
-                      ) {
-                          throw new BusinessRuleViolationError(
-                              "Reward coupon is not assigned to a customer",
-                              "REWARD_COUPON_NOT_OWNED",
-                          );
-                      }
-                      if (!coupon.active) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon is not active",
-                          );
-                      }
-                      if (isExpired(coupon)) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon has expired",
-                          );
-                      }
-                      if (
-                          hasReachedUsageLimit({
-                              usageCount: coupon.usageCount,
-                              usageLimit: coupon.usageLimit ?? undefined,
-                          })
-                      ) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon usage limit reached",
-                          );
-                      }
+                      assertCouponRedeemable(
+                          toRedeemableCoupon(coupon),
+                          data.userId,
+                      );
                       if (
                           coupon.applicableServices.length > 0 &&
                           !coupon.applicableServices.includes(data.serviceId)

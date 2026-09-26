@@ -21,8 +21,6 @@ export interface OrderStatusUpdate {
  * Order Repository Interface - Tenant-Scoped
  */
 export interface IOrderRepository {
-    create(tenantId: string, data: OrderCreateData): Promise<Order>;
-
     /**
      * Creates an order and adjusts product inventory atomically.
      * Each stock adjustment is guarded (stock >= amount); if any product

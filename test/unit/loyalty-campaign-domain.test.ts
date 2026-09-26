@@ -1,4 +1,10 @@
 import {
+    LoyaltyCampaignMetric,
+    LoyaltyCampaignSource,
+    LoyaltyCampaignStatus,
+    LoyaltySourceType,
+} from "@/core/entities/loyalty.entity";
+import {
     canTransitionLoyaltyCampaignStatus,
     getEffectiveLoyaltyCampaignStatus,
     getLoyaltyCampaignContributionValue,
@@ -13,11 +19,7 @@ import {
     isValidLoyaltyRewardValidDays,
     isValidPositiveDecimalString,
     MAX_LOYALTY_PRISMA_INT,
-    LoyaltyCampaignMetric,
-    LoyaltyCampaignSource,
-    LoyaltyCampaignStatus,
-    LoyaltySourceType,
-} from "@/core/entities/loyalty.entity";
+} from "@/core/domain/loyalty/loyalty.policy";
 import { TenantType } from "@/core/entities/tenant.entity";
 
 const startsAt = new Date("2030-01-01T00:00:00.000Z");

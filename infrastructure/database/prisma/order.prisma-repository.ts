@@ -14,23 +14,21 @@ import {
 import { Order, OrderStatus, OrderItem } from "@/core/entities/order.entity";
 import { Product } from "@/core/entities/product.entity";
 import {
-    hasReachedUsageLimit,
+    assertCouponRedeemable,
     isApplicableToCategory,
     isApplicableToProduct,
-    isCouponOwnedBy,
-    isExpired,
-    isLoyaltyTemplateCoupon,
-    isPersonalCoupon,
-    isRewardCoupon,
-} from "@/core/entities/coupon.entity";
+    toRedeemableCoupon,
+} from "@/core/domain/coupon/coupon.policy";
 import {
-    getLoyaltyCampaignContributionValue,
-    getLoyaltyCampaignSource,
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
     LoyaltyLedgerEntryType,
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
+import {
+    getLoyaltyCampaignContributionValue,
+    getLoyaltyCampaignSource,
+} from "@/core/domain/loyalty/loyalty.policy";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
@@ -83,48 +81,6 @@ export class PrismaOrderRepository implements IOrderRepository {
         };
     }
 
-    async create(tenantId: string, data: OrderCreateData): Promise<Order> {
-        const subtotal = data.items.reduce(
-            (sum, item) => sum + item.price * item.amount,
-            0,
-        );
-        const discountAmount = 0;
-        const total = subtotal - discountAmount;
-
-        const order = await prisma.order.create({
-            data: {
-                userId: data.userId,
-                tenantId,
-                status: "PENDIENTE" as PrismaOrderStatus,
-                couponId: data.couponId,
-                subtotal,
-                total,
-                discountAmount,
-                items: {
-                    create: data.items.map((item) => ({
-                        productId: item.productId,
-                        amount: item.amount,
-                        price: item.price,
-                    })),
-                },
-            },
-            include: {
-                items: {
-                    include: {
-                        product: true,
-                    },
-                },
-                user: {
-                    select: {
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
-        });
-        return this.mapToEntity(order);
-    }
-
     async createWithInventoryAdjustment(
         tenantId: string,
         data: OrderCreateData,
@@ -151,42 +107,10 @@ export class PrismaOrderRepository implements IOrderRepository {
             }
 
             if (coupon) {
-                if (isLoyaltyTemplateCoupon(coupon)) {
-                    throw new BusinessRuleViolationError(
-                        "Loyalty reward templates cannot be redeemed",
-                        "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
-                    );
-                }
-                if (!isCouponOwnedBy(coupon, data.userId)) {
-                    throw new BusinessRuleViolationError(
-                        "Coupon is not available for this user",
-                        "COUPON_NOT_OWNED",
-                    );
-                }
-                if (isRewardCoupon(coupon) && !isPersonalCoupon(coupon)) {
-                    throw new BusinessRuleViolationError(
-                        "Reward coupon is not assigned to a customer",
-                        "REWARD_COUPON_NOT_OWNED",
-                    );
-                }
-                if (!coupon.active) {
-                    throw new BusinessRuleViolationError(
-                        "Coupon is not active",
-                    );
-                }
-                if (isExpired(coupon)) {
-                    throw new BusinessRuleViolationError("Coupon has expired");
-                }
-                if (
-                    hasReachedUsageLimit({
-                        usageCount: coupon.usageCount,
-                        usageLimit: coupon.usageLimit ?? undefined,
-                    })
-                ) {
-                    throw new BusinessRuleViolationError(
-                        "Coupon usage limit reached",
-                    );
-                }
+                assertCouponRedeemable(
+                    toRedeemableCoupon(coupon),
+                    data.userId,
+                );
 
                 const productIds = [
                     ...new Set(data.items.map((item) => item.productId)),

@@ -1,12 +1,14 @@
 // Pure coupon math: financial risk, cheap tests
 import {
     CouponType,
+} from "@/core/entities/coupon.entity";
+import {
     calculateDiscount,
     hasReachedUsageLimit,
     isApplicableToCategory,
     isApplicableToProduct,
     isExpired,
-} from "@/core/entities/coupon.entity";
+} from "@/core/domain/coupon/coupon.policy";
 
 function coupon(overrides: Partial<Parameters<typeof calculateDiscount>[0]> = {}) {
     return {

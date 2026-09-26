@@ -214,6 +214,11 @@ describe("Prisma order coupon transaction", () => {
             { isLoyaltyTemplate: true, ownerId: null, isReward: false },
             "Loyalty reward templates cannot be redeemed",
         ],
+        [
+            "an unassigned reward",
+            { isReward: true, ownerId: null },
+            "Reward coupon is not assigned to a customer",
+        ],
     ])("rejects %s coupons before inventory changes", async (_, overrides, message) => {
         passTransaction();
         jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(

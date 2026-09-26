@@ -1,8 +1,10 @@
 import {
     Appointment,
     AppointmentStatus,
-    canTransitionAppointmentStatus,
 } from "@/core/entities/appointment.entity";
+import {
+    canTransitionAppointmentStatus,
+} from "@/core/domain/appointment/appointment.policy";
 import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
 import { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appointment.use-case";
 import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";

@@ -4,7 +4,9 @@ import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalt
 import { CreateTenantUseCase } from "@/core/application/tenant/create-tenant.use-case";
 import { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
 import { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-tenant-features.use-case";
-import { assertTenantFeatureDependencies } from "@/core/entities/feature.entity";
+import {
+    assertTenantFeatureDependencies,
+} from "@/core/domain/feature/feature.policy";
 import { TenantType } from "@/core/entities/tenant.entity";
 
 function createUseCase() {
