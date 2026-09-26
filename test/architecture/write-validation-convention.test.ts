@@ -187,11 +187,7 @@ const WRITE_ROUTES = ROUTES.filter((route) =>
  */
 const UNWIRED_WRITE_ROUTES: ReadonlyArray<{ route: string; reason: string }> = [
     { route: "infrastructure/routes/appointment.routes.ts DELETE /:id", reason: "bodyless: reads the path param and the actor only" },
-    { route: "infrastructure/routes/auth.routes.ts POST /login", reason: "report-only: the auth surface is out of scope here" },
-    { route: "infrastructure/routes/auth.routes.ts POST /signup", reason: "report-only: the auth surface is out of scope here" },
-    { route: "infrastructure/routes/auth.routes.ts POST /logout", reason: "report-only: the auth surface is out of scope here" },
-    { route: "infrastructure/routes/auth.routes.ts POST /forgot-password", reason: "report-only: the auth surface is out of scope here" },
-    { route: "infrastructure/routes/auth.routes.ts POST /reset-password", reason: "report-only: the auth surface is out of scope here" },
+    { route: "infrastructure/routes/auth.routes.ts POST /logout", reason: "bodyless: ends the session, reads no body" },
     { route: "infrastructure/routes/banner.routes.ts POST /:id/impression", reason: "bodyless: an analytics counter keyed on the path param" },
     { route: "infrastructure/routes/banner.routes.ts POST /:id/click", reason: "bodyless: an analytics counter keyed on the path param" },
     { route: "infrastructure/routes/banner.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
@@ -231,9 +227,9 @@ describe("case 6 — every body-taking write route carries a validateDto", () =>
     });
 
     test("the unwired list is exactly as long as it claims to be", () => {
-        // 28 entries. Pinned so a route cannot be added and quietly skipped:
+        // 24 entries. Pinned so a route cannot be added and quietly skipped:
         // the count has to be moved in the same commit that adds a route.
-        expect(UNWIRED_WRITE_ROUTES).toHaveLength(28);
+        expect(UNWIRED_WRITE_ROUTES).toHaveLength(24);
     });
 
     test("every unwired entry gives a reason, and no body-reading handler is among them", () => {
@@ -422,13 +418,6 @@ type RawRead = { file: string; method: string; reason: string; onWriteRoute: boo
  * exception without updating this list also fails.
  */
 const ALLOWED_RAW_BODY_READS: ReadonlyArray<RawRead> = [
-    // Report-only in this change: the auth surface, where several handlers
-    // legitimately take a tenant-free body and the decision to validate them
-    // is a separate call.
-    { file: "auth.controller.ts", method: "login", reason: "auth surface, report-only in this change", onWriteRoute: true },
-    { file: "auth.controller.ts", method: "signup", reason: "auth surface, report-only in this change", onWriteRoute: true },
-    { file: "auth.controller.ts", method: "forgotPassword", reason: "auth surface, report-only in this change", onWriteRoute: true },
-    { file: "auth.controller.ts", method: "resetPassword", reason: "auth surface, report-only in this change", onWriteRoute: true },
     // Not mounted on any route: no DTO class exists, so there is nothing
     // validatedBody could hold.
     { file: "cart.controller.ts", method: "changeAmount", reason: "not mounted on any route; no DTO class", onWriteRoute: false },
@@ -536,10 +525,10 @@ describe("case 8 — no controller reads req.body on a write path", () => {
     });
 
     test("the exception list is exactly as long as it claims to be", () => {
-        // 14 entries: 4 auth, 3 unrouted, 5 narrowings, 1 single-field read,
-        // 1 GET read. Counted so a new raw read cannot appear without a
-        // deliberate line added here.
-        expect(ALLOWED_RAW_BODY_READS).toHaveLength(14);
+        // 10 entries: 3 unrouted, 5 narrowings, 1 single-field read, 1 GET
+        // read. Counted so a new raw read cannot appear without a deliberate
+        // line added here.
+        expect(ALLOWED_RAW_BODY_READS).toHaveLength(10);
     });
 
     test("every exception states a reason", () => {

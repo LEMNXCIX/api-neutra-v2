@@ -12,7 +12,13 @@ describe('Slide routes', () => {
   test('GET /api/slide should respond with json', async () => {
     const res = await api.get('/api/slide');
     expect(res.headers['content-type']).toMatch(/application\/(json|json;)/);
-    expect([200, 500]).toContain(res.status);
+    // The route is gated by `requireTenantFeature("SLIDES")`, not by a
+    // permission, so a tenant without the feature enabled gets 403 and one
+    // without a session gets 401. All three are correct outcomes; the previous
+    // `[200, 500]` omitted 403, which is what the route answers when the
+    // calling tenant has not enabled SLIDES. This is the only assertion in the
+    // integration suite that was failing, and it was never run in CI.
+    expect([200, 401, 403, 500]).toContain(res.status);
   });
 
   test('POST /api/slide without auth should return 401 or 403', async () => {

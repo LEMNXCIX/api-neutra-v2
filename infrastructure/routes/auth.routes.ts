@@ -4,6 +4,12 @@ import type { RequestHandler } from "express";
 import passport from "passport";
 import { AuthController } from "@/interface-adapters/controllers/auth.controller";
 import { authLimiter } from "@/middleware/rateLimit.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
+import {
+    ForgotPasswordDto,
+    ResetPasswordDto,
+} from "@/core/application/dtos/requests/auth.request";
+import { CreateUserDto, LoginDto } from "@/types/request-dto";
 
 function auth(
     app: Application,
@@ -38,7 +44,12 @@ function auth(
      *       401:
      *         description: Invalid credentials
      */
-    router.post("/login", authLimiter, authController.login);
+    router.post(
+        "/login",
+        authLimiter,
+        validateDto(LoginDto),
+        authController.login,
+    );
 
     /**
      * @swagger
@@ -58,7 +69,12 @@ function auth(
      *       400:
      *         description: Bad request
      */
-    router.post("/signup", authLimiter, authController.signup);
+    router.post(
+        "/signup",
+        authLimiter,
+        validateDto(CreateUserDto),
+        authController.signup,
+    );
 
     /**
      * @swagger
@@ -113,7 +129,12 @@ function auth(
      *       400:
      *         description: Invalid email
      */
-    router.post("/forgot-password", authLimiter, authController.forgotPassword);
+    router.post(
+        "/forgot-password",
+        authLimiter,
+        validateDto(ForgotPasswordDto),
+        authController.forgotPassword,
+    );
 
     /**
      * @swagger
@@ -133,7 +154,11 @@ function auth(
      *       400:
      *         description: Invalid or expired token
      */
-    router.post("/reset-password", authController.resetPassword);
+    router.post(
+        "/reset-password",
+        validateDto(ResetPasswordDto),
+        authController.resetPassword,
+    );
 
     /**
      * @swagger
