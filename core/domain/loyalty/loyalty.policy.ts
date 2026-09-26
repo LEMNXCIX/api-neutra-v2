@@ -443,18 +443,12 @@ export function subtractLoyaltyDecimalStrings(
     return centsToDecimalString(difference < 0n ? 0n : difference);
 }
 
-export const subtractDecimalStrings = subtractLoyaltyDecimalStrings;
-
 export function getLoyaltyCampaignRemainingValue(
     progressValue: string,
     targetValue: string,
 ): string {
     return subtractLoyaltyDecimalStrings(targetValue, progressValue);
 }
-
-export const getLoyaltyCampaignRemaining = getLoyaltyCampaignRemainingValue;
-export const calculateLoyaltyCampaignRemaining =
-    getLoyaltyCampaignRemainingValue;
 
 export function getLoyaltyCampaignCustomerStatus(input: {
     lifecycleStatus: LoyaltyCampaignStatus;

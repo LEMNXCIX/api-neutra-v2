@@ -60,6 +60,12 @@ function setup(options?: {
     const roleRepository = {
         findByName: jest.fn().mockResolvedValue(SUPERADMIN_TENANT.role),
     };
+    const logger = {
+        error: jest.fn(),
+        warn: jest.fn(),
+        info: jest.fn(),
+        debug: jest.fn(),
+    };
 
     const useCase = new RegisterUseCase(
         userRepository as never,
@@ -68,6 +74,7 @@ function setup(options?: {
         queueProvider as never,
         tenantRepository as never,
         roleRepository as never,
+        logger as never,
     );
 
     return {

@@ -63,6 +63,7 @@ export function createIdentityControllers(runtime: Runtime) {
                 p.queue,
                 r.tenant,
                 r.role,
+                p.logger,
             ),
             new SocialLoginUseCase(
                 r.user,

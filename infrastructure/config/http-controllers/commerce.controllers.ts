@@ -65,7 +65,7 @@ export function createCommerceControllers(runtime: Runtime) {
             new GetCartUseCase(r.cart),
             new AddToCartUseCase(r.cart, r.product),
             new CreateCartUseCase(r.cart),
-            new RemoveFromCartUseCase(r.cart),
+            new RemoveFromCartUseCase(r.cart, p.logger),
             new ChangeAmountUseCase(r.cart),
             new ClearCartUseCase(r.cart),
             new GetCartStatsUseCase(r.cart),
