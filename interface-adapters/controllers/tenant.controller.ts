@@ -7,7 +7,7 @@ import { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use
 import { DeleteTenantUseCase } from "@/core/application/tenant/delete-tenant.use-case";
 import { GetTenantFeaturesUseCase } from "@/core/application/tenant/get-tenant-features.use-case";
 import { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-tenant-features.use-case";
-import { TenantPresenter } from "@/core/presenters/tenant.presenter";
+import { TenantResponse } from "@/core/application/dtos/responses/tenant/tenant.response";
 import { present } from "@/core/utils/use-case-result";
 import { AppError } from "@/types/api-response";
 import { AuthErrorCodes } from "@/types/error-codes";
@@ -39,24 +39,30 @@ export class TenantController {
         );
         return res
             .status(201)
-            .json(present(result, TenantPresenter.toResponse));
+            .json(present(result, TenantResponse.fromEntity));
     }
 
     async getAll(req: Request, res: Response) {
         const result = await this.getTenantsUseCase.execute();
-        return res.json(present(result, TenantPresenter.toResponseList));
+        return res.json(
+            present(result, (tenants) =>
+                Array.isArray(tenants)
+                    ? tenants.map((t) => TenantResponse.fromEntity(t))
+                    : [],
+            ),
+        );
     }
 
     async getById(req: Request, res: Response) {
         const result = await this.getTenantByIdUseCase.execute(req.params.id);
-        return res.json(present(result, TenantPresenter.toResponse));
+        return res.json(present(result, TenantResponse.fromEntity));
     }
 
     async getBySlug(req: Request, res: Response) {
         const result = await this.getTenantBySlugUseCase.execute(
             req.params.slug,
         );
-        return res.json(present(result, TenantPresenter.toResponse));
+        return res.json(present(result, TenantResponse.fromEntity));
     }
 
     async update(req: Request, res: Response) {
@@ -64,7 +70,7 @@ export class TenantController {
             req.params.id,
             req.body,
         );
-        return res.json(present(result, TenantPresenter.toResponse));
+        return res.json(present(result, TenantResponse.fromEntity));
     }
 
     async getFeatures(req: Request, res: Response) {

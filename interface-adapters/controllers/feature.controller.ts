@@ -3,7 +3,7 @@ import { GetFeaturesUseCase } from "@/core/application/feature/get-features.use-
 import { CreateFeatureUseCase } from "@/core/application/feature/create-feature.use-case";
 import { UpdateFeatureUseCase } from "@/core/application/feature/update-feature.use-case";
 import { DeleteFeatureUseCase } from "@/core/application/feature/delete-feature.use-case";
-import { FeaturePresenter } from "@/core/presenters/feature.presenter";
+import { FeatureResponse } from "@/core/application/dtos/responses/feature/feature.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class FeatureController {
@@ -22,14 +22,20 @@ export class FeatureController {
 
     async getAll(req: Request, res: Response) {
         const result = await this.getFeaturesUseCase.execute();
-        return res.json(present(result, FeaturePresenter.toResponseList));
+        return res.json(
+            present(result, (features) =>
+                Array.isArray(features)
+                    ? features.map((f) => FeatureResponse.fromEntity(f))
+                    : [],
+            ),
+        );
     }
 
     async create(req: Request, res: Response) {
         const result = await this.createFeatureUseCase.execute(req.body);
         return res
             .status(201)
-            .json(present(result, FeaturePresenter.toResponse));
+            .json(present(result, FeatureResponse.fromEntity));
     }
 
     async update(req: Request, res: Response) {
@@ -37,7 +43,7 @@ export class FeatureController {
             req.params.id,
             req.body,
         );
-        return res.json(present(result, FeaturePresenter.toResponse));
+        return res.json(present(result, FeatureResponse.fromEntity));
     }
 
     async delete(req: Request, res: Response) {

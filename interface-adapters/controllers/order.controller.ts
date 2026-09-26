@@ -8,7 +8,7 @@ import { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-
 import { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
 import { GetOrderStatusesUseCase } from "@/core/application/order/get-order-statuses.use-case";
 import { GetOrderStatsUseCase } from "@/core/application/order/get-order-stats.use-case";
-import { OrderPresenter } from "@/core/presenters/order.presenter";
+import { OrderResponse } from "@/core/application/dtos/responses/order/order.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class OrderController {
@@ -64,21 +64,21 @@ export class OrderController {
             userId,
             couponCode,
         );
-        return res.status(201).json(present(result, OrderPresenter.toResponse));
+        return res.status(201).json(present(result, OrderResponse.fromEntity));
     }
 
     async getOne(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { orderId } = req.body;
         const result = await this.getOrderUseCase.execute(tenantId, orderId);
-        return res.json(present(result, OrderPresenter.toResponse));
+        return res.json(present(result, OrderResponse.fromEntity));
     }
 
     async getOneById(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.getOrderUseCase.execute(tenantId, id);
-        return res.json(present(result, OrderPresenter.toResponse));
+        return res.json(present(result, OrderResponse.fromEntity));
     }
 
     async getByUser(req: Request, res: Response) {
@@ -90,7 +90,13 @@ export class OrderController {
             userId,
             status,
         );
-        return res.json(present(result, OrderPresenter.toResponseList));
+        return res.json(
+            present(result, (orders) =>
+                Array.isArray(orders)
+                    ? orders.map((o) => OrderResponse.fromEntity(o))
+                    : [],
+            ),
+        );
     }
 
     async getAll(req: Request, res: Response) {
@@ -115,7 +121,13 @@ export class OrderController {
                     : undefined,
             },
         );
-        return res.json(present(result, OrderPresenter.toResponseList));
+        return res.json(
+            present(result, (orders) =>
+                Array.isArray(orders)
+                    ? orders.map((o) => OrderResponse.fromEntity(o))
+                    : [],
+            ),
+        );
     }
 
     async changeStatus(req: Request, res: Response) {
@@ -126,7 +138,7 @@ export class OrderController {
             idOrder,
             status,
         );
-        return res.json(present(result, OrderPresenter.toResponse));
+        return res.json(present(result, OrderResponse.fromEntity));
     }
 
     async update(req: Request, res: Response) {
@@ -137,6 +149,6 @@ export class OrderController {
             id,
             req.body,
         );
-        return res.json(present(result, OrderPresenter.toResponse));
+        return res.json(present(result, OrderResponse.fromEntity));
     }
 }

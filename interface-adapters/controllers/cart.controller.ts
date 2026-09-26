@@ -6,7 +6,7 @@ import { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
 import { ChangeAmountUseCase } from "@/core/application/cart/change-amount.use-case";
 import { GetCartStatsUseCase } from "@/core/application/cart/get-cart-stats.use-case";
 import { CreateCartUseCase } from "@/core/application/cart/create-cart.use-case";
-import { CartPresenter } from "@/core/presenters/cart.presenter";
+import { CartResponse } from "@/core/application/dtos/responses/cart/cart.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class CartController {
@@ -39,14 +39,14 @@ export class CartController {
             productId,
             amount,
         );
-        return res.json(present(result, CartPresenter.toResponse));
+        return res.json(present(result, CartResponse.fromEntity));
     };
 
     create = async (req: Request, res: Response) => {
         const { id } = req.user!;
         const tenantId = req.tenantId!;
         const result = await this.createCartUseCase.execute(tenantId, id);
-        return res.status(201).json(present(result, CartPresenter.toResponse));
+        return res.status(201).json(present(result, CartResponse.fromEntity));
     };
 
     removeFromCart = async (req: Request, res: Response) => {

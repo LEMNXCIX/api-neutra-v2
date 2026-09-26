@@ -53,7 +53,6 @@ const PROTECTED_DIRS = [
     { dir: "core/ports", label: "core/ports" },
     { dir: "core/providers", label: "core/providers" },
     { dir: "core/services", label: "core/services" },
-    { dir: "core/presenters", label: "core/presenters" },
     { dir: "core/utils", label: "core/utils" },
     { dir: "interface-adapters", label: "interface-adapters" },
     { dir: "middleware", label: "middleware" },
@@ -67,7 +66,6 @@ const CORE_DIRS = [
     "core/ports",
     "core/providers",
     "core/services",
-    "core/presenters",
     "core/utils",
 ];
 

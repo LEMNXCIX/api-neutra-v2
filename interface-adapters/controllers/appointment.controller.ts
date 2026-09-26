@@ -18,7 +18,8 @@ import {
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 import { AppError } from "@/types/api-response";
 import { TenantErrorCodes } from "@/types/error-codes";
-import { AppointmentPresenter } from "@/core/presenters/appointment.presenter";
+import { AppointmentResponse } from "@/core/application/dtos/responses/appointment/appointment.response";
+import { AppointmentListResponse } from "@/core/application/dtos/responses/appointment/appointment-list.response";
 import { present } from "@/core/utils/use-case-result";
 import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
 
@@ -66,7 +67,7 @@ export class AppointmentController {
         );
         return res
             .status(201)
-            .json(present(result, AppointmentPresenter.toResponse));
+            .json(present(result, AppointmentResponse.fromEntity));
     }
 
     async getAll(req: Request, res: Response) {
@@ -107,7 +108,11 @@ export class AppointmentController {
                 limit || 10,
             );
             return res.json(
-                present(result, AppointmentPresenter.toResponseList),
+                present(result, (appointments) =>
+                    Array.isArray(appointments)
+                        ? appointments.map((a) => AppointmentListResponse.fromEntity(a))
+                        : [],
+                ),
             );
         }
 
@@ -115,7 +120,13 @@ export class AppointmentController {
             tenantId,
             filters,
         );
-        return res.json(present(result, AppointmentPresenter.toResponseList));
+        return res.json(
+            present(result, (appointments) =>
+                Array.isArray(appointments)
+                    ? appointments.map((a) => AppointmentListResponse.fromEntity(a))
+                    : [],
+            ),
+        );
     }
 
     async getAttention(req: Request, res: Response) {
@@ -147,7 +158,11 @@ export class AppointmentController {
             limit,
         );
         return res.json(
-            present(result, AppointmentPresenter.toResponseList),
+            present(result, (appointments) =>
+                Array.isArray(appointments)
+                    ? appointments.map((a) => AppointmentListResponse.fromEntity(a))
+                    : [],
+            ),
         );
     }
 
@@ -159,7 +174,7 @@ export class AppointmentController {
             tenantId,
             id,
         );
-        return res.json(present(result, AppointmentPresenter.toResponse));
+        return res.json(present(result, AppointmentResponse.fromEntity));
     }
 
     async cancel(req: Request, res: Response) {
@@ -173,7 +188,7 @@ export class AppointmentController {
             getAppointmentActor(req.user!),
             reason,
         );
-        return res.json(present(result, AppointmentPresenter.toResponse));
+        return res.json(present(result, AppointmentResponse.fromEntity));
     }
 
     async updateStatus(req: Request, res: Response) {
@@ -190,7 +205,7 @@ export class AppointmentController {
             reason,
             origin,
         );
-        return res.json(present(result, AppointmentPresenter.toResponse));
+        return res.json(present(result, AppointmentResponse.fromEntity));
     }
 
     async getAvailability(req: Request, res: Response) {

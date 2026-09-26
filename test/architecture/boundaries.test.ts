@@ -26,7 +26,6 @@ describe("Clean Architecture boundaries", () => {
         "core/ports",
         "core/providers",
         "core/services",
-        "core/presenters",
         "core/utils",
     ];
 

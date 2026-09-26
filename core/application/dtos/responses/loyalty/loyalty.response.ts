@@ -9,8 +9,10 @@ import {
     LoyaltyRewardClaimStatus,
     LoyaltyStatus,
 } from "@/core/entities/loyalty.entity";
-import { ICouponResponse } from "@/core/application/dtos/responses/coupon/coupon.response";
-import { CouponPresenter } from "@/core/presenters/coupon.presenter";
+import {
+    CouponResponse,
+    ICouponResponse,
+} from "@/core/application/dtos/responses/coupon/coupon.response";
 
 export interface ILoyaltyCampaignResponse {
     id: string;
@@ -186,7 +188,7 @@ export class LoyaltyPresenter {
                   }
                 : {}),
             ...(summary.coupon
-                ? { coupon: CouponPresenter.toResponse(summary.coupon) }
+                ? { coupon: CouponResponse.fromEntity(summary.coupon) }
                 : {}),
         };
     }
@@ -214,7 +216,7 @@ export class LoyaltyPresenter {
             status: claim.status,
             createdAt: claim.createdAt,
             updatedAt: claim.updatedAt,
-            coupon: CouponPresenter.toResponse(rewardCoupon),
+            coupon: CouponResponse.fromEntity(rewardCoupon),
         };
     }
 

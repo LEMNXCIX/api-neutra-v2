@@ -5,7 +5,7 @@ import { UpdateBannerUseCase } from "@/core/application/banners/update-banner.us
 import { DeleteBannerUseCase } from "@/core/application/banners/delete-banner.use-case";
 import { TrackBannerAnalyticsUseCase } from "@/core/application/banners/track-banner-analytics.use-case";
 import { GetBannerStatsUseCase } from "@/core/application/banners/get-banner-stats.use-case";
-import { BannerPresenter } from "@/core/presenters/banner.presenter";
+import { BannerResponse } from "@/core/application/dtos/responses/banner/banner.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class BannerController {
@@ -26,27 +26,39 @@ export class BannerController {
         );
         return res
             .status(201)
-            .json(present(result, BannerPresenter.toResponse));
+            .json(present(result, BannerResponse.fromEntity));
     };
 
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
 
         const result = await this.getBannersUseCase.execute(tenantId, false);
-        return res.json(present(result, BannerPresenter.toResponseList));
+        return res.json(
+            present(result, (banners) =>
+                Array.isArray(banners)
+                    ? banners.map((b) => BannerResponse.fromEntity(b))
+                    : [],
+            ),
+        );
     };
 
     getActive = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const result = await this.getBannersUseCase.execute(tenantId, true); // Get only active banners
-        return res.json(present(result, BannerPresenter.toResponseList));
+        return res.json(
+            present(result, (banners) =>
+                Array.isArray(banners)
+                    ? banners.map((b) => BannerResponse.fromEntity(b))
+                    : [],
+            ),
+        );
     };
 
     getById = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.getBannersUseCase.executeById(tenantId, id);
-        return res.json(present(result, BannerPresenter.toResponse));
+        return res.json(present(result, BannerResponse.fromEntity));
     };
 
     update = async (req: Request, res: Response) => {
@@ -57,7 +69,7 @@ export class BannerController {
             id,
             req.body,
         );
-        return res.json(present(result, BannerPresenter.toResponse));
+        return res.json(present(result, BannerResponse.fromEntity));
     };
 
     delete = async (req: Request, res: Response) => {

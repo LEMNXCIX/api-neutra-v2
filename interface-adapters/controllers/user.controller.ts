@@ -10,7 +10,8 @@ import { UpdateUserUseCase } from "@/core/application/users/update-user.use-case
 import { DeleteUserUseCase } from "@/core/application/users/delete-user.use-case";
 import { AssignRoleToUserUseCase } from "@/core/application/users/assign-role.use-case";
 import { present } from "@/core/utils/use-case-result";
-import { UserPresenter } from "@/core/presenters/user.presenter";
+import { UserResponse } from "@/core/application/dtos/responses/user/user.response";
+import { UserPublicResponse } from "@/core/application/dtos/responses/user/user-public.response";
 
 export class UserController {
     constructor(
@@ -29,14 +30,20 @@ export class UserController {
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const result = await this.getAllUsersUseCase.execute(tenantId);
-        return res.json(present(result, UserPresenter.toResponseList));
+        return res.json(
+            present(result, (users) =>
+                Array.isArray(users)
+                    ? users.map((u) => UserResponse.fromEntity(u))
+                    : [],
+            ),
+        );
     };
 
     getById = async (req: Request, res: Response) => {
         const tenantId = req.tenantId;
         const { id } = req.params;
         const result = await this.getUserByIdUseCase.execute(tenantId, id);
-        return res.json(present(result, UserPresenter.toResponse));
+        return res.json(present(result, UserResponse.fromEntity));
     };
 
     getByEmail = async (req: Request, res: Response) => {
@@ -47,7 +54,7 @@ export class UserController {
             email,
             false,
         );
-        return res.json(present(result, UserPresenter.toPublicResponse));
+        return res.json(present(result, UserPublicResponse.fromEntity));
     };
 
     create = async (req: Request, res: Response) => {
@@ -56,7 +63,7 @@ export class UserController {
         return res.status(201).json(
             present(result, (data) => ({
                 ...data,
-                user: UserPresenter.toResponse(data.user),
+                user: UserResponse.fromEntity(data.user),
             })),
         );
     };
@@ -70,7 +77,7 @@ export class UserController {
         return res.json(
             present(result, (data) => ({
                 ...data,
-                user: UserPresenter.toResponse(data.user),
+                user: UserResponse.fromEntity(data.user),
             })),
         );
     };
@@ -95,7 +102,7 @@ export class UserController {
             id,
             req.body,
         );
-        return res.json(present(result, UserPresenter.toResponse));
+        return res.json(present(result, UserResponse.fromEntity));
     };
 
     assignRole = async (req: Request, res: Response) => {
@@ -107,7 +114,7 @@ export class UserController {
             id,
             roleId,
         );
-        return res.json(present(result, UserPresenter.toResponse));
+        return res.json(present(result, UserResponse.fromEntity));
     };
 
     delete = async (req: Request, res: Response) => {

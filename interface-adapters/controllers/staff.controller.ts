@@ -6,7 +6,7 @@ import { UpdateStaffUseCase } from "@/core/application/booking/update-staff.use-
 import { DeleteStaffUseCase } from "@/core/application/booking/delete-staff.use-case";
 import { AssignStaffServiceUseCase } from "@/core/application/booking/assign-staff-service.use-case";
 import { SyncStaffServicesUseCase } from "@/core/application/booking/sync-staff-services.use-case";
-import { StaffPresenter } from "@/core/presenters/staff.presenter";
+import { StaffResponse } from "@/core/application/dtos/responses/staff/staff.response";
 import { present } from "@/core/utils/use-case-result";
 import { AppError } from "@/types/api-response";
 import { AuthErrorCodes } from "@/types/error-codes";
@@ -28,7 +28,7 @@ export class StaffController {
             tenantId,
             req.body,
         );
-        return res.status(201).json(present(result, StaffPresenter.toResponse));
+        return res.status(201).json(present(result, StaffResponse.fromEntity));
     }
 
     async getAll(req: Request, res: Response) {
@@ -36,9 +36,13 @@ export class StaffController {
 
         const activeOnly = req.query.activeOnly !== "false";
         const result = await this.getStaffUseCase.execute(tenantId, activeOnly);
-        return res
-            .status(200)
-            .json(present(result, StaffPresenter.toResponseList));
+        return res.status(200).json(
+            present(result, (staffList) =>
+                Array.isArray(staffList)
+                    ? staffList.map((s) => StaffResponse.fromEntity(s))
+                    : [],
+            ),
+        );
     }
 
     async update(req: Request, res: Response) {
@@ -49,7 +53,7 @@ export class StaffController {
             id,
             req.body,
         );
-        return res.status(200).json(present(result, StaffPresenter.toResponse));
+        return res.status(200).json(present(result, StaffResponse.fromEntity));
     }
 
     async delete(req: Request, res: Response) {
@@ -101,6 +105,6 @@ export class StaffController {
             tenantId,
             user.id,
         );
-        return res.status(200).json(present(result, StaffPresenter.toResponse));
+        return res.status(200).json(present(result, StaffResponse.fromEntity));
     }
 }

@@ -6,7 +6,7 @@ import { DeleteCategoryUseCase } from "@/core/application/categories/delete-cate
 import { GetCategoryStatsUseCase } from "@/core/application/categories/get-category-stats.use-case";
 
 import { CategoryType } from "@/core/entities/category.entity";
-import { CategoryPresenter } from "@/core/presenters/category.presenter";
+import { CategoryResponse } from "@/core/application/dtos/responses/category/category.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class CategoryController {
@@ -26,7 +26,7 @@ export class CategoryController {
         );
         return res
             .status(201)
-            .json(present(result, CategoryPresenter.toResponse));
+            .json(present(result, CategoryResponse.fromEntity));
     };
 
     getAll = async (req: Request, res: Response) => {
@@ -56,7 +56,13 @@ export class CategoryController {
             limit,
             type,
         );
-        return res.json(present(result, CategoryPresenter.toResponseList));
+        return res.json(
+            present(result, (categories) =>
+                Array.isArray(categories)
+                    ? categories.map((c) => CategoryResponse.fromEntity(c))
+                    : [],
+            ),
+        );
     };
 
     getById = async (req: Request, res: Response) => {
@@ -66,7 +72,7 @@ export class CategoryController {
             tenantId,
             id,
         );
-        return res.json(present(result, CategoryPresenter.toResponse));
+        return res.json(present(result, CategoryResponse.fromEntity));
     };
 
     update = async (req: Request, res: Response) => {
@@ -77,7 +83,7 @@ export class CategoryController {
             id,
             req.body,
         );
-        return res.json(present(result, CategoryPresenter.toResponse));
+        return res.json(present(result, CategoryResponse.fromEntity));
     };
 
     delete = async (req: Request, res: Response) => {

@@ -4,7 +4,7 @@ import { GetPermissionsUseCase } from "@/core/application/permissions/get-permis
 import { UpdatePermissionUseCase } from "@/core/application/permissions/update-permission.use-case";
 import { DeletePermissionUseCase } from "@/core/application/permissions/delete-permission.use-case";
 import { GetPermissionsPaginatedUseCase } from "@/core/application/permissions/get-permissions-paginated.use-case";
-import { PermissionPresenter } from "@/core/presenters/permission.presenter";
+import { PermissionResponse } from "@/core/application/dtos/responses/permission/permission.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class PermissionController {
@@ -24,7 +24,7 @@ export class PermissionController {
         );
         return res
             .status(201)
-            .json(present(result, PermissionPresenter.toResponse));
+            .json(present(result, PermissionResponse.fromEntity));
     };
 
     getAll = async (req: Request, res: Response) => {
@@ -47,12 +47,20 @@ export class PermissionController {
                 search,
             );
             return res.json(
-                present(result, PermissionPresenter.toResponseList),
+                present(result, (permissions) =>
+                    Array.isArray(permissions)
+                        ? permissions.map((p) => PermissionResponse.fromEntity(p))
+                        : [],
+                ),
             );
         } else {
             const result = await this.getPermissionsUseCase.execute(tenantId);
             return res.json(
-                present(result, PermissionPresenter.toResponseList),
+                present(result, (permissions) =>
+                    Array.isArray(permissions)
+                        ? permissions.map((p) => PermissionResponse.fromEntity(p))
+                        : [],
+                ),
             );
         }
     };
@@ -64,7 +72,7 @@ export class PermissionController {
             tenantId,
             id,
         );
-        return res.json(present(result, PermissionPresenter.toResponse));
+        return res.json(present(result, PermissionResponse.fromEntity));
     };
 
     update = async (req: Request, res: Response) => {
@@ -75,7 +83,7 @@ export class PermissionController {
             id,
             req.body,
         );
-        return res.json(present(result, PermissionPresenter.toResponse));
+        return res.json(present(result, PermissionResponse.fromEntity));
     };
 
     delete = async (req: Request, res: Response) => {

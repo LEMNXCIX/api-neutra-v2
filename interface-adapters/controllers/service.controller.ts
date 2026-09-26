@@ -3,7 +3,7 @@ import { CreateServiceUseCase } from "@/core/application/booking/create-service.
 import { GetServicesUseCase } from "@/core/application/booking/get-services.use-case";
 import { UpdateServiceUseCase } from "@/core/application/booking/update-service.use-case";
 import { DeleteServiceUseCase } from "@/core/application/booking/delete-service.use-case";
-import { ServicePresenter } from "@/core/presenters/service.presenter";
+import { ServiceResponse } from "@/core/application/dtos/responses/service/service.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class ServiceController {
@@ -22,7 +22,7 @@ export class ServiceController {
         );
         return res
             .status(201)
-            .json(present(result, ServicePresenter.toResponse));
+            .json(present(result, ServiceResponse.fromEntity));
     }
 
     async getAll(req: Request, res: Response) {
@@ -33,9 +33,13 @@ export class ServiceController {
             tenantId,
             activeOnly,
         );
-        return res
-            .status(200)
-            .json(present(result, ServicePresenter.toResponseList));
+        return res.status(200).json(
+            present(result, (services) =>
+                Array.isArray(services)
+                    ? services.map((s) => ServiceResponse.fromEntity(s))
+                    : [],
+            ),
+        );
     }
 
     async update(req: Request, res: Response) {
@@ -46,9 +50,7 @@ export class ServiceController {
             id,
             req.body,
         );
-        return res
-            .status(200)
-            .json(present(result, ServicePresenter.toResponse));
+        return res.status(200).json(present(result, ServiceResponse.fromEntity));
     }
 
     async delete(req: Request, res: Response) {

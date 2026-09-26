@@ -4,7 +4,7 @@ import { GetRolesUseCase } from "@/core/application/roles/get-roles.use-case";
 import { UpdateRoleUseCase } from "@/core/application/roles/update-role.use-case";
 import { DeleteRoleUseCase } from "@/core/application/roles/delete-role.use-case";
 import { GetRolesPaginatedUseCase } from "@/core/application/roles/get-roles-paginated.use-case";
-import { RolePresenter } from "@/core/presenters/role.presenter";
+import { RoleResponse } from "@/core/application/dtos/responses/role/role.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class RoleController {
@@ -19,7 +19,7 @@ export class RoleController {
     create = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const result = await this.createRoleUseCase.execute(tenantId, req.body);
-        return res.status(201).json(present(result, RolePresenter.toResponse));
+        return res.status(201).json(present(result, RoleResponse.fromEntity));
     };
 
     getAll = async (req: Request, res: Response) => {
@@ -41,10 +41,22 @@ export class RoleController {
                 limit,
                 search,
             );
-            return res.json(present(result, RolePresenter.toResponseList));
+            return res.json(
+                present(result, (roles) =>
+                    Array.isArray(roles)
+                        ? roles.map((r) => RoleResponse.fromEntity(r))
+                        : [],
+                ),
+            );
         } else {
             const result = await this.getRolesUseCase.execute(tenantId);
-            return res.json(present(result, RolePresenter.toResponseList));
+            return res.json(
+                present(result, (roles) =>
+                    Array.isArray(roles)
+                        ? roles.map((r) => RoleResponse.fromEntity(r))
+                        : [],
+                ),
+            );
         }
     };
 
@@ -52,7 +64,7 @@ export class RoleController {
         const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.getRolesUseCase.executeById(tenantId, id);
-        return res.json(present(result, RolePresenter.toResponse));
+        return res.json(present(result, RoleResponse.fromEntity));
     };
 
     update = async (req: Request, res: Response) => {
@@ -63,7 +75,7 @@ export class RoleController {
             id,
             req.body,
         );
-        return res.json(present(result, RolePresenter.toResponse));
+        return res.json(present(result, RoleResponse.fromEntity));
     };
 
     delete = async (req: Request, res: Response) => {

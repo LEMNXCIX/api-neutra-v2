@@ -63,8 +63,6 @@ describe("architecture.rules", () => {
             { rule: "R2", subject: /^R2 core\/entities\/tenant\.entity\.ts:/, clearedBy: "T7" },
             // T5: appointment status validation duplicated in the controller.
             { rule: "R4", subject: /"INVALID_APPOINTMENT_STATUS"/, clearedBy: "T5" },
-            // T4: delete the presenter layer.
-            { rule: "R5", subject: /^R5 core\/presenters\//, clearedBy: "T4" },
         ];
 
         // No violation may fall outside the known set. Asserting the empty

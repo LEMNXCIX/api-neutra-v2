@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { GetWhatsAppConfigUseCase } from "@/core/application/whatsapp/get-whatsapp-config.use-case";
 import { ConfigureWhatsAppUseCase } from "@/core/application/whatsapp/configure-whatsapp.use-case";
-import { WhatsAppConfigPresenter } from "@/core/presenters/whatsapp-config.presenter";
+import { WhatsAppConfigResponse } from "@/core/application/dtos/responses/whatsapp/whatsapp-config.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class WhatsAppConfigController {
@@ -16,7 +16,7 @@ export class WhatsAppConfigController {
         const result = await this.getWhatsAppConfigUseCase.execute(tenantId);
         return res.json(
             present(result, (data) =>
-                WhatsAppConfigPresenter.toResponse(data, true),
+                WhatsAppConfigResponse.fromEntity(data, true),
             ),
         );
     }
@@ -30,7 +30,7 @@ export class WhatsAppConfigController {
         );
         return res.json(
             present(result, (data) =>
-                WhatsAppConfigPresenter.toResponse(data, true),
+                WhatsAppConfigResponse.fromEntity(data, true),
             ),
         );
     }

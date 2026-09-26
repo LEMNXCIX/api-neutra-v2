@@ -6,7 +6,7 @@ import { UpdateCouponUseCase } from "@/core/application/coupons/update-coupon.us
 import { DeleteCouponUseCase } from "@/core/application/coupons/delete-coupon.use-case";
 import { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
 import { GetCouponStatsUseCase } from "@/core/application/coupons/get-coupon-stats.use-case";
-import { CouponPresenter } from "@/core/presenters/coupon.presenter";
+import { CouponResponse } from "@/core/application/dtos/responses/coupon/coupon.response";
 import { present } from "@/core/utils/use-case-result";
 
 export class CouponController {
@@ -28,7 +28,7 @@ export class CouponController {
         );
         return res
             .status(201)
-            .json(present(result, CouponPresenter.toResponse));
+            .json(present(result, CouponResponse.fromEntity));
     };
 
     getAll = async (req: Request, res: Response) => {
@@ -55,14 +55,26 @@ export class CouponController {
                     limit: limit ? parseInt(limit as string) : undefined,
                 },
             );
-            return res.json(present(result, CouponPresenter.toResponseList));
+            return res.json(
+                present(result, (coupons) =>
+                    Array.isArray(coupons)
+                        ? coupons.map((c) => CouponResponse.fromEntity(c))
+                        : [],
+                ),
+            );
         } else {
             // Use original endpoint for backward compatibility
             const result = await this.getCouponsUseCase.execute(
                 tenantId,
                 false,
             );
-            return res.json(present(result, CouponPresenter.toResponseList));
+            return res.json(
+                present(result, (coupons) =>
+                    Array.isArray(coupons)
+                        ? coupons.map((c) => CouponResponse.fromEntity(c))
+                        : [],
+                ),
+            );
         }
     };
 
@@ -70,7 +82,7 @@ export class CouponController {
         const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.getCouponsUseCase.executeById(tenantId, id);
-        return res.json(present(result, CouponPresenter.toResponse));
+        return res.json(present(result, CouponResponse.fromEntity));
     };
 
     getByCode = async (req: Request, res: Response) => {
@@ -80,7 +92,7 @@ export class CouponController {
             tenantId,
             code,
         );
-        return res.json(present(result, CouponPresenter.toResponse));
+        return res.json(present(result, CouponResponse.fromEntity));
     };
 
     update = async (req: Request, res: Response) => {
@@ -91,7 +103,7 @@ export class CouponController {
             id,
             req.body,
         );
-        return res.json(present(result, CouponPresenter.toResponse));
+        return res.json(present(result, CouponResponse.fromEntity));
     };
 
     delete = async (req: Request, res: Response) => {
@@ -112,7 +124,7 @@ export class CouponController {
             present(result, (data) => ({
                 valid: data.valid,
                 coupon: data.coupon
-                    ? CouponPresenter.toResponse(data.coupon)
+                    ? CouponResponse.fromEntity(data.coupon)
                     : null,
                 discountAmount: data.discountAmount,
             })),
