@@ -224,7 +224,18 @@ export default function createResponseMiddleware(logger: ILogger) {
             finalStatusCode,
             traceId,
         );
-        logger.error("API Error Response", err, { traceId, response });
+        // The second argument of `error(message, error?, metadata?)` is the
+        // caught exception: pino serialises it with its stack, and that field
+        // means "an exception was thrown here". A validation failure has no
+        // exception, so passing its details there logged the same array twice
+        // (once as `response.errors`, once as `error`), carried no stack, and
+        // made a routine client 400 look like a server fault to anything
+        // counting error-level events that have an `error` field. The details
+        // are already in `response` and stay queryable as
+        // `response.errors[].code`.
+        const thrown =
+            err instanceof Error || typeof err === "string" ? err : undefined;
+        logger.error("API Error Response", thrown, { traceId, response });
         res.status(finalStatusCode).json(response);
         return res;
     };
