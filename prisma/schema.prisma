@@ -730,6 +730,18 @@ model LoyaltyCampaign {
   rewardCoupon    Coupon?                 @relation("CampaignRewardCoupon", fields: [rewardCouponId], references: [id], onDelete: Restrict)
   rewardValidDays Int?
   maxClaims       Int?
+  // A cache of how many reward claims this campaign actually holds, kept
+  // correct by the `loyalty_reward_claim_sync_claimed_count` trigger in
+  // migration 20260830000000. It has to be a column because the claim
+  // reservation is one conditional UPDATE that both checks the limit and
+  // increments it, which is what makes the limit hold under concurrency.
+  //
+  // The relation below cascades, so deleting a user takes their claims with it;
+  // Prisma cannot express a trigger, so nothing here or in `prisma validate`
+  // shows that this column is maintained by the database. Read it as "maintained
+  // by the trigger", not as a plain field. A new path that removes claims must
+  // keep the trigger, and the regression is
+  // test/loyalty-user-delete.test.ts, which needs a real database.
   claimedCount    Int                     @default(0)
 
   ledgerEntries LoyaltyLedgerEntry[]
