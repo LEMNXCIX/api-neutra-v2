@@ -170,7 +170,11 @@ export class PinoLoggerProvider implements ILogger {
         }
 
         if (this.logHeaders && res.headers) {
-            metadata.headers = res.headers;
+            // Responses must go through the same redaction as requests.
+            // This forwarded res.headers raw, so Set-Cookie and any echoed
+            // Authorization header landed in the log verbatim while the
+            // request side was redacted.
+            metadata.headers = this.sanitizeHeaders(res.headers);
         }
 
         this.info('\n\nHTTP Response', metadata);

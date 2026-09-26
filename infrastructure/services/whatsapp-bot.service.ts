@@ -36,12 +36,20 @@ export class WhatsAppBotService implements IWhatsAppBotService {
                 );
 
             if (!conversation) {
+                // A conversation is keyed by Meta's message id, and the provider
+                // allows that id to be absent. Creating one without it stored
+                // `undefined` in a non-nullable column, and the conversation
+                // could never be correlated again. Refuse instead, and say why.
+                if (!message.id) {
+                    this.logger.warn(
+                        `Discarding WhatsApp message with no provider id from ${from}: the conversation cannot be correlated`,
+                    );
+                    return;
+                }
+
                 conversation = await this.conversationRepository.create({
                     tenantId,
-                    // SAFETY: Meta types the payload's `id` as optional while the
-                    // entity requires a string, so a payload without `id` forwards
-                    // `undefined` here. Reported, not fixed — value unchanged.
-                    waConversationId: message.id as string,
+                    waConversationId: message.id,
                     phoneNumber: from,
                     status: "active",
                     lastMessageAt: new Date(),

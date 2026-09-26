@@ -171,13 +171,11 @@ export class NodemailerProvider implements IEmailService {
                 duration: appointment.duration,
                 notes: appointment.notes,
                 appointmentId: appointment.id,
-                // SAFETY: `calendarLink` is read by this template but is not
-                // declared on AppointmentEmailData, and no caller supplies it, so
-                // it always resolves to '#'. Reported, not fixed: the port is out
-                // of scope for this change and the value is forwarded as-is.
-                calendarLink:
-                    (appointment as { calendarLink?: string }).calendarLink ||
-                    '#',
+                // Forwarded as declared on the port. It used to be cast out of
+                // the type and defaulted to '#', so the template always rendered
+                // a dead "Add to Calendar" button. The template now hides the
+                // button when this is absent.
+                calendarLink: appointment.calendarLink,
             },
             tenantConfig,
             attachments

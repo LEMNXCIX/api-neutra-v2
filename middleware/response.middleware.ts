@@ -252,6 +252,6 @@ function normalizeErrors(errors: unknown): ErrorDetail[] {
                 metadata: e.metadata,
             };
         }
-        return { code: "UNKNOWN_ERROR", message: String(e) };
+        return { code: SystemErrorCodes.UNKNOWN_ERROR, message: String(e) };
     });
 }
