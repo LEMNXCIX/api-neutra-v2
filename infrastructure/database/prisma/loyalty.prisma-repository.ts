@@ -46,6 +46,7 @@ import {
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import { LoyaltyErrorCodes, ValidationErrorCodes } from "@/types/error-codes";
 
 type CouponRecord = {
     id: string;
@@ -421,7 +422,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         if (values.some((value) => !value || !value.trim())) {
             throw new ValidationError(
                 "Loyalty campaign identifiers are required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
     }
@@ -438,27 +439,33 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         maxClaims?: number | null;
     }): void {
         if (!data.name?.trim()) {
-            throw new ValidationError("Campaign name is required", "INVALID_CAMPAIGN_NAME");
+            throw new ValidationError(
+                "Campaign name is required",
+                ValidationErrorCodes.INVALID_CAMPAIGN_NAME,
+            );
         }
         if (!Object.values(LoyaltyCampaignSource).includes(data.source)) {
-            throw new ValidationError("Invalid campaign source", "INVALID_CAMPAIGN_SOURCE");
+            throw new ValidationError(
+                "Invalid campaign source",
+                ValidationErrorCodes.INVALID_CAMPAIGN_SOURCE,
+            );
         }
         if (!isValidLoyaltyCampaignTarget(data.metric, data.targetValue)) {
             throw new ValidationError(
                 "Campaign target must be a positive decimal and COUNT targets must be integers",
-                "INVALID_CAMPAIGN_TARGET",
+                ValidationErrorCodes.INVALID_CAMPAIGN_TARGET,
             );
         }
         if (!isValidLoyaltyCampaignDates(data.startsAt, data.endsAt, data.claimUntil)) {
             throw new ValidationError(
                 "Campaign dates must satisfy startsAt < endsAt <= claimUntil",
-                "INVALID_CAMPAIGN_DATES",
+                ValidationErrorCodes.INVALID_CAMPAIGN_DATES,
             );
         }
         if (!isValidLoyaltyRewardValidDays(data.rewardValidDays)) {
             throw new ValidationError(
                 "Campaign reward validity must be a positive integer",
-                "INVALID_LOYALTY_REWARD_VALIDITY",
+                ValidationErrorCodes.INVALID_LOYALTY_REWARD_VALIDITY,
             );
         }
         if (
@@ -468,7 +475,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         ) {
             throw new ValidationError(
                 "Campaign maxClaims must be a positive integer",
-                "INVALID_CAMPAIGN_MAX_CLAIMS",
+                ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
             );
         }
     }
@@ -663,7 +670,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             ) {
                 throw new ValidationError(
                     "Campaign maxClaims cannot be lower than claimedCount",
-                    "INVALID_CAMPAIGN_MAX_CLAIMS",
+                    ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
                 );
             }
 
@@ -870,7 +877,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
     ): Promise<LoyaltyCampaign | null> {
         this.validateIdentity(tenantId);
         if (!(at instanceof Date) || !Number.isFinite(at.getTime())) {
-            throw new ValidationError("Campaign lookup date is invalid", "INVALID_CAMPAIGN_DATE");
+            throw new ValidationError(
+                "Campaign lookup date is invalid",
+                ValidationErrorCodes.INVALID_CAMPAIGN_DATE,
+            );
         }
         let source: LoyaltyCampaignSource | null = null;
         if (sourceType === LoyaltySourceType.APPOINTMENT) {
@@ -881,7 +891,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         if (!source) {
             throw new ValidationError(
                 "Campaign source type is invalid",
-                "INVALID_LOYALTY_SOURCE_TYPE",
+                ValidationErrorCodes.INVALID_LOYALTY_SOURCE_TYPE,
             );
         }
         const row = await this.db.loyaltyCampaign.findFirst({
@@ -1027,7 +1037,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         if (!canTransitionLoyaltyCampaignStatus(from, to)) {
             throw new BusinessRuleViolationError(
                 `Invalid loyalty campaign transition: ${from} -> ${to}`,
-                "INVALID_LOYALTY_CAMPAIGN_TRANSITION",
+                LoyaltyErrorCodes.INVALID_CAMPAIGN_TRANSITION,
             );
         }
 
@@ -1044,7 +1054,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         ) {
             throw new BusinessRuleViolationError(
                 "A campaign can be archived only at or after claimUntil",
-                "LOYALTY_CAMPAIGN_ARCHIVE_TOO_EARLY",
+                LoyaltyErrorCodes.CAMPAIGN_ARCHIVE_TOO_EARLY,
             );
         }
         if (
@@ -1068,7 +1078,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             ) {
                 throw new ValidationError(
                     "Campaign maxClaims cannot be lower than claimedCount",
-                    "INVALID_CAMPAIGN_MAX_CLAIMS",
+                    ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
                 );
             }
             await this.validateRewardTemplate(
@@ -1120,7 +1130,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 ) {
                     throw new BusinessRuleViolationError(
                         "The campaign is not claimable at this time",
-                        "LOYALTY_CAMPAIGN_NOT_CLAIMABLE",
+                        LoyaltyErrorCodes.CAMPAIGN_NOT_CLAIMABLE,
                     );
                 }
                 assertLoyaltyCampaignRewardConfigured(
@@ -1139,7 +1149,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 if (!new Prisma.Decimal(progressValue).gte(new Prisma.Decimal(campaign.targetValue))) {
                     throw new BusinessRuleViolationError(
                         "The loyalty campaign target has not been reached",
-                        "LOYALTY_TARGET_NOT_REACHED",
+                        LoyaltyErrorCodes.TARGET_NOT_REACHED,
                     );
                 }
 
@@ -1187,7 +1197,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     if (winner) return this.toCampaignClaimResult(winner);
                     throw new BusinessRuleViolationError(
                         "The campaign has reached its claim limit",
-                        "LOYALTY_CAMPAIGN_CLAIM_LIMIT_REACHED",
+                        LoyaltyErrorCodes.CAMPAIGN_CLAIM_LIMIT_REACHED,
                     );
                 }
 
@@ -1198,7 +1208,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 if (!Number.isFinite(expiresAt.getTime())) {
                     throw new ValidationError(
                         "Campaign reward validity produces an invalid expiry date",
-                        "INVALID_LOYALTY_REWARD_VALIDITY",
+                        ValidationErrorCodes.INVALID_LOYALTY_REWARD_VALIDITY,
                     );
                 }
 

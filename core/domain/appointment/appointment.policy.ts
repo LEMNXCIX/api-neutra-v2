@@ -1,5 +1,6 @@
 import { AppointmentStatus } from "@/core/entities/appointment.entity";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 const APPOINTMENT_STATUS_TRANSITIONS: Readonly<
     Record<AppointmentStatus, readonly AppointmentStatus[]>
@@ -47,7 +48,7 @@ export function assertAppointmentStatus(
     if (!isAppointmentStatus(value)) {
         throw new BusinessRuleViolationError(
             "Invalid appointment status",
-            "INVALID_APPOINTMENT_STATUS",
+            BusinessErrorCodes.INVALID_APPOINTMENT_STATUS,
         );
     }
 }

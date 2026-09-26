@@ -27,6 +27,7 @@ import {
     CreateLoyaltyCampaignData,
     LoyaltyCampaignRewardDefinition,
 } from "@/core/repositories/loyalty.repository.interface";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export function toLoyaltyCampaignDate(
     value: Date | string,
@@ -36,7 +37,7 @@ export function toLoyaltyCampaignDate(
     if (!Number.isFinite(date.getTime())) {
         throw new ValidationError(
             `${field} must be a valid date`,
-            "INVALID_CAMPAIGN_DATES",
+            ValidationErrorCodes.INVALID_CAMPAIGN_DATES,
         );
     }
     return date;
@@ -71,7 +72,7 @@ export async function loadLoyaltyCampaignTenant(
     if (!tenantId?.trim()) {
         throw new ValidationError(
             "Tenant ID is required",
-            "MISSING_REQUIRED_FIELDS",
+            ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
         );
     }
     const tenant = await tenantRepository.findById(tenantId);
@@ -103,20 +104,20 @@ export class CreateLoyaltyCampaignUseCase {
         if (!data || typeof data !== "object") {
             throw new ValidationError(
                 "Campaign data is required",
-                "INVALID_CAMPAIGN",
+                ValidationErrorCodes.INVALID_CAMPAIGN,
             );
         }
         assertLoyaltyCampaignSourceCompatible(tenant.type, data.source);
         if (!isValidLoyaltyCampaignTarget(data.metric, data.targetValue)) {
             throw new ValidationError(
                 "Campaign target is invalid",
-                "INVALID_CAMPAIGN_TARGET",
+                ValidationErrorCodes.INVALID_CAMPAIGN_TARGET,
             );
         }
         if (!isValidLoyaltyRewardValidDays(data.rewardValidDays)) {
             throw new ValidationError(
                 "Campaign reward validity is invalid",
-                "INVALID_LOYALTY_REWARD_VALIDITY",
+                ValidationErrorCodes.INVALID_LOYALTY_REWARD_VALIDITY,
             );
         }
         if (
@@ -126,7 +127,7 @@ export class CreateLoyaltyCampaignUseCase {
         ) {
             throw new ValidationError(
                 "Campaign maxClaims is invalid",
-                "INVALID_CAMPAIGN_MAX_CLAIMS",
+                ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
             );
         }
         const startsAt = toLoyaltyCampaignDate(data.startsAt, "startsAt");
@@ -138,7 +139,7 @@ export class CreateLoyaltyCampaignUseCase {
         if (!isValidLoyaltyCampaignDates(startsAt, endsAt, claimUntil)) {
             throw new ValidationError(
                 "Campaign dates must satisfy startsAt < endsAt <= claimUntil",
-                "INVALID_CAMPAIGN_DATES",
+                ValidationErrorCodes.INVALID_CAMPAIGN_DATES,
             );
         }
         const reward = toLoyaltyRewardDefinition(data.reward);

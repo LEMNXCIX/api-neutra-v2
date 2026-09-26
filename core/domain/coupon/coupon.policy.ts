@@ -1,5 +1,6 @@
 import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes, LoyaltyErrorCodes } from "@/types/error-codes";
 
 export function isPersonalCoupon(
     coupon: { ownerId?: string | null },
@@ -82,19 +83,19 @@ export function assertCouponRedeemable(
     if (isLoyaltyTemplateCoupon(coupon)) {
         throw new BusinessRuleViolationError(
             "Loyalty reward templates cannot be redeemed",
-            "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
+            LoyaltyErrorCodes.TEMPLATE_NOT_REDEEMABLE,
         );
     }
     if (!isCouponOwnedBy(coupon, userId)) {
         throw new BusinessRuleViolationError(
             "Coupon is not available for this user",
-            "COUPON_NOT_OWNED",
+            BusinessErrorCodes.COUPON_NOT_OWNED,
         );
     }
     if (isRewardCoupon(coupon) && !isPersonalCoupon(coupon)) {
         throw new BusinessRuleViolationError(
             "Reward coupon is not assigned to a customer",
-            "REWARD_COUPON_NOT_OWNED",
+            BusinessErrorCodes.REWARD_COUPON_NOT_OWNED,
         );
     }
     if (!coupon.active) {
@@ -119,7 +120,7 @@ export function assertCouponsFeatureEnabled(
     if (!enabled) {
         throw new BusinessRuleViolationError(
             "Coupon validation is not available for this tenant",
-            "COUPONS_FEATURE_REQUIRED",
+            BusinessErrorCodes.COUPONS_FEATURE_REQUIRED,
         );
     }
 }

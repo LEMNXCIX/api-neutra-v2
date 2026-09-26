@@ -8,6 +8,7 @@ import {
     ValidationError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class UpdateBannerUseCase {
     constructor(private bannerRepository: IBannerRepository) {}
@@ -24,7 +25,7 @@ export class UpdateBannerUseCase {
             if (endsAt <= startsAt) {
                 throw new ValidationError(
                     "End date must be after start date",
-                    "INVALID_FORMAT",
+                    ValidationErrorCodes.INVALID_FORMAT,
                 );
             }
         }

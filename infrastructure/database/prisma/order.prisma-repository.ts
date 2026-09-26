@@ -35,6 +35,7 @@ import {
     BusinessRuleViolationError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 type OrderWithIncludes = Prisma.OrderGetPayload<{
     include: {
@@ -279,7 +280,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                 if (usage.count === 0) {
                     throw new BusinessRuleViolationError(
                         "The coupon is not available for this user",
-                        "COUPON_UNAVAILABLE",
+                        BusinessErrorCodes.COUPON_UNAVAILABLE,
                     );
                 }
             }

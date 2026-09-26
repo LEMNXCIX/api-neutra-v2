@@ -35,6 +35,9 @@ import {
     UpdateLoyaltyCampaignDto,
 } from "@/core/application/dtos/requests/loyalty.request";
 import { ROLE_CONSTANTS } from "@/core/domain/constants";
+import {
+    AuthErrorCodes,
+} from "@/types/error-codes";
 
 jest.mock("@/middleware/tenant-feature.middleware", () => ({
     requireConcreteTenantContext: jest.fn(
@@ -506,7 +509,7 @@ describe("loyalty campaign HTTP API", () => {
                 } as never,
                 response,
             ),
-        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        ).rejects.toMatchObject({ code: AuthErrorCodes.FORBIDDEN });
         expect(setup.allTenants.execute).not.toHaveBeenCalled();
     });
 });

@@ -12,6 +12,7 @@ import {
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class ClaimLoyaltyRewardUseCase {
     constructor(
@@ -28,7 +29,7 @@ export class ClaimLoyaltyRewardUseCase {
         if (!tenantId?.trim() || !campaignId?.trim() || !userId?.trim()) {
             throw new ValidationError(
                 "Tenant, campaign, and customer identity are required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
 

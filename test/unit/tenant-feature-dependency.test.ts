@@ -8,6 +8,9 @@ import {
     assertTenantFeatureDependencies,
 } from "@/core/domain/feature/feature.policy";
 import { TenantType } from "@/core/entities/tenant.entity";
+import {
+    BusinessErrorCodes,
+} from "@/types/error-codes";
 
 function createUseCase() {
     const tenantRepository = {
@@ -143,7 +146,7 @@ describe("tenant feature dependency policy", () => {
                 },
                 "creator-1",
             ),
-        ).rejects.toMatchObject({ code: "LOYALTY_REQUIRES_COUPONS" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS });
         expect(tenantRepository.create).not.toHaveBeenCalled();
     });
 
@@ -176,7 +179,7 @@ describe("tenant feature dependency policy", () => {
             useCase.execute("tenant-1", {
                 config: { features: { LOYALTY: true, COUPONS: false } },
             }),
-        ).rejects.toMatchObject({ code: "LOYALTY_REQUIRES_COUPONS" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS });
         expect(tenantRepository.update).not.toHaveBeenCalled();
         expect(
             featureRepository.updateTenantFeatures,
@@ -193,7 +196,7 @@ describe("tenant feature dependency policy", () => {
             useCase.execute("tenant-1", {
                 config: { features: { LOYALTY: false } },
             }),
-        ).rejects.toMatchObject({ code: "LOYALTY_OBLIGATIONS_EXIST" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.LOYALTY_OBLIGATIONS_EXIST });
         expect(loyaltyRepository.hasLiveLoyaltyObligations).toHaveBeenCalledWith(
             "tenant-1",
         );
@@ -272,7 +275,7 @@ describe("tenant feature dependency policy", () => {
                 useCase.execute("tenant-1", {
                     features: { [feature]: false },
                 }),
-            ).rejects.toMatchObject({ code: "LOYALTY_OBLIGATIONS_EXIST" });
+            ).rejects.toMatchObject({ code: BusinessErrorCodes.LOYALTY_OBLIGATIONS_EXIST });
             expect(loyaltyRepository.hasLiveLoyaltyObligations).toHaveBeenCalledWith(
                 "tenant-1",
             );

@@ -8,6 +8,7 @@ import {
     ValidationError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import { WhatsAppErrorCodes } from "@/types/error-codes";
 
 export class ProcessIncomingMessageUseCase {
     constructor(
@@ -26,7 +27,7 @@ export class ProcessIncomingMessageUseCase {
         if (!phoneNumberId) {
             throw new ValidationError(
                 "Missing phone_number_id in webhook metadata",
-                "WHATSAPP_CONFIG_NOT_FOUND",
+                WhatsAppErrorCodes.WHATSAPP_CONFIG_NOT_FOUND,
             );
         }
 

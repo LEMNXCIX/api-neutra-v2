@@ -17,6 +17,7 @@ import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 type CouponWhereInput = Prisma.CouponWhereInput & {
     ownerId?: Prisma.StringNullableFilter<"Coupon"> | string | null;
@@ -286,7 +287,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         if (result.count === 0) {
             throw new BusinessRuleViolationError(
                 "The coupon is not available for this user",
-                "COUPON_UNAVAILABLE",
+                BusinessErrorCodes.COUPON_UNAVAILABLE,
             );
         }
     }

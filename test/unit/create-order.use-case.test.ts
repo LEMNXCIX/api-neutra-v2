@@ -5,6 +5,9 @@ import {
     BusinessRuleViolationError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import {
+    BusinessErrorCodes,
+} from "@/types/error-codes";
 
 const CART_ITEM = {
     id: "p1",
@@ -140,7 +143,7 @@ describe("CreateOrderUseCase", () => {
 
         await expect(
             useCase.execute("t1", "u1", "STORE-10"),
-        ).rejects.toMatchObject({ code: "COUPONS_FEATURE_REQUIRED" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.COUPONS_FEATURE_REQUIRED });
         expect(validateCouponUseCase.execute).not.toHaveBeenCalled();
         expect(
             orderRepository.createWithInventoryAdjustment,

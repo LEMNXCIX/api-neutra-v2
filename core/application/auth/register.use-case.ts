@@ -14,6 +14,7 @@ import {
     EntityNotFoundError,
     BusinessRuleViolationError,
 } from "@/core/domain/errors/domain-errors";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 export class RegisterUseCase {
     constructor(
@@ -71,7 +72,7 @@ export class RegisterUseCase {
             if (!passwordMatches) {
                 throw new BusinessRuleViolationError(
                     "An account with this email already exists. Use the same password to join this tenant.",
-                    "USER_ALREADY_EXISTS",
+                    AuthErrorCodes.USER_ALREADY_EXISTS,
                 );
             }
         } else {

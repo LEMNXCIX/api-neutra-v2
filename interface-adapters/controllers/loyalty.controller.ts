@@ -21,6 +21,11 @@ import {
 } from "@/core/domain/errors/domain-errors";
 import { isSuperAdmin } from "@/core/domain/rbac/access-policy";
 import { AuthenticatedUser } from "@/types/rbac";
+import {
+    AuthErrorCodes,
+    TenantErrorCodes,
+    ValidationErrorCodes,
+} from "@/types/error-codes";
 
 function requireUserId(req: Request): string {
     const userId = req.user?.id;
@@ -36,7 +41,7 @@ function requireTenantId(req: Request): string {
     if (!tenantId || tenantId.toLowerCase() === "all") {
         throw new ValidationError(
             "A concrete tenant context is required",
-            "TENANT_REQUIRED",
+            TenantErrorCodes.TENANT_REQUIRED,
         );
     }
     return tenantId;
@@ -50,7 +55,7 @@ function requireCampaignId(req: Request): string {
     if (!campaignId) {
         throw new ValidationError(
             "Campaign ID is required",
-            "MISSING_REQUIRED_FIELDS",
+            ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
         );
     }
     return campaignId;
@@ -63,7 +68,7 @@ function requireSuperAdmin(user: AuthenticatedUser | undefined): void {
     if (!isSuperAdmin(user)) {
         throw new ForbiddenError(
             "Super administrator access is required",
-            "FORBIDDEN",
+            AuthErrorCodes.FORBIDDEN,
         );
     }
 }

@@ -5,6 +5,7 @@ import {
     ValidationError,
     DuplicateEntityError,
 } from "@/core/domain/errors/domain-errors";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class CreateFeatureUseCase {
     constructor(private featureRepository: IFeatureRepository) {}
@@ -13,7 +14,7 @@ export class CreateFeatureUseCase {
         if (!data.key || !data.name) {
             throw new ValidationError(
                 "Key and Name are required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
 

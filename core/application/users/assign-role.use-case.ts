@@ -7,6 +7,7 @@ import {
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class AssignRoleToUserUseCase {
     constructor(
@@ -24,7 +25,7 @@ export class AssignRoleToUserUseCase {
         if (!tenantId) {
             throw new ValidationError(
                 "TenantId is required for role assignment",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
 

@@ -24,6 +24,7 @@ import {
     isHoliday,
     toMinutes,
 } from "@/core/domain/booking/working-hours";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class CreateAppointmentUseCase {
     constructor(
@@ -82,7 +83,7 @@ export class CreateAppointmentUseCase {
         if (startTime.getTime() <= Date.now()) {
             throw new BusinessRuleViolationError(
                 "The appointment start time must be in the future",
-                "START_TIME_NOT_IN_FUTURE",
+                BusinessErrorCodes.START_TIME_NOT_IN_FUTURE,
             );
         }
 
@@ -96,7 +97,7 @@ export class CreateAppointmentUseCase {
             if (isHoliday(settings?.holidays, startTime)) {
                 throw new BusinessRuleViolationError(
                     "The selected date is a holiday",
-                    "HOLIDAY_CLOSED",
+                    BusinessErrorCodes.HOLIDAY_CLOSED,
                 );
             }
             const ranges = intersectRanges(
@@ -116,7 +117,7 @@ export class CreateAppointmentUseCase {
             ) {
                 throw new BusinessRuleViolationError(
                     "The selected time is outside working hours",
-                    "OUTSIDE_WORKING_HOURS",
+                    BusinessErrorCodes.OUTSIDE_WORKING_HOURS,
                 );
             }
         }
@@ -154,7 +155,7 @@ export class CreateAppointmentUseCase {
                 throw new BusinessRuleViolationError(
                     validationResult.message ||
                         "The provided coupon is invalid",
-                    "INVALID_COUPON",
+                    BusinessErrorCodes.INVALID_COUPON,
                 );
             }
 

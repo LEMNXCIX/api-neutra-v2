@@ -15,6 +15,7 @@ import { IFeatureRepository } from "@/core/repositories/feature.repository.inter
 import { IConfigProvider } from "@/core/providers/config-provider.interface";
 import { ILogger } from "@/core/providers/logger.interface";
 import { Order } from "@/core/entities/order.entity";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 interface CartProductItem {
     id: string;
@@ -52,7 +53,7 @@ export class CreateOrderUseCase {
             if (error instanceof EntityNotFoundError) {
                 throw new BusinessRuleViolationError(
                     "Tu carrito esta vacío, no puedes generar una orden.",
-                    "CART_EMPTY",
+                    BusinessErrorCodes.CART_EMPTY,
                 );
             }
             throw error;
@@ -65,7 +66,7 @@ export class CreateOrderUseCase {
         ) {
             throw new BusinessRuleViolationError(
                 "Tu carrito esta vacío, no puedes generar una orden.",
-                "CART_EMPTY",
+                BusinessErrorCodes.CART_EMPTY,
             );
         }
 
@@ -125,7 +126,7 @@ export class CreateOrderUseCase {
             ) {
                 throw new BusinessRuleViolationError(
                     validationResult.message || "The provided coupon is invalid",
-                    "INVALID_COUPON",
+                    BusinessErrorCodes.INVALID_COUPON,
                 );
             }
             couponId = validationResult.data.coupon.id;

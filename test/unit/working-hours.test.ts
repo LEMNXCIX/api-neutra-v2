@@ -5,6 +5,9 @@ import { IStaffRepository } from "@/core/repositories/staff.repository.interface
 import { IServiceRepository } from "@/core/repositories/service.repository.interface";
 import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import {
+    BusinessErrorCodes,
+} from "@/types/error-codes";
 
 // 2030-01-04 is a Friday, 2030-01-06 is a Sunday. Local noon avoids TZ day shifts.
 const FRIDAY = "2030-01-04T12:00:00";
@@ -253,7 +256,7 @@ describe("CreateAppointmentUseCase — schedule validation", () => {
                 } as never),
             ).rejects.toMatchObject({
                 name: "BusinessRuleViolationError",
-                code: "START_TIME_NOT_IN_FUTURE",
+                code: BusinessErrorCodes.START_TIME_NOT_IN_FUTURE,
                 message: "The appointment start time must be in the future",
             });
         } finally {

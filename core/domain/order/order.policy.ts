@@ -1,5 +1,6 @@
 import { Order, OrderStatus } from "@/core/entities/order.entity";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export function canTransitionTo(
     current: OrderStatus,
@@ -18,7 +19,7 @@ export function isPaid(order: Order): boolean {
     return order.status !== "PENDIENTE";
 }
 
-const INSUFFICIENT_STOCK = "INSUFFICIENT_STOCK";
+const INSUFFICIENT_STOCK = BusinessErrorCodes.INSUFFICIENT_STOCK;
 
 /** Add-to-cart: the resulting cart quantity must fit in the stock on hand. */
 export function assertCartStockAvailable(input: {

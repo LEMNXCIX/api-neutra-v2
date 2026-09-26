@@ -5,6 +5,10 @@ import {
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
 import {
+    BusinessErrorCodes,
+    LoyaltyErrorCodes,
+} from "@/types/error-codes";
+import {
     LoyaltyCampaignContributionInput,
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
@@ -211,13 +215,13 @@ export function assertLoyaltyCampaignFeatures(
     if (resolved.LOYALTY !== true) {
         throw new BusinessRuleViolationError(
             "LOYALTY must be enabled for campaign administration",
-            "LOYALTY_FEATURE_REQUIRED",
+            BusinessErrorCodes.LOYALTY_FEATURE_REQUIRED,
         );
     }
     if (resolved.COUPONS !== true) {
         throw new BusinessRuleViolationError(
             "LOYALTY requires COUPONS to be enabled for campaign administration",
-            "LOYALTY_REQUIRES_COUPONS",
+            BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS,
         );
     }
 }
@@ -229,13 +233,12 @@ export function assertLoyaltyCampaignSourceCompatible(
     if (!isLoyaltyCampaignSourceCompatible(tenantType, source)) {
         throw new BusinessRuleViolationError(
             "The campaign source is not supported by this tenant type",
-            "LOYALTY_CAMPAIGN_SOURCE_NOT_COMPATIBLE",
+            LoyaltyErrorCodes.CAMPAIGN_SOURCE_NOT_COMPATIBLE,
         );
     }
 }
 
-const INVALID_REWARD_TEMPLATE = "INVALID_LOYALTY_REWARD_TEMPLATE";
-const LOYALTY_CAMPAIGN_NOT_DRAFT = "LOYALTY_CAMPAIGN_NOT_DRAFT";
+const LOYALTY_CAMPAIGN_NOT_DRAFT = LoyaltyErrorCodes.CAMPAIGN_NOT_DRAFT;
 
 const REWARD_AMOUNT_FIELDS = [
     "minPurchaseAmount",
@@ -260,11 +263,17 @@ interface LoyaltyRewardTemplate {
 }
 
 function rewardTemplateRejected(message: string): ValidationError {
-    return new ValidationError(message, INVALID_REWARD_TEMPLATE);
+    return new ValidationError(
+        message,
+        LoyaltyErrorCodes.INVALID_REWARD_TEMPLATE,
+    );
 }
 
 function rewardTemplateUnusable(message: string): BusinessRuleViolationError {
-    return new BusinessRuleViolationError(message, INVALID_REWARD_TEMPLATE);
+    return new BusinessRuleViolationError(
+        message,
+        LoyaltyErrorCodes.INVALID_REWARD_TEMPLATE,
+    );
 }
 
 /**

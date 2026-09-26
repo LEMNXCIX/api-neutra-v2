@@ -1,4 +1,5 @@
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export function assertTenantFeatureDependencies(
     features: Record<string, boolean>,
@@ -6,7 +7,7 @@ export function assertTenantFeatureDependencies(
     if (features.LOYALTY === true && features.COUPONS !== true) {
         throw new BusinessRuleViolationError(
             "LOYALTY requires COUPONS to be enabled",
-            "LOYALTY_REQUIRES_COUPONS",
+            BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS,
         );
     }
 }

@@ -4,6 +4,7 @@ import { canTransitionTo } from "@/core/domain/order/order.policy";
 import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { InvalidStateError } from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class ChangeOrderStatusUseCase {
     constructor(
@@ -37,7 +38,7 @@ export class ChangeOrderStatusUseCase {
         if (!canTransitionTo(order.status, status as OrderStatus)) {
             throw new InvalidStateError(
                 `Order cannot transition from '${order.status}' to '${status}'`,
-                "INVALID_STATUS_TRANSITION",
+                BusinessErrorCodes.INVALID_STATUS_TRANSITION,
             );
         }
 
@@ -61,7 +62,7 @@ export class ChangeOrderStatusUseCase {
         if (!updated) {
             throw new InvalidStateError(
                 "Order status changed before the update could be applied",
-                "ORDER_STATUS_CONFLICT",
+                BusinessErrorCodes.ORDER_STATUS_CONFLICT,
             );
         }
         return Success(updated, "Order status updated");

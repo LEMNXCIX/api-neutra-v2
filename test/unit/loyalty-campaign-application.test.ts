@@ -18,6 +18,10 @@ import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get
 import { ClaimLoyaltyRewardUseCase } from "@/core/application/loyalty/claim-loyalty-reward.use-case";
 import { LoyaltyPresenter } from "@/core/application/dtos/responses/loyalty/loyalty.response";
 import { LoyaltyCampaignLifecycleAction } from "@/core/application/dtos/requests/loyalty.request";
+import {
+    BusinessErrorCodes,
+    ResourceErrorCodes,
+} from "@/types/error-codes";
 
 const now = new Date("2030-01-15T00:00:00.000Z");
 const startsAt = new Date("2030-01-01T00:00:00.000Z");
@@ -374,7 +378,7 @@ describe("loyalty campaign application services", () => {
                 ...repositoryData(),
                 source: LoyaltyCampaignSource.BOOKING,
             }),
-        ).rejects.toMatchObject({ code: "LOYALTY_REQUIRES_COUPONS" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS });
         expect(loyaltyRepository.createCampaign).not.toHaveBeenCalled();
 
         featureRepository.getTenantFeatureStatus.mockResolvedValue({
@@ -635,10 +639,10 @@ describe("loyalty campaign application services", () => {
         ]);
         await expect(
             useCase.execute("tenant-1", "draft", "customer-1"),
-        ).rejects.toMatchObject({ code: "ENTITY_NOT_FOUND" });
+        ).rejects.toMatchObject({ code: ResourceErrorCodes.NOT_FOUND });
         await expect(
             useCase.execute("tenant-1", "archived-unclaimed", "customer-1"),
-        ).rejects.toMatchObject({ code: "ENTITY_NOT_FOUND" });
+        ).rejects.toMatchObject({ code: ResourceErrorCodes.NOT_FOUND });
     });
 
     test("presents campaign reward and claim metadata", () => {

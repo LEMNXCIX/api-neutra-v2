@@ -25,6 +25,7 @@ import {
     toLoyaltyCampaignDate,
     toLoyaltyRewardDefinition,
 } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class UpdateLoyaltyCampaignUseCase {
     constructor(
@@ -46,13 +47,13 @@ export class UpdateLoyaltyCampaignUseCase {
         if (!campaignId?.trim()) {
             throw new ValidationError(
                 "Campaign ID is required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
         if (!data || typeof data !== "object") {
             throw new ValidationError(
                 "Campaign update is required",
-                "INVALID_CAMPAIGN",
+                ValidationErrorCodes.INVALID_CAMPAIGN,
             );
         }
         const current = await this.loyaltyRepository.getCampaign(
@@ -73,7 +74,7 @@ export class UpdateLoyaltyCampaignUseCase {
         if (!isValidLoyaltyCampaignTarget(metric, targetValue)) {
             throw new ValidationError(
                 "Campaign target is invalid",
-                "INVALID_CAMPAIGN_TARGET",
+                ValidationErrorCodes.INVALID_CAMPAIGN_TARGET,
             );
         }
         if (
@@ -82,7 +83,7 @@ export class UpdateLoyaltyCampaignUseCase {
         ) {
             throw new ValidationError(
                 "Campaign reward validity is invalid",
-                "INVALID_LOYALTY_REWARD_VALIDITY",
+                ValidationErrorCodes.INVALID_LOYALTY_REWARD_VALIDITY,
             );
         }
         if (
@@ -92,7 +93,7 @@ export class UpdateLoyaltyCampaignUseCase {
         ) {
             throw new ValidationError(
                 "Campaign maxClaims is invalid",
-                "INVALID_CAMPAIGN_MAX_CLAIMS",
+                ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
             );
         }
 
@@ -144,7 +145,7 @@ export class UpdateLoyaltyCampaignUseCase {
         if (!isValidLoyaltyCampaignDates(startsAt, endsAt, claimUntil)) {
             throw new ValidationError(
                 "Campaign dates must satisfy startsAt < endsAt <= claimUntil",
-                "INVALID_CAMPAIGN_DATES",
+                ValidationErrorCodes.INVALID_CAMPAIGN_DATES,
             );
         }
 

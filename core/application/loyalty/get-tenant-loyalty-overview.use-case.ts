@@ -12,6 +12,7 @@ import {
 } from "@/core/domain/errors/domain-errors";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export interface LoyaltyCampaignTenantStats {
     campaignCount: number;
@@ -85,7 +86,7 @@ export class GetTenantLoyaltyOverviewUseCase {
         if (!tenantId?.trim()) {
             throw new ValidationError(
                 "Tenant ID is required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
         const tenant = await loadLoyaltyCampaignTenant(

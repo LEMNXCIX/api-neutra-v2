@@ -17,6 +17,10 @@ import {
     hasAnyRole,
     hasPermission,
 } from "@/core/domain/rbac/access-policy";
+import {
+    AuthErrorCodes,
+    BusinessErrorCodes,
+} from "@/types/error-codes";
 
 const manager = {
     id: "staff-1",
@@ -141,7 +145,7 @@ describe("UpdateAppointmentStatusUseCase", () => {
 
         await expect(
             useCase.execute("tenant-1", "appointment-1", "UNKNOWN", manager),
-        ).rejects.toMatchObject({ code: "INVALID_APPOINTMENT_STATUS" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.INVALID_APPOINTMENT_STATUS });
         expect(appointmentRepository.findById).not.toHaveBeenCalled();
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
@@ -188,7 +192,7 @@ describe("UpdateAppointmentStatusUseCase", () => {
                 AppointmentStatus.COMPLETED,
                 manager,
             ),
-        ).rejects.toMatchObject({ code: "INVALID_STATUS_TRANSITION" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.INVALID_STATUS_TRANSITION });
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
 
@@ -204,7 +208,7 @@ describe("UpdateAppointmentStatusUseCase", () => {
                 AppointmentStatus.IN_PROGRESS,
                 manager,
             ),
-        ).rejects.toMatchObject({ code: "APPOINTMENT_STATUS_CONFLICT" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.APPOINTMENT_STATUS_CONFLICT });
         expect(featureRepository.getTenantFeatureStatus).not.toHaveBeenCalled();
     });
 });
@@ -307,7 +311,7 @@ describe("appointment mutation authorization", () => {
                 ...customer,
                 id: "other-customer",
             }),
-        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        ).rejects.toMatchObject({ code: AuthErrorCodes.FORBIDDEN });
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
 
@@ -345,7 +349,7 @@ describe("appointment mutation authorization", () => {
 
         await expect(
             useCase.execute("tenant-1", "appointment-1", customer),
-        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        ).rejects.toMatchObject({ code: AuthErrorCodes.FORBIDDEN });
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
 
@@ -374,7 +378,7 @@ describe("appointment mutation authorization", () => {
 
         await expect(
             useCase.execute("tenant-1", "appointment-1", customer),
-        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        ).rejects.toMatchObject({ code: AuthErrorCodes.FORBIDDEN });
         expect(appointmentRepository.findById).not.toHaveBeenCalled();
     });
 });

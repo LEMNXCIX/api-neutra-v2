@@ -4,6 +4,8 @@
  * must stay byte-identical.
  */
 
+import { TenantErrorCodes } from "@/types/error-codes";
+
 export type TenantGateDecision =
     | { allowed: true }
     | { allowed: false; code: string; message: string };
@@ -15,7 +17,7 @@ export function evaluateFeatureEnabled(params: {
     if (params.enabled) return { allowed: true };
     return {
         allowed: false,
-        code: "FEATURE_NOT_ENABLED",
+        code: TenantErrorCodes.FEATURE_NOT_ENABLED,
         message: `The ${params.featureKey} feature is not enabled for this tenant.`,
     };
 }
@@ -26,7 +28,7 @@ export function evaluateTenantActive(params: {
     if (params.active) return { allowed: true };
     return {
         allowed: false,
-        code: "TENANT_INACTIVE",
+        code: TenantErrorCodes.TENANT_INACTIVE,
         message: "Tenant is inactive.",
     };
 }
@@ -40,7 +42,7 @@ export function evaluateTenantType(params: {
     }
     return {
         allowed: false,
-        code: "TENANT_TYPE_NOT_ALLOWED",
+        code: TenantErrorCodes.TYPE_NOT_ALLOWED,
         message: `Requires tenant type: ${params.allowed.join(" or ")}.`,
     };
 }

@@ -1,6 +1,7 @@
 import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class GetWhatsAppConfigUseCase {
     constructor(private whatsappConfigRepo: IWhatsAppConfigRepository) {}
@@ -9,7 +10,7 @@ export class GetWhatsAppConfigUseCase {
         if (!tenantId) {
             throw new ValidationError(
                 "Tenant ID is required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
         const config = await this.whatsappConfigRepo.findByTenantId(tenantId);

@@ -5,6 +5,7 @@ import {
 import { CreateBannerDTO } from "@/core/application/dtos/requests/banner.request";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class CreateBannerUseCase {
     constructor(private bannerRepository: IBannerRepository) {}
@@ -19,7 +20,7 @@ export class CreateBannerUseCase {
         if (endsAt <= startsAt) {
             throw new ValidationError(
                 "End date must be after start date",
-                "INVALID_FORMAT",
+                ValidationErrorCodes.INVALID_FORMAT,
             );
         }
 

@@ -7,6 +7,7 @@ import {
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { UpdateTenantFeaturesDTO } from "@/core/application/dtos/requests/tenant.request";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class UpdateTenantFeaturesUseCase {
     constructor(
@@ -34,7 +35,7 @@ export class UpdateTenantFeaturesUseCase {
         ) {
             throw new BusinessRuleViolationError(
                 "LOYALTY and COUPONS cannot be disabled while live loyalty obligations remain",
-                "LOYALTY_OBLIGATIONS_EXIST",
+                BusinessErrorCodes.LOYALTY_OBLIGATIONS_EXIST,
             );
         }
 

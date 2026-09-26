@@ -1,5 +1,8 @@
 import { prisma } from "@/config/db.config";
 import { PrismaOrderRepository } from "@/infrastructure/database/prisma/order.prisma-repository";
+import {
+    BusinessErrorCodes,
+} from "@/types/error-codes";
 
 function couponRow(overrides: Record<string, unknown> = {}) {
     return {
@@ -170,7 +173,7 @@ describe("Prisma order coupon transaction", () => {
                 orderData(),
                 [{ productId: "product-1", amount: 2 }],
             ),
-        ).rejects.toMatchObject({ code: "COUPONS_FEATURE_REQUIRED" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.COUPONS_FEATURE_REQUIRED });
         expect(inventory).not.toHaveBeenCalled();
         expect(usage).not.toHaveBeenCalled();
         expect(create).not.toHaveBeenCalled();
@@ -191,7 +194,7 @@ describe("Prisma order coupon transaction", () => {
                 orderData(),
                 [{ productId: "product-1", amount: 2 }],
             ),
-        ).rejects.toMatchObject({ code: "COUPON_NOT_OWNED" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.COUPON_NOT_OWNED });
         expect(inventory).not.toHaveBeenCalled();
         expect(usage).not.toHaveBeenCalled();
         expect(create).not.toHaveBeenCalled();

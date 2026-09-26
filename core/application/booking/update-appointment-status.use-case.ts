@@ -16,6 +16,7 @@ import {
     UnauthorizedError,
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class UpdateAppointmentStatusUseCase {
     constructor(
@@ -54,7 +55,7 @@ export class UpdateAppointmentStatusUseCase {
         if (!canTransitionAppointmentStatus(appointment.status, status)) {
             throw new InvalidStateError(
                 `Appointment cannot transition from '${appointment.status}' to '${status}'`,
-                "INVALID_STATUS_TRANSITION",
+                BusinessErrorCodes.INVALID_STATUS_TRANSITION,
             );
         }
 
@@ -80,7 +81,7 @@ export class UpdateAppointmentStatusUseCase {
         if (!updated) {
             throw new InvalidStateError(
                 "Appointment status changed before the update could be applied",
-                "APPOINTMENT_STATUS_CONFLICT",
+                BusinessErrorCodes.APPOINTMENT_STATUS_CONFLICT,
             );
         }
 

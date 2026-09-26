@@ -12,6 +12,7 @@ import {
     assertTenantFeatureDependencies,
     isLoyaltyOrCouponsDisabling,
 } from "@/core/domain/feature/feature.policy";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class UpdateTenantUseCase {
     constructor(
@@ -61,7 +62,7 @@ export class UpdateTenantUseCase {
             ) {
                 throw new BusinessRuleViolationError(
                     "LOYALTY and COUPONS cannot be disabled while live loyalty obligations remain",
-                    "LOYALTY_OBLIGATIONS_EXIST",
+                    BusinessErrorCodes.LOYALTY_OBLIGATIONS_EXIST,
                 );
             }
 

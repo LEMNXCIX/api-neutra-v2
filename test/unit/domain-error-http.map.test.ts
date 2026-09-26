@@ -7,6 +7,7 @@ import {
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
 import {
+    BusinessErrorCodes,
     httpStatusFromDomainCode,
     httpStatusFromDomainError,
 } from "@/types/error-codes";
@@ -15,12 +16,18 @@ describe("Domain error → HTTP mapping", () => {
     test("maps by error class even with custom codes", () => {
         expect(
             httpStatusFromDomainError(
-                new BusinessRuleViolationError("empty", "CART_EMPTY"),
+                new BusinessRuleViolationError(
+                    "empty",
+                    BusinessErrorCodes.CART_EMPTY,
+                ),
             ),
         ).toBe(422);
         expect(
             httpStatusFromDomainError(
-                new BusinessRuleViolationError("stock", "INSUFFICIENT_STOCK"),
+                new BusinessRuleViolationError(
+                    "stock",
+                    BusinessErrorCodes.INSUFFICIENT_STOCK,
+                ),
             ),
         ).toBe(422);
         expect(

@@ -10,6 +10,7 @@ import {
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
 import { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import { TenantErrorCodes } from "@/types/error-codes";
 
 export class SocialLoginUseCase {
     constructor(
@@ -73,7 +74,7 @@ export class SocialLoginUseCase {
             if (!role) {
                 throw new BusinessRuleViolationError(
                     `Default role 'USER' not found for tenant ${tenantId}`,
-                    "TENANT_NOT_FOUND",
+                    TenantErrorCodes.TENANT_NOT_FOUND,
                 );
             }
 

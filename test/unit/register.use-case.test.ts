@@ -1,5 +1,8 @@
 import { RegisterUseCase } from "@/core/application/auth/register.use-case";
 import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
+import {
+    AuthErrorCodes,
+} from "@/types/error-codes";
 
 const EMAIL = "emelec_leo@outlook.com";
 const BOOK_TENANT = {
@@ -127,7 +130,7 @@ describe("RegisterUseCase tenant memberships", () => {
             useCase.execute(SUPERADMIN_TENANT.tenantId, registration),
         ).rejects.toMatchObject({
             name: "BusinessRuleViolationError",
-            code: "USER_ALREADY_EXISTS",
+            code: AuthErrorCodes.USER_ALREADY_EXISTS,
         });
         expect(userRepository.addTenant).not.toHaveBeenCalled();
     });

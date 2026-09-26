@@ -4,6 +4,9 @@ import { Order, OrderStatus } from "@/core/entities/order.entity";
 import { IOrderRepository } from "@/core/repositories/order.repository.interface";
 import { prisma } from "@/config/db.config";
 import { PrismaOrderRepository } from "@/infrastructure/database/prisma/order.prisma-repository";
+import {
+    BusinessErrorCodes,
+} from "@/types/error-codes";
 
 function order(status: OrderStatus): Order {
     return {
@@ -142,7 +145,7 @@ describe("ChangeOrderStatusUseCase", () => {
 
         await expect(
             useCase.execute("tenant-1", "order-1", "ENTREGADO"),
-        ).rejects.toMatchObject({ code: "ORDER_STATUS_CONFLICT" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.ORDER_STATUS_CONFLICT });
     });
 });
 
@@ -299,7 +302,7 @@ describe("UpdateOrderUseCase", () => {
             useCase.execute("tenant-1", "order-1", {
                 status: "ENTREGADO",
             }),
-        ).rejects.toMatchObject({ code: "INVALID_STATUS_TRANSITION" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.INVALID_STATUS_TRANSITION });
         expect(orderRepository.updateStatus).not.toHaveBeenCalled();
         expect(orderRepository.update).not.toHaveBeenCalled();
         expect(

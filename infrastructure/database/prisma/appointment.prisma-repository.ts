@@ -38,6 +38,7 @@ import {
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
 import { extractTenantTimezone } from "@/core/utils/tenant-time";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 type AppointmentStatusAuditFields = {
     statusChangedAt?: Date | null;
@@ -307,7 +308,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                       if (usage.count === 0) {
                           throw new BusinessRuleViolationError(
                               "The coupon is not available for this appointment",
-                              "COUPON_UNAVAILABLE",
+                              BusinessErrorCodes.COUPON_UNAVAILABLE,
                           );
                       }
                       return createAppointment(tx, appointmentData);

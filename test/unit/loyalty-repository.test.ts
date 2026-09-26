@@ -9,6 +9,10 @@ import {
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
+import {
+    LoyaltyErrorCodes,
+    ValidationErrorCodes,
+} from "@/types/error-codes";
 
 const now = new Date("2030-01-01T00:00:00.000Z");
 const startsAt = new Date("2029-12-01T00:00:00.000Z");
@@ -390,7 +394,7 @@ describe("PrismaLoyaltyRepository", () => {
             repository.updateCampaign("tenant-1", "campaign-1", {
                 maxClaims: 2,
             }),
-        ).rejects.toMatchObject({ code: "INVALID_CAMPAIGN_MAX_CLAIMS" });
+        ).rejects.toMatchObject({ code: ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS });
         expect(coupons.findFirst).not.toHaveBeenCalled();
         expect(campaigns.updateMany).not.toHaveBeenCalled();
     });
@@ -668,7 +672,7 @@ describe("PrismaLoyaltyRepository", () => {
                 LoyaltyCampaignStatus.ARCHIVED,
             ),
         ).rejects.toMatchObject({
-            code: "INVALID_LOYALTY_CAMPAIGN_TRANSITION",
+            code: LoyaltyErrorCodes.INVALID_CAMPAIGN_TRANSITION,
         });
     });
 

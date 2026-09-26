@@ -16,6 +16,7 @@ import {
     UnauthorizedError,
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class CancelAppointmentUseCase {
     constructor(
@@ -58,7 +59,7 @@ export class CancelAppointmentUseCase {
         if (!isCancellable(appointment.status)) {
             throw new InvalidStateError(
                 `Appointment with status '${appointment.status}' cannot be cancelled`,
-                "INVALID_STATUS_TRANSITION",
+                BusinessErrorCodes.INVALID_STATUS_TRANSITION,
             );
         }
 
@@ -76,7 +77,7 @@ export class CancelAppointmentUseCase {
         if (!updated) {
             throw new InvalidStateError(
                 "Appointment status changed before it could be cancelled",
-                "APPOINTMENT_STATUS_CONFLICT",
+                BusinessErrorCodes.APPOINTMENT_STATUS_CONFLICT,
             );
         }
 

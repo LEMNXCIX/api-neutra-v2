@@ -7,6 +7,7 @@ import {
     ValidationError,
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
+import { AuthErrorCodes, ValidationErrorCodes } from "@/types/error-codes";
 
 export class ConfigureWhatsAppUseCase {
     constructor(
@@ -21,7 +22,7 @@ export class ConfigureWhatsAppUseCase {
         if (!tenantId) {
             throw new ValidationError(
                 "Tenant ID is required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
         const features =
@@ -29,7 +30,7 @@ export class ConfigureWhatsAppUseCase {
         if (!features["WHATSAPP_API"]) {
             throw new ForbiddenError(
                 "Upgrade required: WHATSAPP_API feature is not enabled for this tenant.",
-                "FORBIDDEN",
+                AuthErrorCodes.FORBIDDEN,
             );
         }
 
@@ -50,7 +51,7 @@ export class ConfigureWhatsAppUseCase {
             ) {
                 throw new ValidationError(
                     "Missing required WhatsApp credentials",
-                    "MISSING_REQUIRED_FIELDS",
+                    ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
                 );
             }
 

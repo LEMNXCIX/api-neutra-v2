@@ -2,6 +2,7 @@ import { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { SendNotificationDTO } from "@/core/application/dtos/requests/whatsapp.request";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class SendNotificationUseCase {
     constructor(private whatsappService: IWhatsAppService) {}
@@ -10,13 +11,13 @@ export class SendNotificationUseCase {
         if (!data.tenantId) {
             throw new ValidationError(
                 "Tenant ID required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
         if (!data.to || !data.templateName) {
             throw new ValidationError(
                 "Missing required fields: to, templateName",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
 
