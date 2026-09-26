@@ -115,15 +115,24 @@ async function readClaimedCount(campaignId: string): Promise<number> {
 }
 
 async function removeChain(chain: Chain): Promise<void> {
-    await prisma.loyaltyRewardClaim.deleteMany({
-        where: { tenantId: chain.tenantId },
-    });
-    await prisma.loyaltyCampaign.deleteMany({
-        where: { tenantId: chain.tenantId },
-    });
-    await prisma.coupon.deleteMany({ where: { tenantId: chain.tenantId } });
-    await prisma.user.deleteMany({ where: { id: chain.userId } });
-    await prisma.tenant.deleteMany({ where: { id: chain.tenantId } });
+    // The tenant goes last and in a finally, because a test that fails partway
+    // through would otherwise skip every later step and leave its tenant, its
+    // campaigns and its coupons behind. A suite that leaks only when it is
+    // already red hides the next run's cause behind its leftovers.
+    try {
+        await prisma.loyaltyRewardClaim.deleteMany({
+            where: { tenantId: chain.tenantId },
+        });
+        // Campaigns before coupons: a campaign references its reward template
+        // with onDelete: Restrict, so the coupon cannot go first.
+        await prisma.loyaltyCampaign.deleteMany({
+            where: { tenantId: chain.tenantId },
+        });
+        await prisma.coupon.deleteMany({ where: { tenantId: chain.tenantId } });
+        await prisma.user.deleteMany({ where: { id: chain.userId } });
+    } finally {
+        await prisma.tenant.deleteMany({ where: { id: chain.tenantId } });
+    }
 }
 
 describe("claimedCount follows its reward claims", () => {

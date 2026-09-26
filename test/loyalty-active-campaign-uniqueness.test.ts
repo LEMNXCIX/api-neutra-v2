@@ -77,9 +77,14 @@ async function buildTenantCampaigns(): Promise<{
 }
 
 async function cleanTenant(tenantId: string): Promise<void> {
-    await prisma.loyaltyCampaign.deleteMany({ where: { tenantId } });
-    await prisma.coupon.deleteMany({ where: { tenantId } });
-    await prisma.tenant.deleteMany({ where: { id: tenantId } });
+    // Same reasoning as the other suite: the tenant goes last and in a finally,
+    // so a failing case cannot leave rows behind for the next run to trip over.
+    try {
+        await prisma.loyaltyCampaign.deleteMany({ where: { tenantId } });
+        await prisma.coupon.deleteMany({ where: { tenantId } });
+    } finally {
+        await prisma.tenant.deleteMany({ where: { id: tenantId } });
+    }
 }
 
 describe("one active loyalty campaign per tenant", () => {
