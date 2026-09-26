@@ -466,6 +466,7 @@ describe("api-doctor adapters", () => {
             "prisma.validate",
             "typecheck",
             "architecture",
+            "architecture.rules",
             "unit",
             "production.artifact",
             "npm.audit",

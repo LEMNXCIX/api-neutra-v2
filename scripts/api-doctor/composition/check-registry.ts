@@ -9,6 +9,7 @@ import {
     checkRequiredEnvironment,
 } from "../adapters/project.adapter";
 import { createPrismaValidateCheck } from "../adapters/prisma.adapter";
+import { createArchitectureRulesCheck } from "../adapters/architecture.adapter";
 import type {
     CheckCategory,
     CheckRunResult,
@@ -143,6 +144,19 @@ export function createCheckRegistry(
             GATED_PROFILES,
             120_000,
         ),
+        // Real Clean Architecture rules, not a shell-out. The command check above
+        // only recognises the @/ alias form of an import, so a core/ module
+        // could reach infrastructure through a relative path or a require()
+        // and still pass it. This one resolves all three, and also enforces
+        // that the domain layer exists, that entities stay types only, that a
+        // business rule is not implemented in two layers at once, and that the
+        // deleted presenter layer stays deleted.
+        //
+        // Note: keep this comment free of a literal aliased import specifier.
+        // verify-production-build.ts rewrites aliases in the emitted dist
+        // without skipping comments, so writing one out here makes it resolve a
+        // phantom specifier and fail the production build.
+        createArchitectureRulesCheck(ALL_PROFILES, GATED_PROFILES),
         commandCheck(
             "unit",
             "static",
