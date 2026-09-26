@@ -7,15 +7,14 @@ import { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appo
 import { GetAvailabilityUseCase } from "@/core/application/booking/get-availability.use-case";
 import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
 import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";
-import { isAppointmentStatus } from "@/core/domain/appointment/appointment.policy";
+import { assertAppointmentStatus } from "@/core/domain/appointment/appointment.policy";
 import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
 import { AuthenticatedUser } from "@/types/rbac";
+import { APPOINTMENT_OPERATIONAL_ROLES } from "@/middleware/authorization.middleware";
 import {
-    APPOINTMENT_OPERATIONAL_ROLES,
     hasAnyRole,
     hasPermission,
-} from "@/middleware/authorization.middleware";
-import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+} from "@/core/domain/rbac/access-policy";
 import { AppError } from "@/types/api-response";
 import { TenantErrorCodes } from "@/types/error-codes";
 import { AppointmentResponse } from "@/core/application/dtos/responses/appointment/appointment.response";
@@ -80,12 +79,7 @@ export class AppointmentController {
         if (req.query.serviceId)
             filters.serviceId = req.query.serviceId as string;
         if (req.query.status !== undefined) {
-            if (!isAppointmentStatus(req.query.status)) {
-                throw new BusinessRuleViolationError(
-                    "Invalid appointment status",
-                    "INVALID_APPOINTMENT_STATUS",
-                );
-            }
+            assertAppointmentStatus(req.query.status);
             filters.status = req.query.status;
         }
         if (req.query.startDate)

@@ -1,38 +1,21 @@
 import { Request, Response, NextFunction } from "express";
-import { AuthenticatedUser } from "@/types/rbac";
 import {
     DomainError,
     UnauthorizedError,
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
-import { ROLE_CONSTANTS } from "@/core/domain/constants";
-
-function isSuperAdmin(user: AuthenticatedUser | undefined): boolean {
-    return user?.role?.name === ROLE_CONSTANTS.SUPER_ADMIN;
-}
+import {
+    evaluateRoleLevel,
+    hasAnyRole,
+    hasPermission,
+    isSuperAdmin,
+} from "@/core/domain/rbac/access-policy";
 
 export const APPOINTMENT_OPERATIONAL_ROLES = [
     "STAFF",
     "MANAGER",
     "ADMIN",
 ] as const;
-
-export function hasPermission(
-    user: AuthenticatedUser | undefined,
-    permission: string,
-): boolean {
-    if (!user?.role) return false;
-    if (isSuperAdmin(user)) return true;
-    return user.role.permissions?.includes(permission) ?? false;
-}
-
-export function hasAnyRole(
-    user: AuthenticatedUser | undefined,
-    roles: readonly string[],
-): boolean {
-    if (!user?.role) return false;
-    return isSuperAdmin(user) || roles.includes(user.role.name);
-}
 
 export function requirePermission(permission: string) {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -139,10 +122,9 @@ export function requireRole(minLevel: number) {
             return next();
         }
 
-        if (user.role.level < minLevel) {
-            throw new ForbiddenError(
-                `You need role level ${minLevel} or higher (current: ${user.role.level})`,
-            );
+        const levelDecision = evaluateRoleLevel(user, minLevel);
+        if (!levelDecision.allowed) {
+            throw new ForbiddenError(levelDecision.message);
         }
 
         next();

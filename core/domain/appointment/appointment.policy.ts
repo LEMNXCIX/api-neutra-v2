@@ -1,4 +1,5 @@
 import { AppointmentStatus } from "@/core/entities/appointment.entity";
+import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 
 const APPOINTMENT_STATUS_TRANSITIONS: Readonly<
     Record<AppointmentStatus, readonly AppointmentStatus[]>
@@ -33,6 +34,22 @@ export function isAppointmentStatus(value: unknown): value is AppointmentStatus 
         typeof value === "string" &&
         (Object.values(AppointmentStatus) as string[]).includes(value)
     );
+}
+
+/**
+ * Single owner of the INVALID_APPOINTMENT_STATUS rule: the use case (path
+ * parameter) and the controller (query filter) both call this instead of
+ * re-throwing it, so the code lives in one layer.
+ */
+export function assertAppointmentStatus(
+    value: unknown,
+): asserts value is AppointmentStatus {
+    if (!isAppointmentStatus(value)) {
+        throw new BusinessRuleViolationError(
+            "Invalid appointment status",
+            "INVALID_APPOINTMENT_STATUS",
+        );
+    }
 }
 
 export function canTransitionAppointmentStatus(

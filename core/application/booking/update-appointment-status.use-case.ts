@@ -3,8 +3,8 @@ import {
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
 import {
+    assertAppointmentStatus,
     canTransitionAppointmentStatus,
-    isAppointmentStatus,
 } from "@/core/domain/appointment/appointment.policy";
 import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
 import { IQueueProvider } from "@/core/providers/queue-provider.interface";
@@ -13,7 +13,6 @@ import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     EntityNotFoundError,
     InvalidStateError,
-    BusinessRuleViolationError,
     UnauthorizedError,
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
@@ -41,12 +40,7 @@ export class UpdateAppointmentStatusUseCase {
                 "You need 'appointments:write' permission to update appointments",
             );
         }
-        if (!isAppointmentStatus(status)) {
-            throw new BusinessRuleViolationError(
-                "Invalid appointment status",
-                "INVALID_APPOINTMENT_STATUS",
-            );
-        }
+        assertAppointmentStatus(status);
 
         const appointment = await this.appointmentRepository.findById(
             tenantId,

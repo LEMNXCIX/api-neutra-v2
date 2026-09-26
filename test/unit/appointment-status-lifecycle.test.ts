@@ -12,11 +12,11 @@ import { IAppointmentRepository } from "@/core/repositories/appointment.reposito
 import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
 import { prisma } from "@/config/db.config";
 import { AuthenticatedUser } from "@/types/rbac";
+import { APPOINTMENT_OPERATIONAL_ROLES } from "@/middleware/authorization.middleware";
 import {
-    APPOINTMENT_OPERATIONAL_ROLES,
     hasAnyRole,
     hasPermission,
-} from "@/middleware/authorization.middleware";
+} from "@/core/domain/rbac/access-policy";
 
 const manager = {
     id: "staff-1",
