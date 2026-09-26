@@ -62,8 +62,14 @@ function integrationCheck(runner: CommandRunner): DoctorCheck {
     return {
         id: "integration",
         category: "runtime",
-        enabledIn: FULL_PROFILE,
-        blockingIn: FULL_PROFILE,
+        // Gated rather than full-only: the eight suites under `test/` are the
+        // only coverage that touches a real database, and for a long time
+        // nothing ran them at all, because the ci profile skipped this check.
+        // It stays behind --include-integration so a local run without a
+        // database is still possible, but CI passes the flag and treats a
+        // skip here as the failure it is.
+        enabledIn: GATED_PROFILES,
+        blockingIn: GATED_PROFILES,
         run: async (context): Promise<CheckRunResult> => {
             if (!context.includeIntegration) {
                 return {

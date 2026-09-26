@@ -12,15 +12,41 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     # Job-level so `npm ci` postinstall (prisma generate) also gets a URL:
-    # prisma.config.ts refuses to boot without it. The DB is never contacted
-    # during generate/typecheck/unit tests.
+    # prisma.config.ts refuses to boot without it. The DB and Redis below are
+    # contacted for migrations, the seed and the integration suites, which the
+    # ci profile now runs as a blocking check.
     env:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       JWT_SECRET: ci-secret
       SESSION_SECRET: ci-secret
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
       POSTGRES_USER: ci
       POSTGRES_PASSWORD: ci
       POSTGRES_DB: ci
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -39,5 +65,18 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      # The integration suites need the schema and the seeded tenant, or the
+      # tenant middleware has nothing to resolve `x-tenant-slug: superadmin`
+      # against. `migrate deploy` applies the committed migrations and never
+      # resets a database, which is the correct verb for a CI database.
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed reference data
+        run: npx prisma db seed
+
+      # --include-integration is what makes the integration check run at all;
+      # without it the ci profile skips the eight database-backed suites, which
+      # is how a broken assertion in test/slide.test.ts survived unnoticed.
       - name: API Doctor
-        run: npm run doctor -- --profile ci --format text
+        run: npm run doctor -- --profile ci --include-integration --format text
