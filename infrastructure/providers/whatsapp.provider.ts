@@ -16,12 +16,12 @@ export class WhatsAppProvider implements INotificationProvider {
     async send(
         recipient: string,
         message: NotificationMessage,
-        options?: any,
+        options?: Record<string, unknown>,
     ): Promise<boolean> {
         try {
             const tenantId = options?.tenantId;
 
-            if (!tenantId) {
+            if (typeof tenantId !== "string" || !tenantId) {
                 this.logger.warn(
                     "[WhatsAppProvider] Missing tenantId in options. Cannot send WhatsApp message.",
                 );
@@ -39,7 +39,10 @@ export class WhatsAppProvider implements INotificationProvider {
                     tenantId,
                     to: recipient,
                     templateName: message.templateId, // e.g. "appointment_confirmed"
-                    languageCode: options?.language || "es",
+                    languageCode:
+                        typeof options?.language === "string"
+                            ? options.language
+                            : "es",
                     components:
                         (message.data?.components as WhatsAppComponent[]) || [],
                 });

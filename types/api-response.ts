@@ -1,11 +1,24 @@
 import { v4 as uuidv4 } from "uuid";
 
+/** Pagination block carried by every paginated standard response. */
+export interface ResponsePagination {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
 export interface ErrorDetail {
     code: string; // Machine readable error code (e.g., AUTH_INVALID_CREDENTIALS)
     message: string; // Human readable message
     field?: string; // Field that caused the error
     domain?: string; // Error category (e.g., auth, validation)
-    metadata?: any; // Additional context
+    /**
+     * Opaque additional context. It is serialized straight to the client and
+     * never inspected by the server, so it is `unknown`: readers must narrow it
+     * first. It was `any`, which silently disabled checking for every consumer.
+     */
+    metadata?: unknown;
 }
 
 export class AppError extends Error {
@@ -33,16 +46,13 @@ export interface StandardResponse<T> {
     message: string;
     data?: T;
     errors?: ErrorDetail[];
-    pagination?: {
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-    };
+    pagination?: ResponsePagination;
+    // No index signature: the envelope meta block is exactly traceId + timestamp.
+    // The previous one had an `any` value type, which made every read off `meta`
+    // unchecked for every consumer of the response envelope.
     meta: {
         traceId: string;
         timestamp: string;
-        [key: string]: any;
     };
 }
 
@@ -91,7 +101,7 @@ export function createErrorDetail(
     code: string,
     message: string,
     field?: string,
-    metadata?: any,
+    metadata?: unknown,
 ): ErrorDetail {
     return {
         code,

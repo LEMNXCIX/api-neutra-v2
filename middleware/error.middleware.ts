@@ -13,7 +13,7 @@ import config from "@/config/index.config";
 const showStack = !isProduction(config.ENVIRONMENT);
 
 export const createErrorMiddleware = (logger: ILogger) => (
-    (err: any,
+    (err: unknown,
     req: Request,
     res: Response,
     _next: NextFunction) => {

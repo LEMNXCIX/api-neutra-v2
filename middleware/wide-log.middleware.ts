@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import type { IncomingHttpHeaders } from "http";
 import { ILogRepository } from "@/core/repositories/log.repository.interface";
 import { LogLevel } from "@/core/providers/logger.interface";
 import { v4 as uuidv4 } from "uuid";
@@ -22,11 +23,13 @@ export default function wideLogMiddleware(
 
         // Intercept response body
         const originalSend = res.send;
-        let responseBody: any;
+        let responseBody: unknown;
 
-        res.send = function (body: any) {
+        res.send = function (body?: unknown) {
             try {
-                responseBody = JSON.parse(body);
+                // Only a string body is JSON text; anything else is stored as-is
+                // (parsing it would throw and land in the catch below anyway).
+                responseBody = typeof body === "string" ? JSON.parse(body) : body;
             } catch {
                 responseBody = body;
             }
@@ -80,9 +83,36 @@ export default function wideLogMiddleware(
     };
 }
 
-function sanitize(body: any): any {
-    if (!body || typeof body !== "object") return body;
-    const sanitized = { ...body };
+/** JSON scalars, plus `undefined` for an absent body. */
+type LogScalar = string | number | boolean | null | undefined;
+
+/**
+ * What a redacted payload can be: a masked record (arrays included, as they
+ * were spread into an object before), or the scalar it arrived as.
+ */
+type SanitizedBody = Record<string, unknown> | LogScalar;
+
+function isObjectLike(value: unknown): value is object {
+    return typeof value === "object" && value !== null;
+}
+
+function isLogScalar(value: unknown): value is LogScalar {
+    return (
+        value === undefined ||
+        value === null ||
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+    );
+}
+
+function sanitize(body: unknown): SanitizedBody {
+    // Non-objects are logged exactly as they arrived. Values that are not JSON
+    // at all (functions, symbols) have nothing to persist, so they are dropped.
+    if (!isObjectLike(body)) {
+        return isLogScalar(body) ? body : undefined;
+    }
+    const sanitized: Record<string, unknown> = { ...body };
     const sensitiveFields = SECURITY_CONSTANTS.SENSITIVE_FIELDS;
 
     for (const key of Object.keys(sanitized)) {
@@ -97,8 +127,12 @@ function sanitize(body: any): any {
     return sanitized;
 }
 
-function sanitizeHeaders(headers: any): any {
-    const sanitized = { ...headers };
+function sanitizeHeaders(
+    headers: IncomingHttpHeaders,
+): Record<string, string | string[] | undefined> {
+    const sanitized: Record<string, string | string[] | undefined> = {
+        ...headers,
+    };
     const sensitiveHeaders = SECURITY_CONSTANTS.SENSITIVE_HEADERS;
 
     for (const header of sensitiveHeaders) {

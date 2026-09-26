@@ -8,7 +8,7 @@ export class EmailProvider implements INotificationProvider {
         private readonly logger: ILogger,
     ) {}
 
-    async send(recipient: string, message: NotificationMessage, options?: any): Promise<boolean> {
+    async send(recipient: string, message: NotificationMessage, options?: Record<string, unknown>): Promise<boolean> {
         try {
             // Use the runtime-owned email service.
             // Mapping generic NotificationMessage to emailService parameters.

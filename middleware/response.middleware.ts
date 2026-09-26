@@ -4,6 +4,7 @@ import {
     StandardResponse,
     AppError,
     ErrorDetail,
+    ResponsePagination,
     SystemErrorCodes,
 } from "@/types/api-response";
 import type { ILogger } from "@/core/providers/logger.interface";
@@ -13,6 +14,54 @@ import { DomainError } from "@/core/domain/errors/domain-errors";
 import { httpStatusFromDomainError } from "@/types/error-codes";
 
 const configIsProduction = isProduction(config.ENVIRONMENT);
+
+/**
+ * Already-wrapped envelope: the double-wrap guard below only proves the keys are
+ * present, so this is exactly the view the log call and `res.json` pass through.
+ */
+type StandardResponseEnvelope = { meta: unknown; statusCode: number };
+
+function isStandardResponseEnvelope(
+    body: unknown,
+): body is StandardResponseEnvelope {
+    return (
+        typeof body === "object" &&
+        body !== null &&
+        "meta" in body &&
+        "statusCode" in body
+    );
+}
+
+/**
+ * Legacy service result: `{ success, code, message, data, pagination, errors }`.
+ * This is the shape use cases return and the response middleware re-wraps.
+ */
+type ServiceResult = {
+    success?: boolean;
+    code?: number;
+    message?: string;
+    data?: unknown;
+    pagination?: ResponsePagination;
+    errors?: unknown;
+    errorDetails?: unknown;
+};
+
+function isServiceResult(value: unknown): value is ServiceResult {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        ("success" in value || "code" in value)
+    );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** The `{ data: { success, code, ... } }` nesting some controllers return. */
+function nestedServiceResult(body: unknown): ServiceResult | null {
+    return isRecord(body) && isServiceResult(body.data) ? body.data : null;
+}
 
 function makeTraceId(req: Request) {
     return `${req.method}-${req.path}-${Date.now()}`;
@@ -29,14 +78,9 @@ export default function createResponseMiddleware(logger: ILogger) {
 
     const originalJson = res.json.bind(res);
 
-    res.json = function (body?: any) {
+    res.json = function (body?: unknown) {
         // Avoid double wrapping if it's already a StandardResponse
-        if (
-            body &&
-            typeof body === "object" &&
-            "meta" in body &&
-            "statusCode" in body
-        ) {
+        if (isStandardResponseEnvelope(body)) {
             logger.logResponse({ statusCode: body.statusCode, body });
             return originalJson(body);
         }
@@ -48,41 +92,40 @@ export default function createResponseMiddleware(logger: ILogger) {
         let errors: ErrorDetail[] | undefined = undefined;
         let success = statusCode >= 200 && statusCode < 300;
 
-        let pagination: any = undefined;
+        let pagination: ResponsePagination | undefined = undefined;
 
-        if (body && typeof body === "object") {
-            // Check for legacy service result shape: { success, code, message, data, errors }
-            if ("success" in body || "code" in body) {
-                success = body.success ?? success;
-                statusCode = body.code ?? statusCode;
-                message = body.message ?? message;
-                data = body.data;
-                pagination = body.pagination; // Extract pagination
+        const serviceResult = isServiceResult(body) ? body : null;
+        const nestedResult = serviceResult ? null : nestedServiceResult(body);
 
-                if (body.errors || body.errorDetails) {
-                    errors = normalizeErrors(body.errors || body.errorDetails);
-                }
+        // Check for legacy service result shape: { success, code, message, data, errors }
+        if (serviceResult) {
+            success = serviceResult.success ?? success;
+            statusCode = serviceResult.code ?? statusCode;
+            message = serviceResult.message ?? message;
+            data = serviceResult.data;
+            pagination = serviceResult.pagination; // Extract pagination
+
+            if (serviceResult.errors || serviceResult.errorDetails) {
+                errors = normalizeErrors(
+                    serviceResult.errors || serviceResult.errorDetails,
+                );
             }
-            // Check for nested data shape: { data: { success, code, ... } }
-            else if (
-                body.data &&
-                typeof body.data === "object" &&
-                ("success" in body.data || "code" in body.data)
-            ) {
-                success = body.data.success ?? success;
-                statusCode = body.data.code ?? statusCode;
-                message = body.data.message ?? message;
-                data = body.data.data;
-                pagination = body.data.pagination; // Extract pagination
-                if (body.data.errors || body.data.errorDetails) {
-                    errors = normalizeErrors(
-                        body.data.errors || body.data.errorDetails,
-                    );
-                }
+        }
+        // Check for nested data shape: { data: { success, code, ... } }
+        else if (nestedResult) {
+            success = nestedResult.success ?? success;
+            statusCode = nestedResult.code ?? statusCode;
+            message = nestedResult.message ?? message;
+            data = nestedResult.data;
+            pagination = nestedResult.pagination; // Extract pagination
+            if (nestedResult.errors || nestedResult.errorDetails) {
+                errors = normalizeErrors(
+                    nestedResult.errors || nestedResult.errorDetails,
+                );
             }
         }
 
-        const response: StandardResponse<any> = {
+        const response: StandardResponse<unknown> = {
             success,
             statusCode,
             message,
@@ -107,10 +150,10 @@ export default function createResponseMiddleware(logger: ILogger) {
         });
 
         return originalJson(response);
-    } as any;
+    };
 
     res.apiSuccess = function (
-        data?: any,
+        data?: unknown,
         message: string = "OK",
         statusCode: number = 200,
     ) {
@@ -130,7 +173,7 @@ export default function createResponseMiddleware(logger: ILogger) {
     };
 
     res.apiError = function (
-        err: any,
+        err: unknown,
         message: string = "Error",
         statusCode: number = 500,
     ) {
@@ -190,15 +233,17 @@ export default function createResponseMiddleware(logger: ILogger) {
     };
 }
 
-function normalizeErrors(errors: any): ErrorDetail[] {
-    if (!Array.isArray(errors)) {
-        errors = [errors];
-    }
-    return errors.map((e: any) => {
+function isErrorDetail(value: unknown): value is ErrorDetail {
+    return typeof value === "object" && value !== null;
+}
+
+function normalizeErrors(errors: unknown): ErrorDetail[] {
+    const list = Array.isArray(errors) ? errors : [errors];
+    return list.map((e: unknown) => {
         if (typeof e === "string") {
             return { code: SystemErrorCodes.UNKNOWN_ERROR, message: e };
         }
-        if (e && typeof e === "object") {
+        if (isErrorDetail(e)) {
             return {
                 code: e.code || SystemErrorCodes.UNKNOWN_ERROR,
                 message: e.message || "Unknown error",

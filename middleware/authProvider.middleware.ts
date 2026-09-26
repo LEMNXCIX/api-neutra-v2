@@ -1,6 +1,10 @@
 import config from "@/config/index.config";
 import dotenv from "dotenv";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import type {
+    StrategyOptions as GoogleStrategyOptions,
+    VerifyCallback,
+} from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
 import { Strategy as TwitterStrategy } from "passport-twitter";
 import { Strategy as GitHubStrategy } from "passport-github2";
@@ -25,24 +29,33 @@ const {
 const callbackUrl = (provider: string) =>
     `${isProduction(ENVIRONMENT) ? callbackURL : callbackURLDev}/api/auth/${provider}/callback`;
 
+/**
+ * Shared by all four OAuth strategies. `passport-oauth2`'s VerifyCallback is the
+ * common denominator, so it is the honest type for `done` (a two-parameter
+ * callback is not assignable to it, which is why Google needed a double
+ * assertion before).
+ */
 const getProfile = (
-    _accessToken: unknown,
-    _refreshToken: unknown,
+    _accessToken: string,
+    _refreshToken: string,
     profile: unknown,
-    done: (error: unknown, user?: unknown) => void,
+    done: VerifyCallback,
 ) => {
-    done(null, { profile });
+    // SAFETY: the OAuth flow authenticates passport with `{ profile }`, which is
+    // NOT an AuthenticatedUser (it carries no `role` and no JWT claims) — the
+    // invariant TypeScript cannot check. Reported, not fixed: the value is
+    // forwarded unchanged and only its type is made explicit here.
+    done(null, { profile } as unknown as Express.User);
 };
 
 export const useGoogleStrategy = () => {
-    return new GoogleStrategy(
-        {
-            clientID: oauthClientID as string,
-            clientSecret: oauthClientSecret as string,
-            callbackURL: callbackUrl("google"),
-        } as any,
-        getProfile as any,
-    );
+    const options: GoogleStrategyOptions = {
+        clientID: oauthClientID as string,
+        clientSecret: oauthClientSecret as string,
+        callbackURL: callbackUrl("google"),
+    };
+
+    return new GoogleStrategy(options, getProfile);
 };
 
 export const useFacebookStrategy = () => {

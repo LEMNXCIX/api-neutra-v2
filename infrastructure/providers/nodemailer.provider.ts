@@ -2,7 +2,13 @@ import nodemailer, { Transporter } from 'nodemailer';
 import handlebars from 'handlebars';
 import fs from 'fs';
 import path from 'path';
-import { IEmailService, TenantEmailConfig } from '@/core/ports/email.port';
+import {
+    IEmailService,
+    TenantEmailConfig,
+    Attachment,
+    OrderEmailData,
+    AppointmentEmailData,
+} from '@/core/ports/email.port';
 import type { ILogger } from "@/core/providers/logger.interface";
 
 export class NodemailerProvider implements IEmailService {
@@ -34,7 +40,7 @@ export class NodemailerProvider implements IEmailService {
         template: string,
         data: Record<string, unknown>,
         tenantConfig?: TenantEmailConfig,
-        attachments?: any[]
+        attachments?: Attachment[]
     ): Promise<boolean> {
         try {
             // 1. Load and compile specific template (Content)
@@ -114,7 +120,7 @@ export class NodemailerProvider implements IEmailService {
      */
     async sendOrderConfirmation(
         to: string,
-        order: any,
+        order: OrderEmailData,
         tenantConfig?: TenantEmailConfig
     ): Promise<boolean> {
         return this.sendEmail(
@@ -148,9 +154,9 @@ export class NodemailerProvider implements IEmailService {
      */
     async sendAppointmentConfirmation(
         to: string,
-        appointment: any,
+        appointment: AppointmentEmailData,
         tenantConfig?: TenantEmailConfig,
-        attachments?: any[]
+        attachments?: Attachment[]
     ): Promise<boolean> {
         return this.sendEmail(
             to,
@@ -165,7 +171,13 @@ export class NodemailerProvider implements IEmailService {
                 duration: appointment.duration,
                 notes: appointment.notes,
                 appointmentId: appointment.id,
-                calendarLink: appointment.calendarLink || '#',
+                // SAFETY: `calendarLink` is read by this template but is not
+                // declared on AppointmentEmailData, and no caller supplies it, so
+                // it always resolves to '#'. Reported, not fixed: the port is out
+                // of scope for this change and the value is forwarded as-is.
+                calendarLink:
+                    (appointment as { calendarLink?: string }).calendarLink ||
+                    '#',
             },
             tenantConfig,
             attachments
@@ -177,7 +189,7 @@ export class NodemailerProvider implements IEmailService {
      */
     async sendAppointmentReminder(
         to: string,
-        appointment: any,
+        appointment: AppointmentEmailData,
         tenantConfig?: TenantEmailConfig
     ): Promise<boolean> {
         return this.sendEmail(
@@ -202,7 +214,7 @@ export class NodemailerProvider implements IEmailService {
      */
     async sendAppointmentCancellation(
         to: string,
-        appointment: any,
+        appointment: AppointmentEmailData,
         tenantConfig?: TenantEmailConfig
     ): Promise<boolean> {
         return this.sendEmail(

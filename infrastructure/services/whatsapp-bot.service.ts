@@ -2,7 +2,10 @@ import { IWhatsAppConversationRepository } from "@/core/repositories/whatsapp-co
 import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
 import { WhatsAppService } from "./whatsapp.service";
 import type { ILogger } from "@/core/providers/logger.interface";
-import { IWhatsAppBotService } from "@/core/ports/whatsapp-bot-service.interface";
+import {
+    IWhatsAppBotService,
+    IncomingWhatsAppMessage,
+} from "@/core/ports/whatsapp-bot-service.interface";
 
 export class WhatsAppBotService implements IWhatsAppBotService {
     constructor(
@@ -13,13 +16,12 @@ export class WhatsAppBotService implements IWhatsAppBotService {
     ) {}
 
     async processIncomingMessage(
-        message: any,
+        message: IncomingWhatsAppMessage,
         tenantId: string,
     ): Promise<void> {
         try {
             const from = message.from; // User's phone number
             const text = message.text?.body;
-            const waMessageId = message.id;
 
             // 1. Save incoming message (if not already handled by webhook controller dispatch)
             // Ideally, the webhook controller or a use case calls this service.
@@ -36,7 +38,10 @@ export class WhatsAppBotService implements IWhatsAppBotService {
             if (!conversation) {
                 conversation = await this.conversationRepository.create({
                     tenantId,
-                    waConversationId: waMessageId, // Initial conversation ID often linked to first message or session
+                    // SAFETY: Meta types the payload's `id` as optional while the
+                    // entity requires a string, so a payload without `id` forwards
+                    // `undefined` here. Reported, not fixed — value unchanged.
+                    waConversationId: message.id as string,
                     phoneNumber: from,
                     status: "active",
                     lastMessageAt: new Date(),
@@ -66,8 +71,10 @@ export class WhatsAppBotService implements IWhatsAppBotService {
                     // await this.whatsappService.sendTextMessage(from, "Recibí tu mensaje: " + text, tenantId);
                 }
             }
-        } catch (error: any) {
-            this.logger.error(`Error processing bot message: ${error.message}`);
+        } catch (error) {
+            const detail =
+                error instanceof Error ? error.message : String(error);
+            this.logger.error(`Error processing bot message: ${detail}`);
         }
     }
 }
