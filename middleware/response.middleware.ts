@@ -7,6 +7,7 @@ import {
     ResponsePagination,
     SystemErrorCodes,
 } from "@/types/api-response";
+import { LogLevel, logLevelForStatus } from "@/core/providers/logger.interface";
 import type { ILogger } from "@/core/providers/logger.interface";
 import config from "@/config/index.config";
 import { isProduction } from "@/core/domain/constants";
@@ -235,7 +236,15 @@ export default function createResponseMiddleware(logger: ILogger) {
         // `response.errors[].code`.
         const thrown =
             err instanceof Error || typeof err === "string" ? err : undefined;
-        logger.error("API Error Response", thrown, { traceId, response });
+        // 4xx is the caller's problem and a warning; 5xx is ours and stays an
+        // error, keeping the exception in the error slot so its stack survives.
+        if (logLevelForStatus(finalStatusCode) === LogLevel.ERROR) {
+            logger.error("API Error Response", thrown, { traceId, response });
+        } else {
+            // `warn` has no error slot, and it does not need one: the message
+            // and the details are already inside `response`.
+            logger.warn("API Error Response", { traceId, response });
+        }
         res.status(finalStatusCode).json(response);
         return res;
     };

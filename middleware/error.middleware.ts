@@ -8,6 +8,7 @@ import {
 import { DomainError } from "@/core/domain/errors/domain-errors";
 import { isProduction } from "@/core/domain/constants";
 import type { ILogger } from "@/core/providers/logger.interface";
+import { LogLevel, logLevelForStatus } from "@/core/providers/logger.interface";
 import config from "@/config/index.config";
 
 const showStack = !isProduction(config.ENVIRONMENT);
@@ -64,10 +65,21 @@ export const createErrorMiddleware = (logger: ILogger) => (
         ];
     }
 
-    logger.error("Error handled by global middleware", err, {
-        traceId,
-        statusCode,
-    });
+    // Same cut as res.apiError: a 4xx is the caller's problem, a 5xx is ours.
+    // An error this code does not recognise becomes a 500 above, so it lands
+    // here as ERROR with `err` in the error slot and its stack intact, which is
+    // the case that has to stay loud.
+    if (logLevelForStatus(statusCode) === LogLevel.ERROR) {
+        logger.error("Error handled by global middleware", err, {
+            traceId,
+            statusCode,
+        });
+    } else {
+        logger.warn("Error handled by global middleware", {
+            traceId,
+            statusCode,
+        });
+    }
 
     const response = ApiResponse.error(message, errors, statusCode, traceId);
     return res.status(statusCode).json(response);
