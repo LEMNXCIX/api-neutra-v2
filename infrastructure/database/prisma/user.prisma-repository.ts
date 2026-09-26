@@ -283,7 +283,13 @@ export class PrismaUserRepository implements IUserRepository {
         }
     }
 
-    async update(id: string, data: Partial<User>): Promise<User> {
+    /**
+     * The one field allowlist for a user write, shared by the global and the
+     * tenant-scoped update so the two cannot drift: whatever a caller passes
+     * (`req.body` arrives unvalidated, so extra keys are certain), only these
+     * columns are ever written.
+     */
+    private buildUpdateData(data: Partial<User>): Prisma.UserUpdateInput {
         const updateData: Prisma.UserUpdateInput = {};
         if (data.name !== undefined) updateData.name = data.name;
         if (data.email !== undefined) updateData.email = data.email;
@@ -301,6 +307,12 @@ export class PrismaUserRepository implements IUserRepository {
             updateData.resetPasswordToken = data.resetPasswordToken;
         if (data.resetPasswordExpires !== undefined)
             updateData.resetPasswordExpires = data.resetPasswordExpires;
+
+        return updateData;
+    }
+
+    async update(id: string, data: Partial<User>): Promise<User> {
+        const updateData = this.buildUpdateData(data);
 
         try {
             const user = await prisma.user.update({
@@ -336,6 +348,43 @@ export class PrismaUserRepository implements IUserRepository {
             }
             throw error;
         }
+    }
+
+    async updateForTenant(
+        tenantId: string,
+        id: string,
+        data: Partial<User>,
+    ): Promise<User> {
+        // Same shape as deleteForTenant: one write statement carrying the
+        // membership predicate, so membership cannot be revoked between the
+        // use case's read and this write. updateMany rather than update,
+        // because Prisma's `update` takes a unique `where` and User owns no
+        // tenantId column — membership is the UserTenant relation, so the only
+        // way to carry the tenant in a write predicate is a relation filter.
+        // (staff.prisma-repository.ts:126 passes tenantId straight into `where`
+        // only because Staff owns that column; it is not translatable here.)
+        // updateMany returns no row and no relations, so the updated user is
+        // read back through the same tenant-scoped lookup the global update's
+        // `include` would have produced.
+        const { count } = await prisma.user.updateMany({
+            where: { id, tenants: { some: { tenantId } } },
+            data: this.buildUpdateData(data),
+        });
+
+        // The row is not updatable within this tenant: the user was deleted, or
+        // membership was revoked after the use case read it. A success here
+        // would claim a write that never happened.
+        if (count === 0) {
+            throw new EntityNotFoundError("User", id);
+        }
+
+        const updatedUser = await this.findByIdForTenant(tenantId, id);
+
+        if (!updatedUser) {
+            throw new EntityNotFoundError("User", id);
+        }
+
+        return updatedUser;
     }
 
     async findByProvider(
