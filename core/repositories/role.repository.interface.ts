@@ -42,8 +42,27 @@ export interface IRoleRepository {
             name: string;
             level: number;
             description: string;
-            permissionIds: string[];
+            /**
+             * Optional, like `RoleCreateData`/`RoleUpdateData` rather than
+             * required as it was: `createWithPermissions` was the one write
+             * that declared it mandatory, so a caller that had no permission
+             * list to pass had to invent an empty one, and the repository had
+             * to `map` a value that could be absent. `create-tenant.use-case`
+             * is the only caller and already computes an array.
+             */
+            permissionIds?: string[];
         },
     ): Promise<Role>;
-    assignPermission(roleId: string, permissionId: string): Promise<void>;
+    /**
+     * Tenant first, like every other write on this port — including the three
+     * that reach `role_permissions`. The previous `(roleId, permissionId)`
+     * shape carried no tenant, so there was nothing to scope the permission
+     * against and the write was unguarded. No caller existed, so nothing
+     * depended on the old order.
+     */
+    assignPermission(
+        tenantId: string | undefined,
+        roleId: string,
+        permissionId: string,
+    ): Promise<void>;
 }

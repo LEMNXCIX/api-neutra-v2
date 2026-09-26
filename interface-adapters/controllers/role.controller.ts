@@ -5,6 +5,10 @@ import { UpdateRoleUseCase } from "@/core/application/roles/update-role.use-case
 import { DeleteRoleUseCase } from "@/core/application/roles/delete-role.use-case";
 import { GetRolesPaginatedUseCase } from "@/core/application/roles/get-roles-paginated.use-case";
 import { RoleResponse } from "@/core/application/dtos/responses/role/role.response";
+import {
+    CreateRoleDTO,
+    UpdateRoleDTO,
+} from "@/core/application/dtos/requests/role.request";
 import { present } from "@/core/utils/use-case-result";
 
 export class RoleController {
@@ -18,7 +22,21 @@ export class RoleController {
 
     create = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
-        const result = await this.createRoleUseCase.execute(tenantId, req.body);
+        // `role.routes.ts` carries no `validateDto`, so `req.body` is whatever
+        // the client sent. Reading the five fields a role write accepts —
+        // rather than forwarding it — keeps the body equal to the
+        // repository's own allowlist: a `tenantId` in the body is not what
+        // scopes the role, and any other key is one the repository does not
+        // copy, so forwarding it only widens the set of things that can reach
+        // a future column. Same shape as UserController.update after bd92bab.
+        const data: CreateRoleDTO = {
+            name: req.body?.name,
+            description: req.body?.description,
+            level: req.body?.level,
+            active: req.body?.active,
+            permissionIds: req.body?.permissionIds,
+        };
+        const result = await this.createRoleUseCase.execute(tenantId, data);
         return res.status(201).json(present(result, RoleResponse.fromEntity));
     };
 
@@ -70,11 +88,18 @@ export class RoleController {
     update = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const { id } = req.params;
-        const result = await this.updateRoleUseCase.execute(
-            tenantId,
-            id,
-            req.body,
-        );
+        // Same narrowing as `create` above: five fields, no `validateDto` to
+        // do it, and the update path replaces the role's whole permission set,
+        // so anything extra in the body is a chance to reach a column the
+        // repository never meant to expose on this endpoint.
+        const data: UpdateRoleDTO = {
+            name: req.body?.name,
+            description: req.body?.description,
+            level: req.body?.level,
+            active: req.body?.active,
+            permissionIds: req.body?.permissionIds,
+        };
+        const result = await this.updateRoleUseCase.execute(tenantId, id, data);
         return res.json(present(result, RoleResponse.fromEntity));
     };
 
