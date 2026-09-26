@@ -4,7 +4,9 @@ export interface User {
     id: string;
     name: string;
     email: string;
-    password?: string;
+    // Non-nullable in the schema: `password String`. It was optional here, which
+    // let every reader treat a missing password as possible.
+    password: string;
     profilePic: string | null;
     phone: string | null;
     pushToken: string | null;
@@ -25,8 +27,10 @@ export interface User {
 
     resetPasswordToken: string | null;
     resetPasswordExpires: Date | null;
-    createdAt?: Date;
-    updatedAt?: Date;
+    // `DateTime @default(now())` and `@updatedAt` in the schema, so a stored
+    // user always carries both.
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export interface UserTenant {
@@ -35,7 +39,6 @@ export interface UserTenant {
     tenantId: string;
     roleId: string;
     role?: Role;
-    tenantId_userId?: string;
     tenant?: {
         id: string;
         name: string;
