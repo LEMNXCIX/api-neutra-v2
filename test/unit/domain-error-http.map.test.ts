@@ -8,7 +8,6 @@ import {
 } from "@/core/domain/errors/domain-errors";
 import {
     BusinessErrorCodes,
-    httpStatusFromDomainCode,
     httpStatusFromDomainError,
 } from "@/types/error-codes";
 
@@ -43,10 +42,12 @@ describe("Domain error → HTTP mapping", () => {
         ).toBe(400);
     });
 
-    test("code map covers default domain codes", () => {
-        expect(httpStatusFromDomainCode("ENTITY_NOT_FOUND")).toBe(404);
-        expect(httpStatusFromDomainCode("BUSINESS_RULE_VIOLATION")).toBe(422);
-        expect(httpStatusFromDomainCode("CART_EMPTY")).toBe(422);
-        expect(httpStatusFromDomainCode("UNKNOWN_CODE")).toBe(400);
+    test("reports an unrecognised error class as a server fault", () => {
+        // Unreachable from production, where every caller guards on
+        // `instanceof DomainError`. Pinned so the fallback is not silently
+        // changed into a client error.
+        expect(
+            httpStatusFromDomainError({ code: "ANYTHING", name: "Whatever" }),
+        ).toBe(500);
     });
 });

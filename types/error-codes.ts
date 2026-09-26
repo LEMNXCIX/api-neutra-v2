@@ -191,33 +191,16 @@ export const ErrorCodes = {
     ...WhatsAppErrorCodes,
 } as const;
 
-const DOMAIN_CODE_TO_HTTP: Record<string, number> = {
-    ENTITY_NOT_FOUND: 404,
-    BUSINESS_RULE_VIOLATION: 422,
-    INVALID_STATE: 409,
-    DUPLICATE_ENTITY: 409,
-    VALIDATION_ERROR: 400,
-    UNAUTHORIZED: 401,
-    FORBIDDEN: 403,
-    // Custom codes used with BusinessRuleViolationError (must keep 422)
-    CART_EMPTY: 422,
-    INSUFFICIENT_STOCK: 422,
-    // Custom code used as business rule in social-login (legacy)
-    TENANT_NOT_FOUND: 404,
-};
-
-/**
- * Map domain semantic code → HTTP status.
- * Prefer {@link httpStatusFromDomainError} when the error instance is available
- * (custom codes like CART_EMPTY still map via class hierarchy).
- */
-export function httpStatusFromDomainCode(code: string): number {
-    return DOMAIN_CODE_TO_HTTP[code] ?? 400;
-}
-
 /**
  * Prefer class hierarchy so custom codes on BusinessRuleViolationError /
  * InvalidStateError / etc. keep the correct HTTP status (422, 409, …).
+ *
+ * Resolution is by error class, never by the code. Every DomainError subclass
+ * appears in the switch below, so a custom code on a known class still resolves
+ * correctly. An earlier version fell through to a code-keyed map for
+ * unrecognised classes, but every production caller guards on
+ * `instanceof DomainError`, so that path was unreachable and the map's
+ * unprefixed keys were dead weight a reader could mistake for live behaviour.
  */
 export function httpStatusFromDomainError(error: {
     code: string;
@@ -238,7 +221,11 @@ export function httpStatusFromDomainError(error: {
         case "ValidationError":
             return 400;
         default:
-            return httpStatusFromDomainCode(error.code);
+            // Unreachable from production: every caller guards on
+            // `instanceof DomainError` and all seven subclasses are listed
+            // above. An unrecognised class name is a server-side surprise, so
+            // it is reported as such rather than as a client error.
+            return 500;
     }
 }
 
