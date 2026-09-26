@@ -23,7 +23,7 @@ describe("Products routes", () => {
     test("POST /api/products without auth should return 401 or 403", async () => {
         const res = await api
             .post("/api/products")
-            .set("x-tenant-id", "default-tenant-id")
+            .set("x-tenant-slug", "superadmin")
             .set("x-trace-id", `test-post-products-no-auth-${Date.now()}`)
             .send({});
         expect([401, 403]).toContain(res.status);
@@ -33,7 +33,7 @@ describe("Products routes", () => {
         const res = await api
             .post("/api/products")
             .set("Authorization", `Bearer ${token}`)
-            .set("x-tenant-id", "default-tenant-id")
+            .set("x-tenant-slug", "superadmin")
             .set("x-trace-id", `test-create-product-${Date.now()}`)
             .send({
                 name: "Test Product",
