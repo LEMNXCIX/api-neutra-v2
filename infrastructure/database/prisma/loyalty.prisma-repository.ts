@@ -239,6 +239,7 @@ type LoyaltyCampaignDelegate = {
     findFirst(args: {
         where: Record<string, unknown>;
         include?: { rewardCoupon: true };
+        select?: { id: true; name: true };
         orderBy?: { startsAt: "desc" };
     }): Promise<CampaignRecord | null>;
     updateMany(args: {
@@ -1270,14 +1271,71 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 current.rewardCouponId!,
                 current.claimUntil,
             );
+            // Last of the activation checks, and deliberately so: the ones above
+            // describe whether this campaign is fit to run, and the caller should
+            // hear about those first. This one describes the tenant's room, and
+            // reporting it ahead of a broken template would answer a question
+            // the caller did not ask.
+            await this.assertNoOtherActiveCampaign(tenantId, campaignId);
         }
 
-        const result = await this.db.loyaltyCampaign.updateMany({
-            where: { id: campaignId, tenantId, status: from },
-            data: { status: to },
-        });
+        let result: { count: number };
+        try {
+            result = await this.db.loyaltyCampaign.updateMany({
+                where: { id: campaignId, tenantId, status: from },
+                data: { status: to },
+            });
+        } catch (error: unknown) {
+            // The check above cannot see a concurrent activation that lands
+            // between it and this write, so the partial unique index is still
+            // the authority. Reaching here means two activations raced, and the
+            // answer is the same business rule the check would have given, not
+            // a 500. This is the only unique index a campaign status update can
+            // violate, so a blanket P2002 match here is exact rather than broad.
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2002"
+            ) {
+                throw new BusinessRuleViolationError(
+                    "Another loyalty campaign is already active for this tenant",
+                    LoyaltyErrorCodes.CAMPAIGN_ALREADY_ACTIVE_PER_TENANT,
+                );
+            }
+            throw error;
+        }
         if (result.count === 0) return null;
         return this.getCampaign(tenantId, campaignId);
+    }
+
+    /**
+     * A tenant may run only one ACTIVE campaign, so an event always has exactly
+     * one campaign to accrue into and the accrual query's "newest start wins"
+     * tie-break never has to choose between two running campaigns.
+     *
+     * The database is what actually guarantees it, through the partial unique
+     * index `loyalty_campaigns_one_active_per_tenant_key`. This exists to turn
+     * the ordinary case into an error that names the conflict, because the index
+     * alone reports an anonymous unique violation that reaches the client as a
+     * 500. It is a check and not a lock: see the P2002 translation at the write.
+     */
+    private async assertNoOtherActiveCampaign(
+        tenantId: string,
+        campaignId: string,
+    ): Promise<void> {
+        const running = await this.db.loyaltyCampaign.findFirst({
+            where: {
+                tenantId,
+                status: LoyaltyCampaignStatus.ACTIVE,
+                id: { not: campaignId },
+            },
+            select: { id: true, name: true },
+        });
+        if (running) {
+            throw new BusinessRuleViolationError(
+                `Tenant already has an active loyalty campaign: ${running.name}`,
+                LoyaltyErrorCodes.CAMPAIGN_ALREADY_ACTIVE_PER_TENANT,
+            );
+        }
     }
 
     async claimCampaignReward(
