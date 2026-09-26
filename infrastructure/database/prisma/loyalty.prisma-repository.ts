@@ -870,44 +870,6 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         return row ? this.mapCampaign(row) : null;
     }
 
-    async findActiveCampaignAt(
-        tenantId: string,
-        sourceType: LoyaltySourceType,
-        at: Date,
-    ): Promise<LoyaltyCampaign | null> {
-        this.validateIdentity(tenantId);
-        if (!(at instanceof Date) || !Number.isFinite(at.getTime())) {
-            throw new ValidationError(
-                "Campaign lookup date is invalid",
-                ValidationErrorCodes.INVALID_CAMPAIGN_DATE,
-            );
-        }
-        let source: LoyaltyCampaignSource | null = null;
-        if (sourceType === LoyaltySourceType.APPOINTMENT) {
-            source = LoyaltyCampaignSource.BOOKING;
-        } else if (sourceType === LoyaltySourceType.ORDER) {
-            source = LoyaltyCampaignSource.STORE;
-        }
-        if (!source) {
-            throw new ValidationError(
-                "Campaign source type is invalid",
-                ValidationErrorCodes.INVALID_LOYALTY_SOURCE_TYPE,
-            );
-        }
-        const row = await this.db.loyaltyCampaign.findFirst({
-            where: {
-                tenantId,
-                status: LoyaltyCampaignStatus.ACTIVE,
-                source: { in: [source, LoyaltyCampaignSource.ALL] },
-                startsAt: { lte: at },
-                endsAt: { gt: at },
-            },
-            include: { rewardCoupon: true },
-            orderBy: { startsAt: "desc" },
-        });
-        return row ? this.mapCampaign(row) : null;
-    }
-
     private async calculateCampaignProgressValue(
         ledger: LoyaltyLedgerDelegate,
         tenantId: string,
@@ -970,9 +932,13 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         tenantId: string,
         campaignId: string,
         userId: string,
+        knownCampaign?: LoyaltyCampaign,
     ): Promise<LoyaltyCampaignProgress> {
         this.validateIdentity(tenantId, campaignId, userId);
-        const campaign = await this.getCampaign(tenantId, campaignId);
+        // A caller that already holds the campaign passes it; the metric and the
+        // target it needs live on that row, so re-reading it is a wasted query.
+        const campaign =
+            knownCampaign ?? (await this.getCampaign(tenantId, campaignId));
         if (!campaign) {
             throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
         }

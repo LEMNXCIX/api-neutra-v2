@@ -208,6 +208,37 @@ export function getLoyaltyCampaignSourceTypes(
     throw new TypeError("Unsupported loyalty campaign source");
 }
 
+/**
+ * The criteria a campaign must meet to receive an event accrual, as domain
+ * values: an ACTIVE campaign of the event's mapped source or the catch-all,
+ * whose window contains the event, newest start winning.
+ */
+export interface LoyaltyCampaignAccrualCriteria {
+    status: LoyaltyCampaignStatus;
+    sources: LoyaltyCampaignSource[];
+    startsAtOnOrBefore: Date;
+    endsAtAfter: Date;
+}
+
+/**
+ * The single entry point for "which campaign does this event accrue into".
+ * Adapters only express these criteria as a query; they never restate them.
+ */
+export function getLoyaltyCampaignAccrualCriteria(
+    sourceType: LoyaltySourceType,
+    at: Date,
+): LoyaltyCampaignAccrualCriteria {
+    return {
+        status: LoyaltyCampaignStatus.ACTIVE,
+        sources: [
+            getLoyaltyCampaignSource(sourceType),
+            LoyaltyCampaignSource.ALL,
+        ],
+        startsAtOnOrBefore: at,
+        endsAtAfter: at,
+    };
+}
+
 export function assertLoyaltyCampaignFeatures(
     features: Record<string, boolean> | null | undefined,
 ): void {

@@ -1,5 +1,7 @@
 jest.mock("@/config/db.config", () => ({ prisma: {} }));
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Prisma } from "@prisma/client";
 import {
     LoyaltyCampaignMetric,
@@ -9,6 +11,7 @@ import {
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
+import { PrismaCouponRepository } from "@/infrastructure/database/prisma/coupon.prisma-repository";
 import {
     LoyaltyErrorCodes,
     ValidationErrorCodes,
@@ -294,6 +297,34 @@ describe("PrismaLoyaltyRepository", () => {
         expect(candidate.findRewardClaim).toBeUndefined();
         expect(candidate.getPointsBalance).toBeUndefined();
         expect(candidate.getTenantStats).toBeUndefined();
+        expect(candidate.findActiveCampaignAt).toBeUndefined();
+    });
+
+    test.each([
+        [
+            "infrastructure/database/prisma/loyalty.prisma-repository.ts",
+            "findActiveCampaignAt",
+        ],
+        ["core/repositories/loyalty.repository.interface.ts", "findActiveCampaignAt"],
+        [
+            "infrastructure/database/prisma/coupon.prisma-repository.ts",
+            "cloneRewardCoupon",
+        ],
+        ["core/repositories/coupon.repository.interface.ts", "cloneRewardCoupon"],
+    ])("keeps the dead %s out of the repository sources", (file, member) => {
+        expect(readFileSync(join(__dirname, "..", "..", file), "utf8")).not.toContain(
+            member,
+        );
+    });
+
+    test("keeps the unguarded reward-minting path out of the coupon surface", () => {
+        const { repository } = setup();
+        const coupon = new PrismaCouponRepository() as unknown as Record<
+            string,
+            unknown
+        >;
+        expect(coupon.cloneRewardCoupon).toBeUndefined();
+        expect(repository.claimCampaignReward).toBeDefined();
     });
 
     test("updates a campaign only inside its tenant", async () => {
@@ -477,35 +508,6 @@ describe("PrismaLoyaltyRepository", () => {
             jest.useRealTimers();
         }
     });
-
-    test.each([
-        [LoyaltySourceType.APPOINTMENT, LoyaltyCampaignSource.BOOKING],
-        [LoyaltySourceType.ORDER, LoyaltyCampaignSource.STORE],
-    ])(
-        "finds the tenant's active %s campaign at the requested instant",
-        async (sourceType, expectedSource) => {
-            const { repository, campaigns } = setup();
-            campaigns.findFirst.mockResolvedValue(campaignRow());
-            const at = new Date("2030-01-01T00:00:00.000Z");
-
-            await expect(
-                repository.findActiveCampaignAt("tenant-1", sourceType, at),
-            ).resolves.toMatchObject({ id: "campaign-1", targetValue: "10.00" });
-            expect(campaigns.findFirst).toHaveBeenCalledWith({
-                include: { rewardCoupon: true },
-                where: {
-                    tenantId: "tenant-1",
-                    status: LoyaltyCampaignStatus.ACTIVE,
-                    source: {
-                        in: [expectedSource, LoyaltyCampaignSource.ALL],
-                    },
-                    startsAt: { lte: at },
-                    endsAt: { gt: at },
-                },
-                orderBy: { startsAt: "desc" },
-            });
-        },
-    );
 
     test.each([
         [

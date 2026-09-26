@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
 import {
@@ -7,7 +6,6 @@ import {
     UpdateCouponData,
 } from "@/core/repositories/coupon.repository.interface";
 import { Coupon } from "@/core/entities/coupon.entity";
-import { rejectLoyaltyRewardTemplate } from "@/core/domain/loyalty/loyalty.policy";
 import {
     mapCoupon,
     toCouponType,
@@ -22,12 +20,6 @@ import { BusinessErrorCodes } from "@/types/error-codes";
 type CouponWhereInput = Prisma.CouponWhereInput & {
     ownerId?: Prisma.StringNullableFilter<"Coupon"> | string | null;
     isReward?: Prisma.BoolFilter<"Coupon"> | boolean;
-};
-
-type CouponUncheckedCreateInput = Prisma.CouponUncheckedCreateInput & {
-    ownerId?: string;
-    isReward?: boolean;
-    sourceCouponId?: string;
 };
 
 function sharedCouponWhere(
@@ -289,76 +281,6 @@ export class PrismaCouponRepository implements ICouponRepository {
                 "The coupon is not available for this user",
                 BusinessErrorCodes.COUPON_UNAVAILABLE,
             );
-        }
-    }
-
-    async cloneRewardCoupon(
-        tenantId: string,
-        templateId: string,
-        userId: string,
-        code?: string,
-    ): Promise<Coupon> {
-        try {
-            const coupon = await prisma.$transaction(async (tx) => {
-                const where: CouponWhereInput = {
-                    id: templateId,
-                    tenantId,
-                    ownerId: null,
-                    isReward: false,
-                    active: true,
-                    expiresAt: { gte: new Date() },
-                };
-                const template = await tx.coupon.findFirst({ where });
-                if (!template) {
-                    throw new EntityNotFoundError("Coupon", templateId);
-                }
-                const expiresAt = new Date(template.expiresAt).getTime();
-                if (
-                    !template.active ||
-                    !Number.isFinite(expiresAt) ||
-                    expiresAt <= Date.now()
-                ) {
-                    rejectLoyaltyRewardTemplate(
-                        "The reward coupon template is inactive or expired",
-                    );
-                }
-
-                const data: CouponUncheckedCreateInput = {
-                    tenantId,
-                    code:
-                        code?.trim().toUpperCase() ||
-                        `LOYALTY-${randomUUID().replace(/-/g, "").toUpperCase()}`,
-                    type: toCouponType(template.type),
-                    value: template.value,
-                    description: template.description,
-                    minPurchaseAmount: template.minPurchaseAmount,
-                    maxDiscountAmount: template.maxDiscountAmount,
-                    usageLimit: 1,
-                    usageCount: 0,
-                    active: true,
-                    expiresAt: template.expiresAt,
-                    applicableProducts: template.applicableProducts,
-                    applicableCategories: template.applicableCategories,
-                    applicableServices: template.applicableServices,
-                    ownerId: userId,
-                    isReward: true,
-                    sourceCouponId: templateId,
-                };
-                return tx.coupon.create({ data });
-            });
-            return mapCoupon(coupon);
-        } catch (error: unknown) {
-            if (
-                error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === "P2002"
-            ) {
-                throw new DuplicateEntityError(
-                    "Coupon",
-                    "code",
-                    code ?? "",
-                );
-            }
-            throw error;
         }
     }
 

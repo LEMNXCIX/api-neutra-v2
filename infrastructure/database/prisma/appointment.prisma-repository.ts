@@ -29,8 +29,8 @@ import {
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 import {
+    getLoyaltyCampaignAccrualCriteria,
     getLoyaltyCampaignContributionValue,
-    getLoyaltyCampaignSource,
 } from "@/core/domain/loyalty/loyalty.policy";
 import {
     BusinessRuleViolationError,
@@ -559,23 +559,26 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                         },
                         select: { id: true },
                     })) !== null;
+                const accrual = getLoyaltyCampaignAccrualCriteria(
+                    LoyaltySourceType.APPOINTMENT,
+                    eventAt,
+                );
                 const campaign = loyaltyEnabled
                     ? await tx.loyaltyCampaign.findFirst({
                           where: {
                               tenantId,
-                              status: "ACTIVE",
-                              source: {
-                                  in: [
-                                      getLoyaltyCampaignSource(
-                                          LoyaltySourceType.APPOINTMENT,
-                                      ),
-                                      LoyaltyCampaignSource.ALL,
-                                  ],
-                              },
-                              startsAt: { lte: eventAt },
-                              endsAt: { gt: eventAt },
+                              status: accrual.status,
+                              source: { in: accrual.sources },
+                              startsAt: { lte: accrual.startsAtOnOrBefore },
+                              endsAt: { gt: accrual.endsAtAfter },
                           },
-                          orderBy: { startsAt: "desc" },
+                          orderBy: {
+                              // Newest start wins: the domain states this rule
+                              // in the accrual criteria contract, and both
+                              // adapters order identically, so it is a constant
+                              // here rather than a per-caller choice.
+                              startsAt: "desc",
+                          },
                           select: { id: true, metric: true },
                       })
                     : null;

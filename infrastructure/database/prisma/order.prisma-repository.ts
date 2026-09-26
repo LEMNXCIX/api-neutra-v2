@@ -22,13 +22,12 @@ import {
 } from "@/core/domain/coupon/coupon.policy";
 import {
     LoyaltyCampaignMetric,
-    LoyaltyCampaignSource,
     LoyaltyLedgerEntryType,
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 import {
+    getLoyaltyCampaignAccrualCriteria,
     getLoyaltyCampaignContributionValue,
-    getLoyaltyCampaignSource,
 } from "@/core/domain/loyalty/loyalty.policy";
 import { rejectInsufficientStock } from "@/core/domain/order/order.policy";
 import {
@@ -523,23 +522,26 @@ export class PrismaOrderRepository implements IOrderRepository {
                         },
                         select: { id: true },
                     })) !== null;
+                const accrual = getLoyaltyCampaignAccrualCriteria(
+                    LoyaltySourceType.ORDER,
+                    eventAt,
+                );
                 const campaign = loyaltyEnabled
                     ? await tx.loyaltyCampaign.findFirst({
                           where: {
                               tenantId,
-                              status: "ACTIVE",
-                              source: {
-                                  in: [
-                                      getLoyaltyCampaignSource(
-                                          LoyaltySourceType.ORDER,
-                                      ),
-                                      LoyaltyCampaignSource.ALL,
-                                  ],
-                              },
-                              startsAt: { lte: eventAt },
-                              endsAt: { gt: eventAt },
+                              status: accrual.status,
+                              source: { in: accrual.sources },
+                              startsAt: { lte: accrual.startsAtOnOrBefore },
+                              endsAt: { gt: accrual.endsAtAfter },
                           },
-                          orderBy: { startsAt: "desc" },
+                          orderBy: {
+                              // Newest start wins: the domain states this rule
+                              // in the accrual criteria contract, and both
+                              // adapters order identically, so it is a constant
+                              // here rather than a per-caller choice.
+                              startsAt: "desc",
+                          },
                           select: { id: true, metric: true },
                       })
                     : null;

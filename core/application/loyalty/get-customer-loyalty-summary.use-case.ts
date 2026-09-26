@@ -42,6 +42,7 @@ export async function buildLoyaltyCampaignCustomerSummary(
         tenantId,
         campaign.id,
         userId,
+        campaign,
     );
     const claim =
         knownClaim === undefined

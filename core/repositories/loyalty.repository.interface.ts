@@ -8,7 +8,6 @@ import {
     LoyaltyCampaignSource,
     LoyaltyCampaignStats,
     LoyaltyCampaignStatus,
-    LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 
 export type LoyaltyCampaignRewardDefinition = LoyaltyCampaignReward;
@@ -56,15 +55,11 @@ export interface ILoyaltyRepository {
         tenantId: string,
         campaignId: string,
     ): Promise<LoyaltyCampaign | null>;
-    findActiveCampaignAt(
-        tenantId: string,
-        sourceType: LoyaltySourceType,
-        at: Date,
-    ): Promise<LoyaltyCampaign | null>;
     getCampaignProgress(
         tenantId: string,
         campaignId: string,
         userId: string,
+        knownCampaign?: LoyaltyCampaign,
     ): Promise<LoyaltyCampaignProgress>;
     getCampaignStats(
         tenantId: string,
