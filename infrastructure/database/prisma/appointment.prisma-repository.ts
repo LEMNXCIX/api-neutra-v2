@@ -19,6 +19,7 @@ import {
 } from "@/core/entities/appointment.entity";
 import {
     assertCouponRedeemable,
+    assertCouponsFeatureEnabled,
     toRedeemableCoupon,
 } from "@/core/domain/coupon/coupon.policy";
 import {
@@ -259,12 +260,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                               },
                               select: { id: true },
                           });
-                      if (!couponsEnabled) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon validation is not available for this tenant",
-                              "COUPONS_FEATURE_REQUIRED",
-                          );
-                      }
+                      assertCouponsFeatureEnabled(couponsEnabled !== null);
 
                       const usage = await tx.coupon.updateMany({
                           where: {

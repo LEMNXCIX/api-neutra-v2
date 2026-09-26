@@ -8,12 +8,12 @@ import {
 import {
     assertLoyaltyCampaignFeatures,
     assertLoyaltyCampaignSourceCompatible,
+    assertLoyaltyRewardTemplate,
     isValidLoyaltyCampaignDates,
     isValidLoyaltyCampaignMaxClaims,
     isValidLoyaltyCampaignTarget,
     isValidLoyaltyRewardValidDays,
 } from "@/core/domain/loyalty/loyalty.policy";
-import { CouponType } from "@/core/entities/coupon.entity";
 import {
     EntityNotFoundError,
     ValidationError,
@@ -45,67 +45,9 @@ export function toLoyaltyCampaignDate(
 export function toLoyaltyRewardDefinition(
     reward: LoyaltyRewardDefinitionDTO,
 ): LoyaltyCampaignRewardDefinition {
-    if (!reward || !Object.values(CouponType).includes(reward.type)) {
-        throw new ValidationError(
-            "Reward definition type is invalid",
-            "INVALID_LOYALTY_REWARD_TEMPLATE",
-        );
-    }
-    if (
-        typeof reward.value !== "number" ||
-        !Number.isFinite(reward.value) ||
-        reward.value <= 0 ||
-        (reward.type === CouponType.PERCENT && reward.value > 100)
-    ) {
-        throw new ValidationError(
-            "Reward definition value is invalid",
-            "INVALID_LOYALTY_REWARD_TEMPLATE",
-        );
-    }
-    for (const [field, value] of [
-        ["minPurchaseAmount", reward.minPurchaseAmount],
-        ["maxDiscountAmount", reward.maxDiscountAmount],
-    ] as const) {
-        if (
-            value !== undefined &&
-            value !== null &&
-            (typeof value !== "number" || !Number.isFinite(value) || value < 0)
-        ) {
-            throw new ValidationError(
-                `Reward definition ${field} is invalid`,
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-    }
-    if (
-        reward.description !== undefined &&
-        reward.description !== null &&
-        typeof reward.description !== "string"
-    ) {
-        throw new ValidationError(
-            "Reward definition description is invalid",
-            "INVALID_LOYALTY_REWARD_TEMPLATE",
-        );
-    }
-    const normalizeIds = (
-        values: string[] | undefined,
-        field: string,
-    ): string[] => {
-        if (values === undefined) return [];
-        if (
-            !Array.isArray(values) ||
-            values.some(
-                (value) =>
-                    typeof value !== "string" || value.trim().length === 0,
-            )
-        ) {
-            throw new ValidationError(
-                `Reward definition ${field} is invalid`,
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-        return [...new Set(values.map((value) => value.trim()))];
-    };
+    assertLoyaltyRewardTemplate(reward);
+    const normalizeIds = (values: string[] | undefined): string[] =>
+        [...new Set((values ?? []).map((value) => value.trim()))];
     return {
         type: reward.type,
         value: reward.value,
@@ -115,18 +57,9 @@ export function toLoyaltyRewardDefinition(
                 : reward.description.trim(),
         minPurchaseAmount: reward.minPurchaseAmount ?? undefined,
         maxDiscountAmount: reward.maxDiscountAmount ?? undefined,
-        applicableProducts: normalizeIds(
-            reward.applicableProducts,
-            "applicableProducts",
-        ),
-        applicableCategories: normalizeIds(
-            reward.applicableCategories,
-            "applicableCategories",
-        ),
-        applicableServices: normalizeIds(
-            reward.applicableServices,
-            "applicableServices",
-        ),
+        applicableProducts: normalizeIds(reward.applicableProducts),
+        applicableCategories: normalizeIds(reward.applicableCategories),
+        applicableServices: normalizeIds(reward.applicableServices),
     };
 }
 

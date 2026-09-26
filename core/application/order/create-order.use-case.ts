@@ -6,6 +6,7 @@ import {
     BusinessRuleViolationError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import { assertCouponsFeatureEnabled } from "@/core/domain/coupon/coupon.policy";
 import { IEmailService } from "@/core/ports/email.port";
 import { IProductRepository } from "@/core/repositories/product.repository.interface";
 import { IUserRepository } from "@/core/repositories/user.repository.interface";
@@ -74,12 +75,7 @@ export class CreateOrderUseCase {
         if (couponCode) {
             const features =
                 await this.featureRepository.getTenantFeatureStatus(tenantId);
-            if (!features["COUPONS"]) {
-                throw new BusinessRuleViolationError(
-                    "Coupon validation is not available for this tenant",
-                    "COUPONS_FEATURE_REQUIRED",
-                );
-            }
+            assertCouponsFeatureEnabled(features["COUPONS"]);
 
             const products = await Promise.all(
                 cartItems.map((item) =>

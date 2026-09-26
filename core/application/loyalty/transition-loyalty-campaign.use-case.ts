@@ -6,9 +6,9 @@ import {
     LoyaltyCampaignStatus,
 } from "@/core/entities/loyalty.entity";
 import {
+    assertLoyaltyCampaignRewardConfigured,
     assertLoyaltyCampaignSourceCompatible,
     isValidLoyaltyCampaignDates,
-    isValidLoyaltyRewardValidDays,
 } from "@/core/domain/loyalty/loyalty.policy";
 import {
     BusinessRuleViolationError,
@@ -96,15 +96,11 @@ export class TransitionLoyaltyCampaignUseCase {
                     "INVALID_CAMPAIGN_DATES",
                 );
             }
-            if (
-                !campaign.rewardCouponId ||
-                !isValidLoyaltyRewardValidDays(campaign.rewardValidDays)
-            ) {
-                throw new BusinessRuleViolationError(
-                    "Campaign reward template is invalid",
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
-                );
-            }
+            assertLoyaltyCampaignRewardConfigured(
+                campaign.rewardCouponId,
+                campaign.rewardValidDays,
+                "Campaign reward template is invalid",
+            );
         }
 
         const target =

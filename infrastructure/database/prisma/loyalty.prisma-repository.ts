@@ -22,6 +22,10 @@ import {
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 import {
+    assertLoyaltyCampaignDraft,
+    assertLoyaltyCampaignRewardConfigured,
+    assertLoyaltyCampaignRewardProvided,
+    assertLoyaltyRewardTemplate,
     canTransitionLoyaltyCampaignStatus,
     getLoyaltyCampaignProgressValue,
     getLoyaltyCampaignSourceTypes,
@@ -30,6 +34,7 @@ import {
     isValidLoyaltyCampaignMaxClaims,
     isValidLoyaltyCampaignTarget,
     isValidLoyaltyRewardValidDays,
+    rejectLoyaltyRewardTemplate,
 } from "@/core/domain/loyalty/loyalty.policy";
 import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
@@ -499,64 +504,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
     private validateRewardDefinition(
         reward: LoyaltyCampaignRewardDefinition,
     ): void {
-        if (!Object.values(CouponType).includes(reward.type)) {
-            throw new ValidationError(
-                "Reward definition type is invalid",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-        if (
-            typeof reward.value !== "number" ||
-            !Number.isFinite(reward.value) ||
-            reward.value <= 0 ||
-            (reward.type === CouponType.PERCENT && reward.value > 100)
-        ) {
-            throw new ValidationError(
-                "Reward definition value is invalid",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-        if (
-            reward.description !== undefined &&
-            reward.description !== null &&
-            typeof reward.description !== "string"
-        ) {
-            throw new ValidationError(
-                "Reward definition description is invalid",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-        for (const [field, value] of [
-            ["minPurchaseAmount", reward.minPurchaseAmount],
-            ["maxDiscountAmount", reward.maxDiscountAmount],
-        ] as const) {
-            if (
-                value !== undefined &&
-                value !== null &&
-                (typeof value !== "number" || !Number.isFinite(value) || value < 0)
-            ) {
-                throw new ValidationError(
-                    `Reward definition ${field} is invalid`,
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
-                );
-            }
-        }
-        for (const value of [
-            reward.applicableProducts,
-            reward.applicableCategories,
-            reward.applicableServices,
-        ]) {
-            if (
-                value !== undefined &&
-                (!Array.isArray(value) ||
-                    value.some((item) => typeof item !== "string"))
-            ) {
-                throw new ValidationError(
-                    "Reward definition applicability is invalid",
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
-                );
-            }
-        }
+        assertLoyaltyRewardTemplate(reward);
     }
 
     private buildTemplateData(
@@ -626,9 +574,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             data,
         });
         if (result && result.count === 0) {
-            throw new BusinessRuleViolationError(
+            rejectLoyaltyRewardTemplate(
                 "The campaign reward template is no longer available",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
             );
         }
     }
@@ -650,9 +597,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             },
         });
         if (!template) {
-            throw new BusinessRuleViolationError(
+            rejectLoyaltyRewardTemplate(
                 "The campaign reward template must be an active shared loyalty template for this tenant through claimUntil",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
             );
         }
     }
@@ -664,10 +610,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         this.validateIdentity(tenantId);
         this.validateCampaignFields(data);
         if (!data.reward) {
-            throw new ValidationError(
-                "Campaign reward definition is required",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
+            assertLoyaltyCampaignRewardProvided(data.reward);
         }
         this.validateRewardDefinition(data.reward);
         const row = await this.db.$transaction(async (tx) => {
@@ -720,12 +663,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
             }
             const current = this.mapCampaign(currentRow);
-            if (current.status !== LoyaltyCampaignStatus.DRAFT) {
-                throw new BusinessRuleViolationError(
-                    "Only DRAFT loyalty campaigns can be updated",
-                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
-                );
-            }
+            assertLoyaltyCampaignDraft(
+                current.status === LoyaltyCampaignStatus.DRAFT,
+                "Only DRAFT loyalty campaigns can be updated",
+            );
 
             const candidate = {
                 name: data.name ?? current.name,
@@ -756,9 +697,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
 
             const templateId = current.rewardCouponId;
             if (!templateId) {
-                throw new BusinessRuleViolationError(
+                rejectLoyaltyRewardTemplate(
                     "Campaign reward template is missing",
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
                 );
             }
             const existingTemplate = await tx.coupon.findFirst({
@@ -771,9 +711,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 },
             });
             if (!existingTemplate) {
-                throw new BusinessRuleViolationError(
+                rejectLoyaltyRewardTemplate(
                     "The campaign reward template is missing",
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
                 );
             }
             if (reward) {
@@ -836,12 +775,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 },
                 data: updateData,
             });
-            if (result.count === 0) {
-                throw new BusinessRuleViolationError(
-                    "The loyalty campaign is no longer DRAFT",
-                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
-                );
-            }
+            assertLoyaltyCampaignDraft(
+                result.count > 0,
+                "The loyalty campaign is no longer DRAFT",
+            );
             const updated = await tx.loyaltyCampaign.findFirst({
                 where: { id: campaignId, tenantId },
                 include: { rewardCoupon: true },
@@ -864,12 +801,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
             }
             const current = this.mapCampaign(currentRow);
-            if (current.status !== LoyaltyCampaignStatus.DRAFT) {
-                throw new BusinessRuleViolationError(
-                    "Only DRAFT loyalty campaigns can be deleted",
-                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
-                );
-            }
+            assertLoyaltyCampaignDraft(
+                current.status === LoyaltyCampaignStatus.DRAFT,
+                "Only DRAFT loyalty campaigns can be deleted",
+            );
             const result = await tx.loyaltyCampaign.deleteMany({
                 where: {
                     id: campaignId,
@@ -877,12 +812,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     status: LoyaltyCampaignStatus.DRAFT,
                 },
             });
-            if (result.count === 0) {
-                throw new BusinessRuleViolationError(
-                    "The loyalty campaign is no longer DRAFT",
-                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
-                );
-            }
+            assertLoyaltyCampaignDraft(
+                result.count > 0,
+                "The loyalty campaign is no longer DRAFT",
+            );
             if (current.rewardCouponId && current.claimedCount === 0) {
                 await tx.coupon.deleteMany({
                     where: {
@@ -1218,15 +1151,11 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                         "LOYALTY_CAMPAIGN_NOT_CLAIMABLE",
                     );
                 }
-                if (
-                    !campaign.rewardCouponId ||
-                    !isValidLoyaltyRewardValidDays(campaign.rewardValidDays)
-                ) {
-                    throw new BusinessRuleViolationError(
-                        "The campaign reward is not configured",
-                        "INVALID_LOYALTY_REWARD_TEMPLATE",
-                    );
-                }
+                assertLoyaltyCampaignRewardConfigured(
+                    campaign.rewardCouponId,
+                    campaign.rewardValidDays,
+                    "The campaign reward is not configured",
+                );
 
                 const progressValue =
                     await this.calculateCampaignProgressValue(
@@ -1254,9 +1183,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     },
                 });
                 if (!template) {
-                    throw new BusinessRuleViolationError(
+                    rejectLoyaltyRewardTemplate(
                         "The campaign reward template is inactive, expired, or not shared",
-                        "INVALID_LOYALTY_REWARD_TEMPLATE",
                     );
                 }
 

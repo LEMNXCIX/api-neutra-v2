@@ -63,14 +63,6 @@ describe("architecture.rules", () => {
             { rule: "R2", subject: /^R2 core\/entities\/tenant\.entity\.ts:/, clearedBy: "T7" },
             // T5: appointment status validation duplicated in the controller.
             { rule: "R4", subject: /"INVALID_APPOINTMENT_STATUS"/, clearedBy: "T5" },
-            // T3: stock guard duplicated between the cart use case and the order repository.
-            { rule: "R4", subject: /"INSUFFICIENT_STOCK"/, clearedBy: "T3" },
-            // T3: loyalty reward-template validation duplicated across three layers.
-            { rule: "R4", subject: /"INVALID_LOYALTY_REWARD_TEMPLATE"/, clearedBy: "T3" },
-            // T3: campaign DRAFT-only guard duplicated between use case and repository.
-            { rule: "R4", subject: /"LOYALTY_CAMPAIGN_NOT_DRAFT"/, clearedBy: "T3" },
-            // T3: coupon feature dependency checked in the use case and again in two repositories.
-            { rule: "R4", subject: /"COUPONS_FEATURE_REQUIRED"/, clearedBy: "T3" },
             // T4: delete the presenter layer.
             { rule: "R5", subject: /^R5 core\/presenters\//, clearedBy: "T4" },
         ];

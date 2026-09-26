@@ -6,6 +6,7 @@ import {
     LoyaltyCampaignStatus,
 } from "@/core/entities/loyalty.entity";
 import {
+    assertLoyaltyCampaignDraft,
     assertLoyaltyCampaignSourceCompatible,
     isValidLoyaltyCampaignDates,
     isValidLoyaltyCampaignMaxClaims,
@@ -13,7 +14,6 @@ import {
     isValidLoyaltyRewardValidDays,
 } from "@/core/domain/loyalty/loyalty.policy";
 import {
-    BusinessRuleViolationError,
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
@@ -62,12 +62,10 @@ export class UpdateLoyaltyCampaignUseCase {
         if (!current) {
             throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
         }
-        if (current.status !== LoyaltyCampaignStatus.DRAFT) {
-            throw new BusinessRuleViolationError(
-                "Only DRAFT loyalty campaigns can be updated",
-                "LOYALTY_CAMPAIGN_NOT_DRAFT",
-            );
-        }
+        assertLoyaltyCampaignDraft(
+            current.status === LoyaltyCampaignStatus.DRAFT,
+            "Only DRAFT loyalty campaigns can be updated",
+        );
         const source = data.source ?? current.source;
         assertLoyaltyCampaignSourceCompatible(tenant.type, source);
         const metric = data.metric ?? current.metric;

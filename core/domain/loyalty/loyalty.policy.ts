@@ -1,5 +1,9 @@
 import { TenantType } from "@/core/entities/tenant.entity";
-import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import { CouponType } from "@/core/entities/coupon.entity";
+import {
+    BusinessRuleViolationError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
 import {
     LoyaltyCampaignContributionInput,
     LoyaltyCampaignMetric,
@@ -226,6 +230,152 @@ export function assertLoyaltyCampaignSourceCompatible(
         throw new BusinessRuleViolationError(
             "The campaign source is not supported by this tenant type",
             "LOYALTY_CAMPAIGN_SOURCE_NOT_COMPATIBLE",
+        );
+    }
+}
+
+const INVALID_REWARD_TEMPLATE = "INVALID_LOYALTY_REWARD_TEMPLATE";
+const LOYALTY_CAMPAIGN_NOT_DRAFT = "LOYALTY_CAMPAIGN_NOT_DRAFT";
+
+const REWARD_AMOUNT_FIELDS = [
+    "minPurchaseAmount",
+    "maxDiscountAmount",
+] as const;
+const REWARD_APPLICABILITY_FIELDS = [
+    "applicableProducts",
+    "applicableCategories",
+    "applicableServices",
+] as const;
+
+/** The reward-template fields a caller may hold, normalized or not. */
+interface LoyaltyRewardTemplate {
+    type: CouponType;
+    value: unknown;
+    description?: unknown;
+    minPurchaseAmount?: unknown;
+    maxDiscountAmount?: unknown;
+    applicableProducts?: unknown;
+    applicableCategories?: unknown;
+    applicableServices?: unknown;
+}
+
+function rewardTemplateRejected(message: string): ValidationError {
+    return new ValidationError(message, INVALID_REWARD_TEMPLATE);
+}
+
+function rewardTemplateUnusable(message: string): BusinessRuleViolationError {
+    return new BusinessRuleViolationError(message, INVALID_REWARD_TEMPLATE);
+}
+
+/**
+ * The single entry point for reward-template validation. Checks run in a fixed
+ * order — type, value, purchase bounds, description, applicability — and every
+ * rejection carries INVALID_LOYALTY_REWARD_TEMPLATE.
+ */
+export function assertLoyaltyRewardTemplate(
+    reward: LoyaltyRewardTemplate | null | undefined,
+): void {
+    if (!reward || !Object.values(CouponType).includes(reward.type)) {
+        throw rewardTemplateRejected("Reward definition type is invalid");
+    }
+    const { value } = reward;
+    if (
+        typeof value !== "number" ||
+        !Number.isFinite(value) ||
+        value <= 0 ||
+        (reward.type === CouponType.PERCENT && value > 100)
+    ) {
+        throw rewardTemplateRejected("Reward definition value is invalid");
+    }
+    for (const field of REWARD_AMOUNT_FIELDS) {
+        const amount = reward[field];
+        if (
+            amount !== undefined &&
+            amount !== null &&
+            (typeof amount !== "number" ||
+                !Number.isFinite(amount) ||
+                amount < 0)
+        ) {
+            throw rewardTemplateRejected(
+                `Reward definition ${field} is invalid`,
+            );
+        }
+    }
+    if (
+        reward.description !== undefined &&
+        reward.description !== null &&
+        typeof reward.description !== "string"
+    ) {
+        throw rewardTemplateRejected(
+            "Reward definition description is invalid",
+        );
+    }
+    for (const field of REWARD_APPLICABILITY_FIELDS) {
+        const ids = reward[field];
+        if (ids === undefined) continue;
+        if (
+            !Array.isArray(ids) ||
+            ids.some(
+                (id) => typeof id !== "string" || id.trim().length === 0,
+            )
+        ) {
+            throw rewardTemplateRejected(
+                `Reward definition ${field} is invalid`,
+            );
+        }
+    }
+}
+
+/** A campaign cannot exist without the reward definition it promises. */
+export function assertLoyaltyCampaignRewardProvided(
+    reward: unknown,
+): void {
+    if (!reward) {
+        throw rewardTemplateRejected(
+            "Campaign reward definition is required",
+        );
+    }
+}
+
+/**
+ * Activation and claim share one precondition: the campaign still points at a
+ * reward template and its reward validity is a positive integer. The caller
+ * keeps the message that names its own boundary.
+ */
+export function assertLoyaltyCampaignRewardConfigured(
+    rewardCouponId: string | null | undefined,
+    rewardValidDays: unknown,
+    message: string,
+): void {
+    if (
+        !rewardCouponId ||
+        !isValidLoyaltyRewardValidDays(rewardValidDays)
+    ) {
+        throw rewardTemplateUnusable(message);
+    }
+}
+
+/**
+ * The reward template a transaction read or wrote no longer matches what the
+ * caller expected. The caller owns the message; the code is owned here.
+ */
+export function rejectLoyaltyRewardTemplate(message: string): never {
+    throw rewardTemplateUnusable(message);
+}
+
+/**
+ * Campaigns may only be updated and deleted while DRAFT. Callers pass their own
+ * evidence: a loaded status, or the row count of a DRAFT-scoped
+ * compare-and-set, each rechecked at its own transaction boundary.
+ */
+export function assertLoyaltyCampaignDraft(
+    isDraft: boolean,
+    message: string,
+): void {
+    if (!isDraft) {
+        throw new BusinessRuleViolationError(
+            message,
+            LOYALTY_CAMPAIGN_NOT_DRAFT,
         );
     }
 }

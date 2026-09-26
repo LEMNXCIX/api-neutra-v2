@@ -71,12 +71,25 @@ const CORE_DIRS = [
     "core/utils",
 ];
 
+// Tooling state directories that can contain .ts files and must never be
+// inspected. `.git/gentle-ai/candidate-views/` holds frozen review snapshots of
+// this repository, so walking it reports hundreds of violations inside a tree
+// nobody wrote; `.codegraph/` is generated index output. The repo-root walk
+// reaches both, so the skip has to live here rather than in the per-check
+// callers.
+const IGNORED_DIRECTORIES = new Set([
+    "node_modules",
+    "dist",
+    ".git",
+    ".codegraph",
+]);
+
 function getAllTsFiles(dir: string): string[] {
     const results = [];
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
-        if (entry.name === "node_modules" || entry.name === "dist") continue;
+        if (IGNORED_DIRECTORIES.has(entry.name)) continue;
         if (entry.isDirectory()) {
             results.push(...getAllTsFiles(fullPath));
         } else if (

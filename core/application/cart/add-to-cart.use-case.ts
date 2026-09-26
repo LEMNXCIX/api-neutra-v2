@@ -1,10 +1,8 @@
 import { ICartRepository } from "@/core/repositories/cart.repository.interface";
 import { IProductRepository } from "@/core/repositories/product.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    EntityNotFoundError,
-    BusinessRuleViolationError,
-} from "@/core/domain/errors/domain-errors";
+import { assertCartStockAvailable } from "@/core/domain/order/order.policy";
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 export class AddToCartUseCase {
     constructor(
@@ -41,15 +39,12 @@ export class AddToCartUseCase {
         const currentQty = existingItem?.amount || 0;
         const newTotalQty = currentQty + amount;
 
-        if (product.stock < newTotalQty) {
-            const availableToAdd = Math.max(0, product.stock - currentQty);
-            const message =
-                currentQty > 0
-                    ? `Cannot add ${amount} items. Only ${availableToAdd} more available (${product.stock} total stock, ${currentQty} already in cart)`
-                    : `Insufficient stock. Only ${product.stock} items available`;
-
-            throw new BusinessRuleViolationError(message, "INSUFFICIENT_STOCK");
-        }
+        assertCartStockAvailable({
+            stock: product.stock,
+            cartQuantity: currentQty,
+            requestedQuantity: amount,
+            totalQuantity: newTotalQty,
+        });
 
         if (existingItem) {
             await this.cartRepository.updateItemAmount(

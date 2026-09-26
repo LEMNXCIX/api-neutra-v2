@@ -7,6 +7,7 @@ import {
     UpdateCouponData,
 } from "@/core/repositories/coupon.repository.interface";
 import { Coupon, CouponType } from "@/core/entities/coupon.entity";
+import { rejectLoyaltyRewardTemplate } from "@/core/domain/loyalty/loyalty.policy";
 import {
     BusinessRuleViolationError,
     DuplicateEntityError,
@@ -344,9 +345,8 @@ export class PrismaCouponRepository implements ICouponRepository {
                     !Number.isFinite(expiresAt) ||
                     expiresAt <= Date.now()
                 ) {
-                    throw new BusinessRuleViolationError(
+                    rejectLoyaltyRewardTemplate(
                         "The reward coupon template is inactive or expired",
-                        "INVALID_LOYALTY_REWARD_TEMPLATE",
                     );
                 }
 

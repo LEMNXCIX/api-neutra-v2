@@ -15,6 +15,7 @@ import { Order, OrderStatus, OrderItem } from "@/core/entities/order.entity";
 import { Product } from "@/core/entities/product.entity";
 import {
     assertCouponRedeemable,
+    assertCouponsFeatureEnabled,
     isApplicableToCategory,
     isApplicableToProduct,
     toRedeemableCoupon,
@@ -29,6 +30,7 @@ import {
     getLoyaltyCampaignContributionValue,
     getLoyaltyCampaignSource,
 } from "@/core/domain/loyalty/loyalty.policy";
+import { rejectInsufficientStock } from "@/core/domain/order/order.policy";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
@@ -211,12 +213,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                     },
                     select: { id: true },
                 });
-                if (!couponsEnabled) {
-                    throw new BusinessRuleViolationError(
-                        "Coupon validation is not available for this tenant",
-                        "COUPONS_FEATURE_REQUIRED",
-                    );
-                }
+                assertCouponsFeatureEnabled(couponsEnabled !== null);
             }
 
             for (const adjustment of adjustments) {
@@ -229,10 +226,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                     data: { stock: { decrement: adjustment.amount } },
                 });
                 if (result.count === 0) {
-                    throw new BusinessRuleViolationError(
-                        `Stock insuficiente para el producto ${adjustment.productId}`,
-                        "INSUFFICIENT_STOCK",
-                    );
+                    rejectInsufficientStock(adjustment.productId);
                 }
             }
 

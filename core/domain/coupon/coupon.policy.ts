@@ -97,6 +97,22 @@ export function assertCouponRedeemable(
     }
 }
 
+/**
+ * Coupon availability depends on the tenant having COUPONS enabled. Callers pass
+ * their own evidence: a feature map, or a matching tenantFeature row read inside
+ * their own transaction.
+ */
+export function assertCouponsFeatureEnabled(
+    enabled: boolean | null | undefined,
+): void {
+    if (!enabled) {
+        throw new BusinessRuleViolationError(
+            "Coupon validation is not available for this tenant",
+            "COUPONS_FEATURE_REQUIRED",
+        );
+    }
+}
+
 export function isApplicableToProduct(
     coupon: Pick<Coupon, "applicableProducts">,
     productId: string,
