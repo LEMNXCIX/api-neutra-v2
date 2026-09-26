@@ -194,7 +194,6 @@ describe("cross-tenant loyalty overview", () => {
     test("keeps disabled tenants visible", async () => {
         const loyaltyRepository = {
             listCampaigns: jest.fn().mockResolvedValue([]),
-            getCampaignStats: jest.fn(),
             countCampaignRewardClaims: jest.fn().mockResolvedValue(0),
         };
         const useCase = new GetAllTenantsLoyaltyOverviewUseCase(

@@ -37,11 +37,11 @@ export async function buildLoyaltyCampaignTenantOverview(
     loyaltyRepository: ILoyaltyRepository,
 ): Promise<LoyaltyCampaignTenantOverview> {
     const campaigns = await loyaltyRepository.listCampaigns(tenant.id);
-    // One claim count for the tenant, not one statistics read per campaign:
-    // getCampaignStats re-reads the campaign to reach a claimedCount that this
-    // list already holds, so the loop bought a query per campaign and nothing
-    // else. Counting claim rows is also the honest total when a campaign's
-    // claimedCount has drifted from its claims.
+    // One claim count for the tenant, not one statistics read per campaign. That
+    // read re-read a campaign to reach a claimedCount this list already held, so
+    // the loop bought a query per campaign and nothing else. Counting claim rows
+    // is also the honest total when a campaign's claimedCount has drifted from
+    // its claims.
     const totalClaims =
         await loyaltyRepository.countCampaignRewardClaims(tenant.id);
     return {

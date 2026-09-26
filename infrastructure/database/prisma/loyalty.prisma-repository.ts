@@ -15,7 +15,6 @@ import {
     LoyaltyCampaignProgress,
     LoyaltyCampaignRewardClaim,
     LoyaltyCampaignSource,
-    LoyaltyCampaignStats,
     LoyaltyCampaignStatus,
     LoyaltyLedgerEntryType,
     LoyaltyRewardClaimStatus,
@@ -1177,26 +1176,6 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
     async countCampaignRewardClaims(tenantId: string): Promise<number> {
         this.validateIdentity(tenantId);
         return this.db.loyaltyRewardClaim.count({ where: { tenantId } });
-    }
-
-    async getCampaignStats(
-        tenantId: string,
-        campaignId: string,
-    ): Promise<LoyaltyCampaignStats> {
-        this.validateIdentity(tenantId, campaignId);
-        const campaign = await this.getCampaign(tenantId, campaignId);
-        if (!campaign) {
-            throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
-        }
-        const claimedCount = campaign.claimedCount;
-        const maxClaims = campaign.maxClaims ?? null;
-        return {
-            campaignId,
-            claimedCount,
-            maxClaims,
-            remainingClaims:
-                maxClaims === null ? null : Math.max(maxClaims - claimedCount, 0),
-        };
     }
 
     async findCampaignRewardClaim(

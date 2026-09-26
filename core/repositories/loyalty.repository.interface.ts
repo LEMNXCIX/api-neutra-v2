@@ -6,7 +6,6 @@ import {
     LoyaltyCampaignReward,
     LoyaltyCampaignRewardClaim,
     LoyaltyCampaignSource,
-    LoyaltyCampaignStats,
     LoyaltyCampaignStatus,
 } from "@/core/entities/loyalty.entity";
 
@@ -86,10 +85,6 @@ export interface ILoyaltyRepository {
      * How many reward claims the tenant holds, in one read.
      */
     countCampaignRewardClaims(tenantId: string): Promise<number>;
-    getCampaignStats(
-        tenantId: string,
-        campaignId: string,
-    ): Promise<LoyaltyCampaignStats>;
     findCampaignRewardClaim(
         tenantId: string,
         campaignId: string,

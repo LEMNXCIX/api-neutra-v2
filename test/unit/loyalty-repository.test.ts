@@ -298,6 +298,7 @@ describe("PrismaLoyaltyRepository", () => {
         expect(candidate.getPointsBalance).toBeUndefined();
         expect(candidate.getTenantStats).toBeUndefined();
         expect(candidate.findActiveCampaignAt).toBeUndefined();
+        expect(candidate.getCampaignStats).toBeUndefined();
     });
 
     test.each([
@@ -306,6 +307,12 @@ describe("PrismaLoyaltyRepository", () => {
             "findActiveCampaignAt",
         ],
         ["core/repositories/loyalty.repository.interface.ts", "findActiveCampaignAt"],
+        [
+            "infrastructure/database/prisma/loyalty.prisma-repository.ts",
+            "getCampaignStats",
+        ],
+        ["core/repositories/loyalty.repository.interface.ts", "getCampaignStats"],
+        ["core/entities/loyalty.entity.ts", "LoyaltyCampaignStats"],
         [
             "infrastructure/database/prisma/coupon.prisma-repository.ts",
             "cloneRewardCoupon",
@@ -652,20 +659,12 @@ describe("PrismaLoyaltyRepository", () => {
         },
     );
 
-    test("returns campaign stats and rejects lifecycle skips", async () => {
+    test("rejects lifecycle skips", async () => {
         const { repository, campaigns } = setup();
         campaigns.findFirst.mockResolvedValue(
             campaignRow({ maxClaims: 3, claimedCount: 1 }),
         );
 
-        await expect(
-            repository.getCampaignStats("tenant-1", "campaign-1"),
-        ).resolves.toEqual({
-            campaignId: "campaign-1",
-            claimedCount: 1,
-            maxClaims: 3,
-            remainingClaims: 2,
-        });
         await expect(
             repository.transitionCampaignStatus(
                 "tenant-1",

@@ -2,7 +2,6 @@ import {
     LoyaltyCampaign,
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
-    LoyaltyCampaignStats,
     LoyaltyCampaignStatus,
 } from "@/core/entities/loyalty.entity";
 import { Tenant, TenantType } from "@/core/entities/tenant.entity";
@@ -62,18 +61,6 @@ function makeCampaign(
     };
 }
 
-function makeStats(
-    overrides: Partial<LoyaltyCampaignStats> = {},
-): LoyaltyCampaignStats {
-    return {
-        campaignId: "campaign-active",
-        claimedCount: 0,
-        maxClaims: 100,
-        remainingClaims: 100,
-        ...overrides,
-    };
-}
-
 interface SetupOptions {
     tenant?: Tenant | null;
     features?: Record<string, boolean>;
@@ -88,21 +75,9 @@ function setup(options: SetupOptions = {}) {
     const campaigns = options.campaigns ?? [];
     const claimed = options.claimed ?? {};
 
-    const listCampaigns = jest.fn(
-        async (tenantId: string): Promise<LoyaltyCampaign[]> =>
-            tenantId === TENANT_ID ? campaigns : [],
-    );
-      const getCampaignStats = jest.fn(
-          async (
-              tenantId: string,
-              campaignId: string,
-          ): Promise<LoyaltyCampaignStats> =>
-              makeStats({
-                  campaignId,
-                  claimedCount: claimed[campaignId] ?? 0,
-                  maxClaims: null,
-                  remainingClaims: null,
-              }),
+      const listCampaigns = jest.fn(
+          async (tenantId: string): Promise<LoyaltyCampaign[]> =>
+              tenantId === TENANT_ID ? campaigns : [],
       );
       // The overview counts the tenant's claims in one read now, so the
       // expectation is the sum the per-campaign loop used to produce.
@@ -126,12 +101,11 @@ function setup(options: SetupOptions = {}) {
 
     return {
         listCampaigns,
-        getCampaignStats,
         countCampaignRewardClaims,
         findById,
         getTenantFeatureStatus,
         useCase: new GetTenantLoyaltyOverviewUseCase(
-            { listCampaigns, getCampaignStats, countCampaignRewardClaims } as never,
+            { listCampaigns, countCampaignRewardClaims } as never,
             { findById } as never,
             { getTenantFeatureStatus } as never,
         ),
@@ -325,11 +299,10 @@ describe("GetTenantLoyaltyOverviewUseCase", () => {
 
     test("counts the tenant's claims in one read, not one statistics read per campaign", async () => {
         const campaigns = lifecycleCampaigns();
-        const { useCase, listCampaigns, countCampaignRewardClaims, getCampaignStats } =
-            setup({
+        const { useCase, listCampaigns, countCampaignRewardClaims } = setup({
             campaigns,
             claimed: lifecycleClaims,
-            });
+        });
 
         const result = await useCase.execute(TENANT_ID);
 
@@ -339,7 +312,6 @@ describe("GetTenantLoyaltyOverviewUseCase", () => {
         // to reach a claimedCount the list already held.
         expect(countCampaignRewardClaims).toHaveBeenCalledTimes(1);
         expect(countCampaignRewardClaims).toHaveBeenCalledWith(TENANT_ID);
-        expect(getCampaignStats).not.toHaveBeenCalled();
         expect(result.data?.stats.totalClaims).toBe(
             Object.values(lifecycleClaims).reduce(
             (total, value) => total + value,

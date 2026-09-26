@@ -134,13 +134,6 @@ export interface LoyaltyCampaignCustomerSummary {
     claim?: LoyaltyCampaignRewardClaim;
 }
 
-export interface LoyaltyCampaignStats {
-    campaignId: string;
-    claimedCount: number;
-    maxClaims: number | null;
-    remainingClaims: number | null;
-}
-
 export interface LoyaltyCampaignRewardClaim {
     id: string;
     tenantId: string;
