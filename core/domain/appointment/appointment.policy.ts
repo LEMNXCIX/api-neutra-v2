@@ -2,6 +2,18 @@ import { AppointmentStatus } from "@/core/entities/appointment.entity";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
+/**
+ * The single owner of which appointment status a caller may set by hand.
+ *
+ * NEEDS_REVIEW is deliberately absent, and its absence is the point: the status
+ * means nobody recorded the outcome of an appointment that has already
+ * happened, which is a fact about the schedule rather than a decision a member
+ * of staff gets to make. Only the sweep may set it, through
+ * canSystemFlagForReview below. The public graph and the system graph answer
+ * different questions, and conflating them is what let the sweep write
+ * NEEDS_REVIEW directly from the repository for as long as it did, with nothing
+ * in the domain able to say whether that was allowed.
+ */
 const APPOINTMENT_STATUS_TRANSITIONS: Readonly<
     Record<AppointmentStatus, readonly AppointmentStatus[]>
 > = {
@@ -58,6 +70,33 @@ export function canTransitionAppointmentStatus(
     nextStatus: AppointmentStatus,
 ): boolean {
     return APPOINTMENT_STATUS_TRANSITIONS[currentStatus].includes(nextStatus);
+}
+
+/**
+ * The system half of the lifecycle, and the only way to reach NEEDS_REVIEW.
+ *
+ * A sweep may flag any appointment that is still recorded as running, because
+ * the status of a booking whose window has closed is unresolved and somebody has
+ * to look at it. It may not touch an appointment that has already reached a
+ * decision, and it may not re-flag one already in review, which is what keeps a
+ * sweep from walking a NEEDS_REVIEW appointment further along.
+ *
+ * This lives beside the public graph rather than inside it so the two rules stay
+ * distinguishable: canTransitionAppointmentStatus answers "may a caller set
+ * this", this one answers "may the system flag this". The sweep consults it
+ * before writing, which it did not used to do, so a status the system rules out
+ * is now refused in the domain instead of being written regardless.
+ */
+const SYSTEM_FLAGGABLE_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
+    AppointmentStatus.PENDING,
+    AppointmentStatus.CONFIRMED,
+    AppointmentStatus.IN_PROGRESS,
+]);
+
+export function canSystemFlagForReview(
+    currentStatus: AppointmentStatus,
+): boolean {
+    return SYSTEM_FLAGGABLE_STATUSES.has(currentStatus);
 }
 
 export function isTerminalAppointmentStatus(

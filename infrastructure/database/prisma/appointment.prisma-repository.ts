@@ -635,9 +635,12 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 status: {
                     in: ["PENDING", "CONFIRMED", "IN_PROGRESS"],
                 },
-                // The lower bound excludes appointments that started before this
-                // deployment; the upper bound is the absolute grace deadline.
-                startTime: { gte: activationCutoff },
+                // The lower bound is optional. When it is absent the only
+                // temporal rule is the two-hour grace on endTime; when it is
+                // present it is a deployment floor a caller opted into. It is
+                // spread rather than passed as null, because a null bound is not
+                // the same as no bound.
+                ...(activationCutoff ? { startTime: { gte: activationCutoff } } : {}),
                 endTime: { lte: eligibleThrough },
             },
             select: {
@@ -664,7 +667,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         tenantId: string,
         id: string,
         expectedStatus: AppointmentStatus,
-        activationCutoff: Date,
+        activationCutoff: Date | null,
         eligibleThrough: Date,
         changedAt: Date,
         reason: string,
@@ -674,7 +677,13 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 id,
                 tenantId,
                 status: expectedStatus as PrismaAppointmentStatus,
-                startTime: { gte: activationCutoff },
+                // Same optional lower bound as the candidate query, and for the
+                // same reason: Prisma rejects a null bound outright with
+                // "Argument `gte` must not be null", so the filter has to be
+                // absent rather than null. A null here used to pass the type
+                // check, because a method parameter narrowed from `Date | null`
+                // to `Date` is compared bivariantly.
+                ...(activationCutoff ? { startTime: { gte: activationCutoff } } : {}),
                 endTime: { lte: eligibleThrough },
             },
             data: {

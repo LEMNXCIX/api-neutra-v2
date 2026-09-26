@@ -3,6 +3,7 @@ import {
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
 import {
+    canSystemFlagForReview,
     canTransitionAppointmentStatus,
 } from "@/core/domain/appointment/appointment.policy";
 import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
@@ -127,6 +128,32 @@ describe("appointment transition policy", () => {
             ),
         ).toBe(false);
     });
+
+    /**
+     * The two halves of the lifecycle, pinned together because they are easy to
+     * conflate and nothing else in the code compares them. NEEDS_REVIEW is
+     * unreachable by hand and reachable by the system, and the sweep consults
+     * the second rule before it writes.
+     */
+    test.each([
+        AppointmentStatus.PENDING,
+        AppointmentStatus.CONFIRMED,
+        AppointmentStatus.IN_PROGRESS,
+    ])("the sweep may flag %s for review", (status) => {
+        expect(canSystemFlagForReview(status)).toBe(true);
+    });
+
+    test.each([
+        AppointmentStatus.NEEDS_REVIEW,
+        AppointmentStatus.COMPLETED,
+        AppointmentStatus.CANCELLED,
+        AppointmentStatus.NO_SHOW,
+    ])(
+        "the sweep may not flag %s, which is already decided or already flagged",
+        (status) => {
+            expect(canSystemFlagForReview(status)).toBe(false);
+        },
+    );
 
     test.each([
         AppointmentStatus.COMPLETED,

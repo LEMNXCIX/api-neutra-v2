@@ -52,7 +52,13 @@ export type AppointmentReviewCandidate = {
 };
 
 export type AppointmentReviewCandidateQuery = {
-    activationCutoff: Date;
+    /**
+     * Optional lower bound on which appointments the sweep may look at. null
+     * means no lower bound, which is the default, leaving the two-hour grace as
+     * the only temporal rule. See resolveAppointmentReviewActivationCutoff for
+     * why this cannot default to a rolling value.
+     */
+    activationCutoff: Date | null;
     eligibleThrough: Date;
     limit: number;
 };
@@ -106,7 +112,7 @@ export interface IAppointmentRepository {
         tenantId: string,
         id: string,
         expectedStatus: AppointmentStatus,
-        activationCutoff: Date,
+        activationCutoff: Date | null,
         eligibleThrough: Date,
         changedAt: Date,
         reason: string,

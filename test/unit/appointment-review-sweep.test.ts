@@ -89,27 +89,60 @@ describe("SweepAppointmentReviewsUseCase", () => {
         expect(result.transitioned).toBe(1);
     });
 
-    test("uses process start when the configured activation cutoff is absent or invalid", () => {
-        const processStart = new Date("2030-01-01T08:00:00.000Z");
-
+    test("has no lower bound by default, and honours an explicit one", () => {
+        // The default used to be the process start time, described as
+        // "appointments that started before this deployment". A process start is
+        // not a deployment boundary: it moves on every restart, so each restart
+        // sealed off everything older and the sweep reported zero candidates
+        // without saying why. An appointment that started before the last
+        // restart could never be swept again.
+        expect(resolveAppointmentReviewActivationCutoff(undefined)).toEqual({
+            cutoff: null,
+            source: "unbounded",
+        });
         expect(
-            resolveAppointmentReviewActivationCutoff(undefined, processStart),
-        ).toEqual({ cutoff: processStart, source: "process-start" });
+            resolveAppointmentReviewActivationCutoff("not-an-absolute-instant"),
+        ).toEqual({ cutoff: null, source: "unbounded" });
         expect(
-            resolveAppointmentReviewActivationCutoff(
-                "not-an-absolute-instant",
-                processStart,
-            ),
-        ).toEqual({ cutoff: processStart, source: "process-start" });
-        expect(
-            resolveAppointmentReviewActivationCutoff(
-                "2030-01-01T09:00:00+02:00",
-                processStart,
-            ),
+            resolveAppointmentReviewActivationCutoff("2030-01-01T09:00:00+02:00"),
         ).toEqual({
             cutoff: new Date("2030-01-01T07:00:00.000Z"),
             source: "environment",
         });
+    });
+
+    test("passes no lower bound down, so the two-hour grace is the only rule", async () => {
+        const repository = createRepository();
+        const changedAt = new Date("2030-01-01T12:00:00.000Z");
+        const configProvider = createConfigProvider(undefined);
+        repository.findReviewCandidates.mockResolvedValue([
+            candidate({ endTime: new Date("2030-01-01T10:00:00.000Z") }),
+        ]);
+        const useCase = new SweepAppointmentReviewsUseCase(
+            repository,
+            createLogger(),
+            configProvider,
+            { now: () => changedAt },
+        );
+
+        const result = await useCase.execute();
+
+        expect(repository.findReviewCandidates).toHaveBeenCalledWith({
+            activationCutoff: null,
+            eligibleThrough: new Date("2030-01-01T10:00:00.000Z"),
+            limit: 100,
+        });
+        expect(repository.markNeedsReview).toHaveBeenCalledWith(
+            "tenant-1",
+            "appointment-1",
+            AppointmentStatus.CONFIRMED,
+            null,
+            new Date("2030-01-01T10:00:00.000Z"),
+            changedAt,
+            APPOINTMENT_REVIEW_SYSTEM_REASON,
+        );
+        expect(result.activationCutoff).toBeNull();
+        expect(result.transitioned).toBe(1);
     });
 
     test("does not transition the same candidate twice on repeated execution", async () => {
