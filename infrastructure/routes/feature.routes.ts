@@ -1,6 +1,9 @@
 import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import { requirePermission } from "@/middleware/authorization.middleware";
+import {
+    requirePermission,
+    requireSuperAdmin,
+} from "@/middleware/authorization.middleware";
 import { FeatureController } from "@/interface-adapters/controllers/feature.controller";
 
 function featureRoutes(
@@ -41,6 +44,16 @@ function featureRoutes(
      *         createdAt:
      *           type: string
      *           format: date-time
+     */
+
+    /**
+     * The three writes below are platform-catalog mutations: `Feature` carries
+     * no `tenantId` and `key` is globally `@unique`, so a write here is visible
+     * to every tenant's `getTenantFeatureStatus` gating. `requirePermission` is
+     * kept alongside `requireSuperAdmin` as a conjunction on purpose — the
+     * permission names the capability, the role names the operator who is
+     * allowed to act outside a tenant, and dropping either lets through a
+     * different class of caller.
      */
 
     /**
@@ -104,6 +117,7 @@ function featureRoutes(
         "/",
         authenticate,
         requirePermission("features:write"),
+        requireSuperAdmin,
         featureController.create,
     );
 
@@ -146,6 +160,7 @@ function featureRoutes(
         "/:id",
         authenticate,
         requirePermission("features:write"),
+        requireSuperAdmin,
         featureController.update,
     );
 
@@ -178,6 +193,7 @@ function featureRoutes(
         "/:id",
         authenticate,
         requirePermission("features:delete"),
+        requireSuperAdmin,
         featureController.delete,
     );
 }

@@ -131,10 +131,36 @@ export function requireRole(minLevel: number) {
     };
 }
 
+/**
+ * Platform-operator gate for global rows. The role decision is delegated to the
+ * domain policy instead of re-reading `role.name`: the same rule already had
+ * three copies (here, a local one in `loyalty.routes.ts`, and one in
+ * `loyalty.controller.ts` before it moved to `isSuperAdmin`), and each copy is
+ * a place the rule can drift. Refusals go through `next(error)` rather than a
+ * response so the global error handler still maps them.
+ */
+export function requireSuperAdmin(
+    req: Request,
+    _res: Response,
+    next: NextFunction,
+): void {
+    if (!req.user?.role) {
+        return next(new UnauthorizedError());
+    }
+
+    if (!isSuperAdmin(req.user)) {
+        return next(
+            new ForbiddenError("Super administrator access is required"),
+        );
+    }
+
+    return next();
+}
+
 export function requireOwnership(
     getResourceOwnerId: (req: Request) => Promise<string | null>,
 ) {
-    return async (req: Request, res: Response, next: NextFunction) => {
+    return async (req: Request, _res: Response, next: NextFunction) => {
         const user = req.user;
 
         if (!user) {

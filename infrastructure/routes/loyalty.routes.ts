@@ -10,7 +10,10 @@ import {
     requireConcreteTenantContext,
     requireTenantType,
 } from "@/middleware/tenant-feature.middleware";
-import { requirePermission } from "@/middleware/authorization.middleware";
+import {
+    requirePermission,
+    requireSuperAdmin,
+} from "@/middleware/authorization.middleware";
 import { LoyaltyController } from "@/interface-adapters/controllers/loyalty.controller";
 import {
     CreateLoyaltyCampaignDto,
@@ -18,29 +21,7 @@ import {
 } from "@/core/application/dtos/requests/loyalty.request";
 import { validateDto } from "@/middleware/validation.middleware";
 import { ROLE_CONSTANTS } from "@/core/domain/constants";
-import {
-    ForbiddenError,
-    UnauthorizedError,
-} from "@/core/domain/errors/domain-errors";
-
-function requireSuperAdmin(
-    req: Request,
-    _res: Response,
-    next: NextFunction,
-): void {
-    if (!req.user?.role) {
-        return next(new UnauthorizedError());
-    }
-    if (req.user.role.name !== ROLE_CONSTANTS.SUPER_ADMIN) {
-        return next(
-            new ForbiddenError(
-                "Super administrator access is required",
-                "FORBIDDEN",
-            ),
-        );
-    }
-    return next();
-}
+import { ForbiddenError } from "@/core/domain/errors/domain-errors";
 
 function requireActiveTenant(
     req: Request,

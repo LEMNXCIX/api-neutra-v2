@@ -51,6 +51,11 @@ jest.mock("@/middleware/authorization.middleware", () => ({
     requirePermission: jest.fn(
         () => (_req: Request, _res: Response, next: NextFunction) => next(),
     ),
+    // This mock replaces the whole module, so every export must be listed or
+    // it arrives as undefined and Express rejects the handler at registration.
+    requireSuperAdmin: jest.fn(
+        (_req: Request, _res: Response, next: NextFunction) => next(),
+    ),
 }));
 
 const authenticate = jest.fn(
