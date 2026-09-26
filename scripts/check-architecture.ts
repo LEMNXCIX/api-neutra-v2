@@ -190,38 +190,72 @@ if (fs.existsSync(controllersDir)) {
     }
 }
 
-// Check for `as any` and `: any` usage in protected dirs
-console.log(
-    "\n--- Type Safety Check: `as any` and `: any` in protected directories ---\n",
-);
+// Check for `as any` and `: any` usage across the whole shipped surface.
+//
+// This used to run only over PROTECTED_DIRS (core, interface-adapters,
+// middleware) and only ever warned, so it saw 14 of the 54 sites that
+// existed and none of the 21 in infrastructure/providers. It now scans
+// every file the build emits, and a finding fails the run.
+console.log("\n--- Type Safety Check: `as any` and `: any` in shipped code ---\n");
 
 const ANY_PATTERNS = [
     { pattern: /\bas\s+any\b/, label: "'as any'" },
     { pattern: /:\s*any\b/, label: "': any'" },
+    { pattern: /catch\s*\(\s*[\w$]+\s*:\s*any\b/, label: "'catch (e: any)'" },
 ];
 
-for (const { dir } of PROTECTED_DIRS) {
-    const fullPath = path.join(ROOT, dir);
-    if (!fs.existsSync(fullPath)) continue;
+// Mirrors tsconfig.build.json's exclude, plus this script, which necessarily
+// spells the patterns it searches for. types/ics.d.ts is an ambient
+// declaration for a third-party library and is not ours to restyle.
+const ANY_SCAN_EXCLUDE = [
+    "test",
+    "scripts",
+    "node_modules",
+    "dist",
+    "prisma/seed.ts",
+    "types/ics.d.ts",
+];
 
-    const files = getAllTsFiles(fullPath);
+const anyScannable = getAllTsFiles(ROOT)
+    .map((file) => path.relative(ROOT, file).replace(/\\/g, "/"))
+    .filter(
+        (relativePath) =>
+            relativePath !== "scripts/check-architecture.ts" &&
+            !ANY_SCAN_EXCLUDE.some(
+                (excluded) =>
+                    relativePath === excluded ||
+                    relativePath.startsWith(`${excluded}/`),
+            ),
+    );
 
-    for (const file of files) {
-        const content = fs.readFileSync(file, "utf-8");
-        const relativePath = path.relative(ROOT, file).replace(/\\/g, "/");
-        const lines = content.split("\n");
+for (const relativePath of anyScannable) {
+    const lines = fs
+        .readFileSync(path.join(ROOT, relativePath), "utf-8")
+        .split("\n");
 
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            if (/^\s*\/\//.test(line) || /^\s*\*/.test(line)) continue;
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Same rule as scripts/verify-production-build.ts and the doctor's
+        // architecture rules: a line carrying no code cannot contain a real
+        // `any`. Deliberately not extracted into a shared module — this file
+        // runs under node's type stripping while the other two run under tsx,
+        // and a cross-tooling import is not worth the coupling for one
+        // predicate.
+        const trimmed = line.trimStart();
+        if (
+            trimmed.startsWith("//") ||
+            trimmed.startsWith("/*") ||
+            trimmed.startsWith("*")
+        ) {
+            continue;
+        }
 
-            for (const { pattern, label: patternLabel } of ANY_PATTERNS) {
-                if (pattern.test(line)) {
-                    console.log(
-                        `WARNING: ${relativePath}:${i + 1} uses ${patternLabel}`,
-                    );
-                    warnings++;
-                }
+        for (const { pattern, label: patternLabel } of ANY_PATTERNS) {
+            if (pattern.test(line)) {
+                console.log(
+                    `VIOLATION: ${relativePath}:${i + 1} uses ${patternLabel} in shipped code`,
+                );
+                violations++;
             }
         }
     }
