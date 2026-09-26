@@ -36,7 +36,11 @@ import {
     isValidLoyaltyRewardValidDays,
     rejectLoyaltyRewardTemplate,
 } from "@/core/domain/loyalty/loyalty.policy";
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
+import { CouponType } from "@/core/entities/coupon.entity";
+import {
+    mapCoupon,
+    toCouponType,
+} from "@/infrastructure/database/prisma/coupon-mapper";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
@@ -296,13 +300,6 @@ function isLoyaltyDatabase(value: unknown): value is LoyaltyDatabase {
     );
 }
 
-function toCouponType(value: string): CouponType {
-    if (value === CouponType.PERCENT || value === CouponType.FIXED) {
-        return value;
-    }
-    throw new Error(`Unsupported coupon type: ${value}`);
-}
-
 function toCampaignStatus(value: string): LoyaltyCampaignStatus {
     if (Object.values(LoyaltyCampaignStatus).includes(value as LoyaltyCampaignStatus)) {
         return value as LoyaltyCampaignStatus;
@@ -357,31 +354,6 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         return candidate;
     }
 
-    private mapCoupon(row: CouponRecord): Coupon {
-        return {
-            id: row.id,
-            code: row.code,
-            type: toCouponType(row.type),
-            value: row.value,
-            description: row.description ?? undefined,
-            ownerId: row.ownerId ?? undefined,
-            isReward: row.isReward,
-            isLoyaltyTemplate: row.isLoyaltyTemplate,
-            sourceCouponId: row.sourceCouponId ?? undefined,
-            minPurchaseAmount: row.minPurchaseAmount ?? undefined,
-            maxDiscountAmount: row.maxDiscountAmount ?? undefined,
-            usageLimit: row.usageLimit ?? undefined,
-            usageCount: row.usageCount,
-            active: row.active,
-            expiresAt: row.expiresAt,
-            applicableProducts: row.applicableProducts,
-            applicableCategories: row.applicableCategories,
-            applicableServices: row.applicableServices,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-        };
-    }
-
     private mapCampaignReward(
         row: CouponRecord | null | undefined,
     ): LoyaltyCampaignReward | undefined {
@@ -431,7 +403,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             status: toClaimStatus(row.status),
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
-            coupon: row.coupon ? this.mapCoupon(row.coupon) : undefined,
+            coupon: row.coupon ? mapCoupon(row.coupon) : undefined,
         };
     }
 
@@ -441,7 +413,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         }
         return {
             claim: this.mapCampaignClaim(row),
-            coupon: this.mapCoupon(row.coupon),
+            coupon: mapCoupon(row.coupon),
         };
     }
 

@@ -30,12 +30,19 @@ export function isExpired(coupon: Pick<Coupon, "expiresAt">): boolean {
     return new Date() > coupon.expiresAt;
 }
 
-export function hasReachedUsageLimit(
-    coupon: Pick<Coupon, "usageCount" | "usageLimit">,
-): boolean {
+export function hasReachedUsageLimit(coupon: {
+    usageCount: number;
+    // Not `Pick<Coupon, "usageLimit">`: this guard also receives the stored
+    // row shape from the repositories, where the field may be absent entirely.
+    // A Pick re-derived from the entity would reject that, and widening the
+    // entity to `| undefined` would restore the looseness the null-honest
+    // declaration exists to remove. The parameter states exactly the two
+    // shapes that legitimately arrive.
+    usageLimit?: number | null;
+}): boolean {
     const { usageLimit } = coupon;
-    // "Unlimited" reaches the domain as null (Prisma) or undefined (optional
-    // field). Both must short-circuit: `usageCount >= null` coerces to
+    // "Unlimited" reaches the domain as null (stored row) or undefined (field
+    // absent). Both must short-circuit: `usageCount >= null` coerces to
     // `usageCount >= 0` and would falsely reject every unlimited coupon.
     if (usageLimit === null || usageLimit === undefined) return false;
     return coupon.usageCount >= usageLimit;
