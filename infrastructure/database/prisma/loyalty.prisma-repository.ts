@@ -362,9 +362,9 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         return {
             type: toCouponType(row.type),
             value: row.value,
-            description: row.description ?? undefined,
-            minPurchaseAmount: row.minPurchaseAmount ?? undefined,
-            maxDiscountAmount: row.maxDiscountAmount ?? undefined,
+            description: row.description,
+            minPurchaseAmount: row.minPurchaseAmount,
+            maxDiscountAmount: row.maxDiscountAmount,
             applicableProducts: [...row.applicableProducts],
             applicableCategories: [...row.applicableCategories],
             applicableServices: [...row.applicableServices],
@@ -376,7 +376,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             id: row.id,
             tenantId: row.tenantId,
             name: row.name,
-            description: row.description ?? undefined,
+            description: row.description,
             source: toCampaignSource(row.source),
             metric: toCampaignMetric(row.metric),
             targetValue: toFixedDecimalString(row.targetValue),
@@ -384,10 +384,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             startsAt: row.startsAt,
             endsAt: row.endsAt,
             claimUntil: row.claimUntil,
-            rewardCouponId: row.rewardCouponId ?? undefined,
+            rewardCouponId: row.rewardCouponId,
             reward: this.mapCampaignReward(row.rewardCoupon),
-            rewardValidDays: row.rewardValidDays ?? undefined,
-            maxClaims: row.maxClaims ?? undefined,
+            rewardValidDays: row.rewardValidDays,
+            maxClaims: row.maxClaims,
             claimedCount: row.claimedCount,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
@@ -435,7 +435,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         startsAt: Date;
         endsAt: Date;
         claimUntil: Date;
-        rewardValidDays?: number;
+        rewardValidDays?: number | null;
         maxClaims?: number | null;
     }): void {
         if (!data.name?.trim()) {
@@ -1073,7 +1073,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 maxClaims: current.maxClaims ?? null,
             });
             if (
-                current.maxClaims !== undefined &&
+                current.maxClaims !== null &&
                 current.maxClaims < current.claimedCount
             ) {
                 throw new ValidationError(
@@ -1155,7 +1155,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
 
                 const template = await tx.coupon.findFirst({
                     where: {
-                        id: campaign.rewardCouponId,
+                        // The guard above already rejected an unconfigured reward.
+                        id: campaign.rewardCouponId!,
                         tenantId,
                         ownerId: null,
                         isReward: false,

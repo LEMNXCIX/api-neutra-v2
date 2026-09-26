@@ -18,7 +18,7 @@ export interface IAppointmentResponse {
     statusChangedAt?: Date | null;
     statusChangeReason?: string | null;
     statusChangedById?: string | null;
-    notes?: string;
+    notes?: string | null;
     cancellationReason?: string | null;
     discountAmount: number;
     subtotal: number;

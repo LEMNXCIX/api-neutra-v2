@@ -52,12 +52,15 @@ export function toLoyaltyRewardDefinition(
     return {
         type: reward.type,
         value: reward.value,
+        // The definition is the entity's required-nullable shape, so an absent
+        // request field normalises to null here. Both spellings already reached
+        // the Coupon row as null and both pass assertLoyaltyRewardTemplate.
         description:
             reward.description === undefined || reward.description === null
-                ? reward.description
+                ? null
                 : reward.description.trim(),
-        minPurchaseAmount: reward.minPurchaseAmount ?? undefined,
-        maxDiscountAmount: reward.maxDiscountAmount ?? undefined,
+        minPurchaseAmount: reward.minPurchaseAmount ?? null,
+        maxDiscountAmount: reward.maxDiscountAmount ?? null,
         applicableProducts: normalizeIds(reward.applicableProducts),
         applicableCategories: normalizeIds(reward.applicableCategories),
         applicableServices: normalizeIds(reward.applicableServices),

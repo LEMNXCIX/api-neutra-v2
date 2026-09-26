@@ -17,23 +17,23 @@ type StaffWithServices = Prisma.StaffGetPayload<{
 
 function parseWorkingHours(
     value: Prisma.JsonValue | null,
-): WorkingHours | undefined {
-    if (value === null || value === undefined) return undefined;
+): WorkingHours | null {
+    if (value === null || value === undefined) return null;
     if (typeof value === "object" && !Array.isArray(value))
         return value as WorkingHours;
-    return undefined;
+    return null;
 }
 
 export class PrismaStaffRepository implements IStaffRepository {
     private mapToEntity(staff: StaffWithServices): Staff {
         return {
             id: staff.id,
-            userId: staff.userId ?? undefined,
+            userId: staff.userId,
             name: staff.name,
-            email: staff.email ?? undefined,
-            phone: staff.phone ?? undefined,
-            avatar: staff.avatar ?? undefined,
-            bio: staff.bio ?? undefined,
+            email: staff.email,
+            phone: staff.phone,
+            avatar: staff.avatar,
+            bio: staff.bio,
             active: staff.active,
             workingHours: parseWorkingHours(staff.workingHours),
             serviceIds: staff.staffServices?.map((ss) => ss.serviceId) || [],

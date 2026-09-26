@@ -22,7 +22,7 @@ export interface IAppointmentListResponse {
     statusChangedAt?: Date | null;
     statusChangeReason?: string | null;
     statusChangedById?: string | null;
-    notes?: string;
+    notes?: string | null;
     total: number;
     createdAt: Date;
     updatedAt: Date;

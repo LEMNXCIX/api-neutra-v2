@@ -6,14 +6,14 @@ import {
 
 export interface IStaffResponse {
     id: string;
-    userId?: string;
+    userId?: string | null;
     name: string;
-    email?: string;
-    phone?: string;
-    avatar?: string;
-    bio?: string;
+    email?: string | null;
+    phone?: string | null;
+    avatar?: string | null;
+    bio?: string | null;
     active: boolean;
-    workingHours?: Record<string, unknown>;
+    workingHours?: Record<string, unknown> | null;
     serviceIds?: string[];
     tenantId: string;
     tenant?: ITenantMinimalResponse;

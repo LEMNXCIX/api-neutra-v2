@@ -21,11 +21,11 @@ export interface Appointment {
     startTime: Date;
     endTime: Date;
     status: AppointmentStatus;
-    statusChangedAt?: Date;
-    statusChangeReason?: string;
-    statusChangedById?: string;
-    notes?: string;
-    cancellationReason?: string;
+    statusChangedAt: Date | null;
+    statusChangeReason: string | null;
+    statusChangedById: string | null;
+    notes: string | null;
+    cancellationReason: string | null;
     confirmationSent: boolean;
     reminderSent: boolean;
     tenantId: string;
@@ -34,7 +34,7 @@ export interface Appointment {
     updatedAt: Date;
 
     // Coupon info
-    couponId?: string;
+    couponId: string | null;
     discountAmount: number;
     subtotal: number;
     total: number;

@@ -32,7 +32,10 @@ export class UpdateStaffUseCase {
             throw new EntityNotFoundError("Staff", id);
         }
 
-        let userId = data.userId || existingStaff.userId;
+        // A stored null userId means "unlinked", not "clear the link": the
+        // repository forwards this to Prisma, where undefined is a no-op and
+        // null would write NULL over an existing link.
+        let userId = data.userId || existingStaff.userId || undefined;
 
         if (!userId && (data.email || existingStaff.email)) {
             const emailToSearch = data.email || existingStaff.email;

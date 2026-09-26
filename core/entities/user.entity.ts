@@ -5,14 +5,14 @@ export interface User {
     name: string;
     email: string;
     password?: string;
-    profilePic?: string;
-    phone?: string;
-    pushToken?: string;
+    profilePic: string | null;
+    phone: string | null;
+    pushToken: string | null;
     active: boolean;
-    googleId?: string;
-    facebookId?: string;
-    twitterId?: string;
-    githubId?: string;
+    googleId: string | null;
+    facebookId: string | null;
+    twitterId: string | null;
+    githubId: string | null;
 
     // Multi-tenancy
     tenants?: UserTenant[];
@@ -23,8 +23,8 @@ export interface User {
     };
     role?: Role;
 
-    resetPasswordToken?: string;
-    resetPasswordExpires?: Date;
+    resetPasswordToken: string | null;
+    resetPasswordExpires: Date | null;
     createdAt?: Date;
     updatedAt?: Date;
 }

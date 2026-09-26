@@ -18,7 +18,7 @@ export interface ILoyaltyCampaignResponse {
     id: string;
     tenantId: string;
     name: string;
-    description?: string;
+    description?: string | null;
     source: LoyaltyCampaignSource;
     metric: LoyaltyCampaignMetric;
     targetValue: string;
@@ -26,10 +26,10 @@ export interface ILoyaltyCampaignResponse {
     startsAt: Date;
     endsAt: Date;
     claimUntil: Date;
-    rewardCouponId?: string;
+    rewardCouponId?: string | null;
     reward?: ILoyaltyCampaignRewardResponse;
-    rewardValidDays?: number;
-    maxClaims?: number;
+    rewardValidDays?: number | null;
+    maxClaims?: number | null;
     claimedCount: number;
     createdAt: Date;
     updatedAt: Date;

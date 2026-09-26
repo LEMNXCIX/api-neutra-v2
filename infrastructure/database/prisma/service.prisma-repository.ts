@@ -21,10 +21,10 @@ export class PrismaServiceRepository implements IServiceRepository {
         return {
             id: service.id,
             name: service.name,
-            description: service.description ?? undefined,
+            description: service.description,
             duration: service.duration,
             price: service.price,
-            categoryId: service.categoryId ?? undefined,
+            categoryId: service.categoryId,
             category: service.category
                 ? {
                       id: service.category.id,

@@ -12,10 +12,10 @@ export interface ICategoryMinimalResponse {
 export interface IServiceResponse {
     id: string;
     name: string;
-    description?: string;
+    description?: string | null;
     duration: number;
     price: number;
-    categoryId?: string;
+    categoryId?: string | null;
     category?: ICategoryMinimalResponse;
     active: boolean;
     tenantId: string;
