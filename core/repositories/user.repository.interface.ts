@@ -48,7 +48,29 @@ export interface IUserRepository {
     }>;
     findByRoleId(tenantId: string, roleId: string): Promise<User[]>;
     findByResetToken(token: string): Promise<User | null>;
+
+    /**
+     * Global read and global delete, with no tenant in the predicate. They stay
+     * because the auth flows (login, register, social login, token resolution)
+     * must find a user before any tenant is known — a user belongs to several
+     * tenants through `UserTenant`, so a global lookup is the only way to
+     * resolve the identity first.
+     *
+     * Any caller acting on behalf of a tenant must use the tenant-scoped
+     * members below instead: with `users:manage` in tenant A, the global pair
+     * reaches a customer who belongs only to tenant B, and the delete cascades
+     * away that customer's rows in every other tenant.
+     */
     delete(id: string): Promise<void>;
+
+    // Tenant-scoped read/delete: membership is part of the query, so the
+    // database decides whether the acting tenant can see or act on the user.
+    findByIdForTenant(
+        tenantId: string,
+        id: string,
+        options?: FindUserOptions,
+    ): Promise<User | null>;
+    deleteForTenant(tenantId: string, id: string): Promise<void>;
 
     // Multi-tenant relations
     addTenant(userId: string, tenantId: string, roleId: string): Promise<void>;

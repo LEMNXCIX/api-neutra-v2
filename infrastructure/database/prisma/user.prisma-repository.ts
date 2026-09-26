@@ -190,32 +190,56 @@ export class PrismaUserRepository implements IUserRepository {
         return this.mapToEntity(user);
     }
 
+    /**
+     * Shared `tenants` include for the id-based reads, so the global and the
+     * tenant-scoped lookup cannot drift apart.
+     */
+    private tenantsInclude(options?: FindUserOptions) {
+        return {
+            tenants: {
+                include: {
+                    role: options?.includeRole
+                        ? {
+                              include: {
+                                  permissions: options?.includePermissions
+                                      ? { include: { permission: true } }
+                                      : false,
+                              },
+                          }
+                        : true,
+                    tenant: true,
+                },
+            },
+        };
+    }
+
     async findById(
         id: string,
         options?: FindUserOptions,
     ): Promise<User | null> {
         const user = await prisma.user.findUnique({
             where: { id },
-            include: {
-                tenants: {
-                    include: {
-                        role: options?.includeRole
-                            ? {
-                                  include: {
-                                      permissions: options?.includePermissions
-                                          ? {
-                                                include: {
-                                                    permission: true,
-                                                },
-                                            }
-                                          : false,
-                                  },
-                              }
-                            : true,
-                        tenant: true,
-                    },
-                },
-            },
+            include: this.tenantsInclude(options),
+        });
+
+        if (!user) return null;
+        return this.mapToEntity(user);
+    }
+
+    async findByIdForTenant(
+        tenantId: string,
+        id: string,
+        options?: FindUserOptions,
+    ): Promise<User | null> {
+        // Membership is filtered in the query, not in application code:
+        // `tenants: { some: { tenantId } }` is the same idiom findAll and
+        // findByRoleId already use, so a user who is not a member of this
+        // tenant is never returned. User has no tenantId column of its own —
+        // membership lives in UserTenant — so `findUnique` cannot carry the
+        // tenant and this has to be findFirst.
+        const user = await prisma.user.findFirst({
+            where: { id, tenants: { some: { tenantId } } },
+            include: this.tenantsInclude(options),
         });
 
         if (!user) return null;
@@ -465,6 +489,21 @@ export class PrismaUserRepository implements IUserRepository {
         await prisma.user.delete({
             where: { id },
         });
+    }
+
+    async deleteForTenant(tenantId: string, id: string): Promise<void> {
+        // One statement, so membership cannot be revoked between the check and
+        // the delete. Mirrors the staff repository, which can pass tenantId
+        // straight into `where` because Staff owns a tenantId column; User does
+        // not, so the relation predicate goes in deleteMany and a count of 0
+        // means "not a member of this tenant" (or no such user).
+        const { count } = await prisma.user.deleteMany({
+            where: { id, tenants: { some: { tenantId } } },
+        });
+
+        if (count === 0) {
+            throw new EntityNotFoundError("User", id);
+        }
     }
 
     async addTenant(
