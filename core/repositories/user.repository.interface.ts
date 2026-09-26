@@ -54,12 +54,16 @@ export interface IUserRepository {
      * login, token resolution, password reset) must reach a user before or
      * outside any tenant — a user belongs to several tenants through
      * `UserTenant`, so a global lookup is the only way to resolve the identity
-     * first.
+     * first. The global update's column set is deliberately wider than
+     * `updateForTenant`'s: it is the only path that carries the provider ids,
+     * the reset columns and `password`, and only the auth use cases drive it.
      *
      * Any caller acting on behalf of a tenant must use the tenant-scoped
      * members below instead: with `users:manage` in tenant A, the global write
      * pair rewrites the name, email, password or active flag of a customer who
-     * belongs only to tenant B, and the global delete cascades away that
+     * belongs only to tenant B, and — through the provider ids and the reset
+     * columns, which the tenant-free provider and reset-token lookups resolve —
+     * hands that customer over entirely. The global delete cascades away that
      * customer's rows in every other tenant.
      */
     update(id: string, user: Partial<User>): Promise<User>;
@@ -72,6 +76,12 @@ export interface IUserRepository {
         id: string,
         options?: FindUserOptions,
     ): Promise<User | null>;
+    /**
+     * Writes the six tenant-admin-safe columns only (name, email, profilePic,
+     * phone, pushToken, active). The provider ids, the reset pair and
+     * `password` are not reachable from here; a caller that needs them is an
+     * auth flow and belongs on `update`.
+     */
     updateForTenant(
         tenantId: string,
         id: string,

@@ -284,10 +284,14 @@ export class PrismaUserRepository implements IUserRepository {
     }
 
     /**
-     * The one field allowlist for a user write, shared by the global and the
-     * tenant-scoped update so the two cannot drift: whatever a caller passes
-     * (`req.body` arrives unvalidated, so extra keys are certain), only these
-     * columns are ever written.
+     * The global write's allowlist: twelve columns, unchanged.
+     *
+     * The auth flows reach a user before or outside any tenant, so this has to
+     * stay as wide as it is: `social-login` writes the dynamic provider field
+     * and `profilePic`, `forgot-password` writes the two reset columns, and
+     * `reset-password` writes `password` plus the two reset columns cleared to
+     * `undefined`. Those are the only callers, and this is not where that
+     * trust is judged — it is where it is already established.
      */
     private buildUpdateData(data: Partial<User>): Prisma.UserUpdateInput {
         const updateData: Prisma.UserUpdateInput = {};
@@ -307,6 +311,40 @@ export class PrismaUserRepository implements IUserRepository {
             updateData.resetPasswordToken = data.resetPasswordToken;
         if (data.resetPasswordExpires !== undefined)
             updateData.resetPasswordExpires = data.resetPasswordExpires;
+
+        return updateData;
+    }
+
+    /**
+     * The tenant-admin write's allowlist: six columns, and deliberately its own
+     * builder rather than `buildUpdateData` behind a flag.
+     *
+     * A flag or a shared key list would make the admin path's reach a function
+     * of the global list, so every column added there for a future auth flow
+     * would silently become writable from `PUT /api/users/:id` — and two
+     * separate builders cannot drift that way, because nothing is shared.
+     *
+     * The excluded columns are excluded for a reason, not out of caution. The
+     * provider ids and the reset pair are the input of a tenant-free lookup
+     * (`findByProvider`, `findByResetToken`): an operator with `users:manage`
+     * in tenant A who writes their own `googleId` onto a customer takes that
+     * customer with their next Google login, and one who writes a reset pair
+     * takes them with one call to the reset endpoint. `password` is excluded
+     * because nothing here hashes it, so a value from this path would land in
+     * the column as plaintext; the only flow that legitimately writes it,
+     * `reset-password`, hashes first and goes through the global path.
+     */
+    private buildTenantUpdateData(
+        data: Partial<User>,
+    ): Prisma.UserUpdateInput {
+        const updateData: Prisma.UserUpdateInput = {};
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.email !== undefined) updateData.email = data.email;
+        if (data.profilePic !== undefined)
+            updateData.profilePic = data.profilePic;
+        if (data.phone !== undefined) updateData.phone = data.phone;
+        if (data.pushToken !== undefined) updateData.pushToken = data.pushToken;
+        if (data.active !== undefined) updateData.active = data.active;
 
         return updateData;
     }
@@ -368,7 +406,7 @@ export class PrismaUserRepository implements IUserRepository {
         // `include` would have produced.
         const { count } = await prisma.user.updateMany({
             where: { id, tenants: { some: { tenantId } } },
-            data: this.buildUpdateData(data),
+            data: this.buildTenantUpdateData(data),
         });
 
         // The row is not updatable within this tenant: the user was deleted, or

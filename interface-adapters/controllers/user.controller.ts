@@ -12,6 +12,7 @@ import { AssignRoleToUserUseCase } from "@/core/application/users/assign-role.us
 import { present } from "@/core/utils/use-case-result";
 import { UserResponse } from "@/core/application/dtos/responses/user/user.response";
 import { UserPublicResponse } from "@/core/application/dtos/responses/user/user-public.response";
+import { UpdateUserDTO } from "@/core/application/dtos/requests/user.request";
 
 export class UserController {
     constructor(
@@ -97,11 +98,24 @@ export class UserController {
     update = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const { id } = req.params;
-        const result = await this.updateUserUseCase.execute(
-            tenantId,
-            id,
-            req.body,
-        );
+        // `users.routes.ts` has no `validateDto`, so `req.body` is whatever the
+        // client sent. Reading the six admin-safe columns off it — rather than
+        // forwarding it — is what keeps the provider ids, the reset pair and
+        // `password` out of the write: those resolve through tenant-free
+        // lookups (`findByProvider`, `findByResetToken`), so a body carrying
+        // one of them is an account handover, and the repository stores
+        // `password` unhashcd. A key not listed here is dropped, exactly like a
+        // key that was never sent. Same shape as the destructuring in
+        // getOrCreateByProvider above.
+        const data: UpdateUserDTO = {
+            name: req.body?.name,
+            email: req.body?.email,
+            profilePic: req.body?.profilePic,
+            phone: req.body?.phone,
+            pushToken: req.body?.pushToken,
+            active: req.body?.active,
+        };
+        const result = await this.updateUserUseCase.execute(tenantId, id, data);
         return res.json(present(result, UserResponse.fromEntity));
     };
 
