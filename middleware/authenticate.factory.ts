@@ -9,7 +9,16 @@ import { extractAuthToken } from "@/helpers/auth-token.helpers";
 
 export function createAuthenticateMiddleware(deps: {
     resolveUser: ResolveAuthenticatedUserUseCase;
+    /**
+     * Defaults to true. Set false only for a route whose purpose is to grant
+     * the tenant membership that a true value would refuse, which today means
+     * the join-tenant route and nothing else. It is a constructor argument
+     * rather than a per-request flag precisely so it cannot be switched on by a
+     * caller, a query parameter or a header.
+     */
+    requireTenantMembership?: boolean;
 }) {
+    const requireTenantMembership = deps.requireTenantMembership !== false;
     return async (req: Request, res: Response, next: NextFunction) => {
         const token = extractAuthToken(req);
         if (!token) {
@@ -30,6 +39,7 @@ export function createAuthenticateMiddleware(deps: {
                 token,
                 tenantId: req.tenantId,
                 tenantSlug: req.tenant?.slug,
+                requireTenantMembership,
             });
             req.user = user;
             next();

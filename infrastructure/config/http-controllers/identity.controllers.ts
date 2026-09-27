@@ -21,6 +21,7 @@ import { RegisterUseCase } from "@/core/application/auth/register.use-case";
 import { SocialLoginUseCase } from "@/core/application/auth/social-login.use-case";
 import { ForgotPasswordUseCase } from "@/core/application/auth/forgot-password.use-case";
 import { ResetPasswordUseCase } from "@/core/application/auth/reset-password.use-case";
+import { JoinTenantUseCase } from "@/core/application/auth/join-tenant.use-case";
 
 import { CreateTenantUseCase } from "@/core/application/tenant/create-tenant.use-case";
 import { GetTenantsUseCase } from "@/core/application/tenant/get-tenants.use-case";
@@ -78,6 +79,12 @@ export function createIdentityControllers(runtime: Runtime) {
                 p.crypto,
             ),
             new ResetPasswordUseCase(r.user, p.passwordHasher),
+            new JoinTenantUseCase(
+                r.user,
+                r.role,
+                r.tenant,
+                p.tokenGenerator,
+            ),
         ),
         user: new UserController(
             new GetAllUsersUseCase(r.user),

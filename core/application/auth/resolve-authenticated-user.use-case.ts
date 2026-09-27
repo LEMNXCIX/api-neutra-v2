@@ -16,6 +16,19 @@ export type ResolveAuthInput = {
     token: string;
     tenantId?: string;
     tenantSlug?: string;
+    /**
+     * When false, the token is still verified and the account still has to
+     * exist and be active, but the account is not required to belong to the
+     * requested tenant.
+     *
+     * This is the join-tenant flow and nothing else. A membership check is what
+     * stops a valid token from being pointed at any tenant's data, so this flag
+     * is never a default and never global: a route that sets it is a route whose
+     * entire job is to grant that membership, and it has to say so in its own
+     * name. The permission cache is also skipped, because permissions for a
+     * tenant the caller is about to join are not the ones being asked for.
+     */
+    requireTenantMembership?: boolean;
 };
 
 export type ResolveAuthResult = {
@@ -35,9 +48,20 @@ export class ResolveAuthenticatedUserUseCase {
     async execute(input: ResolveAuthInput): Promise<ResolveAuthResult> {
         const decoded = this.tokenGenerator.verify(input.token);
 
+        const requireMembership = input.requireTenantMembership !== false;
+
         const tenantId =
             input.tenantId || decoded.tenantId;
-        const cacheKey = `${CACHE_KEY_PREFIX}:${decoded.id}:${tenantId || "global"}`;
+
+        // Permissions are cached per (user, tenant). When membership is not
+        // being asserted, the tenant in the request is one the caller may not
+        // belong to yet, so caching under it would file another tenant's
+        // permissions under this user. Fall back to the tenant the token was
+        // issued for, which is a tenant they demonstrably hold.
+        const cacheTenantId = requireMembership
+            ? tenantId
+            : decoded.tenantId;
+        const cacheKey = `${CACHE_KEY_PREFIX}:${decoded.id}:${cacheTenantId || "global"}`;
 
         const cachedPermissions = await this.cache.get(cacheKey);
         let permissions: string[] = [];
@@ -98,7 +122,12 @@ export class ResolveAuthenticatedUserUseCase {
             // Security: a valid token does not grant access to tenants the
             // user is not a member of. Without this check, an attacker could
             // point x-tenant-id/x-tenant-slug at any tenant and read its data.
-            if (!userTenant || !userTenant.role) {
+            // The join-tenant flow opts out by name, and is the only caller that
+            // does; it grants the membership this check would otherwise refuse.
+            if (
+                requireMembership &&
+                (!userTenant || !userTenant.role)
+            ) {
                 throw new ForbiddenError(
                     "User is not authorized for this tenant",
                     TenantErrorCodes.MEMBERSHIP_REQUIRED,

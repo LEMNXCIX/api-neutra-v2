@@ -4,6 +4,7 @@ import { RegisterUseCase } from "@/core/application/auth/register.use-case";
 import { SocialLoginUseCase } from "@/core/application/auth/social-login.use-case";
 import { ForgotPasswordUseCase } from "@/core/application/auth/forgot-password.use-case";
 import { ResetPasswordUseCase } from "@/core/application/auth/reset-password.use-case";
+import { JoinTenantUseCase } from "@/core/application/auth/join-tenant.use-case";
 import {
     authResponse,
     providerResponse,
@@ -25,6 +26,7 @@ export class AuthController {
         private socialLoginUseCase: SocialLoginUseCase,
         private forgotPasswordUseCase: ForgotPasswordUseCase,
         private resetPasswordUseCase: ResetPasswordUseCase,
+        private joinTenantUseCase: JoinTenantUseCase,
     ) {
         // Bind methods to instance
         this.login = this.login.bind(this);
@@ -34,6 +36,20 @@ export class AuthController {
         this.validate = this.validate.bind(this);
         this.forgotPassword = this.forgotPassword.bind(this);
         this.resetPassword = this.resetPassword.bind(this);
+        this.joinTenant = this.joinTenant.bind(this);
+    }
+
+    /**
+     * Registers the signed-in identity in the tenant named by the request's
+     * tenant header. The token identifies who is joining, so the password they
+     * registered elsewhere is not asked for again.
+     */
+    async joinTenant(req: Request, res: Response) {
+        const result = await this.joinTenantUseCase.execute(
+            req.tenantId,
+            req.user!.id,
+        );
+        return authResponse(req, res, result, 200);
     }
 
     async login(req: Request, res: Response) {

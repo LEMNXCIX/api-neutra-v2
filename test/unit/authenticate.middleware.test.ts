@@ -87,9 +87,36 @@ describe("authenticate middleware (smoke)", () => {
             token: "tok",
             tenantId: "t1",
             tenantSlug: undefined,
+            // Asserted, not just tolerated: the default has to be that
+            // membership IS required, so a later edit that flips the default
+            // fails here instead of quietly opening every route to a token
+            // from a tenant the caller does not belong to.
+            requireTenantMembership: true,
         });
         expect(req.user).toEqual(user);
         expect(next).toHaveBeenCalled();
+    });
+
+    test("passes the opt-out only when the middleware was built with it", async () => {
+        const resolveUser = {
+            execute: jest.fn().mockResolvedValue({
+                user: { id: "u1", email: "a@b.com", name: "A" },
+            }),
+        };
+        const mw = createAuthenticateMiddleware({
+            resolveUser: resolveUser as never,
+            requireTenantMembership: false,
+        });
+        const req = mockReq({
+            cookies: { [AUTH_CONSTANTS.COOKIE_NAME]: "tok" },
+            tenantId: "t2",
+        });
+
+        await mw(req, createRes(), jest.fn() as NextFunction);
+
+        expect(resolveUser.execute).toHaveBeenCalledWith(
+            expect.objectContaining({ requireTenantMembership: false }),
+        );
     });
 
     test("maps DomainError to HTTP status", async () => {

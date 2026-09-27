@@ -188,6 +188,7 @@ const WRITE_ROUTES = ROUTES.filter((route) =>
 const UNWIRED_WRITE_ROUTES: ReadonlyArray<{ route: string; reason: string }> = [
     { route: "infrastructure/routes/appointment.routes.ts DELETE /:id", reason: "bodyless: reads the path param and the actor only" },
     { route: "infrastructure/routes/auth.routes.ts POST /logout", reason: "bodyless: ends the session, reads no body" },
+    { route: "infrastructure/routes/auth.routes.ts POST /join-tenant", reason: "bodyless: the target tenant comes from the header and the identity from the token" },
     { route: "infrastructure/routes/banner.routes.ts POST /:id/impression", reason: "bodyless: an analytics counter keyed on the path param" },
     { route: "infrastructure/routes/banner.routes.ts POST /:id/click", reason: "bodyless: an analytics counter keyed on the path param" },
     { route: "infrastructure/routes/banner.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
@@ -227,9 +228,9 @@ describe("case 6 — every body-taking write route carries a validateDto", () =>
     });
 
     test("the unwired list is exactly as long as it claims to be", () => {
-        // 24 entries. Pinned so a route cannot be added and quietly skipped:
+        // 25 entries. Pinned so a route cannot be added and quietly skipped:
         // the count has to be moved in the same commit that adds a route.
-        expect(UNWIRED_WRITE_ROUTES).toHaveLength(24);
+        expect(UNWIRED_WRITE_ROUTES).toHaveLength(25);
     });
 
     test("every unwired entry gives a reason, and no body-reading handler is among them", () => {

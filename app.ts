@@ -62,6 +62,13 @@ const optionalAuthenticate = createOptionalAuthenticateMiddleware({
     resolveUser: runtime.useCases.resolveAuthenticatedUser,
     logger: runtime.providers.logger,
 });
+// The one route that authenticates without asserting membership: it exists to
+// grant the membership every other route insists on. Built here, named here,
+// and handed to exactly one route.
+const joinTenantAuthenticate = createAuthenticateMiddleware({
+    resolveUser: runtime.useCases.resolveAuthenticatedUser,
+    requireTenantMembership: false,
+});
 const requireTenantFeature = createRequireTenantFeature({
     featureRepository: runtime.repositories.feature,
 });
@@ -157,7 +164,7 @@ tenants(app, controllers.tenant, authenticate);
 app.use(tenantMiddleware);
 
 // Domain routes (composition root)
-auth(app, controllers.auth, authenticate);
+auth(app, controllers.auth, authenticate, joinTenantAuthenticate);
 users(app, controllers.user, authenticate);
 products(
     app,

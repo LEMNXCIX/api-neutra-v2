@@ -1,103 +1,60 @@
 import { prisma } from "@/config/db.config";
 import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
-import { SweepAppointmentReviewsUseCase } from "@/core/application/booking/sweep-appointment-reviews.use-case";
+import {
+    APPOINTMENT_REVIEW_SYSTEM_REASON,
+    resolveAppointmentReviewActivationCutoff,
+} from "@/core/application/booking/sweep-appointment-reviews.use-case";
 import { AppointmentStatus } from "@/core/entities/appointment.entity";
-import type { ILogger } from "@/core/providers/logger.interface";
-import type { IConfigProvider } from "@/core/providers/config-provider.interface";
+import { canSystemFlagForReview } from "@/core/domain/appointment/appointment.policy";
 
 /**
- * The sweep against a real database, because the failure this guards is one no
- * mocked unit test can see.
+ * The regression: the activation cutoff was made optional so the two-hour grace
+ * is the only temporal rule, and the update was left passing `gte: null` to
+ * Prisma, which rejects it with "Argument `gte` must not be null". Every unit
+ * suite stayed green, because a mocked repository accepts whatever it is handed,
+ * and a method parameter narrowed from `Date | null` to `Date` passes `tsc`
+ * because method parameters are compared bivariantly. Only the database caught
+ * it, and only when the sweep actually ran.
  *
- * The activation cutoff was made optional so the two-hour grace is the only
- * temporal rule. The candidate query was converted to omit the lower bound, and
- * the update was not: it kept passing `gte: activationCutoff` with a null, which
- * Prisma rejects with "Argument `gte` must not be null". Every unit suite stayed
- * green, because a mocked repository accepts whatever it is handed, and the
- * sweep only started failing once it ran for real, every five minutes.
- *
- * A method parameter narrowed from `Date | null` to `Date` also passes
- * `tsc`: method parameters are compared bivariantly, so the implementation was
- * free to keep the narrower type and nothing complained. Only the database
- * caught it.
+ * This suite exercises the repository against the real database for that
+ * reason, and it deliberately does NOT call the use case's `execute()`. That
+ * resolves candidates across every active BOOKING and HYBRID tenant rather than
+ * one, so running it here with any clock would write to appointments that are
+ * not this suite's. An earlier draft of this file did exactly that, with a
+ * synthetic 2030 clock, and moved a real appointment to NEEDS_REVIEW stamped
+ * with a timestamp four years in the future. The methods under test are called
+ * directly instead: a single-row update, and a read.
  */
 
-const noopLogger = {
-    info: () => {},
-    warn: () => {},
-    error: () => {},
-    debug: () => {},
-    logRequest: () => {},
-    logResponse: () => {},
-} as unknown as ILogger;
+const repository = new PrismaAppointmentRepository();
+const now = new Date();
+const startedAt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+const endedAt = new Date(now.getTime() - 2.5 * 60 * 60 * 1000);
+const eligibleThrough = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
-const fixedNow = new Date("2030-06-15T12:00:00.000Z");
-const yesterday = new Date("2030-06-14T10:00:00.000Z");
-
-/** Reuses the seeded booking so only the appointment is created and removed. */
-async function seedReferences(): Promise<{
-    tenantId: string;
-    userId: string;
-    serviceId: string;
-    staffId: string;
-}> {
-    const tenant = await prisma.tenant.findFirst({
-        where: { active: true, type: { in: ["BOOKING", "HYBRID"] } },
-        select: { id: true },
-    });
-    const appointment = await prisma.appointment.findFirst({
-        select: { userId: true, serviceId: true, staffId: true },
-    });
-    if (!tenant || !appointment) {
-        throw new Error(
-            "this suite needs the seeded HYBRID tenant and one appointment to borrow references from",
-        );
-    }
-    return {
-        tenantId: tenant.id,
-        userId: appointment.userId,
-        serviceId: appointment.serviceId,
-        staffId: appointment.staffId,
-    };
-}
+let created: string[] = [];
+let references: { userId: string; serviceId: string; staffId: string };
 
 async function createAppointment(
-    references: { tenantId: string; userId: string; serviceId: string; staffId: string },
     status = AppointmentStatus.PENDING,
 ): Promise<string> {
-    const created = await prisma.appointment.create({
+    const created_ = await prisma.appointment.create({
         data: {
-            tenantId: references.tenantId,
+            tenantId: (await prisma.tenant.findFirst({
+                where: { active: true, type: { in: ["BOOKING", "HYBRID"] } },
+                select: { id: true },
+            }))!.id,
             userId: references.userId,
             serviceId: references.serviceId,
             staffId: references.staffId,
-            startTime: yesterday,
-            endTime: new Date(yesterday.getTime() + 30 * 60 * 1000),
+            startTime: startedAt,
+            endTime: endedAt,
             status,
         },
         select: { id: true },
     });
-    return created.id;
-}
-
-function sweepWith(options: {
-    activationCutoff?: Date;
-    configuredCutoff?: string;
-}) {
-    return new SweepAppointmentReviewsUseCase(
-        new PrismaAppointmentRepository(),
-        noopLogger,
-        {
-            getAppointmentReviewSweepActivationCutoff: () =>
-                options.configuredCutoff,
-        } as unknown as IConfigProvider,
-        {
-            now: () => fixedNow,
-            ...(options.activationCutoff
-                ? { activationCutoff: options.activationCutoff }
-                : {}),
-        },
-    );
+    created.push(created_.id);
+    return created_.id;
 }
 
 async function readStatus(id: string): Promise<string | undefined> {
@@ -108,12 +65,17 @@ async function readStatus(id: string): Promise<string | undefined> {
     return row?.status;
 }
 
-describe("appointment review sweep against the database", () => {
-    let references: Awaited<ReturnType<typeof seedReferences>>;
-    const created: string[] = [];
-
+describe("the review sweep's optional lower bound, against a real database", () => {
     beforeAll(async () => {
-        references = await seedReferences();
+        const appointment = await prisma.appointment.findFirst({
+            select: { userId: true, serviceId: true, staffId: true },
+        });
+        if (!appointment) {
+            throw new Error(
+                "this suite needs one seeded appointment to borrow a user, service and staff from",
+            );
+        }
+        references = appointment;
     });
 
     afterEach(async () => {
@@ -124,66 +86,95 @@ describe("appointment review sweep against the database", () => {
         }
     });
 
-    test("flags an appointment from yesterday with no lower bound set", async () => {
+    test("has no lower bound by default", () => {
+        // Cannot default to a rolling value: the candidate query bounds start
+        // from below and the two-hour grace bounds end from above, so
+        // "now minus the grace" would make the window zero-width and the sweep
+        // would find nothing.
+        expect(resolveAppointmentReviewActivationCutoff(undefined)).toEqual({
+            cutoff: null,
+            source: "unbounded",
+        });
+        expect(
+            resolveAppointmentReviewActivationCutoff("not-an-absolute-instant"),
+        ).toEqual({ cutoff: null, source: "unbounded" });
+        expect(
+            resolveAppointmentReviewActivationCutoff(
+                "2030-01-01T09:00:00+02:00",
+            ),
+        ).toEqual({
+            cutoff: new Date("2030-01-01T07:00:00.000Z"),
+            source: "environment",
+        });
+    });
+
+    test("flags an appointment with no lower bound set", async () => {
         // The regression. With a null cutoff this reaches Prisma as
         // `startTime: { gte: null }` when the update forgets to omit the bound,
         // and Prisma throws instead of flagging the appointment.
-        const id = await createAppointment(references);
-        created.push(id);
+        const id = await createAppointment();
 
-        const result = await sweepWith({}).execute();
+        const updated = await repository.markNeedsReview(
+            await tenantIdOf(id),
+            id,
+            AppointmentStatus.PENDING,
+            null,
+            eligibleThrough,
+            now,
+            APPOINTMENT_REVIEW_SYSTEM_REASON,
+        );
 
+        expect(updated).toBe(true);
         expect(await readStatus(id)).toBe(AppointmentStatus.NEEDS_REVIEW);
-        expect(result.transitioned).toBeGreaterThanOrEqual(1);
-    });
-
-    test("records why, and who did not", async () => {
-        const id = await createAppointment(references);
-        created.push(id);
-
-        await sweepWith({}).execute();
-
-        const row = await prisma.appointment.findUnique({
-            where: { id },
-            select: { statusChangeReason: true, statusChangedById: true },
-        });
-        expect(row?.statusChangeReason).toContain("unresolved");
-        // A system flag, not a member of staff.
-        expect(row?.statusChangedById).toBeNull();
     });
 
     test("an explicit cutoff still excludes appointments older than it", async () => {
-        const id = await createAppointment(references);
-        created.push(id);
+        const id = await createAppointment();
 
-        // The opt-in deployment floor, and the escape hatch that replaced the
-        // process-start default.
-        await sweepWith({
-            activationCutoff: new Date("2030-06-15T00:00:00.000Z"),
-        }).execute();
+        const updated = await repository.markNeedsReview(
+            await tenantIdOf(id),
+            id,
+            AppointmentStatus.PENDING,
+            new Date(now.getTime() - 60 * 60 * 1000),
+            eligibleThrough,
+            now,
+            APPOINTMENT_REVIEW_SYSTEM_REASON,
+        );
 
+        expect(updated).toBe(false);
         expect(await readStatus(id)).toBe(AppointmentStatus.PENDING);
     });
 
-    test("an invalid configured cutoff falls back to no lower bound", async () => {
-        const id = await createAppointment(references);
-        created.push(id);
+    test("a read with no lower bound finds the appointment", async () => {
+        const id = await createAppointment();
 
-        await sweepWith({ configuredCutoff: "not-an-absolute-instant" }).execute();
+        const candidates = await repository.findReviewCandidates({
+            activationCutoff: null,
+            eligibleThrough: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+            limit: 100,
+        });
 
-        expect(await readStatus(id)).toBe(AppointmentStatus.NEEDS_REVIEW);
+        expect(candidates.map((candidate) => candidate.id)).toContain(id);
     });
 
-    test("does not re-flag an appointment already in review", async () => {
-        const id = await createAppointment(
-            references,
-            AppointmentStatus.NEEDS_REVIEW,
+    test("the sweep may not re-flag one already in review", async () => {
+        // Guarded by the domain rule, not the query: an appointment already in
+        // review is not a candidate, so the rule is what a second sweep relies on.
+        expect(canSystemFlagForReview(AppointmentStatus.PENDING)).toBe(true);
+        expect(canSystemFlagForReview(AppointmentStatus.NEEDS_REVIEW)).toBe(
+            false,
         );
-        created.push(id);
 
-        const result = await sweepWith({}).execute();
-
+        const id = await createAppointment(AppointmentStatus.NEEDS_REVIEW);
         expect(await readStatus(id)).toBe(AppointmentStatus.NEEDS_REVIEW);
-        expect(result.candidates).toBe(0);
     });
 });
+
+/** The tenant this suite's appointment belongs to, read back rather than assumed. */
+async function tenantIdOf(appointmentId: string): Promise<string> {
+    const row = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { tenantId: true },
+    });
+    return row!.tenantId;
+}
