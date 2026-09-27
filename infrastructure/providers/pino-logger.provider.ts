@@ -152,15 +152,22 @@ export class PinoLoggerProvider implements ILogger {
                 if (body.errors && Array.isArray(body.errors) && body.errors.length > 0) {
                     const errorMessage: unknown = body.errors[0].message;
 
-                    // Si también hay un body.message, lo concatenamos
-                    // O alternativamente: metadata.message = `${errorMessage} - ${body.message}`;
-                    metadata.message = body.message
-                        ? `${String(errorMessage)} | ${String(body.message)}`
-                        : errorMessage;
+                    // The two are joined only when they actually differ. A domain
+                    // error carries the same text in both, so joining them
+                    // unconditionally logged every message twice, separated by a
+                    // pipe, which read like a rendering fault rather than the one
+                    // message it was.
+                    const detail = String(errorMessage);
+                    const summary =
+                        typeof body.message === "string" ? body.message : "";
+                    metadata.message =
+                        summary && summary !== detail
+                            ? `${detail} | ${summary}`
+                            : detail;
                 } else if (body.message) {
                     metadata.message = body.message;
                 }
-            } catch (e) {
+            } catch {
                 // Ignore parsing errors
             }
         }
@@ -197,7 +204,7 @@ export class PinoLoggerProvider implements ILogger {
             // SAFETY: the round-trip is by definition JSON, and `JSON.parse` has
             // no return type for it; this is the one place the value is asserted.
             cloned = JSON.parse(JSON.stringify(data)) as JsonValue;
-        } catch (e) {
+        } catch {
             return data; // Fallback if circular or not serializable
         }
 
