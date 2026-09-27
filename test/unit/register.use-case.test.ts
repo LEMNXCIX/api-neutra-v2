@@ -1,8 +1,5 @@
 import { RegisterUseCase } from "@/core/application/auth/register.use-case";
-import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
-import {
-    AuthErrorCodes,
-} from "@/types/error-codes";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 const EMAIL = "emelec_leo@outlook.com";
 const BOOK_TENANT = {
@@ -137,7 +134,7 @@ describe("RegisterUseCase tenant memberships", () => {
             useCase.execute(SUPERADMIN_TENANT.tenantId, registration),
         ).rejects.toMatchObject({
             name: "BusinessRuleViolationError",
-            code: AuthErrorCodes.USER_ALREADY_EXISTS,
+            code: AuthErrorCodes.EMAIL_TAKEN_IN_OTHER_TENANT,
         });
         expect(userRepository.addTenant).not.toHaveBeenCalled();
     });
@@ -147,9 +144,16 @@ describe("RegisterUseCase tenant memberships", () => {
             user: userWithSuperadminMembership,
         });
 
+        // Not a DuplicateEntityError any more. That rendered as "User with
+        // tenant '<uuid>' already exists", which named the tenant as the
+        // conflicting field and showed a raw id; the code now says what the
+        // caller should do instead.
         await expect(
             useCase.execute(SUPERADMIN_TENANT.tenantId, registration),
-        ).rejects.toBeInstanceOf(DuplicateEntityError);
+        ).rejects.toMatchObject({
+            name: "BusinessRuleViolationError",
+            code: AuthErrorCodes.ALREADY_MEMBER_OF_TENANT,
+        });
         expect(userRepository.addTenant).not.toHaveBeenCalled();
     });
 });

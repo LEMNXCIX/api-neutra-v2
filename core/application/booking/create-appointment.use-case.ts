@@ -20,7 +20,9 @@ import {
 import {
     fitsInRanges,
     getDayRanges,
+    hasWorkingHoursSchedule,
     intersectRanges,
+    isDayClosed,
     isHoliday,
     toMinutes,
 } from "@/core/domain/booking/working-hours";
@@ -100,15 +102,26 @@ export class CreateAppointmentUseCase {
                     BusinessErrorCodes.HOLIDAY_CLOSED,
                 );
             }
-            const ranges = intersectRanges(
-                getDayRanges(staff.workingHours, startTime),
-                getDayRanges(settings?.businessHours, startTime),
-            );
-            const hasHours =
-                !!staff.workingHours ||
-                getDayRanges(settings?.businessHours, startTime).length > 0;
+            const staffSchedule = staff.workingHours;
+            const tenantSchedule = settings?.businessHours;
             if (
-                hasHours &&
+                isDayClosed(tenantSchedule, startTime) ||
+                isDayClosed(staffSchedule, startTime)
+            ) {
+                throw new BusinessRuleViolationError(
+                    "The selected time is outside working hours",
+                    BusinessErrorCodes.OUTSIDE_WORKING_HOURS,
+                );
+            }
+            const ranges = intersectRanges(
+                getDayRanges(staffSchedule, startTime),
+                getDayRanges(tenantSchedule, startTime),
+            );
+            const hasSchedule =
+                hasWorkingHoursSchedule(staffSchedule) ||
+                hasWorkingHoursSchedule(tenantSchedule);
+            if (
+                hasSchedule &&
                 !fitsInRanges(
                     startTime.getHours() * 60 + startTime.getMinutes(),
                     endTime.getHours() * 60 + endTime.getMinutes(),

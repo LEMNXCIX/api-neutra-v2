@@ -108,6 +108,30 @@ describe("GetAvailabilityUseCase — working hours", () => {
         expect(result.data).toEqual([]);
     });
 
+    it("returns [] when the tenant business schedule closes Friday", async () => {
+        const deps = makeDeps({
+            staff: {
+                workingHours: {
+                    friday: { start: "09:00", end: "17:00" },
+                },
+            },
+            tenant: {
+                businessHours: {
+                    friday: null,
+                    monday: { start: "09:00", end: "17:00" },
+                },
+            },
+        });
+        const uc = new GetAvailabilityUseCase(
+            deps.appointmentRepo,
+            deps.staffRepo,
+            deps.serviceRepo,
+            deps.tenantRepo,
+        );
+        const result = await uc.execute("t1", { ...base, date: FRIDAY });
+        expect(result.data).toEqual([]);
+    });
+
     it("respects a late start (friday 14:00-20:00)", async () => {
         const deps = makeDeps({
             staff: { workingHours: { friday: { start: "14:00", end: "20:00" } } },
@@ -276,6 +300,32 @@ describe("CreateAppointmentUseCase — schedule validation", () => {
                 startTime: new Date("2030-01-04T09:00:00").toISOString(),
             } as never),
         ).rejects.toThrow(BusinessRuleViolationError);
+    });
+
+    it("rejects appointments on a tenant business-closed day", async () => {
+        const uc = makeUseCase({
+            staff: {
+                workingHours: {
+                    friday: { start: "09:00", end: "17:00" },
+                },
+            },
+            tenant: {
+                businessHours: {
+                    friday: null,
+                    monday: { start: "09:00", end: "17:00" },
+                },
+            },
+        });
+        await expect(
+            uc.execute("t1", {
+                userId: "u1",
+                serviceId: "svc1",
+                staffId: "s1",
+                startTime: new Date("2030-01-04T15:00:00").toISOString(),
+            } as never),
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.OUTSIDE_WORKING_HOURS,
+        });
     });
 
     it("rejects appointments on holidays", async () => {

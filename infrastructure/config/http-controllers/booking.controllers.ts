@@ -58,10 +58,10 @@ export function createBookingControllers(runtime: Runtime) {
             new DeleteAppointmentUseCase(r.appointment),
         ),
         staff: new StaffController(
-            new CreateStaffUseCase(r.staff, r.user, r.role),
+            new CreateStaffUseCase(r.staff, r.user, r.role, r.tenant),
             new GetStaffUseCase(r.staff),
             new GetStaffByUserIdUseCase(r.staff),
-            new UpdateStaffUseCase(r.staff, r.user, r.role),
+            new UpdateStaffUseCase(r.staff, r.user, r.role, r.tenant),
             new DeleteStaffUseCase(r.staff),
             new AssignStaffServiceUseCase(r.staff),
             new SyncStaffServicesUseCase(r.staff),

@@ -18,6 +18,19 @@ export enum AuthErrorCodes {
     PERMISSION_DENIED = "AUTH_PERMISSION_DENIED",
     ACCOUNT_INACTIVE = "AUTH_ACCOUNT_INACTIVE",
     USER_ALREADY_EXISTS = "AUTH_USER_ALREADY_EXISTS",
+    /**
+     * The caller already holds an account in the tenant they are registering
+     * against. Distinct from USER_ALREADY_EXISTS, which means the email is
+     * taken by an account in some *other* tenant and the answer is to sign in
+     * there or reuse that password.
+     */
+    ALREADY_MEMBER_OF_TENANT = "AUTH_ALREADY_MEMBER_OF_TENANT",
+    /**
+     * The email is taken by an account in a different tenant, and the password
+     * offered does not match it. The remedy is to sign in to the tenant where
+     * the account already exists, not to pick a different email.
+     */
+    EMAIL_TAKEN_IN_OTHER_TENANT = "AUTH_EMAIL_TAKEN_IN_OTHER_TENANT",
     // Distinguished from FORBIDDEN: the caller is authenticated and the failure
     // is about the subject of the request, not a missing role. FORBIDDEN was
     // covering five unrelated situations and the client could only answer
@@ -94,6 +107,7 @@ export enum BusinessErrorCodes {
     START_TIME_NOT_IN_FUTURE = "BUSINESS_START_TIME_NOT_IN_FUTURE",
     HOLIDAY_CLOSED = "BUSINESS_HOLIDAY_CLOSED",
     OUTSIDE_WORKING_HOURS = "BUSINESS_OUTSIDE_WORKING_HOURS",
+    STAFF_HOURS_CONFLICT = "BUSINESS_STAFF_HOURS_CONFLICT",
 
     // Coupon errors
     INVALID_COUPON = "BUSINESS_INVALID_COUPON",

@@ -10,7 +10,6 @@ import { IRoleRepository } from "@/core/repositories/role.repository.interface";
 import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     ValidationError,
-    DuplicateEntityError,
     EntityNotFoundError,
     BusinessRuleViolationError,
 } from "@/core/domain/errors/domain-errors";
@@ -59,10 +58,14 @@ export class RegisterUseCase {
                     ut.tenant?.slug === currentTenantId,
             );
             if (alreadyInTenant) {
-                throw new DuplicateEntityError(
-                    "User",
-                    "tenant",
-                    currentTenantId,
+                // Not DuplicateEntityError: that renders as
+                // "User with tenant '<uuid>' already exists", which names the
+                // tenant as the conflicting field and shows a raw id, so the
+                // caller learns nothing about what to do next. The situation is
+                // ordinary and the remedy is to sign in.
+                throw new BusinessRuleViolationError(
+                    "You already have an account in this tenant. Sign in instead of registering.",
+                    AuthErrorCodes.ALREADY_MEMBER_OF_TENANT,
                 );
             }
 
@@ -72,9 +75,14 @@ export class RegisterUseCase {
             );
 
             if (!passwordMatches) {
+                // The wording matters here. This used to open with "An account
+                // with this email already exists", which reads as though
+                // registering here were impossible, when the account belongs to
+                // a different tenant and this one is free to take it. Say which
+                // tenant the email is taken in, and give the two ways forward.
                 throw new BusinessRuleViolationError(
-                    "An account with this email already exists. Use the same password to join this tenant.",
-                    AuthErrorCodes.USER_ALREADY_EXISTS,
+                    "That email already has an account in another tenant, and the password does not match it. Sign in to that tenant, or use the password you registered there to join this one.",
+                    AuthErrorCodes.EMAIL_TAKEN_IN_OTHER_TENANT,
                 );
             }
         } else {

@@ -189,7 +189,7 @@ describe("shared super-admin gate", () => {
         expect(next.mock.calls[0]).toHaveLength(1);
         const error = next.mock.calls[0][0];
         expect(error).toBeInstanceOf(ForbiddenError);
-        expect(error.code).toBe(AuthErrorCodes.FORBIDDEN);
+        expect(error.code).toBe(AuthErrorCodes.SUPER_ADMIN_REQUIRED);
         expect(httpStatusFromDomainError(error)).toBe(403);
     });
 

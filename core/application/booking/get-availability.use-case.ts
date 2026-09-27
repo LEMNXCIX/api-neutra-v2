@@ -12,7 +12,9 @@ import {
     TimeRange,
     fitsInRanges,
     getDayRanges,
+    hasWorkingHoursSchedule,
     intersectRanges,
+    isDayClosed,
     isHoliday,
     toMinutes,
 } from "@/core/domain/booking/working-hours";
@@ -79,12 +81,23 @@ export class GetAvailabilityUseCase {
             return Success([]);
         }
 
-        const staffRanges = getDayRanges(staff.workingHours, targetDate);
-        const tenantRanges = getDayRanges(settings?.businessHours, targetDate);
+        const staffSchedule = staff.workingHours;
+        const tenantSchedule = settings?.businessHours;
+        if (
+            isDayClosed(tenantSchedule, targetDate) ||
+            isDayClosed(staffSchedule, targetDate)
+        ) {
+            return Success([]);
+        }
+
+        const staffRanges = getDayRanges(staffSchedule, targetDate);
+        const tenantRanges = getDayRanges(tenantSchedule, targetDate);
         const ranges = intersectRanges(staffRanges, tenantRanges);
-        const hasHours = !!staff.workingHours || tenantRanges.length > 0;
-        if (hasHours && !ranges.length) {
-            return Success([]); // day off
+        const hasSchedule =
+            hasWorkingHoursSchedule(staffSchedule) ||
+            hasWorkingHoursSchedule(tenantSchedule);
+        if (hasSchedule && !ranges.length) {
+            return Success([]);
         }
 
         // Legacy fallback: no schedule defined anywhere → 9:00-17:00

@@ -25,6 +25,31 @@ const isRange = (v: unknown): v is TimeRange =>
     typeof (v as TimeRange).start === "string" &&
     typeof (v as TimeRange).end === "string";
 
+/** Whether a schedule is configured at all, including an empty day map. */
+export function hasWorkingHoursSchedule(
+    schedule: WorkingHours | null | undefined,
+): schedule is WorkingHours {
+    return (
+        !!schedule &&
+        typeof schedule === "object" &&
+        !Array.isArray(schedule)
+    );
+}
+
+function dayKeyForDate(date: Date): string {
+    return DAY_NAMES[date.getDay()];
+}
+
+function rangesForDayKey(
+    schedule: WorkingHours,
+    day: string,
+): TimeRange[] {
+    const value = schedule[day];
+    if (value === null || value === undefined) return [];
+    const candidates = Array.isArray(value) ? value : [value];
+    return candidates.filter(isRange);
+}
+
 export function toMinutes(hhmm: string): number {
     const [h, m] = hhmm.split(":").map(Number);
     return (h || 0) * 60 + (m || 0);
@@ -35,11 +60,40 @@ export function getDayRanges(
     workingHours: WorkingHours | null | undefined,
     date: Date,
 ): TimeRange[] {
-    if (!workingHours || typeof workingHours !== "object") return [];
-    const day = DAY_NAMES[date.getDay()];
-    const value = workingHours[day];
-    if (!value) return [];
-    return (Array.isArray(value) ? value : [value]).filter(isRange);
+    if (!hasWorkingHoursSchedule(workingHours)) return [];
+    return rangesForDayKey(workingHours, dayKeyForDate(date));
+}
+
+/** A configured schedule with no active ranges for this day is closed. */
+export function isDayClosed(
+    schedule: WorkingHours | null | undefined,
+    date: Date,
+): boolean {
+    if (!hasWorkingHoursSchedule(schedule)) return false;
+    return rangesForDayKey(schedule, dayKeyForDate(date)).length === 0;
+}
+
+/** Day keys that contain at least one active range in a configured schedule. */
+export function getActiveDayKeys(
+    schedule: WorkingHours | null | undefined,
+): string[] {
+    if (!hasWorkingHoursSchedule(schedule)) return [];
+    const configured = schedule;
+    return Object.keys(configured).filter(
+        (day) => rangesForDayKey(configured, day).length > 0,
+    );
+}
+
+/** Staff day keys that are active while the tenant schedule is closed. */
+export function getStaffDayKeysClosedByBusinessHours(
+    staffSchedule: WorkingHours | null | undefined,
+    businessSchedule: WorkingHours | null | undefined,
+): string[] {
+    if (!hasWorkingHoursSchedule(businessSchedule)) return [];
+    const business = businessSchedule;
+    return getActiveDayKeys(staffSchedule).filter(
+        (day) => rangesForDayKey(business, day).length === 0,
+    );
 }
 
 /** Intersect two range lists. Empty `b` means "no restriction" → returns a. */
