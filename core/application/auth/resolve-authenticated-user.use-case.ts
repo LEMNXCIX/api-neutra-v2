@@ -10,7 +10,7 @@ import {
     UnauthorizedError,
 } from "@/core/domain/errors/domain-errors";
 import { AuthenticatedUser } from "@/core/domain/auth.types";
-import { AuthErrorCodes } from "@/types/error-codes";
+import { AuthErrorCodes, TenantErrorCodes } from "@/types/error-codes";
 
 export type ResolveAuthInput = {
     token: string;
@@ -42,8 +42,26 @@ export class ResolveAuthenticatedUserUseCase {
         const cachedPermissions = await this.cache.get(cacheKey);
         let permissions: string[] = [];
 
+        // The cache is an optimization, so an entry it cannot understand must
+        // degrade to the database read below rather than throw. JSON.parse
+        // returns any JSON value, so the shape is checked before it is trusted,
+        // and a hit that is an empty array is still a hit.
+        let cached: string[] | null = null;
         if (cachedPermissions) {
-            permissions = JSON.parse(cachedPermissions);
+            try {
+                const parsed: unknown = JSON.parse(cachedPermissions);
+                if (Array.isArray(parsed)) {
+                    cached = parsed.filter(
+                        (entry): entry is string => typeof entry === "string",
+                    );
+                }
+            } catch {
+                // Corrupt or truncated entry: treat as a miss and re-read.
+            }
+        }
+
+        if (cached) {
+            permissions = cached;
         } else {
             const user = await this.userRepository.findById(decoded.id, {
                 includeRole: true,
@@ -83,6 +101,7 @@ export class ResolveAuthenticatedUserUseCase {
             if (!userTenant || !userTenant.role) {
                 throw new ForbiddenError(
                     "User is not authorized for this tenant",
+                    TenantErrorCodes.MEMBERSHIP_REQUIRED,
                 );
             }
 
