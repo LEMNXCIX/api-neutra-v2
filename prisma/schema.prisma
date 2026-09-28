@@ -158,6 +158,10 @@ model Tenant {
   loyaltyRewardClaims  LoyaltyRewardClaim[]
   roles          Role[]
   permissions    Permission[]
+
+  // Creator
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade)
   
   // Booking Module Relations
   services       Service[]       @relation("TenantServices")
@@ -169,6 +173,7 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   @@index([planId])
+  @@index([createdById])
   @@map("tenants")
 }
 
@@ -264,6 +269,7 @@ model User {
   ownedCoupons   Coupon[]    @relation("CouponOwner")
   loyaltyLedgerEntries LoyaltyLedgerEntry[]
   loyaltyRewardClaims  LoyaltyRewardClaim[]
+  createdTenants Tenant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

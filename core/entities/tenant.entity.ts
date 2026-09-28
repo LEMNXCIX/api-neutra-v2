@@ -34,6 +34,7 @@ export interface Tenant {
     type: TenantType;
     config?: TenantConfig;
     active: boolean;
+    createdById?: string | null; // null = creator unknown
     createdAt: Date;
     updatedAt: Date;
 }

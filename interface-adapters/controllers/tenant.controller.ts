@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { CreateTenantUseCase } from "@/core/application/tenant/create-tenant.use-case";
 import { GetTenantsUseCase } from "@/core/application/tenant/get-tenants.use-case";
+import { GetMyTenantsUseCase } from "@/core/application/tenant/get-my-tenants.use-case";
 import { GetTenantByIdUseCase } from "@/core/application/tenant/get-tenant-by-id.use-case";
 import { GetTenantBySlugUseCase } from "@/core/application/tenant/get-tenant-by-slug.use-case";
 import { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
@@ -21,6 +22,7 @@ export class TenantController {
     constructor(
         private createTenantUseCase: CreateTenantUseCase,
         private getTenantsUseCase: GetTenantsUseCase,
+        private getMyTenantsUseCase: GetMyTenantsUseCase,
         private getTenantByIdUseCase: GetTenantByIdUseCase,
         private getTenantBySlugUseCase: GetTenantBySlugUseCase,
         private updateTenantUseCase: UpdateTenantUseCase,
@@ -51,6 +53,28 @@ export class TenantController {
     // nothing off the request. Same spelling `health.controller.ts` uses.
     async getAll(_req: Request, res: Response) {
         const result = await this.getTenantsUseCase.execute();
+        return res.json(
+            present(result, (tenants) =>
+                Array.isArray(tenants)
+                    ? tenants.map((t) => TenantResponse.fromEntity(t))
+                    : [],
+            ),
+        );
+    }
+
+    async getMine(req: Request, res: Response) {
+        // A service token passes `serviceTokenOr` without an identity, and
+        // this list is membership-scoped, so it can only be answered for a
+        // signed-in user. Same guard as `create`.
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new AppError(
+                "Unauthorized",
+                401,
+                AuthErrorCodes.UNAUTHORIZED,
+            );
+        }
+        const result = await this.getMyTenantsUseCase.execute(userId);
         return res.json(
             present(result, (tenants) =>
                 Array.isArray(tenants)

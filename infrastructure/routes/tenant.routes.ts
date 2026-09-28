@@ -224,6 +224,31 @@ function tenants(
 
     /**
      * @swagger
+     * /tenants/mine:
+     *   get:
+     *     summary: Get the tenants created by the signed-in user
+     *     tags: [Tenants]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: List of tenants created by the signed-in user
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: array
+     *               items:
+     *                 $ref: '#/components/schemas/Tenant'
+     *       401:
+     *         description: Unauthorized
+     */
+    // Registered before "/:id" so the id route cannot swallow "mine".
+    router.get("/mine", serviceTokenOr(authenticate), (req, res) =>
+        tenantController.getMine(req, res),
+    );
+
+    /**
+     * @swagger
      * /tenants/{id}:
      *   get:
      *     summary: Get tenant by ID

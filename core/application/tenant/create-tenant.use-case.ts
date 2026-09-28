@@ -37,6 +37,7 @@ export class CreateTenantUseCase {
             type: data.type,
             config: data.config,
             active: true,
+            createdById: creatorId,
         });
 
         const defaultPermissions = [

@@ -25,6 +25,7 @@ import { JoinTenantUseCase } from "@/core/application/auth/join-tenant.use-case"
 
 import { CreateTenantUseCase } from "@/core/application/tenant/create-tenant.use-case";
 import { GetTenantsUseCase } from "@/core/application/tenant/get-tenants.use-case";
+import { GetMyTenantsUseCase } from "@/core/application/tenant/get-my-tenants.use-case";
 import { GetTenantByIdUseCase } from "@/core/application/tenant/get-tenant-by-id.use-case";
 import { GetTenantBySlugUseCase } from "@/core/application/tenant/get-tenant-by-slug.use-case";
 import { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
@@ -107,6 +108,7 @@ export function createIdentityControllers(runtime: Runtime) {
                 r.feature,
             ),
             new GetTenantsUseCase(r.tenant),
+            new GetMyTenantsUseCase(r.tenant),
             new GetTenantByIdUseCase(r.tenant),
             new GetTenantBySlugUseCase(r.tenant),
             new UpdateTenantUseCase(r.tenant, r.feature, r.loyalty),

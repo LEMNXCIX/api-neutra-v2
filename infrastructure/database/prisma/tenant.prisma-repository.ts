@@ -41,6 +41,7 @@ export class TenantPrismaRepository implements ITenantRepository {
             type: toTenantType(data.type),
             active: data.active,
             config: (data.config as TenantConfig | null) ?? {},
+            createdById: data.createdById,
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
         };
@@ -67,6 +68,14 @@ export class TenantPrismaRepository implements ITenantRepository {
         return tenants.map((t) => this.toEntity(t));
     }
 
+    async findCreatedByUserId(userId: string): Promise<Tenant[]> {
+        const tenants = await this.prisma.tenant.findMany({
+            where: { createdById: userId },
+            orderBy: { createdAt: "desc" },
+        });
+        return tenants.map((t) => this.toEntity(t));
+    }
+
     async create(data: Partial<Tenant>): Promise<Tenant> {
         try {
             const tenant = await this.prisma.tenant.create({
@@ -76,6 +85,7 @@ export class TenantPrismaRepository implements ITenantRepository {
                     type: data.type || TenantType.STORE,
                     config: (data.config || {}) as Prisma.InputJsonValue,
                     active: data.active ?? true,
+                    createdById: data.createdById ?? null,
                 },
             });
             return this.toEntity(tenant);
