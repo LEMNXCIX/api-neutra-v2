@@ -261,15 +261,22 @@ describe("catalog write routes carry the gate", () => {
         "%s %s keeps requirePermission and adds the super-admin gate",
         (method, path, permission, handler) => {
             const block = routeBlock(featureRoutesSource, method, path);
+            // Compared as a string with whitespace collapsed, not as a RegExp
+            // built from the handler name. Interpolating a value into a pattern
+            // needs every metacharacter escaped to be safe, and the version here
+            // escaped only dots, so a handler with a `(` or a `+` in its name
+            // would have quietly matched something else. Nothing here needs a
+            // pattern: the chain is a literal, and ordering is checked by index
+            // so the gate is pinned before the handler rather than merely
+            // present somewhere in the block.
+            const chain = block.replace(/\s+/g, " ");
 
-            expect(block).toMatch(
-                new RegExp(
-                    `authenticate,\\s*requirePermission\\("${permission}"\\),\\s*requireSuperAdmin,\\s*(?:validateDto\\(\\w+\\),\\s*)?${handler.replace(
-                        /\./g,
-                        "\\.",
-                    )}`,
-                ),
-            );
+            const gate = `authenticate, requirePermission("${permission}"), requireSuperAdmin,`;
+            const gateAt = chain.indexOf(gate);
+            const handlerAt = chain.indexOf(handler);
+
+            expect(gateAt).toBeGreaterThanOrEqual(0);
+            expect(handlerAt).toBeGreaterThan(gateAt);
         },
     );
 
