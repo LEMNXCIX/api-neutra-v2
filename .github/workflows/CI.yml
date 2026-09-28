@@ -24,6 +24,12 @@ jobs:
       POSTGRES_USER: ci
       POSTGRES_PASSWORD: ci
       POSTGRES_DB: ci
+      # prisma/seed.ts refuses to run without this one: it throws
+      # "SUPER_ADMIN_PASSWORD is required" rather than seeding an account
+      # nobody could sign into. It has no default, unlike SUPER_ADMIN_EMAIL.
+      # A throwaway credential for a database that lives only as long as the
+      # job, on the same footing as JWT_SECRET above.
+      SUPER_ADMIN_PASSWORD: ci-super-admin-password
     services:
       postgres:
         image: postgres:16-alpine
@@ -65,13 +71,15 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      # The integration suites need the schema and the seeded tenant, or the
-      # tenant middleware has nothing to resolve `x-tenant-slug: superadmin`
-      # against. `migrate deploy` applies the committed migrations and never
-      # resets a database, which is the correct verb for a CI database.
+      # `migrate deploy` applies the committed migrations and never resets a
+      # database, which is the right verb for a CI database.
       - name: Apply database migrations
         run: npx prisma migrate deploy
 
+      # Not optional: the integration suites resolve their tenant from the
+      # seeded `superadmin` slug (test/test-client.ts), so without reference
+      # data every request 404s on the tenant lookup and the suites report a
+      # green run against an empty database.
       - name: Seed reference data
         run: npx prisma db seed
 
