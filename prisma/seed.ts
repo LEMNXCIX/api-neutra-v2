@@ -1,174 +1,215 @@
-import bcrypt from 'bcrypt';
-import { prisma } from '../config/db.config';
-
+import bcrypt from "bcrypt";
+import { prisma } from "../config/db.config";
 
 // Permisos predefinidos
 const PERMISSIONS = [
     // Users
-    { name: 'users:read', description: 'View users list and details' },
-    { name: 'users:write', description: 'Create and update users' },
-    { name: 'users:delete', description: 'Delete users' },
-    { name: 'users:manage', description: 'Full user management including roles' },
+    { name: "users:read", description: "View users list and details" },
+    { name: "users:write", description: "Create and update users" },
+    { name: "users:delete", description: "Delete users" },
+    {
+        name: "users:manage",
+        description: "Full user management including roles",
+    },
 
     // Products
-    { name: 'products:read', description: 'View products' },
-    { name: 'products:write', description: 'Create and update products' },
-    { name: 'products:delete', description: 'Delete products' },
+    { name: "products:read", description: "View products" },
+    { name: "products:write", description: "Create and update products" },
+    { name: "products:delete", description: "Delete products" },
 
     // Orders
-    { name: 'orders:read', description: 'View orders' },
-    { name: 'orders:write', description: 'Create and update orders' },
-    { name: 'orders:manage', description: 'Full order management' },
+    { name: "orders:read", description: "View orders" },
+    { name: "orders:write", description: "Create and update orders" },
+    { name: "orders:manage", description: "Full order management" },
 
     // Stats
-    { name: 'stats:read', description: 'View statistics and analytics' },
+    { name: "stats:read", description: "View statistics and analytics" },
 
     // Slides
-    { name: 'slides:write', description: 'Manage slideshow content' },
+    { name: "slides:write", description: "Manage slideshow content" },
 
     // Cart
-    { name: 'cart:read', description: 'View own cart' },
-    { name: 'cart:write', description: 'Manage own cart items' },
+    { name: "cart:read", description: "View own cart" },
+    { name: "cart:write", description: "Manage own cart items" },
 
     // Categories
-    { name: 'categories:read', description: 'View categories' },
-    { name: 'categories:write', description: 'Create and update categories' },
-    { name: 'categories:delete', description: 'Delete categories' },
+    { name: "categories:read", description: "View categories" },
+    { name: "categories:write", description: "Create and update categories" },
+    { name: "categories:delete", description: "Delete categories" },
 
     // Roles
-    { name: 'roles:read', description: 'View roles' },
-    { name: 'roles:write', description: 'Create and update roles' },
-    { name: 'roles:delete', description: 'Delete roles' },
+    { name: "roles:read", description: "View roles" },
+    { name: "roles:write", description: "Create and update roles" },
+    { name: "roles:delete", description: "Delete roles" },
 
     // Permissions
-    { name: 'permissions:read', description: 'View permissions' },
-    { name: 'permissions:write', description: 'Create and update permissions' },
-    { name: 'permissions:delete', description: 'Delete permissions' },
+    { name: "permissions:read", description: "View permissions" },
+    { name: "permissions:write", description: "Create and update permissions" },
+    { name: "permissions:delete", description: "Delete permissions" },
 
     // Banners
-    { name: 'banners:read', description: 'View banners' },
-    { name: 'banners:write', description: 'Create and update banners' },
-    { name: 'banners:delete', description: 'Delete banners' },
+    { name: "banners:read", description: "View banners" },
+    { name: "banners:write", description: "Create and update banners" },
+    { name: "banners:delete", description: "Delete banners" },
 
     // Coupons
-    { name: 'coupons:read', description: 'View coupons' },
-    { name: 'coupons:write', description: 'Create and update coupons' },
-    { name: 'coupons:delete', description: 'Delete coupons' },
+    { name: "coupons:read", description: "View coupons" },
+    { name: "coupons:write", description: "Create and update coupons" },
+    { name: "coupons:delete", description: "Delete coupons" },
 
     // Features (Super Admin)
-    { name: 'features:read', description: 'View available features' },
-    { name: 'features:write', description: 'Create and update features' },
-    { name: 'features:delete', description: 'Delete features' },
+    { name: "features:read", description: "View available features" },
+    { name: "features:write", description: "Create and update features" },
+    { name: "features:delete", description: "Delete features" },
 
     // Booking Module
-    { name: 'services:read', description: 'View services' },
-    { name: 'services:write', description: 'Create and update services' },
-    { name: 'services:delete', description: 'Delete services' },
-    { name: 'staff:read', description: 'View staff' },
-    { name: 'staff:write', description: 'Create and update staff' },
-    { name: 'staff:delete', description: 'Delete staff' },
-    { name: 'appointments:read', description: 'View appointments' },
-    { name: 'appointments:write', description: 'Create and update appointments' },
-    { name: 'appointments:delete', description: 'Delete appointments' },
+    { name: "services:read", description: "View services" },
+    { name: "services:write", description: "Create and update services" },
+    { name: "services:delete", description: "Delete services" },
+    { name: "staff:read", description: "View staff" },
+    { name: "staff:write", description: "Create and update staff" },
+    { name: "staff:delete", description: "Delete staff" },
+    { name: "appointments:read", description: "View appointments" },
+    {
+        name: "appointments:write",
+        description: "Create and update appointments",
+    },
+    { name: "appointments:delete", description: "Delete appointments" },
 ];
 
 // Roles predefinidos con sus permisos
 const ROLES = [
     {
-        name: 'USER',
+        name: "USER",
         level: 1,
-        description: 'Regular customer',
+        description: "Regular customer",
         permissions: [
-            'products:read',
-            'orders:read',  // Solo sus propias órdenes (se implementa en lógica de negocio)
-            'orders:write', // Crear órdenes
-            'cart:read',
-            'cart:write',
-            'categories:read',
+            "products:read",
+            "orders:read", // Solo sus propias órdenes (se implementa en lógica de negocio)
+            "orders:write", // Crear órdenes
+            "cart:read",
+            "cart:write",
+            "categories:read",
         ],
     },
     {
-        name: 'MANAGER',
+        name: "MANAGER",
         level: 5,
-        description: 'Store manager',
+        description: "Store manager",
         permissions: [
-            'products:read',
-            'products:write',
-            'orders:read',
-            'orders:manage',
-            'stats:read',
-            'users:read',
-            'cart:read',
-            'categories:read',
-            'categories:write',
-            'categories:delete',
-            'services:read',
-            'staff:read',
-            'appointments:read',
-            'appointments:write',
+            "products:read",
+            "products:write",
+            "orders:read",
+            "orders:manage",
+            "stats:read",
+            "users:read",
+            "cart:read",
+            "categories:read",
+            "categories:write",
+            "categories:delete",
+            "services:read",
+            "staff:read",
+            "appointments:read",
+            "appointments:write",
         ],
     },
     {
-        name: 'ADMIN',
+        name: "ADMIN",
         level: 10,
-        description: 'System administrator',
+        description: "System administrator",
         permissions: [
-            'users:manage',
-            'products:read',
-            'products:write',
-            'products:delete',
-            'orders:manage',
-            'stats:read',
-            'slides:write',
-            'cart:read',
-            'cart:write',
-            'categories:read',
-            'categories:write',
-            'categories:delete',
-            'roles:read',
-            'roles:write',
-            'roles:delete',
-            'permissions:read',
-            'permissions:write',
-            'permissions:delete',
-            'banners:read',
-            'banners:write',
-            'banners:delete',
-            'coupons:read',
-            'coupons:write',
-            'coupons:delete',
-            'features:read',
-            'features:write',
-            'features:delete',
-            'services:read',
-            'services:write',
-            'services:delete',
-            'staff:read',
-            'staff:write',
-            'staff:delete',
-            'appointments:read',
-            'appointments:write',
-            'appointments:delete',
+            "users:manage",
+            "products:read",
+            "products:write",
+            "products:delete",
+            "orders:manage",
+            "stats:read",
+            "slides:write",
+            "cart:read",
+            "cart:write",
+            "categories:read",
+            "categories:write",
+            "categories:delete",
+            "roles:read",
+            "roles:write",
+            "roles:delete",
+            "permissions:read",
+            "permissions:write",
+            "permissions:delete",
+            "banners:read",
+            "banners:write",
+            "banners:delete",
+            "coupons:read",
+            "coupons:write",
+            "coupons:delete",
+            "features:read",
+            "features:write",
+            "features:delete",
+            "services:read",
+            "services:write",
+            "services:delete",
+            "staff:read",
+            "staff:write",
+            "staff:delete",
+            "appointments:read",
+            "appointments:write",
+            "appointments:delete",
         ],
     },
 ];
 
 // Features
 const FEATURES = [
-    { key: 'BANNERS', name: 'Marketing Banners', description: 'Enable marketing banners', category: 'MODULE', price: 0 },
-    { key: 'SLIDES', name: 'Slides Carousel', description: 'Enable homepage slides carousel', category: 'MODULE', price: 0 },
-    { key: 'COUPONS', name: 'Coupons Management', description: 'Permite la gestion de cupones', category: 'MODULE', price: 0.5 },
-    { key: 'EMAIL_NOTIFICATIONS', name: 'Email Notifications', description: 'Enable email notifications', category: 'INTEGRATION', price: 0 },
-    { key: 'WHATSAPP_API', name: 'WhatsApp API Integration', description: 'Integración con la API de WhatsApp', category: 'INTEGRATION', price: 5 },
-    { key: 'LOYALTY', name: 'Loyalty Program', description: 'Enable customer loyalty rewards', category: 'MODULE', price: 3 },
+    {
+        key: "BANNERS",
+        name: "Marketing Banners",
+        description: "Enable marketing banners",
+        category: "MODULE",
+        price: 0,
+    },
+    {
+        key: "SLIDES",
+        name: "Slides Carousel",
+        description: "Enable homepage slides carousel",
+        category: "MODULE",
+        price: 0,
+    },
+    {
+        key: "COUPONS",
+        name: "Coupons Management",
+        description: "Permite la gestion de cupones",
+        category: "MODULE",
+        price: 0.5,
+    },
+    {
+        key: "EMAIL_NOTIFICATIONS",
+        name: "Email Notifications",
+        description: "Enable email notifications",
+        category: "INTEGRATION",
+        price: 0,
+    },
+    {
+        key: "WHATSAPP_API",
+        name: "WhatsApp API Integration",
+        description: "Integración con la API de WhatsApp",
+        category: "INTEGRATION",
+        price: 5,
+    },
+    {
+        key: "LOYALTY",
+        name: "Loyalty Program",
+        description: "Enable customer loyalty rewards",
+        category: "MODULE",
+        price: 3,
+    },
 ];
 
 async function main() {
-    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'fake@mail.com';
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || "fake@mail.com";
     const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
 
     if (!superAdminPassword?.trim()) {
-        throw new Error('SUPER_ADMIN_PASSWORD is required');
+        throw new Error("SUPER_ADMIN_PASSWORD is required");
     }
 
     const superAdminPasswordHash = await bcrypt.hash(superAdminPassword, 10);
@@ -178,7 +219,7 @@ async function main() {
         await prisma.feature.upsert({
             where: { key: feature.key },
             update: {},
-            create: feature
+            create: feature,
         });
     }
 
@@ -192,15 +233,15 @@ async function main() {
     }
 
     // 2. Crear Tenant Específico (SuperAdmin Tenant)
-    const specificTenantId = '13acd170-dab5-4f0e-aee6-a8f302eabde2';
+    const specificTenantId = "13acd170-dab5-4f0e-aee6-a8f302eabde2";
     const superAdminTenant = await prisma.tenant.upsert({
         where: { id: specificTenantId },
         update: {},
         create: {
             id: specificTenantId,
-            name: 'Neutra SuperAdmin',
-            slug: 'superadmin',
-            type: 'HYBRID',
+            name: "Neutra SuperAdmin",
+            slug: "superadmin",
+            type: "HYBRID",
             active: true,
             config: {
                 features: {
@@ -208,9 +249,9 @@ async function main() {
                     appointmentCoupons: true,
                     banners: true,
                     orders: true,
-                    emailNotifications: true
-                }
-            }
+                    emailNotifications: true,
+                },
+            },
         },
     });
 
@@ -223,8 +264,8 @@ async function main() {
             where: {
                 tenantId_name: {
                     tenantId: superAdminTenant.id,
-                    name: roleInfo.name
-                }
+                    name: roleInfo.name,
+                },
             },
             update: {
                 description: roleInfo.description,
@@ -232,7 +273,7 @@ async function main() {
             },
             create: {
                 ...roleInfo,
-                tenantId: superAdminTenant.id
+                tenantId: superAdminTenant.id,
             },
         });
 
@@ -262,14 +303,14 @@ async function main() {
     }
 
     // 4. Crear Role Específico (SUPER_ADMIN) para el tenant superadmin
-    const superAdminRoleId = 'fd3d55d4-c564-4404-b59c-59f4ba429a5a';
+    const superAdminRoleId = "fd3d55d4-c564-4404-b59c-59f4ba429a5a";
     const superAdminRole = await prisma.role.upsert({
         where: { id: superAdminRoleId },
         update: {},
         create: {
             id: superAdminRoleId,
-            name: 'SUPER_ADMIN',
-            description: 'Full system access',
+            name: "SUPER_ADMIN",
+            description: "Full system access",
             level: 100,
             active: true,
             tenantId: specificTenantId,
@@ -277,7 +318,7 @@ async function main() {
     });
 
     // 5. Crear Usuario Específico (Leonardo)
-    const leonardoUserId = 'ebd39837-ed6f-4f24-b0cb-77150ed18b86';
+    const leonardoUserId = "ebd39837-ed6f-4f24-b0cb-77150ed18b86";
     const user = await (prisma as any).user.upsert({
         where: { id: leonardoUserId },
         update: {
@@ -286,10 +327,11 @@ async function main() {
         },
         create: {
             id: leonardoUserId,
-            name: 'Leonardo',
+            name: "Leonardo",
             email: superAdminEmail,
             password: superAdminPasswordHash,
-            profilePic: 'data:image/png;base64,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',
+            profilePic:
+                "data:image/png;base64,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",
             active: true,
         },
     });
@@ -300,17 +342,17 @@ async function main() {
         where: {
             userId_tenantId: {
                 userId: user.id,
-                tenantId: specificTenantId
-            }
+                tenantId: specificTenantId,
+            },
         },
         update: {
-            roleId: superAdminRole.id
+            roleId: superAdminRole.id,
         },
         create: {
             userId: user.id,
             tenantId: specificTenantId,
-            roleId: superAdminRole.id
-        }
+            roleId: superAdminRole.id,
+        },
     });
 
     // 7. Crear Cart para el usuario Leonardo
@@ -325,7 +367,7 @@ async function main() {
 
 main()
     .catch((e) => {
-        console.error('❌ Error during seed:', e);
+        console.error("❌ Error during seed:", e);
         process.exit(1);
     })
     .finally(async () => {

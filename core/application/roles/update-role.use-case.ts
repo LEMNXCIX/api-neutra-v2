@@ -1,12 +1,15 @@
-import { IRoleRepository, RoleUpdateData } from "@/core/repositories/role.repository.interface";
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { UpdateRoleDTO } from "@/core/application/dtos/requests/role.request";
-import { ICacheProvider } from "@/core/providers/cache-provider.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { UpdateRoleDTO } from "@/core/application/dtos/requests/role.request";
 import {
-    EntityNotFoundError,
     DuplicateEntityError,
+    EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { ICacheProvider } from "@/core/providers/cache-provider.interface";
+import type {
+    IRoleRepository,
+    RoleUpdateData,
+} from "@/core/repositories/role.repository.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class UpdateRoleUseCase {
     constructor(

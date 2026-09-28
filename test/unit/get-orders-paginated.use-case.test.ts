@@ -12,9 +12,7 @@ function setup(repoResult?: unknown) {
             },
         ),
     };
-    const useCase = new GetOrdersPaginatedUseCase(
-        orderRepository as never,
-    );
+    const useCase = new GetOrdersPaginatedUseCase(orderRepository as never);
     return { useCase, orderRepository };
 }
 
@@ -28,10 +26,7 @@ describe("GetOrdersPaginatedUseCase", () => {
             "t1",
             expect.objectContaining({ page: 2, limit: 10, status: "all" }),
         );
-        expect(result.data).toEqual([
-            { id: "o1" },
-            { id: "o2" },
-        ]);
+        expect(result.data).toEqual([{ id: "o1" }, { id: "o2" }]);
         expect(result.meta?.pagination).toEqual({
             page: 1,
             limit: 10,

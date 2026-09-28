@@ -9,14 +9,14 @@ export interface WorkingHours {
 
 export interface Staff {
     id: string;
-    userId?: string;
+    userId: string | null;
     name: string;
-    email?: string;
-    phone?: string;
-    avatar?: string;
-    bio?: string;
+    email: string | null;
+    phone: string | null;
+    avatar: string | null;
+    bio: string | null;
     active: boolean;
-    workingHours?: WorkingHours;
+    workingHours: WorkingHours | null;
     serviceIds?: string[];
     tenantId: string;
     tenant?: { id: string; name: string; slug: string };

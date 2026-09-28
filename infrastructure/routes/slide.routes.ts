@@ -1,8 +1,13 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
+import { type Application, Router } from "express";
+import {
+    CreateSlideshowDto,
+    UpdateSlideshowDto,
+} from "@/core/application/dtos/requests/slide.request";
+import type { SlideController } from "@/interface-adapters/controllers/slide.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
-import { SlideController } from "@/interface-adapters/controllers/slide.controller";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function slide(
     app: Application,
@@ -77,6 +82,7 @@ function slide(
         authenticate,
         requireTenantFeature("SLIDES"),
         requirePermission("banners:write"),
+        validateDto(CreateSlideshowDto),
         slideController.create,
     );
 
@@ -124,6 +130,7 @@ function slide(
         authenticate,
         requireTenantFeature("SLIDES"),
         requirePermission("banners:write"),
+        validateDto(UpdateSlideshowDto),
         slideController.update,
     );
 
@@ -197,10 +204,7 @@ function slide(
      *       404:
      *         description: Slide not found
      */
-    router.get(
-        "/:id",
-        requireTenantFeature("SLIDES"),
-        slideController.getById);
+    router.get("/:id", requireTenantFeature("SLIDES"), slideController.getById);
 
     /**
      * @swagger

@@ -1,10 +1,13 @@
-import { IUserRepository, UserCreateData } from "@/core/repositories/user.repository.interface";
-import { ICartRepository } from "@/core/repositories/cart.repository.interface";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { IUidProvider } from "@/core/providers/uid-provider.interface";
-import { User } from "@/core/entities/user.entity";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { ProviderDataDTO } from "@/core/application/dtos/requests/user.request";
+import type { ProviderDataDTO } from "@/core/application/dtos/requests/user.request";
+import type { User } from "@/core/entities/user.entity";
+import type { IUidProvider } from "@/core/providers/uid-provider.interface";
+import type { ICartRepository } from "@/core/repositories/cart.repository.interface";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type {
+    IUserRepository,
+    UserCreateData,
+} from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetOrCreateByProviderUseCase {
     constructor(
@@ -48,10 +51,14 @@ export class GetOrCreateByProviderUseCase {
                     password: newPassword,
                     profilePic: data.profilePic,
                 };
-                if (providerField === 'googleId') createData.googleId = data.idProvider;
-                else if (providerField === 'facebookId') createData.facebookId = data.idProvider;
-                else if (providerField === 'twitterId') createData.twitterId = data.idProvider;
-                else if (providerField === 'githubId') createData.githubId = data.idProvider;
+                if (providerField === "googleId")
+                    createData.googleId = data.idProvider;
+                else if (providerField === "facebookId")
+                    createData.facebookId = data.idProvider;
+                else if (providerField === "twitterId")
+                    createData.twitterId = data.idProvider;
+                else if (providerField === "githubId")
+                    createData.githubId = data.idProvider;
                 user = await this.userRepository.create(createData);
                 created = true;
             }

@@ -1,14 +1,22 @@
 /// <reference path="../../types/request-dto.ts" />
-import { Application, Router } from "express";
+
 import type { RequestHandler } from "express";
+import { type Application, Router } from "express";
 import passport from "passport";
-import { AuthController } from "@/interface-adapters/controllers/auth.controller";
+import {
+    ForgotPasswordDto,
+    ResetPasswordDto,
+} from "@/core/application/dtos/requests/auth.request";
+import type { AuthController } from "@/interface-adapters/controllers/auth.controller";
 import { authLimiter } from "@/middleware/rateLimit.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
+import { CreateUserDto, LoginDto } from "@/types/request-dto";
 
 function auth(
     app: Application,
     authController: AuthController,
     authenticate: RequestHandler,
+    joinTenantAuthenticate: RequestHandler,
 ) {
     const router = Router();
     app.use("/api/auth", router);
@@ -38,7 +46,12 @@ function auth(
      *       401:
      *         description: Invalid credentials
      */
-    router.post("/login", authLimiter, authController.login);
+    router.post(
+        "/login",
+        authLimiter,
+        validateDto(LoginDto),
+        authController.login,
+    );
 
     /**
      * @swagger
@@ -58,7 +71,12 @@ function auth(
      *       400:
      *         description: Bad request
      */
-    router.post("/signup", authLimiter, authController.signup);
+    router.post(
+        "/signup",
+        authLimiter,
+        validateDto(CreateUserDto),
+        authController.signup,
+    );
 
     /**
      * @swagger
@@ -78,6 +96,33 @@ function auth(
      */
     router.get("/logout", authController.logout);
     router.post("/logout", authController.logout);
+
+    /**
+     * @swagger
+     * /auth/join-tenant:
+     *   post:
+     *     summary: Join a tenant with the account you are signed in with
+     *     description: >
+     *       Registers this identity in the tenant named by the request's tenant
+     *       header, at that tenant's default USER role. Alternative to
+     *       registering again with the same email, which requires the password
+     *       already used in the tenant where the account exists. The token is
+     *       verified, but membership of the target tenant is not required: that
+     *       is what this endpoint grants.
+     *     tags: [Auth]
+     *     responses:
+     *       200:
+     *         description: Joined the tenant
+     *       401:
+     *         description: No valid token
+     *       422:
+     *         description: Already a member, or the tenant cannot accept members
+     */
+    router.post(
+        "/join-tenant",
+        joinTenantAuthenticate,
+        authController.joinTenant,
+    );
 
     /**
      * @swagger
@@ -113,7 +158,12 @@ function auth(
      *       400:
      *         description: Invalid email
      */
-    router.post("/forgot-password", authLimiter, authController.forgotPassword);
+    router.post(
+        "/forgot-password",
+        authLimiter,
+        validateDto(ForgotPasswordDto),
+        authController.forgotPassword,
+    );
 
     /**
      * @swagger
@@ -133,7 +183,11 @@ function auth(
      *       400:
      *         description: Invalid or expired token
      */
-    router.post("/reset-password", authController.resetPassword);
+    router.post(
+        "/reset-password",
+        validateDto(ResetPasswordDto),
+        authController.resetPassword,
+    );
 
     /**
      * @swagger

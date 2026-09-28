@@ -7,7 +7,7 @@ import {
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
 import {
-    httpStatusFromDomainCode,
+    BusinessErrorCodes,
     httpStatusFromDomainError,
 } from "@/types/error-codes";
 
@@ -15,12 +15,18 @@ describe("Domain error → HTTP mapping", () => {
     test("maps by error class even with custom codes", () => {
         expect(
             httpStatusFromDomainError(
-                new BusinessRuleViolationError("empty", "CART_EMPTY"),
+                new BusinessRuleViolationError(
+                    "empty",
+                    BusinessErrorCodes.CART_EMPTY,
+                ),
             ),
         ).toBe(422);
         expect(
             httpStatusFromDomainError(
-                new BusinessRuleViolationError("stock", "INSUFFICIENT_STOCK"),
+                new BusinessRuleViolationError(
+                    "stock",
+                    BusinessErrorCodes.INSUFFICIENT_STOCK,
+                ),
             ),
         ).toBe(422);
         expect(
@@ -31,15 +37,17 @@ describe("Domain error → HTTP mapping", () => {
         ).toBe(409);
         expect(httpStatusFromDomainError(new UnauthorizedError())).toBe(401);
         expect(httpStatusFromDomainError(new ForbiddenError())).toBe(403);
-        expect(
-            httpStatusFromDomainError(new ValidationError("invalid")),
-        ).toBe(400);
+        expect(httpStatusFromDomainError(new ValidationError("invalid"))).toBe(
+            400,
+        );
     });
 
-    test("code map covers default domain codes", () => {
-        expect(httpStatusFromDomainCode("ENTITY_NOT_FOUND")).toBe(404);
-        expect(httpStatusFromDomainCode("BUSINESS_RULE_VIOLATION")).toBe(422);
-        expect(httpStatusFromDomainCode("CART_EMPTY")).toBe(422);
-        expect(httpStatusFromDomainCode("UNKNOWN_CODE")).toBe(400);
+    test("reports an unrecognised error class as a server fault", () => {
+        // Unreachable from production, where every caller guards on
+        // `instanceof DomainError`. Pinned so the fallback is not silently
+        // changed into a client error.
+        expect(
+            httpStatusFromDomainError({ code: "ANYTHING", name: "Whatever" }),
+        ).toBe(500);
     });
 });

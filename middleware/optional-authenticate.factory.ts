@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import { ResolveAuthenticatedUserUseCase } from "@/core/application/auth/resolve-authenticated-user.use-case";
+import type { NextFunction, Request, Response } from "express";
+import type { ResolveAuthenticatedUserUseCase } from "@/core/application/auth/resolve-authenticated-user.use-case";
 import type { ILogger } from "@/core/providers/logger.interface";
 import { extractAuthToken } from "@/helpers/auth-token.helpers";
 

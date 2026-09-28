@@ -1,40 +1,39 @@
-import {
-    Order as PrismaOrder,
-    OrderItem as PrismaOrderItem,
-    OrderStatus as PrismaOrderStatus,
-    Prisma,
-} from "@prisma/client";
+import { Prisma, type OrderStatus as PrismaOrderStatus } from "@prisma/client";
 import { prisma } from "@/config/db.config";
 import {
+    assertCouponRedeemable,
+    assertCouponsFeatureEnabled,
+    isApplicableToCategory,
+    isApplicableToProduct,
+    toRedeemableCoupon,
+} from "@/core/domain/coupon/coupon.policy";
+import {
+    BusinessRuleViolationError,
+    EntityNotFoundError,
+} from "@/core/domain/errors/domain-errors";
+import {
+    getLoyaltyCampaignAccrualCriteria,
+    getLoyaltyCampaignContributionValue,
+} from "@/core/domain/loyalty/loyalty.policy";
+import { rejectInsufficientStock } from "@/core/domain/order/order.policy";
+import {
+    type LoyaltyCampaignMetric,
+    LoyaltyLedgerEntryType,
+    LoyaltySourceType,
+} from "@/core/entities/loyalty.entity";
+import type {
+    Order,
+    OrderItem,
+    OrderStatus,
+} from "@/core/entities/order.entity";
+import type { Product } from "@/core/entities/product.entity";
+import type {
     IOrderRepository,
     OrderCreateData,
     OrderStatusUpdate,
     OrderUpdateData,
 } from "@/core/repositories/order.repository.interface";
-import { Order, OrderStatus, OrderItem } from "@/core/entities/order.entity";
-import { Product } from "@/core/entities/product.entity";
-import {
-    hasReachedUsageLimit,
-    isApplicableToCategory,
-    isApplicableToProduct,
-    isCouponOwnedBy,
-    isExpired,
-    isLoyaltyTemplateCoupon,
-    isPersonalCoupon,
-    isRewardCoupon,
-} from "@/core/entities/coupon.entity";
-import {
-    getLoyaltyCampaignContributionValue,
-    getLoyaltyCampaignSource,
-    LoyaltyCampaignMetric,
-    LoyaltyCampaignSource,
-    LoyaltyLedgerEntryType,
-    LoyaltySourceType,
-} from "@/core/entities/loyalty.entity";
-import {
-    BusinessRuleViolationError,
-    EntityNotFoundError,
-} from "@/core/domain/errors/domain-errors";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 type OrderWithIncludes = Prisma.OrderGetPayload<{
     include: {
@@ -44,6 +43,29 @@ type OrderWithIncludes = Prisma.OrderGetPayload<{
 }>;
 
 type OrderItemWithProduct = OrderWithIncludes["items"][number];
+
+/**
+ * OrderStatus is a string union in the domain, so membership is checked against
+ * an explicit list typed as the union: a typo fails to compile, and the list
+ * cannot admit a value the domain does not model.
+ */
+const ORDER_STATUSES: readonly OrderStatus[] = [
+    "PENDIENTE",
+    "PAGADO",
+    "ENVIADO",
+    "ENTREGADO",
+];
+
+function isOrderStatus(value: string): value is OrderStatus {
+    return (ORDER_STATUSES as string[]).includes(value);
+}
+
+function toOrderStatus(value: string): OrderStatus {
+    if (!isOrderStatus(value)) {
+        throw new Error(`Unsupported order status: ${value}`);
+    }
+    return value;
+}
 
 export class PrismaOrderRepository implements IOrderRepository {
     private mapOrderItem(item: OrderItemWithProduct): OrderItem {
@@ -70,7 +92,7 @@ export class PrismaOrderRepository implements IOrderRepository {
         return {
             id: prismaOrder.id,
             userId: prismaOrder.userId,
-            status: prismaOrder.status as OrderStatus,
+            status: toOrderStatus(prismaOrder.status),
             trackingNumber: prismaOrder.trackingNumber,
             subtotal: Number(prismaOrder.subtotal),
             total: Number(prismaOrder.total),
@@ -83,48 +105,6 @@ export class PrismaOrderRepository implements IOrderRepository {
         };
     }
 
-    async create(tenantId: string, data: OrderCreateData): Promise<Order> {
-        const subtotal = data.items.reduce(
-            (sum, item) => sum + item.price * item.amount,
-            0,
-        );
-        const discountAmount = 0;
-        const total = subtotal - discountAmount;
-
-        const order = await prisma.order.create({
-            data: {
-                userId: data.userId,
-                tenantId,
-                status: "PENDIENTE" as PrismaOrderStatus,
-                couponId: data.couponId,
-                subtotal,
-                total,
-                discountAmount,
-                items: {
-                    create: data.items.map((item) => ({
-                        productId: item.productId,
-                        amount: item.amount,
-                        price: item.price,
-                    })),
-                },
-            },
-            include: {
-                items: {
-                    include: {
-                        product: true,
-                    },
-                },
-                user: {
-                    select: {
-                        name: true,
-                        email: true,
-                    },
-                },
-            },
-        });
-        return this.mapToEntity(order);
-    }
-
     async createWithInventoryAdjustment(
         tenantId: string,
         data: OrderCreateData,
@@ -133,9 +113,7 @@ export class PrismaOrderRepository implements IOrderRepository {
         return prisma.$transaction(async (tx) => {
             const subtotal = data.items.reduce(
                 (sum, item) =>
-                    sum.plus(
-                        new Prisma.Decimal(item.price).mul(item.amount),
-                    ),
+                    sum.plus(new Prisma.Decimal(item.price).mul(item.amount)),
                 new Prisma.Decimal(0),
             );
             let discountAmount = new Prisma.Decimal(0);
@@ -151,42 +129,7 @@ export class PrismaOrderRepository implements IOrderRepository {
             }
 
             if (coupon) {
-                if (isLoyaltyTemplateCoupon(coupon)) {
-                    throw new BusinessRuleViolationError(
-                        "Loyalty reward templates cannot be redeemed",
-                        "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
-                    );
-                }
-                if (!isCouponOwnedBy(coupon, data.userId)) {
-                    throw new BusinessRuleViolationError(
-                        "Coupon is not available for this user",
-                        "COUPON_NOT_OWNED",
-                    );
-                }
-                if (isRewardCoupon(coupon) && !isPersonalCoupon(coupon)) {
-                    throw new BusinessRuleViolationError(
-                        "Reward coupon is not assigned to a customer",
-                        "REWARD_COUPON_NOT_OWNED",
-                    );
-                }
-                if (!coupon.active) {
-                    throw new BusinessRuleViolationError(
-                        "Coupon is not active",
-                    );
-                }
-                if (isExpired(coupon)) {
-                    throw new BusinessRuleViolationError("Coupon has expired");
-                }
-                if (
-                    hasReachedUsageLimit({
-                        usageCount: coupon.usageCount,
-                        usageLimit: coupon.usageLimit ?? undefined,
-                    })
-                ) {
-                    throw new BusinessRuleViolationError(
-                        "Coupon usage limit reached",
-                    );
-                }
+                assertCouponRedeemable(toRedeemableCoupon(coupon), data.userId);
 
                 const productIds = [
                     ...new Set(data.items.map((item) => item.productId)),
@@ -208,17 +151,12 @@ export class PrismaOrderRepository implements IOrderRepository {
                     (id) => !foundProductIds.has(id),
                 );
                 if (missingProductId) {
-                    throw new EntityNotFoundError(
-                        "Product",
-                        missingProductId,
-                    );
+                    throw new EntityNotFoundError("Product", missingProductId);
                 }
 
                 if (
                     productIds.length > 0 &&
-                    !productIds.some((id) =>
-                        isApplicableToProduct(coupon, id),
-                    )
+                    !productIds.some((id) => isApplicableToProduct(coupon, id))
                 ) {
                     throw new BusinessRuleViolationError(
                         "Coupon not applicable to products in cart",
@@ -287,12 +225,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                     },
                     select: { id: true },
                 });
-                if (!couponsEnabled) {
-                    throw new BusinessRuleViolationError(
-                        "Coupon validation is not available for this tenant",
-                        "COUPONS_FEATURE_REQUIRED",
-                    );
-                }
+                assertCouponsFeatureEnabled(couponsEnabled !== null);
             }
 
             for (const adjustment of adjustments) {
@@ -305,10 +238,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                     data: { stock: { decrement: adjustment.amount } },
                 });
                 if (result.count === 0) {
-                    throw new BusinessRuleViolationError(
-                        `Stock insuficiente para el producto ${adjustment.productId}`,
-                        "INSUFFICIENT_STOCK",
-                    );
+                    rejectInsufficientStock(adjustment.productId);
                 }
             }
 
@@ -338,7 +268,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                 if (usage.count === 0) {
                     throw new BusinessRuleViolationError(
                         "The coupon is not available for this user",
-                        "COUPON_UNAVAILABLE",
+                        BusinessErrorCodes.COUPON_UNAVAILABLE,
                     );
                 }
             }
@@ -567,11 +497,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                 },
             });
 
-            if (
-                order &&
-                data.status === "ENTREGADO" &&
-                data.qualifyLoyalty
-            ) {
+            if (order && data.status === "ENTREGADO" && data.qualifyLoyalty) {
                 const loyaltyEnabled =
                     (await tx.tenantFeature.findFirst({
                         where: {
@@ -581,23 +507,26 @@ export class PrismaOrderRepository implements IOrderRepository {
                         },
                         select: { id: true },
                     })) !== null;
+                const accrual = getLoyaltyCampaignAccrualCriteria(
+                    LoyaltySourceType.ORDER,
+                    eventAt,
+                );
                 const campaign = loyaltyEnabled
                     ? await tx.loyaltyCampaign.findFirst({
                           where: {
                               tenantId,
-                              status: "ACTIVE",
-                              source: {
-                                  in: [
-                                      getLoyaltyCampaignSource(
-                                          LoyaltySourceType.ORDER,
-                                      ),
-                                      LoyaltyCampaignSource.ALL,
-                                  ],
-                              },
-                              startsAt: { lte: eventAt },
-                              endsAt: { gt: eventAt },
+                              status: accrual.status,
+                              source: { in: accrual.sources },
+                              startsAt: { lte: accrual.startsAtOnOrBefore },
+                              endsAt: { gt: accrual.endsAtAfter },
                           },
-                          orderBy: { startsAt: "desc" },
+                          orderBy: {
+                              // Newest start wins: the domain states this rule
+                              // in the accrual criteria contract, and both
+                              // adapters order identically, so it is a constant
+                              // here rather than a per-caller choice.
+                              startsAt: "desc",
+                          },
                           select: { id: true, metric: true },
                       })
                     : null;
@@ -605,9 +534,7 @@ export class PrismaOrderRepository implements IOrderRepository {
                 if (campaign) {
                     const value = getLoyaltyCampaignContributionValue({
                         metric: campaign.metric as LoyaltyCampaignMetric,
-                        netTotal: new Prisma.Decimal(order.total).toFixed(
-                            2,
-                        ),
+                        netTotal: new Prisma.Decimal(order.total).toFixed(2),
                     });
                     await tx.loyaltyLedgerEntry.upsert({
                         where: {

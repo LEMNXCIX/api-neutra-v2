@@ -1,28 +1,28 @@
-import { Banner as PrismaBanner, Prisma } from "@prisma/client";
+import { Prisma, type Banner as PrismaBanner } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import {
-    IBannerRepository,
-    BannerCreateData,
-    BannerUpdateData,
-} from "@/core/repositories/banner.repository.interface";
-import { Banner } from "@/core/entities/banner.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Banner } from "@/core/entities/banner.entity";
+import type {
+    BannerCreateData,
+    BannerUpdateData,
+    IBannerRepository,
+} from "@/core/repositories/banner.repository.interface";
 
 export class PrismaBannerRepository implements IBannerRepository {
     private mapToEntity(data: PrismaBanner): Banner {
         return {
             id: data.id,
             title: data.title,
-            subtitle: data.subtitle ?? undefined,
-            description: data.description ?? undefined,
-            imageUrl: data.imageUrl ?? undefined,
-            backgroundColor: data.backgroundColor ?? undefined,
-            textColor: data.textColor ?? undefined,
-            cta: data.cta ?? undefined,
-            ctaUrl: data.ctaUrl ?? undefined,
+            subtitle: data.subtitle,
+            description: data.description,
+            imageUrl: data.imageUrl,
+            backgroundColor: data.backgroundColor,
+            textColor: data.textColor,
+            cta: data.cta,
+            ctaUrl: data.ctaUrl,
             priority: data.priority,
             active: data.active,
             startsAt: data.startsAt,

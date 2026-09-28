@@ -1,13 +1,19 @@
-import { Request, Response } from "express";
-import { CreateTenantUseCase } from "@/core/application/tenant/create-tenant.use-case";
-import { GetTenantsUseCase } from "@/core/application/tenant/get-tenants.use-case";
-import { GetTenantByIdUseCase } from "@/core/application/tenant/get-tenant-by-id.use-case";
-import { GetTenantBySlugUseCase } from "@/core/application/tenant/get-tenant-by-slug.use-case";
-import { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
-import { DeleteTenantUseCase } from "@/core/application/tenant/delete-tenant.use-case";
-import { GetTenantFeaturesUseCase } from "@/core/application/tenant/get-tenant-features.use-case";
-import { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-tenant-features.use-case";
-import { TenantPresenter } from "@/core/presenters/tenant.presenter";
+import type { Request, Response } from "express";
+import type {
+    CreateTenantDTO,
+    UpdateTenantDTO,
+    UpdateTenantFeaturesDTO,
+} from "@/core/application/dtos/requests/tenant.request";
+import { TenantResponse } from "@/core/application/dtos/responses/tenant/tenant.response";
+import type { CreateTenantUseCase } from "@/core/application/tenant/create-tenant.use-case";
+import type { DeleteTenantUseCase } from "@/core/application/tenant/delete-tenant.use-case";
+import type { GetMyTenantsUseCase } from "@/core/application/tenant/get-my-tenants.use-case";
+import type { GetTenantByIdUseCase } from "@/core/application/tenant/get-tenant-by-id.use-case";
+import type { GetTenantBySlugUseCase } from "@/core/application/tenant/get-tenant-by-slug.use-case";
+import type { GetTenantFeaturesUseCase } from "@/core/application/tenant/get-tenant-features.use-case";
+import type { GetTenantsUseCase } from "@/core/application/tenant/get-tenants.use-case";
+import type { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
+import type { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-tenant-features.use-case";
 import { present } from "@/core/utils/use-case-result";
 import { AppError } from "@/types/api-response";
 import { AuthErrorCodes } from "@/types/error-codes";
@@ -16,6 +22,7 @@ export class TenantController {
     constructor(
         private createTenantUseCase: CreateTenantUseCase,
         private getTenantsUseCase: GetTenantsUseCase,
+        private getMyTenantsUseCase: GetMyTenantsUseCase,
         private getTenantByIdUseCase: GetTenantByIdUseCase,
         private getTenantBySlugUseCase: GetTenantBySlugUseCase,
         private updateTenantUseCase: UpdateTenantUseCase,
@@ -34,37 +41,65 @@ export class TenantController {
             );
         }
         const result = await this.createTenantUseCase.execute(
-            req.body,
+            req.validatedBody as CreateTenantDTO,
             creatorId,
         );
-        return res
-            .status(201)
-            .json(present(result, TenantPresenter.toResponse));
+        return res.status(201).json(present(result, TenantResponse.fromEntity));
     }
 
-    async getAll(req: Request, res: Response) {
+    // `_req`: the tenant list is the whole platform, so this handler needs
+    // nothing off the request. Same spelling `health.controller.ts` uses.
+    async getAll(_req: Request, res: Response) {
         const result = await this.getTenantsUseCase.execute();
-        return res.json(present(result, TenantPresenter.toResponseList));
+        return res.json(
+            present(result, (tenants) =>
+                Array.isArray(tenants)
+                    ? tenants.map((t) => TenantResponse.fromEntity(t))
+                    : [],
+            ),
+        );
+    }
+
+    async getMine(req: Request, res: Response) {
+        // A service token passes `serviceTokenOr` without an identity, and
+        // this list is membership-scoped, so it can only be answered for a
+        // signed-in user. Same guard as `create`.
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new AppError(
+                "Unauthorized",
+                401,
+                AuthErrorCodes.UNAUTHORIZED,
+            );
+        }
+        const result = await this.getMyTenantsUseCase.execute(userId);
+        return res.json(
+            present(result, (tenants) =>
+                Array.isArray(tenants)
+                    ? tenants.map((t) => TenantResponse.fromEntity(t))
+                    : [],
+            ),
+        );
     }
 
     async getById(req: Request, res: Response) {
         const result = await this.getTenantByIdUseCase.execute(req.params.id);
-        return res.json(present(result, TenantPresenter.toResponse));
+        return res.json(present(result, TenantResponse.fromEntity));
     }
 
     async getBySlug(req: Request, res: Response) {
         const result = await this.getTenantBySlugUseCase.execute(
             req.params.slug,
         );
-        return res.json(present(result, TenantPresenter.toResponse));
+        return res.json(present(result, TenantResponse.fromEntity));
     }
 
     async update(req: Request, res: Response) {
         const result = await this.updateTenantUseCase.execute(
             req.params.id,
-            req.body,
+            req.validatedBody as UpdateTenantDTO,
         );
-        return res.json(present(result, TenantPresenter.toResponse));
+        return res.json(present(result, TenantResponse.fromEntity));
     }
 
     async getFeatures(req: Request, res: Response) {
@@ -76,7 +111,7 @@ export class TenantController {
     async updateFeatures(req: Request, res: Response) {
         const tenantId = req.params.id;
         // Body matches UpdateTenantFeaturesDto: { features: { KEY: bool } }
-        const { features } = req.body;
+        const { features } = req.validatedBody as UpdateTenantFeaturesDTO;
         const result = await this.updateTenantFeaturesUseCase.execute(
             tenantId,
             { features },

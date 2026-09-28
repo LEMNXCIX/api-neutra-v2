@@ -34,8 +34,10 @@
 </div>
 
 <div style="text-align: center;">
+    {{#if calendarLink}}
     <a href="{{calendarLink}}" class="button">Agregar al Calendario</a>
     <br>
+    {{/if}}
     <a href="{{tenant.websiteUrl}}/appointments/{{appointmentId}}"
         style="color: #666; font-size: 14px; text-decoration: underline;">Ver Detalles</a>
 </div>

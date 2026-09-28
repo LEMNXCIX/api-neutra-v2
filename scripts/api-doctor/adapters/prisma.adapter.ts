@@ -1,8 +1,5 @@
-import { runCommand, type CommandRunner } from "./command.adapter";
-import type {
-    CheckRunResult,
-    DoctorContext,
-} from "../domain/check-result";
+import type { CheckRunResult, DoctorContext } from "../domain/check-result";
+import { type CommandRunner, runCommand } from "./command.adapter";
 
 const VALIDATION_TIMEOUT_MS = 120_000;
 

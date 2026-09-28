@@ -1,8 +1,14 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
+import { type Application, Router } from "express";
+import {
+    ChangeOrderStatusDto,
+    CreateOrderDto,
+    UpdateOrderDto,
+} from "@/core/application/dtos/requests/order.request";
+import type { OrderController } from "@/interface-adapters/controllers/order.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
-import { OrderController } from "@/interface-adapters/controllers/order.controller";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function order(
     app: Application,
@@ -71,7 +77,10 @@ function order(
      */
     router.get(
         "/statuses",
-        requireTenantType("STORE", "HYBRID"), authenticate, orderController.getStatuses);
+        requireTenantType("STORE", "HYBRID"),
+        authenticate,
+        orderController.getStatuses,
+    );
 
     /**
      * @swagger
@@ -95,7 +104,11 @@ function order(
      */
     router.post(
         "/",
-        requireTenantType("STORE", "HYBRID"), authenticate, orderController.create);
+        requireTenantType("STORE", "HYBRID"),
+        authenticate,
+        validateDto(CreateOrderDto),
+        orderController.create,
+    );
 
     /**
      * @swagger
@@ -128,7 +141,10 @@ function order(
      */
     router.get(
         "/getOrder",
-        requireTenantType("STORE", "HYBRID"), authenticate, orderController.getOne);
+        requireTenantType("STORE", "HYBRID"),
+        authenticate,
+        orderController.getOne,
+    );
 
     /**
      * @swagger
@@ -157,7 +173,10 @@ function order(
      */
     router.get(
         "/getOrderByUser",
-        requireTenantType("STORE", "HYBRID"), authenticate, orderController.getByUser);
+        requireTenantType("STORE", "HYBRID"),
+        authenticate,
+        orderController.getByUser,
+    );
 
     // Admin routes
     /**
@@ -287,6 +306,7 @@ function order(
         requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:write"),
+        validateDto(ChangeOrderStatusDto),
         orderController.changeStatus,
     );
 
@@ -326,6 +346,7 @@ function order(
         requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:write"),
+        validateDto(UpdateOrderDto),
         orderController.update,
     );
 
@@ -356,7 +377,10 @@ function order(
      */
     router.get(
         "/:id",
-        requireTenantType("STORE", "HYBRID"), authenticate, orderController.getOneById);
+        requireTenantType("STORE", "HYBRID"),
+        authenticate,
+        orderController.getOneById,
+    );
 }
 
 export default order;

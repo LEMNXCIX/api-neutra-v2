@@ -1,7 +1,12 @@
-import { Application, Router } from 'express';
-import type { RequestHandler } from 'express';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { PermissionController } from '@/interface-adapters/controllers/permission.controller';
+import type { RequestHandler } from "express";
+import { type Application, Router } from "express";
+import {
+    CreatePermissionDto,
+    UpdatePermissionDto,
+} from "@/core/application/dtos/requests/permission.request";
+import type { PermissionController } from "@/interface-adapters/controllers/permission.controller";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function permissionRoutes(
     app: Application,
@@ -9,7 +14,7 @@ function permissionRoutes(
     authenticate: RequestHandler,
 ) {
     const router = Router();
-    app.use('/api/permissions', router);
+    app.use("/api/permissions", router);
 
     /**
      * @swagger
@@ -56,7 +61,12 @@ function permissionRoutes(
      *       403:
      *         description: Forbidden
      */
-    router.get('/', authenticate, requirePermission('permissions:read'), permissionController.getAll);
+    router.get(
+        "/",
+        authenticate,
+        requirePermission("permissions:read"),
+        permissionController.getAll,
+    );
 
     /**
      * @swagger
@@ -82,7 +92,12 @@ function permissionRoutes(
      *       404:
      *         description: Permission not found
      */
-    router.get('/:id', authenticate, requirePermission('permissions:read'), permissionController.getById);
+    router.get(
+        "/:id",
+        authenticate,
+        requirePermission("permissions:read"),
+        permissionController.getById,
+    );
 
     /**
      * @swagger
@@ -111,7 +126,13 @@ function permissionRoutes(
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('permissions:write'), permissionController.create);
+    router.post(
+        "/",
+        authenticate,
+        requirePermission("permissions:write"),
+        validateDto(CreatePermissionDto),
+        permissionController.create,
+    );
 
     /**
      * @swagger
@@ -148,7 +169,13 @@ function permissionRoutes(
      *       404:
      *         description: Permission not found
      */
-    router.put('/:id', authenticate, requirePermission('permissions:write'), permissionController.update);
+    router.put(
+        "/:id",
+        authenticate,
+        requirePermission("permissions:write"),
+        validateDto(UpdatePermissionDto),
+        permissionController.update,
+    );
 
     /**
      * @swagger
@@ -172,7 +199,12 @@ function permissionRoutes(
      *       404:
      *         description: Permission not found
      */
-    router.delete('/:id', authenticate, requirePermission('permissions:delete'), permissionController.delete);
+    router.delete(
+        "/:id",
+        authenticate,
+        requirePermission("permissions:delete"),
+        permissionController.delete,
+    );
 }
 
 export default permissionRoutes;

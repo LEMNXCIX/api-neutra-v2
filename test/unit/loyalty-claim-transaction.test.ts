@@ -95,14 +95,18 @@ function setup(
     netTotal = "10.00",
 ) {
     const ledger = {
-        count: jest.fn().mockImplementation(
-            async ({
-                where,
-            }: {
-                where: { entryType: LoyaltyLedgerEntryType };
-            }) =>
-                where.entryType === LoyaltyLedgerEntryType.REVERSAL ? 0 : 10,
-        ),
+        count: jest
+            .fn()
+            .mockImplementation(
+                async ({
+                    where,
+                }: {
+                    where: { entryType: LoyaltyLedgerEntryType };
+                }) =>
+                    where.entryType === LoyaltyLedgerEntryType.REVERSAL
+                        ? 0
+                        : 10,
+            ),
         aggregate: jest.fn().mockResolvedValue({
             _sum: { value: new Prisma.Decimal(netTotal) },
         }),
@@ -282,9 +286,7 @@ describe("loyalty claim transaction", () => {
 
     test("rejects a campaign whose COUNT progress is below target", async () => {
         const { repository, campaigns, coupons, ledger } = setup();
-        ledger.count
-            .mockResolvedValueOnce(9)
-            .mockResolvedValueOnce(0);
+        ledger.count.mockResolvedValueOnce(9).mockResolvedValueOnce(0);
 
         await expect(
             repository.claimCampaignReward(
@@ -301,21 +303,21 @@ describe("loyalty claim transaction", () => {
     test.each([
         ["draft", { status: LoyaltyCampaignStatus.DRAFT }],
         ["expired", { claimUntil: new Date("2029-12-31T00:00:00.000Z") }],
-    ])("rejects a %s campaign before reserving a claim", async (
-        _label,
-        overrides,
-    ) => {
-        const { repository, campaigns } = setup(overrides);
+    ])(
+        "rejects a %s campaign before reserving a claim",
+        async (_label, overrides) => {
+            const { repository, campaigns } = setup(overrides);
 
-        await expect(
-            repository.claimCampaignReward(
-                "tenant-1",
-                "campaign-1",
-                "customer-1",
-            ),
-        ).rejects.toMatchObject({ code: "LOYALTY_CAMPAIGN_NOT_CLAIMABLE" });
-        expect(campaigns.updateMany).not.toHaveBeenCalled();
-    });
+            await expect(
+                repository.claimCampaignReward(
+                    "tenant-1",
+                    "campaign-1",
+                    "customer-1",
+                ),
+            ).rejects.toMatchObject({ code: "LOYALTY_CAMPAIGN_NOT_CLAIMABLE" });
+            expect(campaigns.updateMany).not.toHaveBeenCalled();
+        },
+    );
 
     test("requires a same-tenant shared loyalty template active through claimUntil", async () => {
         const { repository, campaigns, coupons } = setup();
@@ -381,5 +383,4 @@ describe("loyalty claim transaction", () => {
         expect(result.claim.id).toBe("campaign-claim-1");
         expect(coupons.create).toHaveBeenCalledTimes(1);
     });
-
 });

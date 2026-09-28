@@ -1,8 +1,14 @@
-import nodemailer, { Transporter } from 'nodemailer';
-import handlebars from 'handlebars';
-import fs from 'fs';
-import path from 'path';
-import { IEmailService, TenantEmailConfig } from '@/core/ports/email.port';
+import fs from "node:fs";
+import path from "node:path";
+import handlebars from "handlebars";
+import nodemailer, { type Transporter } from "nodemailer";
+import type {
+    AppointmentEmailData,
+    Attachment,
+    IEmailService,
+    OrderEmailData,
+    TenantEmailConfig,
+} from "@/core/ports/email.port";
 import type { ILogger } from "@/core/providers/logger.interface";
 
 export class NodemailerProvider implements IEmailService {
@@ -12,9 +18,9 @@ export class NodemailerProvider implements IEmailService {
     constructor(private readonly logger: ILogger) {
         // Initialize SMTP transporter
         this.transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'smtp.gmail.com',
-            port: parseInt(process.env.SMTP_PORT || '587'),
-            secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+            host: process.env.SMTP_HOST || "smtp.gmail.com",
+            port: parseInt(process.env.SMTP_PORT || "587", 10),
+            secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
             auth: {
                 user: process.env.SMTP_USER,
                 pass: process.env.SMTP_PASS,
@@ -22,7 +28,11 @@ export class NodemailerProvider implements IEmailService {
         });
 
         // Set templates directory - use absolute path from project root
-        this.templatesPath = path.join(process.cwd(), 'infrastructure', 'email-templates');
+        this.templatesPath = path.join(
+            process.cwd(),
+            "infrastructure",
+            "email-templates",
+        );
     }
 
     /**
@@ -34,18 +44,21 @@ export class NodemailerProvider implements IEmailService {
         template: string,
         data: Record<string, unknown>,
         tenantConfig?: TenantEmailConfig,
-        attachments?: any[]
+        attachments?: Attachment[],
     ): Promise<boolean> {
         try {
             // 1. Load and compile specific template (Content)
-            const templatePath = path.join(this.templatesPath, `${template}.hbs`);
+            const templatePath = path.join(
+                this.templatesPath,
+                `${template}.hbs`,
+            );
 
             if (!fs.existsSync(templatePath)) {
                 this.logger.error(`Email template not found: ${templatePath}`);
                 return false;
             }
 
-            const templateContent = fs.readFileSync(templatePath, 'utf-8');
+            const templateContent = fs.readFileSync(templatePath, "utf-8");
             const compiledTemplate = handlebars.compile(templateContent);
 
             // Merge tenant config with data and add year
@@ -59,11 +72,11 @@ export class NodemailerProvider implements IEmailService {
             const contentHtml = compiledTemplate(emailData);
 
             // 2. Load and compile Base Layout
-            const layoutPath = path.join(this.templatesPath, 'base-layout.hbs');
+            const layoutPath = path.join(this.templatesPath, "base-layout.hbs");
             let finalHtml = contentHtml;
 
             if (fs.existsSync(layoutPath)) {
-                const layoutContent = fs.readFileSync(layoutPath, 'utf-8');
+                const layoutContent = fs.readFileSync(layoutPath, "utf-8");
                 const compiledLayout = handlebars.compile(layoutContent);
 
                 // Render layout with content injected
@@ -72,7 +85,7 @@ export class NodemailerProvider implements IEmailService {
                     content: contentHtml,
                 });
             } else {
-                this.logger.warn('Base layout not found, sending content only');
+                this.logger.warn("Base layout not found, sending content only");
             }
 
             // Send email
@@ -84,10 +97,12 @@ export class NodemailerProvider implements IEmailService {
                 attachments,
             });
 
-            this.logger.info('Email sent successfully', { messageId: info.messageId });
+            this.logger.info("Email sent successfully", {
+                messageId: info.messageId,
+            });
             return true;
         } catch (error) {
-            this.logger.error('Error sending email', error);
+            this.logger.error("Error sending email", error);
             return false;
         }
     }
@@ -98,14 +113,14 @@ export class NodemailerProvider implements IEmailService {
     async sendWelcomeEmail(
         to: string,
         name: string,
-        tenantConfig?: TenantEmailConfig
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean> {
         return this.sendEmail(
             to,
-            'Welcome to ' + (tenantConfig?.tenantName || 'Neutra'),
-            'welcome',
+            `Welcome to ${tenantConfig?.tenantName || "Neutra"}`,
+            "welcome",
             { name },
-            tenantConfig
+            tenantConfig,
         );
     }
 
@@ -114,15 +129,15 @@ export class NodemailerProvider implements IEmailService {
      */
     async sendOrderConfirmation(
         to: string,
-        order: any,
-        tenantConfig?: TenantEmailConfig
+        order: OrderEmailData,
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean> {
         return this.sendEmail(
             to,
             `Order Confirmation #${order.id}`,
-            'order-confirmation',
+            "order-confirmation",
             { order },
-            tenantConfig
+            tenantConfig,
         );
     }
 
@@ -132,14 +147,14 @@ export class NodemailerProvider implements IEmailService {
     async sendPasswordReset(
         to: string,
         resetLink: string,
-        tenantConfig?: TenantEmailConfig
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean> {
         return this.sendEmail(
             to,
-            'Password Reset Request',
-            'password-reset',
+            "Password Reset Request",
+            "password-reset",
             { resetLink },
-            tenantConfig
+            tenantConfig,
         );
     }
 
@@ -148,14 +163,14 @@ export class NodemailerProvider implements IEmailService {
      */
     async sendAppointmentConfirmation(
         to: string,
-        appointment: any,
+        appointment: AppointmentEmailData,
         tenantConfig?: TenantEmailConfig,
-        attachments?: any[]
+        attachments?: Attachment[],
     ): Promise<boolean> {
         return this.sendEmail(
             to,
-            'Appointment Confirmed',
-            'appointment-confirmation',
+            "Appointment Confirmed",
+            "appointment-confirmation",
             {
                 userName: appointment.userName,
                 serviceName: appointment.serviceName,
@@ -165,10 +180,14 @@ export class NodemailerProvider implements IEmailService {
                 duration: appointment.duration,
                 notes: appointment.notes,
                 appointmentId: appointment.id,
-                calendarLink: appointment.calendarLink || '#',
+                // Forwarded as declared on the port. It used to be cast out of
+                // the type and defaulted to '#', so the template always rendered
+                // a dead "Add to Calendar" button. The template now hides the
+                // button when this is absent.
+                calendarLink: appointment.calendarLink,
             },
             tenantConfig,
-            attachments
+            attachments,
         );
     }
 
@@ -177,13 +196,13 @@ export class NodemailerProvider implements IEmailService {
      */
     async sendAppointmentReminder(
         to: string,
-        appointment: any,
-        tenantConfig?: TenantEmailConfig
+        appointment: AppointmentEmailData,
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean> {
         return this.sendEmail(
             to,
-            'Appointment Reminder',
-            'appointment-reminder',
+            "Appointment Reminder",
+            "appointment-reminder",
             {
                 userName: appointment.userName,
                 serviceName: appointment.serviceName,
@@ -193,7 +212,7 @@ export class NodemailerProvider implements IEmailService {
                 duration: appointment.duration,
                 appointmentId: appointment.id,
             },
-            tenantConfig
+            tenantConfig,
         );
     }
 
@@ -202,13 +221,13 @@ export class NodemailerProvider implements IEmailService {
      */
     async sendAppointmentCancellation(
         to: string,
-        appointment: any,
-        tenantConfig?: TenantEmailConfig
+        appointment: AppointmentEmailData,
+        tenantConfig?: TenantEmailConfig,
     ): Promise<boolean> {
         return this.sendEmail(
             to,
-            'Appointment Cancelled',
-            'appointment-cancellation',
+            "Appointment Cancelled",
+            "appointment-cancellation",
             {
                 userName: appointment.userName,
                 serviceName: appointment.serviceName,
@@ -218,7 +237,7 @@ export class NodemailerProvider implements IEmailService {
                 cancellationReason: appointment.cancellationReason,
                 appointmentId: appointment.id,
             },
-            tenantConfig
+            tenantConfig,
         );
     }
 
@@ -227,10 +246,10 @@ export class NodemailerProvider implements IEmailService {
      */
     private getDefaultTenantConfig(): TenantEmailConfig {
         return {
-            tenantName: 'Neutra',
-            supportEmail: process.env.SMTP_FROM || 'support@neutra.com',
-            websiteUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
-            primaryColor: '#000000',
+            tenantName: "Neutra",
+            supportEmail: process.env.SMTP_FROM || "support@neutra.com",
+            websiteUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+            primaryColor: "#000000",
         };
     }
 }

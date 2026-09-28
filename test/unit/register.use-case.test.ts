@@ -1,5 +1,5 @@
 import { RegisterUseCase } from "@/core/application/auth/register.use-case";
-import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 const EMAIL = "emelec_leo@outlook.com";
 const BOOK_TENANT = {
@@ -34,9 +34,11 @@ function setup(options?: {
     passwordMatches?: boolean;
 }) {
     const userRepository = {
-        findByEmail: jest.fn().mockResolvedValue(
-            options?.user === undefined ? existingUser : options.user,
-        ),
+        findByEmail: jest
+            .fn()
+            .mockResolvedValue(
+                options?.user === undefined ? existingUser : options.user,
+            ),
         create: jest.fn(),
         findById: jest.fn().mockResolvedValue(userWithSuperadminMembership),
         addTenant: jest.fn().mockResolvedValue(undefined),
@@ -57,6 +59,12 @@ function setup(options?: {
     const roleRepository = {
         findByName: jest.fn().mockResolvedValue(SUPERADMIN_TENANT.role),
     };
+    const logger = {
+        error: jest.fn(),
+        warn: jest.fn(),
+        info: jest.fn(),
+        debug: jest.fn(),
+    };
 
     const useCase = new RegisterUseCase(
         userRepository as never,
@@ -65,6 +73,7 @@ function setup(options?: {
         queueProvider as never,
         tenantRepository as never,
         roleRepository as never,
+        logger as never,
     );
 
     return {
@@ -127,7 +136,7 @@ describe("RegisterUseCase tenant memberships", () => {
             useCase.execute(SUPERADMIN_TENANT.tenantId, registration),
         ).rejects.toMatchObject({
             name: "BusinessRuleViolationError",
-            code: "USER_ALREADY_EXISTS",
+            code: AuthErrorCodes.EMAIL_TAKEN_IN_OTHER_TENANT,
         });
         expect(userRepository.addTenant).not.toHaveBeenCalled();
     });
@@ -137,9 +146,16 @@ describe("RegisterUseCase tenant memberships", () => {
             user: userWithSuperadminMembership,
         });
 
+        // Not a DuplicateEntityError any more. That rendered as "User with
+        // tenant '<uuid>' already exists", which named the tenant as the
+        // conflicting field and showed a raw id; the code now says what the
+        // caller should do instead.
         await expect(
             useCase.execute(SUPERADMIN_TENANT.tenantId, registration),
-        ).rejects.toBeInstanceOf(DuplicateEntityError);
+        ).rejects.toMatchObject({
+            name: "BusinessRuleViolationError",
+            code: AuthErrorCodes.ALREADY_MEMBER_OF_TENANT,
+        });
         expect(userRepository.addTenant).not.toHaveBeenCalled();
     });
 });

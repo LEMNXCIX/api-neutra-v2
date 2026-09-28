@@ -1,5 +1,6 @@
 import { prisma } from "@/config/db.config";
 import { PrismaOrderRepository } from "@/infrastructure/database/prisma/order.prisma-repository";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 function couponRow(overrides: Record<string, unknown> = {}) {
     return {
@@ -111,14 +112,18 @@ describe("Prisma order coupon transaction", () => {
             "updateMany",
         ) as unknown as jest.Mock;
         usage.mockResolvedValue({ count: 1 });
-        const create = jest.spyOn(prisma.order, "create") as unknown as jest.Mock;
+        const create = jest.spyOn(
+            prisma.order,
+            "create",
+        ) as unknown as jest.Mock;
         create.mockResolvedValue(orderRow());
 
-        const result = await new PrismaOrderRepository().createWithInventoryAdjustment(
-            "tenant-1",
-            orderData(),
-            [{ productId: "product-1", amount: 2 }],
-        );
+        const result =
+            await new PrismaOrderRepository().createWithInventoryAdjustment(
+                "tenant-1",
+                orderData(),
+                [{ productId: "product-1", amount: 2 }],
+            );
 
         expect(result).toEqual(
             expect.objectContaining({
@@ -170,7 +175,9 @@ describe("Prisma order coupon transaction", () => {
                 orderData(),
                 [{ productId: "product-1", amount: 2 }],
             ),
-        ).rejects.toMatchObject({ code: "COUPONS_FEATURE_REQUIRED" });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.COUPONS_FEATURE_REQUIRED,
+        });
         expect(inventory).not.toHaveBeenCalled();
         expect(usage).not.toHaveBeenCalled();
         expect(create).not.toHaveBeenCalled();
@@ -191,7 +198,7 @@ describe("Prisma order coupon transaction", () => {
                 orderData(),
                 [{ productId: "product-1", amount: 2 }],
             ),
-        ).rejects.toMatchObject({ code: "COUPON_NOT_OWNED" });
+        ).rejects.toMatchObject({ code: BusinessErrorCodes.COUPON_NOT_OWNED });
         expect(inventory).not.toHaveBeenCalled();
         expect(usage).not.toHaveBeenCalled();
         expect(create).not.toHaveBeenCalled();
@@ -214,26 +221,34 @@ describe("Prisma order coupon transaction", () => {
             { isLoyaltyTemplate: true, ownerId: null, isReward: false },
             "Loyalty reward templates cannot be redeemed",
         ],
-    ])("rejects %s coupons before inventory changes", async (_, overrides, message) => {
-        passTransaction();
-        jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(
-            couponRow(overrides) as never,
-        );
-        const inventory = jest.spyOn(prisma.product, "updateMany");
-        const usage = jest.spyOn(prisma.coupon, "updateMany");
-        const create = jest.spyOn(prisma.order, "create");
+        [
+            "an unassigned reward",
+            { isReward: true, ownerId: null },
+            "Reward coupon is not assigned to a customer",
+        ],
+    ])(
+        "rejects %s coupons before inventory changes",
+        async (_, overrides, message) => {
+            passTransaction();
+            jest.spyOn(prisma.coupon, "findFirst").mockResolvedValue(
+                couponRow(overrides) as never,
+            );
+            const inventory = jest.spyOn(prisma.product, "updateMany");
+            const usage = jest.spyOn(prisma.coupon, "updateMany");
+            const create = jest.spyOn(prisma.order, "create");
 
-        await expect(
-            new PrismaOrderRepository().createWithInventoryAdjustment(
-                "tenant-1",
-                orderData(),
-                [{ productId: "product-1", amount: 2 }],
-            ),
-        ).rejects.toThrow(message);
-        expect(inventory).not.toHaveBeenCalled();
-        expect(usage).not.toHaveBeenCalled();
-        expect(create).not.toHaveBeenCalled();
-    });
+            await expect(
+                new PrismaOrderRepository().createWithInventoryAdjustment(
+                    "tenant-1",
+                    orderData(),
+                    [{ productId: "product-1", amount: 2 }],
+                ),
+            ).rejects.toThrow(message);
+            expect(inventory).not.toHaveBeenCalled();
+            expect(usage).not.toHaveBeenCalled();
+            expect(create).not.toHaveBeenCalled();
+        },
+    );
 
     test("rejects a category mismatch before inventory changes", async () => {
         passTransaction();
@@ -253,7 +268,9 @@ describe("Prisma order coupon transaction", () => {
                 orderData(),
                 [{ productId: "product-1", amount: 2 }],
             ),
-        ).rejects.toThrow("Coupon not applicable to product categories in cart");
+        ).rejects.toThrow(
+            "Coupon not applicable to product categories in cart",
+        );
         expect(inventory).not.toHaveBeenCalled();
         expect(usage).not.toHaveBeenCalled();
         expect(create).not.toHaveBeenCalled();
@@ -310,24 +327,24 @@ describe("Prisma order coupon transaction", () => {
         jest.spyOn(prisma.product, "findMany").mockResolvedValue([
             { id: "product-1", categories: [] },
         ] as never);
-        (jest.spyOn(prisma.product, "updateMany") as unknown as jest.Mock).mockImplementation(
-            async () => {
-                stock -= 2;
-                return { count: 1 };
-            },
-        );
+        (
+            jest.spyOn(prisma.product, "updateMany") as unknown as jest.Mock
+        ).mockImplementation(async () => {
+            stock -= 2;
+            return { count: 1 };
+        });
         (
             jest.spyOn(prisma.coupon, "updateMany") as unknown as jest.Mock
         ).mockImplementation(async () => {
             usageCount += 1;
             return { count: 1 };
         });
-        (jest.spyOn(prisma.order, "create") as unknown as jest.Mock).mockImplementation(
-            async () => {
-                orderCreated = true;
-                throw error;
-            },
-        );
+        (
+            jest.spyOn(prisma.order, "create") as unknown as jest.Mock
+        ).mockImplementation(async () => {
+            orderCreated = true;
+            throw error;
+        });
 
         await expect(
             new PrismaOrderRepository().createWithInventoryAdjustment(

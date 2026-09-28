@@ -1,14 +1,11 @@
-import { Request, Response, NextFunction } from "express";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ErrorCodes } from "@/types/error-codes";
-import {
-    TENANT_CONSTANTS,
-    isDevelopment,
-    isTest,
-} from "@/core/domain/constants";
+import type { NextFunction, Request, Response } from "express";
 import { TENANT_HTTP_CONSTANTS } from "@/config/infrastructure-constants";
-import config from "@/config/index.config";
+import { isDevelopment, TENANT_CONSTANTS } from "@/core/domain/constants";
+import { evaluateTenantActive } from "@/core/domain/tenant/feature-policy";
+import type { Tenant } from "@/core/entities/tenant.entity";
 import type { ILogger } from "@/core/providers/logger.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { ErrorCodes } from "@/types/error-codes";
 
 function isManagementRoute(normalizedPath: string): boolean {
     return TENANT_HTTP_CONSTANTS.MANAGEMENT_PATH_PREFIXES.some((prefix) =>
@@ -96,19 +93,16 @@ export function createTenantMiddleware(deps: {
                 }
             }
 
-            if (isTest(environment) || isTest(config.env)) {
-                req.tenantId = tenantId || "default-tenant-id";
-                req.tenant = {
-                    id: req.tenantId,
-                    name: "Test Tenant",
-                    slug: tenantSlug || "default",
-                    type: "STORE",
-                    active: true,
-                };
-                return next();
-            }
-
-            let tenant;
+            // No environment-dependent shortcut: the tenant is always resolved
+            // through the repository and always runs the activity check, so a
+            // missing or inactive tenant behaves the same in test and in
+            // production. The previous branch fabricated a hardcoded STORE
+            // tenant under NODE_ENV=test before the lookup, which made a 404 and
+            // an inactive tenant unreachable in tests and let a BOOKING-only
+            // route pass a STORE tenant. It also read config.env directly, so
+            // behaviour depended on ambient config rather than the injected
+            // environment.
+            let tenant: Tenant | null | undefined;
             if (tenantSlug) {
                 tenant = await deps.tenantRepository.findBySlug(tenantSlug);
             } else if (tenantId) {
@@ -134,15 +128,16 @@ export function createTenantMiddleware(deps: {
                 return;
             }
 
-            if (!tenant.active) {
+            const activity = evaluateTenantActive({ active: tenant.active });
+            if (!activity.allowed) {
                 res.status(403).json({
                     success: false,
                     statusCode: 403,
                     message: "Tenant is inactive. Please contact support.",
                     errors: [
                         {
-                            code: ErrorCodes.TENANT_INACTIVE,
-                            message: "Tenant is inactive.",
+                            code: activity.code,
+                            message: activity.message,
                         },
                     ],
                 });

@@ -1,4 +1,4 @@
-import { Slideshow } from "@/core/entities/slide.entity";
+import type { Slideshow } from "@/core/entities/slide.entity";
 
 export interface ISlideResponse {
     id: string;

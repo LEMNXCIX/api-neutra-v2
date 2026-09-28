@@ -1,14 +1,18 @@
-import { Request, Response } from "express";
-import { GetAllProductsUseCase } from "@/core/application/products/get-all-products.use-case";
-import { GetProductUseCase } from "@/core/application/products/get-product.use-case";
-import { CreateProductUseCase } from "@/core/application/products/create-product.use-case";
-import { UpdateProductUseCase } from "@/core/application/products/update-product.use-case";
-import { DeleteProductUseCase } from "@/core/application/products/delete-product.use-case";
-import { SearchProductsUseCase } from "@/core/application/products/search-products.use-case";
-import { GetProductStatsUseCase } from "@/core/application/products/get-product-stats.use-case";
-import { GetProductSummaryStatsUseCase } from "@/core/application/products/get-product-summary-stats.use-case";
-
-import { ProductPresenter } from "@/core/presenters/product.presenter";
+import type { Request, Response } from "express";
+import type {
+    CreateProductDto,
+    SearchProductDto,
+    UpdateProductDTO,
+} from "@/core/application/dtos/requests/product.request";
+import { ProductResponse } from "@/core/application/dtos/responses/product/product.response";
+import type { CreateProductUseCase } from "@/core/application/products/create-product.use-case";
+import type { DeleteProductUseCase } from "@/core/application/products/delete-product.use-case";
+import type { GetAllProductsUseCase } from "@/core/application/products/get-all-products.use-case";
+import type { GetProductUseCase } from "@/core/application/products/get-product.use-case";
+import type { GetProductStatsUseCase } from "@/core/application/products/get-product-stats.use-case";
+import type { GetProductSummaryStatsUseCase } from "@/core/application/products/get-product-summary-stats.use-case";
+import type { SearchProductsUseCase } from "@/core/application/products/search-products.use-case";
+import type { UpdateProductUseCase } from "@/core/application/products/update-product.use-case";
 import { present } from "@/core/utils/use-case-result";
 
 export class ProductController {
@@ -37,7 +41,13 @@ export class ProductController {
         const tenantId = req.tenantId!;
 
         const result = await this.getAllProductsUseCase.execute(tenantId);
-        return res.json(present(result, ProductPresenter.toResponseList));
+        return res.json(
+            present(result, (products) =>
+                Array.isArray(products)
+                    ? products.map((p) => ProductResponse.fromEntity(p))
+                    : [],
+            ),
+        );
     }
 
     async getOne(req: Request, res: Response) {
@@ -45,18 +55,20 @@ export class ProductController {
 
         const id = req.params.id;
         const result = await this.getProductUseCase.execute(tenantId, id);
-        return res.json(present(result, ProductPresenter.toResponse));
+        return res.json(present(result, ProductResponse.fromEntity));
     }
 
     async create(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const result = await this.createProductUseCase.execute(tenantId, {
-            ...req.body,
+            ...(req.validatedBody as CreateProductDto),
+            // `ownerId` is the authenticated author, not a body field: it is
+            // spread last, so a body carrying one cannot claim the product.
             ownerId: req.user!.id,
         });
         return res
             .status(201)
-            .json(present(result, ProductPresenter.toResponse));
+            .json(present(result, ProductResponse.fromEntity));
     }
 
     async update(req: Request, res: Response) {
@@ -65,9 +77,9 @@ export class ProductController {
         const result = await this.updateProductUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateProductDTO,
         );
-        return res.json(present(result, ProductPresenter.toResponse));
+        return res.json(present(result, ProductResponse.fromEntity));
     }
 
     async delete(req: Request, res: Response) {
@@ -84,9 +96,15 @@ export class ProductController {
 
     async search(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const name = req.body.name;
+        const name = (req.validatedBody as SearchProductDto).name;
         const result = await this.searchProductsUseCase.execute(tenantId, name);
-        return res.json(present(result, ProductPresenter.toResponseList));
+        return res.json(
+            present(result, (products) =>
+                Array.isArray(products)
+                    ? products.map((p) => ProductResponse.fromEntity(p))
+                    : [],
+            ),
+        );
     }
 
     async getStats(req: Request, res: Response) {

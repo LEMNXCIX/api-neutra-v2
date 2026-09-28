@@ -1,22 +1,18 @@
-import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
-import { ValidateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
-import { CouponValidationResult } from "@/core/application/dtos/responses/coupon/coupon-validation.response";
+import type { ValidateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
+import type { CouponValidationResult } from "@/core/application/dtos/responses/coupon/coupon-validation.response";
 import {
-    isExpired,
-    hasReachedUsageLimit,
-    isApplicableToProduct,
-    isApplicableToCategory,
+    assertCouponRedeemable,
     calculateDiscount,
-    isCouponOwnedBy,
-    isPersonalCoupon,
-    isRewardCoupon,
-    isLoyaltyTemplateCoupon,
-} from "@/core/entities/coupon.entity";
+    isApplicableToCategory,
+    isApplicableToProduct,
+    toRedeemableCoupon,
+} from "@/core/domain/coupon/coupon.policy";
 import {
-    EntityNotFoundError,
     BusinessRuleViolationError,
+    EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
-import { UseCaseResult, Success } from "@/core/utils/use-case-result";
+import type { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class ValidateCouponUseCase {
     constructor(private couponRepository: ICouponRepository) {}
@@ -36,38 +32,7 @@ export class ValidateCouponUseCase {
             throw new EntityNotFoundError("Coupon", data.code);
         }
 
-        if (isLoyaltyTemplateCoupon(coupon)) {
-            throw new BusinessRuleViolationError(
-                "Loyalty reward templates cannot be redeemed",
-                "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
-            );
-        }
-
-        if (!isCouponOwnedBy(coupon, userId)) {
-            throw new BusinessRuleViolationError(
-                "Coupon is not available for this user",
-                "COUPON_NOT_OWNED",
-            );
-        }
-
-        if (isRewardCoupon(coupon) && !isPersonalCoupon(coupon)) {
-            throw new BusinessRuleViolationError(
-                "Reward coupon is not assigned to a customer",
-                "REWARD_COUPON_NOT_OWNED",
-            );
-        }
-
-        if (!coupon.active) {
-            throw new BusinessRuleViolationError("Coupon is not active");
-        }
-
-        if (isExpired(coupon)) {
-            throw new BusinessRuleViolationError("Coupon has expired");
-        }
-
-        if (hasReachedUsageLimit(coupon)) {
-            throw new BusinessRuleViolationError("Coupon usage limit reached");
-        }
+        assertCouponRedeemable(toRedeemableCoupon(coupon), userId);
 
         if (
             coupon.minPurchaseAmount &&

@@ -1,15 +1,15 @@
-import {
-    IsString,
-    IsEmail,
-    MinLength,
-    MaxLength,
-    IsOptional,
-    IsArray,
-    IsNumber,
-    IsPositive,
-    Min,
-} from "class-validator";
 import { Transform } from "class-transformer";
+import {
+    IsArray,
+    IsEmail,
+    IsNumber,
+    IsOptional,
+    IsPositive,
+    IsString,
+    MaxLength,
+    Min,
+    MinLength,
+} from "class-validator";
 
 /**
  * @swagger
@@ -95,7 +95,12 @@ export class CreateUserDto {
  *           format: email
  *         password:
  *           type: string
- *           minLength: 8
+ *           description: >-
+ *             No minimum length here on purpose. Login authenticates an existing
+ *             credential; it does not set one. Enforcing the registration policy
+ *             at login locks out every account whose password predates the
+ *             policy, and answers "your password is malformed" for a password
+ *             that is perfectly valid. Registration and reset own the policy.
  */
 export class LoginDto {
     @IsEmail()
@@ -103,7 +108,6 @@ export class LoginDto {
     email!: string;
 
     @IsString()
-    @MinLength(8)
     password!: string;
 }
 

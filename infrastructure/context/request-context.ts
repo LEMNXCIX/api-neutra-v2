@@ -1,10 +1,19 @@
-import { AsyncLocalStorage } from 'async_hooks';
-import { Request } from 'express';
+import { AsyncLocalStorage } from "node:async_hooks";
+import type { Request } from "express";
+
+function isErrorBag(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 export interface IRequestContext {
     req: Request;
-    error?: any;
-    [key: string]: any;
+    /**
+     * Opaque error bag captured during the request. It is only forwarded to the
+     * request log, so the store never asserts a shape for it; readers narrow it.
+     */
+    error?: unknown;
+    /** Extra per-request values attached by middleware (heterogeneous by nature). */
+    [key: string]: unknown;
 }
 
 export class RequestContext {
@@ -22,14 +31,19 @@ export class RequestContext {
         return this.get()?.req;
     }
 
-    static setError(error: any) {
+    static setError(error: unknown) {
         const store = this.get();
         if (store) {
             store.error = error;
         }
     }
 
-    static getError(): any | undefined {
-        return this.get()?.error;
+    /**
+     * Narrowed at the boundary: consumers (the request log) only accept a
+     * key/value bag, so a non-record is reported as "no error captured".
+     */
+    static getError(): Record<string, unknown> | undefined {
+        const error = this.get()?.error;
+        return isErrorBag(error) ? error : undefined;
     }
 }

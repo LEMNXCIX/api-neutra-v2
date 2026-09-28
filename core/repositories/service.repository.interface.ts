@@ -1,4 +1,4 @@
-import { Service } from "@/core/entities/service.entity";
+import type { Service } from "@/core/entities/service.entity";
 
 export type ServiceCreateData = {
     name: string;

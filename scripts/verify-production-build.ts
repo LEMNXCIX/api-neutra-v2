@@ -24,11 +24,7 @@ function javascriptFiles(root: string): string[] {
     return files;
 }
 
-function relativeAlias(
-    file: string,
-    alias: string,
-    root: string,
-): string {
+function relativeAlias(file: string, alias: string, root: string): string {
     let target = path.resolve(root, alias);
     const targetRelative = path.relative(root, target);
     if (
@@ -43,9 +39,29 @@ function relativeAlias(
         target = `${target}.js`;
     }
 
-    let relative = path.relative(path.dirname(file), target).replace(/\\/g, "/");
+    let relative = path
+        .relative(path.dirname(file), target)
+        .replace(/\\/g, "/");
     if (!relative.startsWith(".")) relative = `./${relative}`;
     return relative;
+}
+
+/**
+ * A line that carries no code: a `//` comment, or any part of a block
+ * comment. Aliased specifiers written inside a comment are documentation,
+ * not imports, and rewriting or flagging them is wrong. This mirrors the
+ * comment handling in check-architecture.ts and the doctor's rules.
+ */
+function isCodeLine(line: string): boolean {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("//")) return false;
+    if (trimmed.startsWith("/*") || trimmed.startsWith("*")) return false;
+    if (trimmed.startsWith("*/")) return false;
+    return true;
+}
+
+function codeLines(source: string): string {
+    return source.split("\n").filter(isCodeLine).join("\n");
 }
 
 export function rewriteProductionAliases(root = distRoot): number {
@@ -57,11 +73,22 @@ export function rewriteProductionAliases(root = distRoot): number {
     const aliasPattern = /(['"])@\/([^'"]+)\1/g;
     for (const file of javascriptFiles(root)) {
         const source = fs.readFileSync(file, "utf8");
-        const rewritten = source.replace(
-            aliasPattern,
-            (_match: string, quote: string, alias: string) =>
-                `${quote}${relativeAlias(file, alias, root)}${quote}`,
-        );
+        // Rewrite line by line so a comment that spells out an aliased
+        // specifier is left alone. Rewriting the whole source at once made a
+        // comment fail the production build with `Alias escapes dist`, while
+        // tsc stayed clean, so the break only surfaced at build time.
+        const rewritten = source
+            .split("\n")
+            .map((line) =>
+                isCodeLine(line)
+                    ? line.replace(
+                          aliasPattern,
+                          (_match: string, quote: string, alias: string) =>
+                              `${quote}${relativeAlias(file, alias, root)}${quote}`,
+                      )
+                    : line,
+            )
+            .join("\n");
 
         if (rewritten !== source) {
             fs.writeFileSync(file, rewritten);
@@ -75,7 +102,7 @@ function unresolvedAliasFiles(root: string): string[] {
     const aliasReference =
         /(?:\b(?:require|import)\s*\(|\bfrom\s+|\bexport\s+\*\s+from\s+)['"]@\//;
     return javascriptFiles(root).filter((file) =>
-        aliasReference.test(fs.readFileSync(file, "utf8")),
+        aliasReference.test(codeLines(fs.readFileSync(file, "utf8"))),
     );
 }
 
@@ -134,7 +161,9 @@ if (require.main === module) {
         verifyProductionBuild();
     } catch (error) {
         console.error(
-            error instanceof Error ? error.message : "Production verification failed",
+            error instanceof Error
+                ? error.message
+                : "Production verification failed",
         );
         process.exitCode = 1;
     }

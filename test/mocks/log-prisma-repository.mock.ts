@@ -1,9 +1,9 @@
-import {
+import type {
     ILogRepository,
-    LogFilters,
-    LogEntry,
-    LogStats,
     LogCreateData,
+    LogEntry,
+    LogFilters,
+    LogStats,
 } from "@/core/repositories/log.repository.interface";
 
 class NoOpLogRepository implements ILogRepository {

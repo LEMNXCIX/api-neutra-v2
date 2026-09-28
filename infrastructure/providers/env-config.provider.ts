@@ -1,5 +1,5 @@
-import { IConfigProvider } from "@/core/providers/config-provider.interface";
 import config from "@/config/index.config";
+import type { IConfigProvider } from "@/core/providers/config-provider.interface";
 
 /**
  * Env-backed config adapter. Prefer this (or `config`) over raw process.env outside infrastructure.

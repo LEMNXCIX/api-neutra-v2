@@ -1,4 +1,4 @@
-import { Staff } from "@/core/entities/staff.entity";
+import type { Staff } from "@/core/entities/staff.entity";
 
 type WorkingHours = {
     [day: string]: {

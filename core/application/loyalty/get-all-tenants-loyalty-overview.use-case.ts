@@ -1,10 +1,10 @@
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     buildLoyaltyTenantOverview,
-    LoyaltyCampaignTenantOverview,
+    type LoyaltyCampaignTenantOverview,
 } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
+import type { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetAllTenantsLoyaltyOverviewUseCase {
     constructor(

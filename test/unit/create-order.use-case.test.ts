@@ -1,10 +1,11 @@
+import type { CreateOrderDTO } from "@/core/application/dtos/requests/order.request";
 import { CreateOrderUseCase } from "@/core/application/order/create-order.use-case";
-import { CreateOrderDTO } from "@/core/application/dtos/requests/order.request";
-import { OrderController } from "@/interface-adapters/controllers/order.controller";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import { OrderController } from "@/interface-adapters/controllers/order.controller";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 const CART_ITEM = {
     id: "p1",
@@ -114,7 +115,9 @@ describe("CreateOrderUseCase", () => {
             },
             "u1",
         );
-        expect(orderRepository.createWithInventoryAdjustment).toHaveBeenCalledWith(
+        expect(
+            orderRepository.createWithInventoryAdjustment,
+        ).toHaveBeenCalledWith(
             "t1",
             {
                 userId: "u1",
@@ -140,7 +143,9 @@ describe("CreateOrderUseCase", () => {
 
         await expect(
             useCase.execute("t1", "u1", "STORE-10"),
-        ).rejects.toMatchObject({ code: "COUPONS_FEATURE_REQUIRED" });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.COUPONS_FEATURE_REQUIRED,
+        });
         expect(validateCouponUseCase.execute).not.toHaveBeenCalled();
         expect(
             orderRepository.createWithInventoryAdjustment,
@@ -165,8 +170,13 @@ describe("CreateOrderUseCase", () => {
     });
 
     test("email failure is logged but does not break the order", async () => {
-        const { useCase, emailService, featureRepository, userRepository, logger } =
-            setup();
+        const {
+            useCase,
+            emailService,
+            featureRepository,
+            userRepository,
+            logger,
+        } = setup();
         emailService.sendOrderConfirmation.mockRejectedValue(
             new Error("smtp down"),
         );
@@ -189,7 +199,9 @@ describe("CreateOrderUseCase", () => {
 describe("OrderController coupon identity", () => {
     test("forwards couponCode and ignores an arbitrary coupon ID", async () => {
         const createOrderUseCase = {
-            execute: jest.fn().mockResolvedValue({ success: true, message: "ok" }),
+            execute: jest
+                .fn()
+                .mockResolvedValue({ success: true, message: "ok" }),
         };
         const controller = new OrderController(
             createOrderUseCase as never,

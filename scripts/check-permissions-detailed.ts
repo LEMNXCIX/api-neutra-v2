@@ -1,41 +1,41 @@
-import { prisma } from '../config/db.config';
+import { prisma } from "../config/db.config";
 
 async function main() {
-    console.log('--- SUPER_ADMIN ROLE INVESTIGATION ---');
+    console.log("--- SUPER_ADMIN ROLE INVESTIGATION ---");
     const saRoles = await prisma.role.findMany({
-        where: { name: 'SUPER_ADMIN' },
+        where: { name: "SUPER_ADMIN" },
         include: {
             tenant: {
                 select: {
-                    slug: true
-                }
+                    slug: true,
+                },
             },
             permissions: {
                 include: {
-                    permission: true
-                }
-            }
-        }
+                    permission: true,
+                },
+            },
+        },
     });
 
     for (const role of saRoles) {
         console.log(`\nRole ID: ${role.id}`);
         console.log(`Role Name: ${role.name}`);
-        console.log(`Tenant: ${role.tenant?.slug || 'GLOBAL'}`);
+        console.log(`Tenant: ${role.tenant?.slug || "GLOBAL"}`);
         console.log(`Permissions (${role.permissions.length}):`);
-        console.log(role.permissions.map(p => p.permission.name).join(', '));
+        console.log(role.permissions.map((p) => p.permission.name).join(", "));
     }
 
-    console.log('\n--- ALL USERS WITH ROLES ---');
+    console.log("\n--- ALL USERS WITH ROLES ---");
     const users = await prisma.user.findMany({
         include: {
             tenants: {
                 include: {
                     tenant: true,
-                    role: true
-                }
-            }
-        }
+                    role: true,
+                },
+            },
+        },
     });
 
     for (const user of users) {
@@ -47,5 +47,5 @@ async function main() {
 }
 
 main()
-    .catch(e => console.error(e))
+    .catch((e) => console.error(e))
     .finally(() => prisma.$disconnect());

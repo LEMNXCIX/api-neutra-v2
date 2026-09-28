@@ -2,12 +2,12 @@
 # They are provided by a third-party and are governed by
 # separate terms of service, privacy policy, and support
 # documentation.
-# ESLint is a tool for identifying and reporting on patterns
-# found in ECMAScript/JavaScript code.
-# More details at https://github.com/eslint/eslint
-# and https://eslint.org
+# Biome is the tool for identifying and reporting on patterns
+# found in ECMAScript/JavaScript code, and it also formats.
+# More details at https://biomejs.dev
+# and https://biomejs.dev/guides/getting-started/
 
-name: ESLint
+name: Lint
 
 on:
   push:
@@ -19,12 +19,11 @@ on:
     - cron: '20 10 * * 3'
 
 jobs:
-  eslint:
-    name: Run eslint scanning
+  lint:
+    name: Run biome scanning
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
       # Required for a private repository to get the Action run status.
       actions: read
     steps:
@@ -40,27 +39,5 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Install ESLint and Formatter
-        run: |
-          npm install eslint@8.10.0
-          npm install @microsoft/eslint-formatter-sarif@2.1.7
-
-      - name: Run ESLint
-        run: |
-          npx eslint . \
-            --config .eslintrc.js \
-            --ext .js,.jsx,.ts,.tsx \
-            --format @microsoft/eslint-formatter-sarif \
-            --output-file eslint-results.sarif
-        continue-on-error: true
-
-      - name: Display ESLint results (debug)
-        run: cat eslint-results.sarif
-        continue-on-error: true
-
-      - name: Upload analysis results to GitHub
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: eslint-results.sarif
-          wait-for-processing: true
-        continue-on-error: true
+      - name: Run Biome
+        run: npm run lint

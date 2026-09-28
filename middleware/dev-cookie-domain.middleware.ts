@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 import config from "@/config/index.config";
 import {
     AUTH_CONSTANTS,
@@ -22,7 +22,7 @@ export function devCookieDomainMiddleware(
     }
 
     const host = req.get("host");
-    if (host && host.includes(".localhost")) {
+    if (host?.includes(".localhost")) {
         res.cookie(AUTH_CONSTANTS.COOKIE_NAME, req.cookies.token, {
             path: "/",
             httpOnly: true,

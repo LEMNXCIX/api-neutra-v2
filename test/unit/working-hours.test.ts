@@ -1,10 +1,11 @@
-import { GetAvailabilityUseCase } from "@/core/application/booking/get-availability.use-case";
 import { CreateAppointmentUseCase } from "@/core/application/booking/create-appointment.use-case";
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
-import { IServiceRepository } from "@/core/repositories/service.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { GetAvailabilityUseCase } from "@/core/application/booking/get-availability.use-case";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import type { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import type { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 // 2030-01-04 is a Friday, 2030-01-06 is a Sunday. Local noon avoids TZ day shifts.
 const FRIDAY = "2030-01-04T12:00:00";
@@ -14,7 +15,11 @@ const makeDeps = (overrides: {
     staff?: Record<string, unknown>;
     tenant?: Record<string, unknown>;
     duration?: number;
-    appointments?: Array<{ startTime: Date | string; endTime: Date | string; status: string }>;
+    appointments?: Array<{
+        startTime: Date | string;
+        endTime: Date | string;
+        status: string;
+    }>;
 }) => {
     const appointmentRepo = {
         findByStaff: jest.fn().mockResolvedValue(overrides.appointments || []),
@@ -105,9 +110,35 @@ describe("GetAvailabilityUseCase — working hours", () => {
         expect(result.data).toEqual([]);
     });
 
+    it("returns [] when the tenant business schedule closes Friday", async () => {
+        const deps = makeDeps({
+            staff: {
+                workingHours: {
+                    friday: { start: "09:00", end: "17:00" },
+                },
+            },
+            tenant: {
+                businessHours: {
+                    friday: null,
+                    monday: { start: "09:00", end: "17:00" },
+                },
+            },
+        });
+        const uc = new GetAvailabilityUseCase(
+            deps.appointmentRepo,
+            deps.staffRepo,
+            deps.serviceRepo,
+            deps.tenantRepo,
+        );
+        const result = await uc.execute("t1", { ...base, date: FRIDAY });
+        expect(result.data).toEqual([]);
+    });
+
     it("respects a late start (friday 14:00-20:00)", async () => {
         const deps = makeDeps({
-            staff: { workingHours: { friday: { start: "14:00", end: "20:00" } } },
+            staff: {
+                workingHours: { friday: { start: "14:00", end: "20:00" } },
+            },
         });
         const uc = new GetAvailabilityUseCase(
             deps.appointmentRepo,
@@ -123,7 +154,9 @@ describe("GetAvailabilityUseCase — working hours", () => {
 
     it("supports legacy single-range format", async () => {
         const deps = makeDeps({
-            staff: { workingHours: { friday: { start: "10:00", end: "11:00" } } },
+            staff: {
+                workingHours: { friday: { start: "10:00", end: "11:00" } },
+            },
         });
         const uc = new GetAvailabilityUseCase(
             deps.appointmentRepo,
@@ -163,7 +196,9 @@ describe("GetAvailabilityUseCase — working hours", () => {
 
     it("prevents cross-service overlaps (90min manicure blocks 30min haircut)", async () => {
         const deps = makeDeps({
-            staff: { workingHours: { friday: { start: "09:00", end: "17:00" } } },
+            staff: {
+                workingHours: { friday: { start: "09:00", end: "17:00" } },
+            },
             appointments: [
                 {
                     startTime: new Date("2030-01-04T10:00:00.000Z"),
@@ -188,8 +223,12 @@ describe("GetAvailabilityUseCase — working hours", () => {
 
     it("intersects staff hours with tenant business hours", async () => {
         const deps = makeDeps({
-            staff: { workingHours: { friday: { start: "09:00", end: "17:00" } } },
-            tenant: { businessHours: { friday: { start: "10:00", end: "16:00" } } },
+            staff: {
+                workingHours: { friday: { start: "09:00", end: "17:00" } },
+            },
+            tenant: {
+                businessHours: { friday: { start: "10:00", end: "16:00" } },
+            },
         });
         const uc = new GetAvailabilityUseCase(
             deps.appointmentRepo,
@@ -253,7 +292,7 @@ describe("CreateAppointmentUseCase — schedule validation", () => {
                 } as never),
             ).rejects.toMatchObject({
                 name: "BusinessRuleViolationError",
-                code: "START_TIME_NOT_IN_FUTURE",
+                code: BusinessErrorCodes.START_TIME_NOT_IN_FUTURE,
                 message: "The appointment start time must be in the future",
             });
         } finally {
@@ -263,7 +302,9 @@ describe("CreateAppointmentUseCase — schedule validation", () => {
 
     it("rejects appointments outside working hours", async () => {
         const uc = makeUseCase({
-            staff: { workingHours: { friday: { start: "14:00", end: "20:00" } } },
+            staff: {
+                workingHours: { friday: { start: "14:00", end: "20:00" } },
+            },
         });
         await expect(
             uc.execute("t1", {
@@ -273,6 +314,32 @@ describe("CreateAppointmentUseCase — schedule validation", () => {
                 startTime: new Date("2030-01-04T09:00:00").toISOString(),
             } as never),
         ).rejects.toThrow(BusinessRuleViolationError);
+    });
+
+    it("rejects appointments on a tenant business-closed day", async () => {
+        const uc = makeUseCase({
+            staff: {
+                workingHours: {
+                    friday: { start: "09:00", end: "17:00" },
+                },
+            },
+            tenant: {
+                businessHours: {
+                    friday: null,
+                    monday: { start: "09:00", end: "17:00" },
+                },
+            },
+        });
+        await expect(
+            uc.execute("t1", {
+                userId: "u1",
+                serviceId: "svc1",
+                staffId: "s1",
+                startTime: new Date("2030-01-04T15:00:00").toISOString(),
+            } as never),
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.OUTSIDE_WORKING_HOURS,
+        });
     });
 
     it("rejects appointments on holidays", async () => {
@@ -289,7 +356,9 @@ describe("CreateAppointmentUseCase — schedule validation", () => {
 
     it("accepts appointments inside working hours", async () => {
         const uc = makeUseCase({
-            staff: { workingHours: { friday: { start: "14:00", end: "20:00" } } },
+            staff: {
+                workingHours: { friday: { start: "14:00", end: "20:00" } },
+            },
         });
         const result = await uc.execute("t1", {
             userId: "u1",

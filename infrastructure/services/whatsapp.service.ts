@@ -1,9 +1,12 @@
-import axios, { AxiosInstance } from "axios";
-import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
-import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
+import axios from "axios";
+import type { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
 import type { ILogger } from "@/core/providers/logger.interface";
-import { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
-import type { MetaMessageResponse, MetaTemplateComponent } from "@/types/whatsapp-meta.types";
+import type { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
+import type { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
+import type {
+    MetaMessageResponse,
+    MetaTemplateComponent,
+} from "@/types/whatsapp-meta.types";
 
 export class WhatsAppService implements IWhatsAppService {
     private apiVersion: string;
@@ -30,7 +33,7 @@ export class WhatsAppService implements IWhatsAppService {
         try {
             const config =
                 await this.whatsappConfigRepository.findByTenantId(tenantId);
-            if (!config || !config.enabled) {
+            if (!config?.enabled) {
                 throw new Error(
                     "WhatsApp not configured or disabled for this tenant",
                 );
@@ -56,7 +59,8 @@ export class WhatsAppService implements IWhatsAppService {
                 },
             });
 
-            const waMessageId = (response.data as MetaMessageResponse).messages[0].id;
+            const waMessageId = (response.data as MetaMessageResponse)
+                .messages[0].id;
 
             // Save message to DB
             await this.whatsappMessageRepository.create({
@@ -72,7 +76,9 @@ export class WhatsAppService implements IWhatsAppService {
 
             return waMessageId;
         } catch (error) {
-            this.logger.error(`Error sending WhatsApp message: ${(error as Error).message}`);
+            this.logger.error(
+                `Error sending WhatsApp message: ${(error as Error).message}`,
+            );
             throw error;
         }
     }
@@ -90,7 +96,7 @@ export class WhatsAppService implements IWhatsAppService {
         try {
             const config =
                 await this.whatsappConfigRepository.findByTenantId(tenantId);
-            if (!config || !config.enabled) {
+            if (!config?.enabled) {
                 throw new Error(
                     "WhatsApp not configured or disabled for this tenant",
                 );
@@ -133,7 +139,9 @@ export class WhatsAppService implements IWhatsAppService {
 
             return waMessageId;
         } catch (error) {
-            this.logger.error(`Error sending WhatsApp template: ${(error as Error).message}`);
+            this.logger.error(
+                `Error sending WhatsApp template: ${(error as Error).message}`,
+            );
             throw error;
         }
     }

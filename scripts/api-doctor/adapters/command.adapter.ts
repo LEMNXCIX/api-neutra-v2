@@ -36,9 +36,7 @@ function boundedOutput(
     value: string | Buffer,
     maxBytes: number,
 ): { text: string; truncated: boolean } {
-    const buffer = Buffer.isBuffer(value)
-        ? value
-        : Buffer.from(value, "utf8");
+    const buffer = Buffer.isBuffer(value) ? value : Buffer.from(value, "utf8");
     if (buffer.length <= maxBytes) {
         return { text: buffer.toString("utf8"), truncated: false };
     }

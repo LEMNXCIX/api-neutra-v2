@@ -5,13 +5,15 @@ const ROOT = path.resolve(__dirname, "../..");
 
 function filesIn(directory: string): string[] {
     if (!fs.existsSync(directory)) return [];
-    return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-        const fullPath = path.join(directory, entry.name);
-        if (entry.isDirectory()) return filesIn(fullPath);
-        return entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")
-            ? [fullPath]
-            : [];
-    });
+    return fs
+        .readdirSync(directory, { withFileTypes: true })
+        .flatMap((entry) => {
+            const fullPath = path.join(directory, entry.name);
+            if (entry.isDirectory()) return filesIn(fullPath);
+            return entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")
+                ? [fullPath]
+                : [];
+        });
 }
 
 function importedModule(line: string): string | null {
@@ -57,7 +59,9 @@ describe("api-doctor domain/application boundaries", () => {
                         violations.push(`${relative}:${index + 1} ${reason}`);
                     }
                     if (/\bprocess\s*\./.test(line)) {
-                        violations.push(`${relative}:${index + 1} process usage`);
+                        violations.push(
+                            `${relative}:${index + 1} process usage`,
+                        );
                     }
                 });
             }

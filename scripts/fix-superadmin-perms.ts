@@ -1,15 +1,15 @@
-import { prisma } from '../config/db.config';
+import { prisma } from "../config/db.config";
 
 async function main() {
-    console.log('--- ASSIGNING ALL PERMISSIONS TO SUPER_ADMIN ---');
+    console.log("--- ASSIGNING ALL PERMISSIONS TO SUPER_ADMIN ---");
 
     // 1. Get the SUPER_ADMIN role (the one without a tenantId or the global one)
     const saRole = await prisma.role.findFirst({
-        where: { name: 'SUPER_ADMIN' }
+        where: { name: "SUPER_ADMIN" },
     });
 
     if (!saRole) {
-        console.error('SUPER_ADMIN role not found');
+        console.error("SUPER_ADMIN role not found");
         return;
     }
 
@@ -23,20 +23,20 @@ async function main() {
             where: {
                 roleId_permissionId: {
                     roleId: saRole.id,
-                    permissionId: permission.id
-                }
+                    permissionId: permission.id,
+                },
             },
             update: {},
             create: {
                 roleId: saRole.id,
-                permissionId: permission.id
-            }
+                permissionId: permission.id,
+            },
         });
     }
 
-    console.log('Successfully assigned all permissions to SUPER_ADMIN.');
+    console.log("Successfully assigned all permissions to SUPER_ADMIN.");
 }
 
 main()
-    .catch(e => console.error(e))
+    .catch((e) => console.error(e))
     .finally(() => prisma.$disconnect());

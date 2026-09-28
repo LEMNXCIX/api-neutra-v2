@@ -1,13 +1,13 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import { TenantController } from "@/interface-adapters/controllers/tenant.controller";
-import { serviceTokenOr } from "@/middleware/service-token.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import { type Application, Router } from "express";
 import {
     CreateTenantDto,
     UpdateTenantDto,
     UpdateTenantFeaturesDto,
 } from "@/core/application/dtos/requests/tenant.dto";
+import type { TenantController } from "@/interface-adapters/controllers/tenant.controller";
+import { serviceTokenOr } from "@/middleware/service-token.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function tenants(
     app: Application,
@@ -218,8 +218,36 @@ function tenants(
      *       404:
      *         description: Tenant not found
      */
-    router.put("/:id/features", authenticate, validateDto(UpdateTenantFeaturesDto), (req, res) =>
-        tenantController.updateFeatures(req, res),
+    router.put(
+        "/:id/features",
+        authenticate,
+        validateDto(UpdateTenantFeaturesDto),
+        (req, res) => tenantController.updateFeatures(req, res),
+    );
+
+    /**
+     * @swagger
+     * /tenants/mine:
+     *   get:
+     *     summary: Get the tenants created by the signed-in user
+     *     tags: [Tenants]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: List of tenants created by the signed-in user
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: array
+     *               items:
+     *                 $ref: '#/components/schemas/Tenant'
+     *       401:
+     *         description: Unauthorized
+     */
+    // Registered before "/:id" so the id route cannot swallow "mine".
+    router.get("/mine", serviceTokenOr(authenticate), (req, res) =>
+        tenantController.getMine(req, res),
     );
 
     /**

@@ -1,15 +1,18 @@
-import { WhatsAppConfig as PrismaWhatsAppConfig, Prisma } from "@prisma/client";
-import { PrismaClient } from "@prisma/client";
-import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
 import {
-    WhatsAppConfig,
-    WhatsAppTemplate,
-    BotConfig,
-} from "@/core/entities/whatsapp-config.entity";
+    Prisma,
+    type PrismaClient,
+    type WhatsAppConfig as PrismaWhatsAppConfig,
+} from "@prisma/client";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type {
+    BotConfig,
+    WhatsAppConfig,
+    WhatsAppTemplate,
+} from "@/core/entities/whatsapp-config.entity";
+import type { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
 
 function parseTemplates(
     value: Prisma.JsonValue | null,
@@ -33,7 +36,9 @@ function toJsonInput(
     return value as unknown as Prisma.InputJsonValue;
 }
 
-export class WhatsAppConfigPrismaRepository implements IWhatsAppConfigRepository {
+export class WhatsAppConfigPrismaRepository
+    implements IWhatsAppConfigRepository
+{
     constructor(private prisma: PrismaClient) {}
 
     private mapToEntity(data: PrismaWhatsAppConfig): WhatsAppConfig {

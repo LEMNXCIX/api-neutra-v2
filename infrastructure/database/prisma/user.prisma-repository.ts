@@ -1,17 +1,17 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
 import {
-    IUserRepository,
-    FindUserOptions,
-    UserCreateData,
-} from "@/core/repositories/user.repository.interface";
-import { User, UserTenant } from "@/core/entities/user.entity";
-import { Role } from "@/core/entities/role.entity";
-import { Permission } from "@/core/entities/permission.entity";
-import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Permission } from "@/core/entities/permission.entity";
+import type { Role } from "@/core/entities/role.entity";
+import type { User, UserTenant } from "@/core/entities/user.entity";
+import type {
+    FindUserOptions,
+    IUserRepository,
+    UserCreateData,
+} from "@/core/repositories/user.repository.interface";
 
 interface PrismaTenantRelation {
     id: string;
@@ -112,16 +112,16 @@ export class PrismaUserRepository implements IUserRepository {
             name: prismaUser.name,
             email: prismaUser.email,
             password: prismaUser.password,
-            profilePic: prismaUser.profilePic ?? undefined,
-            phone: prismaUser.phone ?? undefined,
-            pushToken: prismaUser.pushToken ?? undefined,
+            profilePic: prismaUser.profilePic,
+            phone: prismaUser.phone,
+            pushToken: prismaUser.pushToken,
             active: prismaUser.active,
-            googleId: prismaUser.googleId ?? undefined,
-            facebookId: prismaUser.facebookId ?? undefined,
-            twitterId: prismaUser.twitterId ?? undefined,
-            githubId: prismaUser.githubId ?? undefined,
-            resetPasswordToken: prismaUser.resetPasswordToken ?? undefined,
-            resetPasswordExpires: prismaUser.resetPasswordExpires ?? undefined,
+            googleId: prismaUser.googleId,
+            facebookId: prismaUser.facebookId,
+            twitterId: prismaUser.twitterId,
+            githubId: prismaUser.githubId,
+            resetPasswordToken: prismaUser.resetPasswordToken,
+            resetPasswordExpires: prismaUser.resetPasswordExpires,
             createdAt: prismaUser.createdAt,
             updatedAt: prismaUser.updatedAt,
             role,
@@ -190,32 +190,56 @@ export class PrismaUserRepository implements IUserRepository {
         return this.mapToEntity(user);
     }
 
+    /**
+     * Shared `tenants` include for the id-based reads, so the global and the
+     * tenant-scoped lookup cannot drift apart.
+     */
+    private tenantsInclude(options?: FindUserOptions) {
+        return {
+            tenants: {
+                include: {
+                    role: options?.includeRole
+                        ? {
+                              include: {
+                                  permissions: options?.includePermissions
+                                      ? { include: { permission: true } }
+                                      : false,
+                              },
+                          }
+                        : true,
+                    tenant: true,
+                },
+            },
+        };
+    }
+
     async findById(
         id: string,
         options?: FindUserOptions,
     ): Promise<User | null> {
         const user = await prisma.user.findUnique({
             where: { id },
-            include: {
-                tenants: {
-                    include: {
-                        role: options?.includeRole
-                            ? {
-                                  include: {
-                                      permissions: options?.includePermissions
-                                          ? {
-                                                include: {
-                                                    permission: true,
-                                                },
-                                            }
-                                          : false,
-                                  },
-                              }
-                            : true,
-                        tenant: true,
-                    },
-                },
-            },
+            include: this.tenantsInclude(options),
+        });
+
+        if (!user) return null;
+        return this.mapToEntity(user);
+    }
+
+    async findByIdForTenant(
+        tenantId: string,
+        id: string,
+        options?: FindUserOptions,
+    ): Promise<User | null> {
+        // Membership is filtered in the query, not in application code:
+        // `tenants: { some: { tenantId } }` is the same idiom findAll and
+        // findByRoleId already use, so a user who is not a member of this
+        // tenant is never returned. User has no tenantId column of its own —
+        // membership lives in UserTenant — so `findUnique` cannot carry the
+        // tenant and this has to be findFirst.
+        const user = await prisma.user.findFirst({
+            where: { id, tenants: { some: { tenantId } } },
+            include: this.tenantsInclude(options),
         });
 
         if (!user) return null;
@@ -259,7 +283,17 @@ export class PrismaUserRepository implements IUserRepository {
         }
     }
 
-    async update(id: string, data: Partial<User>): Promise<User> {
+    /**
+     * The global write's allowlist: twelve columns, unchanged.
+     *
+     * The auth flows reach a user before or outside any tenant, so this has to
+     * stay as wide as it is: `social-login` writes the dynamic provider field
+     * and `profilePic`, `forgot-password` writes the two reset columns, and
+     * `reset-password` writes `password` plus the two reset columns cleared to
+     * `undefined`. Those are the only callers, and this is not where that
+     * trust is judged — it is where it is already established.
+     */
+    private buildUpdateData(data: Partial<User>): Prisma.UserUpdateInput {
         const updateData: Prisma.UserUpdateInput = {};
         if (data.name !== undefined) updateData.name = data.name;
         if (data.email !== undefined) updateData.email = data.email;
@@ -277,6 +311,44 @@ export class PrismaUserRepository implements IUserRepository {
             updateData.resetPasswordToken = data.resetPasswordToken;
         if (data.resetPasswordExpires !== undefined)
             updateData.resetPasswordExpires = data.resetPasswordExpires;
+
+        return updateData;
+    }
+
+    /**
+     * The tenant-admin write's allowlist: six columns, and deliberately its own
+     * builder rather than `buildUpdateData` behind a flag.
+     *
+     * A flag or a shared key list would make the admin path's reach a function
+     * of the global list, so every column added there for a future auth flow
+     * would silently become writable from `PUT /api/users/:id` — and two
+     * separate builders cannot drift that way, because nothing is shared.
+     *
+     * The excluded columns are excluded for a reason, not out of caution. The
+     * provider ids and the reset pair are the input of a tenant-free lookup
+     * (`findByProvider`, `findByResetToken`): an operator with `users:manage`
+     * in tenant A who writes their own `googleId` onto a customer takes that
+     * customer with their next Google login, and one who writes a reset pair
+     * takes them with one call to the reset endpoint. `password` is excluded
+     * because nothing here hashes it, so a value from this path would land in
+     * the column as plaintext; the only flow that legitimately writes it,
+     * `reset-password`, hashes first and goes through the global path.
+     */
+    private buildTenantUpdateData(data: Partial<User>): Prisma.UserUpdateInput {
+        const updateData: Prisma.UserUpdateInput = {};
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.email !== undefined) updateData.email = data.email;
+        if (data.profilePic !== undefined)
+            updateData.profilePic = data.profilePic;
+        if (data.phone !== undefined) updateData.phone = data.phone;
+        if (data.pushToken !== undefined) updateData.pushToken = data.pushToken;
+        if (data.active !== undefined) updateData.active = data.active;
+
+        return updateData;
+    }
+
+    async update(id: string, data: Partial<User>): Promise<User> {
+        const updateData = this.buildUpdateData(data);
 
         try {
             const user = await prisma.user.update({
@@ -312,6 +384,43 @@ export class PrismaUserRepository implements IUserRepository {
             }
             throw error;
         }
+    }
+
+    async updateForTenant(
+        tenantId: string,
+        id: string,
+        data: Partial<User>,
+    ): Promise<User> {
+        // Same shape as deleteForTenant: one write statement carrying the
+        // membership predicate, so membership cannot be revoked between the
+        // use case's read and this write. updateMany rather than update,
+        // because Prisma's `update` takes a unique `where` and User owns no
+        // tenantId column — membership is the UserTenant relation, so the only
+        // way to carry the tenant in a write predicate is a relation filter.
+        // (staff.prisma-repository.ts:126 passes tenantId straight into `where`
+        // only because Staff owns that column; it is not translatable here.)
+        // updateMany returns no row and no relations, so the updated user is
+        // read back through the same tenant-scoped lookup the global update's
+        // `include` would have produced.
+        const { count } = await prisma.user.updateMany({
+            where: { id, tenants: { some: { tenantId } } },
+            data: this.buildTenantUpdateData(data),
+        });
+
+        // The row is not updatable within this tenant: the user was deleted, or
+        // membership was revoked after the use case read it. A success here
+        // would claim a write that never happened.
+        if (count === 0) {
+            throw new EntityNotFoundError("User", id);
+        }
+
+        const updatedUser = await this.findByIdForTenant(tenantId, id);
+
+        if (!updatedUser) {
+            throw new EntityNotFoundError("User", id);
+        }
+
+        return updatedUser;
     }
 
     async findByProvider(
@@ -465,6 +574,21 @@ export class PrismaUserRepository implements IUserRepository {
         await prisma.user.delete({
             where: { id },
         });
+    }
+
+    async deleteForTenant(tenantId: string, id: string): Promise<void> {
+        // One statement, so membership cannot be revoked between the check and
+        // the delete. Mirrors the staff repository, which can pass tenantId
+        // straight into `where` because Staff owns a tenantId column; User does
+        // not, so the relation predicate goes in deleteMany and a count of 0
+        // means "not a member of this tenant" (or no such user).
+        const { count } = await prisma.user.deleteMany({
+            where: { id, tenants: { some: { tenantId } } },
+        });
+
+        if (count === 0) {
+            throw new EntityNotFoundError("User", id);
+        }
     }
 
     async addTenant(

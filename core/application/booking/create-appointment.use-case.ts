@@ -1,29 +1,31 @@
-import {
-    IAppointmentRepository,
-    AppointmentCreateData,
-} from "@/core/repositories/appointment.repository.interface";
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
-import { IServiceRepository } from "@/core/repositories/service.repository.interface";
-import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
-import { CreateAppointmentDTO } from "@/core/application/dtos/requests/appointment.request";
-import { IQueueProvider } from "@/core/providers/queue-provider.interface";
-import { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    EntityNotFoundError,
-    BusinessRuleViolationError,
-    InvalidStateError,
-    ValidationError,
-} from "@/core/domain/errors/domain-errors";
+import type { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
+import type { CreateAppointmentDTO } from "@/core/application/dtos/requests/appointment.request";
 import {
     fitsInRanges,
     getDayRanges,
+    hasWorkingHoursSchedule,
     intersectRanges,
+    isDayClosed,
     isHoliday,
-    toMinutes,
-} from "@/core/utils/working-hours";
+} from "@/core/domain/booking/working-hours";
+import {
+    BusinessRuleViolationError,
+    EntityNotFoundError,
+    InvalidStateError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
+import type { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import type {
+    AppointmentCreateData,
+    IAppointmentRepository,
+} from "@/core/repositories/appointment.repository.interface";
+import type { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import type { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class CreateAppointmentUseCase {
     constructor(
@@ -56,7 +58,7 @@ export class CreateAppointmentUseCase {
             tenantId,
             data.serviceId,
         );
-        if (!service || !service.active) {
+        if (!service?.active) {
             throw new EntityNotFoundError("Service", data.serviceId);
         }
 
@@ -64,7 +66,7 @@ export class CreateAppointmentUseCase {
             tenantId,
             data.staffId,
         );
-        if (!staff || !staff.active) {
+        if (!staff?.active) {
             throw new EntityNotFoundError("Staff", data.staffId);
         }
 
@@ -82,7 +84,7 @@ export class CreateAppointmentUseCase {
         if (startTime.getTime() <= Date.now()) {
             throw new BusinessRuleViolationError(
                 "The appointment start time must be in the future",
-                "START_TIME_NOT_IN_FUTURE",
+                BusinessErrorCodes.START_TIME_NOT_IN_FUTURE,
             );
         }
 
@@ -96,18 +98,29 @@ export class CreateAppointmentUseCase {
             if (isHoliday(settings?.holidays, startTime)) {
                 throw new BusinessRuleViolationError(
                     "The selected date is a holiday",
-                    "HOLIDAY_CLOSED",
+                    BusinessErrorCodes.HOLIDAY_CLOSED,
+                );
+            }
+            const staffSchedule = staff.workingHours;
+            const tenantSchedule = settings?.businessHours;
+            if (
+                isDayClosed(tenantSchedule, startTime) ||
+                isDayClosed(staffSchedule, startTime)
+            ) {
+                throw new BusinessRuleViolationError(
+                    "The selected time is outside working hours",
+                    BusinessErrorCodes.OUTSIDE_WORKING_HOURS,
                 );
             }
             const ranges = intersectRanges(
-                getDayRanges(staff.workingHours, startTime),
-                getDayRanges(settings?.businessHours, startTime),
+                getDayRanges(staffSchedule, startTime),
+                getDayRanges(tenantSchedule, startTime),
             );
-            const hasHours =
-                !!staff.workingHours ||
-                getDayRanges(settings?.businessHours, startTime).length > 0;
+            const hasSchedule =
+                hasWorkingHoursSchedule(staffSchedule) ||
+                hasWorkingHoursSchedule(tenantSchedule);
             if (
-                hasHours &&
+                hasSchedule &&
                 !fitsInRanges(
                     startTime.getHours() * 60 + startTime.getMinutes(),
                     endTime.getHours() * 60 + endTime.getMinutes(),
@@ -116,7 +129,7 @@ export class CreateAppointmentUseCase {
             ) {
                 throw new BusinessRuleViolationError(
                     "The selected time is outside working hours",
-                    "OUTSIDE_WORKING_HOURS",
+                    BusinessErrorCodes.OUTSIDE_WORKING_HOURS,
                 );
             }
         }
@@ -134,9 +147,9 @@ export class CreateAppointmentUseCase {
             );
         }
 
-        let couponId = undefined;
+        let couponId: string | undefined;
         let discountAmount = 0;
-        let subtotal = service.price;
+        const subtotal = service.price;
         let total = service.price;
 
         if (data.couponCode) {
@@ -154,7 +167,7 @@ export class CreateAppointmentUseCase {
                 throw new BusinessRuleViolationError(
                     validationResult.message ||
                         "The provided coupon is invalid",
-                    "INVALID_COUPON",
+                    BusinessErrorCodes.INVALID_COUPON,
                 );
             }
 
@@ -162,7 +175,6 @@ export class CreateAppointmentUseCase {
             discountAmount = validationResult.data.discountAmount || 0;
             total = subtotal - discountAmount;
             if (total < 0) total = 0;
-
         }
 
         const baseData: AppointmentCreateData = { ...data };
@@ -182,7 +194,7 @@ export class CreateAppointmentUseCase {
 
         const features =
             await this.featureRepository.getTenantFeatureStatus(tenantId);
-        if (features["EMAIL_NOTIFICATIONS"]) {
+        if (features.EMAIL_NOTIFICATIONS) {
             await this.queueProvider.enqueue("notifications", {
                 type: "PENDING_APPROVAL",
                 appointmentId: appointment.id,

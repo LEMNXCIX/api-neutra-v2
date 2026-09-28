@@ -1,6 +1,14 @@
 jest.mock("@/config/db.config", () => ({ prisma: {} }));
 
 import { Prisma } from "@prisma/client";
+import { LoyaltyCampaignLifecycleAction } from "@/core/application/dtos/requests/loyalty.request";
+import { LoyaltyPresenter } from "@/core/application/dtos/responses/loyalty/loyalty.response";
+import { ClaimLoyaltyRewardUseCase } from "@/core/application/loyalty/claim-loyalty-reward.use-case";
+import { CreateLoyaltyCampaignUseCase } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
+import { GetLoyaltyCampaignsUseCase } from "@/core/application/loyalty/get-loyalty-campaigns.use-case";
+import { TransitionLoyaltyCampaignUseCase } from "@/core/application/loyalty/transition-loyalty-campaign.use-case";
+import { type Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
@@ -8,16 +16,9 @@ import {
     LoyaltyRewardClaimStatus,
     LoyaltyStatus,
 } from "@/core/entities/loyalty.entity";
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import { TenantType } from "@/core/entities/tenant.entity";
 import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
-import { CreateLoyaltyCampaignUseCase } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
-import { TransitionLoyaltyCampaignUseCase } from "@/core/application/loyalty/transition-loyalty-campaign.use-case";
-import { GetLoyaltyCampaignsUseCase } from "@/core/application/loyalty/get-loyalty-campaigns.use-case";
-import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
-import { ClaimLoyaltyRewardUseCase } from "@/core/application/loyalty/claim-loyalty-reward.use-case";
-import { LoyaltyPresenter } from "@/core/application/dtos/responses/loyalty/loyalty.response";
-import { LoyaltyCampaignLifecycleAction } from "@/core/application/dtos/requests/loyalty.request";
+import { BusinessErrorCodes, ResourceErrorCodes } from "@/types/error-codes";
 
 const now = new Date("2030-01-15T00:00:00.000Z");
 const startsAt = new Date("2030-01-01T00:00:00.000Z");
@@ -127,103 +128,147 @@ function repositorySetup() {
     let failCampaignCreate = false;
     const tx = {
         coupon: {
-            findFirst: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
-                templates.find(
-                    (row) =>
-                        row.id === where.id &&
-                        row.tenantId === where.tenantId &&
-                        row.isLoyaltyTemplate === true,
-                ) ?? null,
+            findFirst: jest.fn(
+                async ({ where }: { where: Record<string, unknown> }) =>
+                    templates.find(
+                        (row) =>
+                            row.id === where.id &&
+                            row.tenantId === where.tenantId &&
+                            row.isLoyaltyTemplate === true,
+                    ) ?? null,
             ),
-            create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
-                const row = {
-                    ...data,
-                    id: `template-${templates.length + 1}`,
-                    createdAt: now,
-                    updatedAt: now,
-                };
-                templates.push(row as never);
-                return row;
-            }),
-            updateMany: jest.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
-                const row = templates.find((item) => item.id === where.id);
-                if (!row) return { count: 0 };
-                Object.assign(row, data);
-                return { count: 1 };
-            }),
-            deleteMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
-                const index = templates.findIndex((item) => item.id === where.id);
-                if (index < 0) return { count: 0 };
-                templates.splice(index, 1);
-                return { count: 1 };
-            }),
+            create: jest.fn(
+                async ({ data }: { data: Record<string, unknown> }) => {
+                    const row = {
+                        ...data,
+                        id: `template-${templates.length + 1}`,
+                        createdAt: now,
+                        updatedAt: now,
+                    };
+                    templates.push(row as never);
+                    return row;
+                },
+            ),
+            updateMany: jest.fn(
+                async ({
+                    where,
+                    data,
+                }: {
+                    where: Record<string, unknown>;
+                    data: Record<string, unknown>;
+                }) => {
+                    const row = templates.find((item) => item.id === where.id);
+                    if (!row) return { count: 0 };
+                    Object.assign(row, data);
+                    return { count: 1 };
+                },
+            ),
+            deleteMany: jest.fn(
+                async ({ where }: { where: Record<string, unknown> }) => {
+                    const index = templates.findIndex(
+                        (item) => item.id === where.id,
+                    );
+                    if (index < 0) return { count: 0 };
+                    templates.splice(index, 1);
+                    return { count: 1 };
+                },
+            ),
         },
         loyaltyCampaign: {
-            create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
-                if (failCampaignCreate) throw new Error("campaign write failed");
-                const row = {
-                    ...data,
-                    id: `campaign-${campaigns.length + 1}`,
-                    targetValue: data.targetValue,
-                    createdAt: now,
-                    updatedAt: now,
-                };
-                campaigns.unshift(row as never);
-                return row;
-            }),
-            findMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
-                campaigns.filter((row) => row.tenantId === where.tenantId),
+            create: jest.fn(
+                async ({ data }: { data: Record<string, unknown> }) => {
+                    if (failCampaignCreate)
+                        throw new Error("campaign write failed");
+                    const row = {
+                        ...data,
+                        id: `campaign-${campaigns.length + 1}`,
+                        targetValue: data.targetValue,
+                        createdAt: now,
+                        updatedAt: now,
+                    };
+                    campaigns.unshift(row as never);
+                    return row;
+                },
             ),
-            findFirst: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
-                campaigns.find(
-                    (row) => row.id === where.id && row.tenantId === where.tenantId,
-                ) ?? null,
+            findMany: jest.fn(
+                async ({ where }: { where: Record<string, unknown> }) =>
+                    campaigns.filter((row) => row.tenantId === where.tenantId),
             ),
-            updateMany: jest.fn(async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
-                const row = campaigns.find(
-                    (item) => item.id === where.id && item.tenantId === where.tenantId,
-                );
-                if (!row) return { count: 0 };
-                Object.assign(row, data);
-                return { count: 1 };
-            }),
-            deleteMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
-                const index = campaigns.findIndex(
-                    (row) => row.id === where.id && row.tenantId === where.tenantId,
-                );
-                if (index < 0) return { count: 0 };
-                campaigns.splice(index, 1);
-                return { count: 1 };
-            }),
+            findFirst: jest.fn(
+                async ({ where }: { where: Record<string, unknown> }) =>
+                    campaigns.find(
+                        (row) =>
+                            row.id === where.id &&
+                            row.tenantId === where.tenantId,
+                    ) ?? null,
+            ),
+            updateMany: jest.fn(
+                async ({
+                    where,
+                    data,
+                }: {
+                    where: Record<string, unknown>;
+                    data: Record<string, unknown>;
+                }) => {
+                    const row = campaigns.find(
+                        (item) =>
+                            item.id === where.id &&
+                            item.tenantId === where.tenantId,
+                    );
+                    if (!row) return { count: 0 };
+                    Object.assign(row, data);
+                    return { count: 1 };
+                },
+            ),
+            deleteMany: jest.fn(
+                async ({ where }: { where: Record<string, unknown> }) => {
+                    const index = campaigns.findIndex(
+                        (row) =>
+                            row.id === where.id &&
+                            row.tenantId === where.tenantId,
+                    );
+                    if (index < 0) return { count: 0 };
+                    campaigns.splice(index, 1);
+                    return { count: 1 };
+                },
+            ),
         },
         loyaltyRewardClaim: {
-            findFirst: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
-                claims.find(
-                    (row) =>
-                        (row as Record<string, unknown>).tenantId === where.tenantId &&
-                        (row as Record<string, unknown>).campaignId === where.campaignId &&
-                        (row as Record<string, unknown>).userId === where.userId,
-                ) ?? null,
+            findFirst: jest.fn(
+                async ({ where }: { where: Record<string, unknown> }) =>
+                    claims.find(
+                        (row) =>
+                            (row as Record<string, unknown>).tenantId ===
+                                where.tenantId &&
+                            (row as Record<string, unknown>).campaignId ===
+                                where.campaignId &&
+                            (row as Record<string, unknown>).userId ===
+                                where.userId,
+                    ) ?? null,
             ),
             create: jest.fn(),
         },
         loyaltyLedgerEntry: {
-            aggregate: jest.fn(async () => ({ _sum: { value: new Prisma.Decimal("0") } })),
+            aggregate: jest.fn(async () => ({
+                _sum: { value: new Prisma.Decimal("0") },
+            })),
         },
     };
     const database = {
         ...tx,
-        $transaction: jest.fn(async (callback: (value: typeof tx) => Promise<unknown>) => {
-            const templateSnapshot = [...templates];
-            const campaignSnapshot = [...campaigns];
-            try {
-                return await callback(tx);
-            } catch (error) {
-                templates.splice(0, templates.length, ...templateSnapshot);
-                campaigns.splice(0, campaigns.length, ...campaignSnapshot);
-                throw error;
-            }
-        }),
+        $transaction: jest.fn(
+            async (callback: (value: typeof tx) => Promise<unknown>) => {
+                const templateSnapshot = [...templates];
+                const campaignSnapshot = [...campaigns];
+                try {
+                    return await callback(tx);
+                } catch (error) {
+                    templates.splice(0, templates.length, ...templateSnapshot);
+                    campaigns.splice(0, campaigns.length, ...campaignSnapshot);
+                    throw error;
+                }
+            },
+        ),
     };
     return {
         repository: new PrismaLoyaltyRepository(database as never),
@@ -307,7 +352,10 @@ describe("loyalty campaign repository services", () => {
         ).resolves.toMatchObject({ id: "campaign-1" });
         expect(setup.tx.coupon.updateMany).toHaveBeenCalledWith(
             expect.objectContaining({
-                where: expect.objectContaining({ id: "template-1", tenantId: "tenant-1" }),
+                where: expect.objectContaining({
+                    id: "template-1",
+                    tenantId: "tenant-1",
+                }),
                 data: expect.objectContaining({
                     active: true,
                     isReward: false,
@@ -334,7 +382,12 @@ describe("loyalty campaign repository services", () => {
             status: LoyaltyRewardClaimStatus.CLAIMED,
             createdAt: now,
             updatedAt: now,
-            coupon: template({ id: "coupon-1", ownerId: "customer-1", isReward: true, isLoyaltyTemplate: false }),
+            coupon: template({
+                id: "coupon-1",
+                ownerId: "customer-1",
+                isReward: true,
+                isLoyaltyTemplate: false,
+            }),
         });
 
         await expect(
@@ -359,9 +412,13 @@ describe("loyalty campaign repository services", () => {
 describe("loyalty campaign application services", () => {
     test("requires both tenant features and a compatible source", async () => {
         const loyaltyRepository = { createCampaign: jest.fn() };
-        const tenantRepository = { findById: jest.fn().mockResolvedValue(tenant()) };
+        const tenantRepository = {
+            findById: jest.fn().mockResolvedValue(tenant()),
+        };
         const featureRepository = {
-            getTenantFeatureStatus: jest.fn().mockResolvedValue({ LOYALTY: true }),
+            getTenantFeatureStatus: jest
+                .fn()
+                .mockResolvedValue({ LOYALTY: true }),
         };
         const useCase = new CreateLoyaltyCampaignUseCase(
             loyaltyRepository as never,
@@ -374,7 +431,9 @@ describe("loyalty campaign application services", () => {
                 ...repositoryData(),
                 source: LoyaltyCampaignSource.BOOKING,
             }),
-        ).rejects.toMatchObject({ code: "LOYALTY_REQUIRES_COUPONS" });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS,
+        });
         expect(loyaltyRepository.createCampaign).not.toHaveBeenCalled();
 
         featureRepository.getTenantFeatureStatus.mockResolvedValue({
@@ -393,12 +452,16 @@ describe("loyalty campaign application services", () => {
 
     test("revalidates source and features before activation", async () => {
         const repository = {
-            getCampaign: jest.fn().mockResolvedValue(
-                campaign({ status: LoyaltyCampaignStatus.DRAFT }),
-            ),
-            transitionCampaignStatus: jest.fn().mockResolvedValue(
-                campaign({ status: LoyaltyCampaignStatus.ACTIVE }),
-            ),
+            getCampaign: jest
+                .fn()
+                .mockResolvedValue(
+                    campaign({ status: LoyaltyCampaignStatus.DRAFT }),
+                ),
+            transitionCampaignStatus: jest
+                .fn()
+                .mockResolvedValue(
+                    campaign({ status: LoyaltyCampaignStatus.ACTIVE }),
+                ),
         };
         const useCase = new TransitionLoyaltyCampaignUseCase(
             repository as never,
@@ -429,83 +492,90 @@ describe("loyalty campaign application services", () => {
         ["IN_PROGRESS", new Date("2030-01-15T00:00:00.000Z"), "4.00", null],
         ["READY", new Date("2030-01-15T00:00:00.000Z"), "10.00", null],
         ["EXPIRED", new Date("2030-03-01T00:00:00.000Z"), "10.00", null],
-    ])("maps %s customer summary status and Decimal values", async (
-        expected,
-        at,
-        progressValue,
-        _claim,
-    ) => {
-        jest.useFakeTimers().setSystemTime(new Date(at));
-        const repository = {
-            getCampaign: jest.fn().mockResolvedValue(
-                campaign(
-                    expected === "NOT_STARTED"
-                        ? {
-                              startsAt: new Date("2030-02-02T00:00:00.000Z"),
-                              endsAt: new Date("2030-03-01T00:00:00.000Z"),
-                              claimUntil: new Date("2030-03-10T00:00:00.000Z"),
-                          }
-                        : {},
+    ])(
+        "maps %s customer summary status and Decimal values",
+        async (expected, at, progressValue, _claim) => {
+            jest.useFakeTimers().setSystemTime(new Date(at));
+            const repository = {
+                getCampaign: jest.fn().mockResolvedValue(
+                    campaign(
+                        expected === "NOT_STARTED"
+                            ? {
+                                  startsAt: new Date(
+                                      "2030-02-02T00:00:00.000Z",
+                                  ),
+                                  endsAt: new Date("2030-03-01T00:00:00.000Z"),
+                                  claimUntil: new Date(
+                                      "2030-03-10T00:00:00.000Z",
+                                  ),
+                              }
+                            : {},
+                    ),
                 ),
-            ),
-            getCampaignProgress: jest.fn().mockResolvedValue({
-                campaignId: "campaign-1",
-                userId: "customer-1",
-                metric: LoyaltyCampaignMetric.COUNT,
-                progressValue,
-                targetValue: "10.00",
-                reachedTarget: progressValue === "10.00",
-            }),
-            findCampaignRewardClaim: jest.fn().mockResolvedValue(null),
-        };
-        const useCase = new GetCustomerLoyaltySummaryUseCase(
-            repository as never,
-            { findById: jest.fn().mockResolvedValue(tenant()) } as never,
-            {
-                getTenantFeatureStatus: jest.fn().mockResolvedValue({
-                    LOYALTY: true,
-                    COUPONS: true,
+                getCampaignProgress: jest.fn().mockResolvedValue({
+                    campaignId: "campaign-1",
+                    userId: "customer-1",
+                    metric: LoyaltyCampaignMetric.COUNT,
+                    progressValue,
+                    targetValue: "10.00",
+                    reachedTarget: progressValue === "10.00",
                 }),
-            } as never,
-        );
+                findCampaignRewardClaim: jest.fn().mockResolvedValue(null),
+            };
+            const useCase = new GetCustomerLoyaltySummaryUseCase(
+                repository as never,
+                { findById: jest.fn().mockResolvedValue(tenant()) } as never,
+                {
+                    getTenantFeatureStatus: jest.fn().mockResolvedValue({
+                        LOYALTY: true,
+                        COUPONS: true,
+                    }),
+                } as never,
+            );
 
-        await expect(
-            useCase.execute("tenant-1", "campaign-1", "customer-1"),
-        ).resolves.toMatchObject({
-            data: {
-                campaignId: "campaign-1",
-                name: "Store rewards",
-                source: LoyaltyCampaignSource.STORE,
-                startsAt:
-                    expected === "NOT_STARTED"
-                        ? new Date("2030-02-02T00:00:00.000Z")
-                        : startsAt,
-                endsAt:
-                    expected === "NOT_STARTED"
-                        ? new Date("2030-03-01T00:00:00.000Z")
-                        : endsAt,
-                claimUntil:
-                    expected === "NOT_STARTED"
-                        ? new Date("2030-03-10T00:00:00.000Z")
-                        : claimUntil,
-                metric: LoyaltyCampaignMetric.COUNT,
-                progressValue,
-                targetValue: "10.00",
-                remainingValue:
-                    expected === "READY" || expected === "EXPIRED"
-                        ? "0.00"
-                        : expected === "IN_PROGRESS"
-                          ? "6.00"
-                          : "10.00",
-                customerStatus: expected,
-            },
-        });
-        jest.useRealTimers();
-    });
+            await expect(
+                useCase.execute("tenant-1", "campaign-1", "customer-1"),
+            ).resolves.toMatchObject({
+                data: {
+                    campaignId: "campaign-1",
+                    name: "Store rewards",
+                    source: LoyaltyCampaignSource.STORE,
+                    startsAt:
+                        expected === "NOT_STARTED"
+                            ? new Date("2030-02-02T00:00:00.000Z")
+                            : startsAt,
+                    endsAt:
+                        expected === "NOT_STARTED"
+                            ? new Date("2030-03-01T00:00:00.000Z")
+                            : endsAt,
+                    claimUntil:
+                        expected === "NOT_STARTED"
+                            ? new Date("2030-03-10T00:00:00.000Z")
+                            : claimUntil,
+                    metric: LoyaltyCampaignMetric.COUNT,
+                    progressValue,
+                    targetValue: "10.00",
+                    remainingValue:
+                        expected === "READY" || expected === "EXPIRED"
+                            ? "0.00"
+                            : expected === "IN_PROGRESS"
+                              ? "6.00"
+                              : "10.00",
+                    customerStatus: expected,
+                },
+            });
+            jest.useRealTimers();
+        },
+    );
 
     test("returns CLAIMED with the campaign coupon", async () => {
         jest.useFakeTimers().setSystemTime(now);
-        const coupon = template({ id: "coupon-1", ownerId: "customer-1", isReward: true, isLoyaltyTemplate: false });
+        const coupon = template({
+            id: "coupon-1",
+            ownerId: "customer-1",
+            isReward: true,
+            isLoyaltyTemplate: false,
+        });
         const repository = {
             getCampaign: jest.fn().mockResolvedValue(campaign()),
             getCampaignProgress: jest.fn().mockResolvedValue({
@@ -531,7 +601,11 @@ describe("loyalty campaign application services", () => {
         const useCase = new GetCustomerLoyaltySummaryUseCase(
             repository as never,
             { findById: jest.fn().mockResolvedValue(tenant()) } as never,
-            { getTenantFeatureStatus: jest.fn().mockResolvedValue({ LOYALTY: true, COUPONS: true }) } as never,
+            {
+                getTenantFeatureStatus: jest
+                    .fn()
+                    .mockResolvedValue({ LOYALTY: true, COUPONS: true }),
+            } as never,
         );
 
         await expect(
@@ -551,9 +625,13 @@ describe("loyalty campaign application services", () => {
                 tenantId === "tenant-1" ? [campaign()] : [],
             ),
         };
-        const tenantRepository = { findById: jest.fn().mockResolvedValue(tenant()) };
+        const tenantRepository = {
+            findById: jest.fn().mockResolvedValue(tenant()),
+        };
         const featureRepository = {
-            getTenantFeatureStatus: jest.fn().mockResolvedValue({ LOYALTY: true, COUPONS: true }),
+            getTenantFeatureStatus: jest
+                .fn()
+                .mockResolvedValue({ LOYALTY: true, COUPONS: true }),
         };
         const listUseCase = new GetLoyaltyCampaignsUseCase(
             listRepository as never,
@@ -596,19 +674,47 @@ describe("loyalty campaign application services", () => {
             status: LoyaltyRewardClaimStatus.CLAIMED,
             createdAt: now,
             updatedAt: now,
-            coupon: template({ id: "coupon-archived", ownerId: "customer-1", isReward: true, isLoyaltyTemplate: false }),
+            coupon: template({
+                id: "coupon-archived",
+                ownerId: "customer-1",
+                isReward: true,
+                isLoyaltyTemplate: false,
+            }),
         };
         const repository = {
             listCampaigns: jest.fn().mockResolvedValue([
-                campaign({ id: "draft", status: LoyaltyCampaignStatus.DRAFT }),
-                campaign({ id: "archived-unclaimed", status: LoyaltyCampaignStatus.ARCHIVED }),
-                campaign({ id: "archived-claimed", status: LoyaltyCampaignStatus.ARCHIVED }),
-                campaign({ id: "active", status: LoyaltyCampaignStatus.ACTIVE }),
-                campaign({ id: "ended", status: LoyaltyCampaignStatus.ENDED }),
+                campaign({
+                    id: "draft",
+                    status: LoyaltyCampaignStatus.DRAFT,
+                }),
+                campaign({
+                    id: "archived-unclaimed",
+                    status: LoyaltyCampaignStatus.ARCHIVED,
+                }),
+                campaign({
+                    id: "archived-claimed",
+                    status: LoyaltyCampaignStatus.ARCHIVED,
+                }),
+                campaign({
+                    id: "active",
+                    status: LoyaltyCampaignStatus.ACTIVE,
+                }),
+                campaign({
+                    id: "ended",
+                    status: LoyaltyCampaignStatus.ENDED,
+                }),
             ]),
-            getCampaign: jest.fn().mockImplementation(async (_tenantId, campaignId) =>
-                campaign({ id: campaignId, status: campaignId === "draft" ? LoyaltyCampaignStatus.DRAFT : LoyaltyCampaignStatus.ARCHIVED }),
-            ),
+            getCampaign: jest
+                .fn()
+                .mockImplementation(async (_tenantId, campaignId) =>
+                    campaign({
+                        id: campaignId,
+                        status:
+                            campaignId === "draft"
+                                ? LoyaltyCampaignStatus.DRAFT
+                                : LoyaltyCampaignStatus.ARCHIVED,
+                    }),
+                ),
             getCampaignProgress: jest.fn().mockResolvedValue({
                 campaignId: "campaign-1",
                 userId: "customer-1",
@@ -617,14 +723,40 @@ describe("loyalty campaign application services", () => {
                 targetValue: "10.00",
                 reachedTarget: false,
             }),
-            findCampaignRewardClaim: jest.fn().mockImplementation(async (_tenantId, campaignId) =>
-                campaignId === "archived-claimed" ? archivedClaim : null,
-            ),
+            getCampaignsProgressForCustomer: jest
+                .fn()
+                .mockImplementation(
+                    async (
+                        _tenantId: string,
+                        _userId: string,
+                        campaigns: Array<{ id: string }>,
+                    ) =>
+                        campaigns.map((entry) => ({
+                            campaignId: entry.id,
+                            userId: "customer-1",
+                            metric: LoyaltyCampaignMetric.COUNT,
+                            progressValue: "0.00",
+                            targetValue: "10.00",
+                            reachedTarget: false,
+                        })),
+                ),
+            findCampaignRewardClaimsForCustomer: jest
+                .fn()
+                .mockResolvedValue([archivedClaim]),
+            findCampaignRewardClaim: jest
+                .fn()
+                .mockImplementation(async (_tenantId, campaignId) =>
+                    campaignId === "archived-claimed" ? archivedClaim : null,
+                ),
         };
         const useCase = new GetCustomerLoyaltySummaryUseCase(
             repository as never,
             { findById: jest.fn().mockResolvedValue(tenant()) } as never,
-            { getTenantFeatureStatus: jest.fn().mockResolvedValue({ LOYALTY: true, COUPONS: true }) } as never,
+            {
+                getTenantFeatureStatus: jest
+                    .fn()
+                    .mockResolvedValue({ LOYALTY: true, COUPONS: true }),
+            } as never,
         );
 
         const result = await useCase.executeList("tenant-1", "customer-1");
@@ -635,10 +767,10 @@ describe("loyalty campaign application services", () => {
         ]);
         await expect(
             useCase.execute("tenant-1", "draft", "customer-1"),
-        ).rejects.toMatchObject({ code: "ENTITY_NOT_FOUND" });
+        ).rejects.toMatchObject({ code: ResourceErrorCodes.NOT_FOUND });
         await expect(
             useCase.execute("tenant-1", "archived-unclaimed", "customer-1"),
-        ).rejects.toMatchObject({ code: "ENTITY_NOT_FOUND" });
+        ).rejects.toMatchObject({ code: ResourceErrorCodes.NOT_FOUND });
     });
 
     test("presents campaign reward and claim metadata", () => {
@@ -648,8 +780,7 @@ describe("loyalty campaign application services", () => {
             isReward: true,
             isLoyaltyTemplate: false,
         }) as unknown as Coupon;
-        const presented =
-            LoyaltyPresenter.toCustomerCampaignSummaryResponse({
+        const presented = LoyaltyPresenter.toCustomerCampaignSummaryResponse({
             campaignId: "campaign-1",
             name: "Store rewards",
             source: LoyaltyCampaignSource.STORE,
@@ -695,9 +826,7 @@ describe("loyalty campaign application services", () => {
     });
 
     test("presents campaign summaries and lifecycle contracts", () => {
-        expect(
-            LoyaltyPresenter.toCampaignResponse(campaign()),
-        ).toMatchObject({
+        expect(LoyaltyPresenter.toCampaignResponse(campaign())).toMatchObject({
             id: "campaign-1",
             targetValue: "10.00",
         });

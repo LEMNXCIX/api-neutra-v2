@@ -1,5 +1,5 @@
-import { createRequireTenantFeature } from "@/middleware/tenant-feature.middleware";
 import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { createRequireTenantFeature } from "@/middleware/tenant-feature.middleware";
 
 const getFeatureStatus = jest.fn();
 const mockFeatureRepository = {

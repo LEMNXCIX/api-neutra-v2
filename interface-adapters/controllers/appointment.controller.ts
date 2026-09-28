@@ -1,39 +1,39 @@
-import { Request, Response } from "express";
-import { CreateAppointmentUseCase } from "@/core/application/booking/create-appointment.use-case";
-import { GetAppointmentsUseCase } from "@/core/application/booking/get-appointments.use-case";
-import { GetAppointmentsNeedingReviewUseCase } from "@/core/application/booking/get-appointments-needing-review.use-case";
-import { GetAppointmentByIdUseCase } from "@/core/application/booking/get-appointment-by-id.use-case";
-import { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appointment.use-case";
-import { GetAvailabilityUseCase } from "@/core/application/booking/get-availability.use-case";
-import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
-import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";
-import { isAppointmentStatus } from "@/core/entities/appointment.entity";
-import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
-import { AuthenticatedUser } from "@/types/rbac";
-import {
-    APPOINTMENT_OPERATIONAL_ROLES,
-    hasAnyRole,
-    hasPermission,
-} from "@/middleware/authorization.middleware";
-import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
-import { AppError } from "@/types/api-response";
-import { TenantErrorCodes } from "@/types/error-codes";
-import { AppointmentPresenter } from "@/core/presenters/appointment.presenter";
+import type { Request, Response } from "express";
+import type { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appointment.use-case";
+import type { CreateAppointmentUseCase } from "@/core/application/booking/create-appointment.use-case";
+import type { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";
+import type { GetAppointmentByIdUseCase } from "@/core/application/booking/get-appointment-by-id.use-case";
+import type { GetAppointmentsUseCase } from "@/core/application/booking/get-appointments.use-case";
+import type { GetAppointmentsNeedingReviewUseCase } from "@/core/application/booking/get-appointments-needing-review.use-case";
+import type { GetAvailabilityUseCase } from "@/core/application/booking/get-availability.use-case";
+import type { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
+import type {
+    AppointmentMutationActor,
+    CancelAppointmentDTO,
+    CreateAppointmentDTO,
+    CreateAppointmentDto,
+    UpdateAppointmentStatusDto,
+} from "@/core/application/dtos/requests/appointment.request";
+import { AppointmentResponse } from "@/core/application/dtos/responses/appointment/appointment.response";
+import { AppointmentListResponse } from "@/core/application/dtos/responses/appointment/appointment-list.response";
+import { assertAppointmentStatus } from "@/core/domain/appointment/appointment.policy";
+import { hasAnyRole, hasPermission } from "@/core/domain/rbac/access-policy";
 import { present } from "@/core/utils/use-case-result";
 import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
+import { APPOINTMENT_OPERATIONAL_ROLES } from "@/middleware/authorization.middleware";
+import { AppError } from "@/types/api-response";
+import { TenantErrorCodes } from "@/types/error-codes";
+import type { AuthenticatedUser } from "@/types/rbac";
 
-function getAppointmentActor(user: AuthenticatedUser): AppointmentMutationActor {
-    const isOperational = hasAnyRole(
-        user,
-        APPOINTMENT_OPERATIONAL_ROLES,
-    );
+function getAppointmentActor(
+    user: AuthenticatedUser,
+): AppointmentMutationActor {
+    const isOperational = hasAnyRole(user, APPOINTMENT_OPERATIONAL_ROLES);
 
     return {
         id: user.id,
-        canManage:
-            isOperational && hasPermission(user, "appointments:write"),
-        canDelete:
-            isOperational && hasPermission(user, "appointments:delete"),
+        canManage: isOperational && hasPermission(user, "appointments:write"),
+        canDelete: isOperational && hasPermission(user, "appointments:delete"),
     };
 }
 
@@ -53,20 +53,25 @@ export class AppointmentController {
         const tenantId = req.tenantId!;
         const actor = getAppointmentActor(req.user!);
         const origin = resolveRequestOrigin(req);
-        const requestedUserId = req.body.userId;
+        const body = req.validatedBody as CreateAppointmentDto;
+        // The body may carry `userId`, and it is honoured only when the actor
+        // holds `appointments:write` and can manage. The override order is not
+        // what protects this: the computed value always wins over the spread,
+        // so the protection is the `canManage` test, not the ordering.
+        const requestedUserId = body.userId;
         const userId =
             actor.canManage && typeof requestedUserId === "string"
                 ? requestedUserId
                 : actor.id;
         const result = await this.createAppointmentUseCase.execute(
             tenantId,
-            { ...req.body, userId },
+            { ...body, userId } as CreateAppointmentDTO,
             origin,
             actor.id,
         );
         return res
             .status(201)
-            .json(present(result, AppointmentPresenter.toResponse));
+            .json(present(result, AppointmentResponse.fromEntity));
     }
 
     async getAll(req: Request, res: Response) {
@@ -79,12 +84,7 @@ export class AppointmentController {
         if (req.query.serviceId)
             filters.serviceId = req.query.serviceId as string;
         if (req.query.status !== undefined) {
-            if (!isAppointmentStatus(req.query.status)) {
-                throw new BusinessRuleViolationError(
-                    "Invalid appointment status",
-                    "INVALID_APPOINTMENT_STATUS",
-                );
-            }
+            assertAppointmentStatus(req.query.status);
             filters.status = req.query.status;
         }
         if (req.query.startDate)
@@ -93,10 +93,10 @@ export class AppointmentController {
             filters.endDate = new Date(req.query.endDate as string);
 
         const page = req.query.page
-            ? parseInt(req.query.page as string)
+            ? parseInt(req.query.page as string, 10)
             : undefined;
         const limit = req.query.limit
-            ? parseInt(req.query.limit as string)
+            ? parseInt(req.query.limit as string, 10)
             : undefined;
 
         if (page || limit) {
@@ -107,7 +107,13 @@ export class AppointmentController {
                 limit || 10,
             );
             return res.json(
-                present(result, AppointmentPresenter.toResponseList),
+                present(result, (appointments) =>
+                    Array.isArray(appointments)
+                        ? appointments.map((a) =>
+                              AppointmentListResponse.fromEntity(a),
+                          )
+                        : [],
+                ),
             );
         }
 
@@ -115,7 +121,15 @@ export class AppointmentController {
             tenantId,
             filters,
         );
-        return res.json(present(result, AppointmentPresenter.toResponseList));
+        return res.json(
+            present(result, (appointments) =>
+                Array.isArray(appointments)
+                    ? appointments.map((a) =>
+                          AppointmentListResponse.fromEntity(a),
+                      )
+                    : [],
+            ),
+        );
     }
 
     async getAttention(req: Request, res: Response) {
@@ -134,9 +148,7 @@ export class AppointmentController {
 
         const parsedPage = Number.parseInt(req.query.page as string, 10);
         const parsedLimit = Number.parseInt(req.query.limit as string, 10);
-        const page = Number.isFinite(parsedPage)
-            ? Math.max(1, parsedPage)
-            : 1;
+        const page = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
         const limit = Number.isFinite(parsedLimit)
             ? Math.min(100, Math.max(1, parsedLimit))
             : 10;
@@ -147,7 +159,13 @@ export class AppointmentController {
             limit,
         );
         return res.json(
-            present(result, AppointmentPresenter.toResponseList),
+            present(result, (appointments) =>
+                Array.isArray(appointments)
+                    ? appointments.map((a) =>
+                          AppointmentListResponse.fromEntity(a),
+                      )
+                    : [],
+            ),
         );
     }
 
@@ -159,13 +177,13 @@ export class AppointmentController {
             tenantId,
             id,
         );
-        return res.json(present(result, AppointmentPresenter.toResponse));
+        return res.json(present(result, AppointmentResponse.fromEntity));
     }
 
     async cancel(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
-        const { reason } = req.body;
+        const { reason } = req.validatedBody as CancelAppointmentDTO;
 
         const result = await this.cancelAppointmentUseCase.execute(
             tenantId,
@@ -173,13 +191,14 @@ export class AppointmentController {
             getAppointmentActor(req.user!),
             reason,
         );
-        return res.json(present(result, AppointmentPresenter.toResponse));
+        return res.json(present(result, AppointmentResponse.fromEntity));
     }
 
     async updateStatus(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const { id } = req.params;
-        const { status, reason } = req.body;
+        const { status, reason } =
+            req.validatedBody as UpdateAppointmentStatusDto;
 
         const origin = resolveRequestOrigin(req);
         const result = await this.updateAppointmentStatusUseCase.execute(
@@ -190,7 +209,7 @@ export class AppointmentController {
             reason,
             origin,
         );
-        return res.json(present(result, AppointmentPresenter.toResponse));
+        return res.json(present(result, AppointmentResponse.fromEntity));
     }
 
     async getAvailability(req: Request, res: Response) {

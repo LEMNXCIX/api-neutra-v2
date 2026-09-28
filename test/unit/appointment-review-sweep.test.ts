@@ -1,17 +1,17 @@
+import { prisma } from "@/config/db.config";
 import {
     APPOINTMENT_REVIEW_SYSTEM_REASON,
     resolveAppointmentReviewActivationCutoff,
     SweepAppointmentReviewsUseCase,
 } from "@/core/application/booking/sweep-appointment-reviews.use-case";
 import { AppointmentStatus } from "@/core/entities/appointment.entity";
-import { IConfigProvider } from "@/core/providers/config-provider.interface";
-import { ILogger } from "@/core/providers/logger.interface";
-import {
+import type { IConfigProvider } from "@/core/providers/config-provider.interface";
+import type { ILogger } from "@/core/providers/logger.interface";
+import type {
     AppointmentReviewCandidate,
     IAppointmentRepository,
 } from "@/core/repositories/appointment.repository.interface";
 import { getTimezoneOrUtc } from "@/core/utils/tenant-time";
-import { prisma } from "@/config/db.config";
 import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
 
 const createLogger = (): ILogger => ({
@@ -54,7 +54,9 @@ describe("SweepAppointmentReviewsUseCase", () => {
         const repository = createRepository();
         const changedAt = new Date("2030-01-01T12:00:00.000Z");
         const activationCutoff = new Date("2029-12-31T00:00:00.000Z");
-        const configProvider = createConfigProvider(activationCutoff.toISOString());
+        const configProvider = createConfigProvider(
+            activationCutoff.toISOString(),
+        );
         repository.findReviewCandidates.mockResolvedValue([
             candidate({ endTime: new Date("2030-01-01T10:00:00.000Z") }),
         ]);
@@ -89,22 +91,23 @@ describe("SweepAppointmentReviewsUseCase", () => {
         expect(result.transitioned).toBe(1);
     });
 
-    test("uses process start when the configured activation cutoff is absent or invalid", () => {
-        const processStart = new Date("2030-01-01T08:00:00.000Z");
-
+    test("has no lower bound by default, and honours an explicit one", () => {
+        // The default used to be the process start time, described as
+        // "appointments that started before this deployment". A process start is
+        // not a deployment boundary: it moves on every restart, so each restart
+        // sealed off everything older and the sweep reported zero candidates
+        // without saying why. An appointment that started before the last
+        // restart could never be swept again.
+        expect(resolveAppointmentReviewActivationCutoff(undefined)).toEqual({
+            cutoff: null,
+            source: "unbounded",
+        });
         expect(
-            resolveAppointmentReviewActivationCutoff(undefined, processStart),
-        ).toEqual({ cutoff: processStart, source: "process-start" });
-        expect(
-            resolveAppointmentReviewActivationCutoff(
-                "not-an-absolute-instant",
-                processStart,
-            ),
-        ).toEqual({ cutoff: processStart, source: "process-start" });
+            resolveAppointmentReviewActivationCutoff("not-an-absolute-instant"),
+        ).toEqual({ cutoff: null, source: "unbounded" });
         expect(
             resolveAppointmentReviewActivationCutoff(
                 "2030-01-01T09:00:00+02:00",
-                processStart,
             ),
         ).toEqual({
             cutoff: new Date("2030-01-01T07:00:00.000Z"),
@@ -112,14 +115,50 @@ describe("SweepAppointmentReviewsUseCase", () => {
         });
     });
 
+    test("passes no lower bound down, so the two-hour grace is the only rule", async () => {
+        const repository = createRepository();
+        const changedAt = new Date("2030-01-01T12:00:00.000Z");
+        const configProvider = createConfigProvider(undefined);
+        repository.findReviewCandidates.mockResolvedValue([
+            candidate({ endTime: new Date("2030-01-01T10:00:00.000Z") }),
+        ]);
+        const useCase = new SweepAppointmentReviewsUseCase(
+            repository,
+            createLogger(),
+            configProvider,
+            { now: () => changedAt },
+        );
+
+        const result = await useCase.execute();
+
+        expect(repository.findReviewCandidates).toHaveBeenCalledWith({
+            activationCutoff: null,
+            eligibleThrough: new Date("2030-01-01T10:00:00.000Z"),
+            limit: 100,
+        });
+        expect(repository.markNeedsReview).toHaveBeenCalledWith(
+            "tenant-1",
+            "appointment-1",
+            AppointmentStatus.CONFIRMED,
+            null,
+            new Date("2030-01-01T10:00:00.000Z"),
+            changedAt,
+            APPOINTMENT_REVIEW_SYSTEM_REASON,
+        );
+        expect(result.activationCutoff).toBeNull();
+        expect(result.transitioned).toBe(1);
+    });
+
     test("does not transition the same candidate twice on repeated execution", async () => {
         const repository = createRepository();
         const now = new Date("2030-01-01T13:00:00.000Z");
         let status = AppointmentStatus.CONFIRMED;
         repository.findReviewCandidates.mockImplementation(async () =>
-            [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS].includes(
-                status,
-            )
+            [
+                AppointmentStatus.PENDING,
+                AppointmentStatus.CONFIRMED,
+                AppointmentStatus.IN_PROGRESS,
+            ].includes(status)
                 ? [candidate({ status })]
                 : [],
         );
@@ -198,13 +237,12 @@ describe("Prisma appointment review maintenance repository", () => {
             },
         ] as never);
 
-        const result = await new PrismaAppointmentRepository().findReviewCandidates(
-            {
+        const result =
+            await new PrismaAppointmentRepository().findReviewCandidates({
                 activationCutoff,
                 eligibleThrough,
                 limit: 25,
-            },
-        );
+            });
 
         expect(findMany).toHaveBeenCalledWith({
             where: {

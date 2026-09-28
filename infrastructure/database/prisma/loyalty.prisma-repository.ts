@@ -2,13 +2,15 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
 import {
-    CreateLoyaltyCampaignData,
-    ILoyaltyRepository,
-    LoyaltyCampaignClaimResult,
-    LoyaltyCampaignRewardDefinition,
-    UpdateLoyaltyCampaignData,
-} from "@/core/repositories/loyalty.repository.interface";
+    BusinessRuleViolationError,
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
 import {
+    assertLoyaltyCampaignDraft,
+    assertLoyaltyCampaignRewardConfigured,
+    assertLoyaltyCampaignRewardProvided,
+    assertLoyaltyRewardTemplate,
     canTransitionLoyaltyCampaignStatus,
     getLoyaltyCampaignProgressValue,
     getLoyaltyCampaignSourceTypes,
@@ -17,24 +19,33 @@ import {
     isValidLoyaltyCampaignMaxClaims,
     isValidLoyaltyCampaignTarget,
     isValidLoyaltyRewardValidDays,
-    LoyaltyCampaign,
+    rejectLoyaltyRewardTemplate,
+} from "@/core/domain/loyalty/loyalty.policy";
+import type { CouponType } from "@/core/entities/coupon.entity";
+import {
+    type LoyaltyCampaign,
     LoyaltyCampaignMetric,
-    LoyaltyCampaignReward,
-    LoyaltyCampaignProgress,
-    LoyaltyCampaignRewardClaim,
+    type LoyaltyCampaignProgress,
+    type LoyaltyCampaignReward,
+    type LoyaltyCampaignRewardClaim,
     LoyaltyCampaignSource,
-    LoyaltyCampaignStats,
     LoyaltyCampaignStatus,
     LoyaltyLedgerEntryType,
     LoyaltyRewardClaimStatus,
-    LoyaltySourceType,
+    type LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
+import type {
+    CreateLoyaltyCampaignData,
+    ILoyaltyRepository,
+    LoyaltyCampaignClaimResult,
+    LoyaltyCampaignRewardDefinition,
+    UpdateLoyaltyCampaignData,
+} from "@/core/repositories/loyalty.repository.interface";
 import {
-    BusinessRuleViolationError,
-    EntityNotFoundError,
-    ValidationError,
-} from "@/core/domain/errors/domain-errors";
+    mapCoupon,
+    toCouponType,
+} from "@/infrastructure/database/prisma/coupon-mapper";
+import { LoyaltyErrorCodes, ValidationErrorCodes } from "@/types/error-codes";
 
 type CouponRecord = {
     id: string;
@@ -171,12 +182,11 @@ type RewardCouponCreateData = {
 
 type LoyaltyLedgerWhere = {
     tenantId: string;
-    campaignId: string;
+    /** A single campaign, or a set for the batched progress read. */
+    campaignId: string | { in: string[] };
     userId: string;
     sourceType: { in: LoyaltySourceType[] };
-    entryType:
-        | LoyaltyLedgerEntryType
-        | { in: LoyaltyLedgerEntryType[] };
+    entryType: LoyaltyLedgerEntryType | { in: LoyaltyLedgerEntryType[] };
 };
 
 type LoyaltyLedgerDelegate = {
@@ -187,6 +197,33 @@ type LoyaltyLedgerDelegate = {
     }): Promise<{
         _sum: { value: Prisma.Decimal | null };
     }>;
+    /**
+     * Prisma exposes one heavily overloaded `groupBy`. These two call
+     * signatures are the shapes this repository uses; they must both be called
+     * `groupBy`, because a delegate assembled as an object literal here has to
+     * stay callable as the real Prisma delegate it stands in for.
+     */
+    groupBy(args: {
+        by: ["campaignId", "entryType"];
+        where: LoyaltyLedgerWhere;
+        _count: { _all: true };
+    }): Promise<
+        Array<{
+            campaignId: string;
+            entryType: LoyaltyLedgerEntryType;
+            _count: { _all: number };
+        }>
+    >;
+    groupBy(args: {
+        by: ["campaignId"];
+        where: LoyaltyLedgerWhere;
+        _sum: { value: true };
+    }): Promise<
+        Array<{
+            campaignId: string;
+            _sum: { value: Prisma.Decimal | null };
+        }>
+    >;
 };
 
 type LoyaltyCampaignDelegate = {
@@ -199,6 +236,7 @@ type LoyaltyCampaignDelegate = {
     findFirst(args: {
         where: Record<string, unknown>;
         include?: { rewardCoupon: true };
+        select?: { id: true; name: true };
         orderBy?: { startsAt: "desc" };
     }): Promise<CampaignRecord | null>;
     updateMany(args: {
@@ -219,6 +257,15 @@ type LoyaltyRewardClaimDelegate = {
         where: ClaimWhere;
         include: { coupon: true };
     }): Promise<ClaimRecord | null>;
+    findMany(args: {
+        where: {
+            tenantId: string;
+            userId: string;
+            campaignId: { in: string[] };
+        };
+        include: { coupon: true };
+    }): Promise<ClaimRecord[]>;
+    count(args: { where: { tenantId: string } }): Promise<number>;
     create(args: {
         data: ClaimCreateData;
         include: { coupon: true };
@@ -230,12 +277,8 @@ type RewardCouponUpdateData = Partial<
 >;
 
 type RewardCouponDelegate = {
-    findFirst(args: {
-        where: RewardCouponWhere;
-    }): Promise<CouponRecord | null>;
-    create(args: {
-        data: RewardCouponCreateData;
-    }): Promise<CouponRecord>;
+    findFirst(args: { where: RewardCouponWhere }): Promise<CouponRecord | null>;
+    create(args: { data: RewardCouponCreateData }): Promise<CouponRecord>;
     updateMany(args: {
         where: Record<string, unknown>;
         data: RewardCouponUpdateData;
@@ -289,29 +332,34 @@ function isLoyaltyDatabase(value: unknown): value is LoyaltyDatabase {
     );
 }
 
-function toCouponType(value: string): CouponType {
-    if (value === CouponType.PERCENT || value === CouponType.FIXED) {
-        return value;
-    }
-    throw new Error(`Unsupported coupon type: ${value}`);
-}
-
 function toCampaignStatus(value: string): LoyaltyCampaignStatus {
-    if (Object.values(LoyaltyCampaignStatus).includes(value as LoyaltyCampaignStatus)) {
+    if (
+        Object.values(LoyaltyCampaignStatus).includes(
+            value as LoyaltyCampaignStatus,
+        )
+    ) {
         return value as LoyaltyCampaignStatus;
     }
     throw new Error(`Unsupported loyalty campaign status: ${value}`);
 }
 
 function toCampaignSource(value: string): LoyaltyCampaignSource {
-    if (Object.values(LoyaltyCampaignSource).includes(value as LoyaltyCampaignSource)) {
+    if (
+        Object.values(LoyaltyCampaignSource).includes(
+            value as LoyaltyCampaignSource,
+        )
+    ) {
         return value as LoyaltyCampaignSource;
     }
     throw new Error(`Unsupported loyalty campaign source: ${value}`);
 }
 
 function toCampaignMetric(value: string): LoyaltyCampaignMetric {
-    if (Object.values(LoyaltyCampaignMetric).includes(value as LoyaltyCampaignMetric)) {
+    if (
+        Object.values(LoyaltyCampaignMetric).includes(
+            value as LoyaltyCampaignMetric,
+        )
+    ) {
         return value as LoyaltyCampaignMetric;
     }
     throw new Error(`Unsupported loyalty campaign metric: ${value}`);
@@ -350,31 +398,6 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         return candidate;
     }
 
-    private mapCoupon(row: CouponRecord): Coupon {
-        return {
-            id: row.id,
-            code: row.code,
-            type: toCouponType(row.type),
-            value: row.value,
-            description: row.description ?? undefined,
-            ownerId: row.ownerId ?? undefined,
-            isReward: row.isReward,
-            isLoyaltyTemplate: row.isLoyaltyTemplate,
-            sourceCouponId: row.sourceCouponId ?? undefined,
-            minPurchaseAmount: row.minPurchaseAmount ?? undefined,
-            maxDiscountAmount: row.maxDiscountAmount ?? undefined,
-            usageLimit: row.usageLimit ?? undefined,
-            usageCount: row.usageCount,
-            active: row.active,
-            expiresAt: row.expiresAt,
-            applicableProducts: row.applicableProducts,
-            applicableCategories: row.applicableCategories,
-            applicableServices: row.applicableServices,
-            createdAt: row.createdAt,
-            updatedAt: row.updatedAt,
-        };
-    }
-
     private mapCampaignReward(
         row: CouponRecord | null | undefined,
     ): LoyaltyCampaignReward | undefined {
@@ -382,9 +405,9 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         return {
             type: toCouponType(row.type),
             value: row.value,
-            description: row.description ?? undefined,
-            minPurchaseAmount: row.minPurchaseAmount ?? undefined,
-            maxDiscountAmount: row.maxDiscountAmount ?? undefined,
+            description: row.description,
+            minPurchaseAmount: row.minPurchaseAmount,
+            maxDiscountAmount: row.maxDiscountAmount,
             applicableProducts: [...row.applicableProducts],
             applicableCategories: [...row.applicableCategories],
             applicableServices: [...row.applicableServices],
@@ -396,7 +419,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             id: row.id,
             tenantId: row.tenantId,
             name: row.name,
-            description: row.description ?? undefined,
+            description: row.description,
             source: toCampaignSource(row.source),
             metric: toCampaignMetric(row.metric),
             targetValue: toFixedDecimalString(row.targetValue),
@@ -404,10 +427,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             startsAt: row.startsAt,
             endsAt: row.endsAt,
             claimUntil: row.claimUntil,
-            rewardCouponId: row.rewardCouponId ?? undefined,
+            rewardCouponId: row.rewardCouponId,
             reward: this.mapCampaignReward(row.rewardCoupon),
-            rewardValidDays: row.rewardValidDays ?? undefined,
-            maxClaims: row.maxClaims ?? undefined,
+            rewardValidDays: row.rewardValidDays,
+            maxClaims: row.maxClaims,
             claimedCount: row.claimedCount,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
@@ -424,25 +447,27 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             status: toClaimStatus(row.status),
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
-            coupon: row.coupon ? this.mapCoupon(row.coupon) : undefined,
+            coupon: row.coupon ? mapCoupon(row.coupon) : undefined,
         };
     }
 
-    private toCampaignClaimResult(row: ClaimRecord): LoyaltyCampaignClaimResult {
+    private toCampaignClaimResult(
+        row: ClaimRecord,
+    ): LoyaltyCampaignClaimResult {
         if (!row.coupon) {
             throw new EntityNotFoundError("Coupon", row.couponId);
         }
         return {
             claim: this.mapCampaignClaim(row),
-            coupon: this.mapCoupon(row.coupon),
+            coupon: mapCoupon(row.coupon),
         };
     }
 
     private validateIdentity(...values: string[]): void {
-        if (values.some((value) => !value || !value.trim())) {
+        if (values.some((value) => !value?.trim())) {
             throw new ValidationError(
                 "Loyalty campaign identifiers are required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
     }
@@ -455,31 +480,43 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         startsAt: Date;
         endsAt: Date;
         claimUntil: Date;
-        rewardValidDays?: number;
+        rewardValidDays?: number | null;
         maxClaims?: number | null;
     }): void {
         if (!data.name?.trim()) {
-            throw new ValidationError("Campaign name is required", "INVALID_CAMPAIGN_NAME");
+            throw new ValidationError(
+                "Campaign name is required",
+                ValidationErrorCodes.INVALID_CAMPAIGN_NAME,
+            );
         }
         if (!Object.values(LoyaltyCampaignSource).includes(data.source)) {
-            throw new ValidationError("Invalid campaign source", "INVALID_CAMPAIGN_SOURCE");
+            throw new ValidationError(
+                "Invalid campaign source",
+                ValidationErrorCodes.INVALID_CAMPAIGN_SOURCE,
+            );
         }
         if (!isValidLoyaltyCampaignTarget(data.metric, data.targetValue)) {
             throw new ValidationError(
                 "Campaign target must be a positive decimal and COUNT targets must be integers",
-                "INVALID_CAMPAIGN_TARGET",
+                ValidationErrorCodes.INVALID_CAMPAIGN_TARGET,
             );
         }
-        if (!isValidLoyaltyCampaignDates(data.startsAt, data.endsAt, data.claimUntil)) {
+        if (
+            !isValidLoyaltyCampaignDates(
+                data.startsAt,
+                data.endsAt,
+                data.claimUntil,
+            )
+        ) {
             throw new ValidationError(
                 "Campaign dates must satisfy startsAt < endsAt <= claimUntil",
-                "INVALID_CAMPAIGN_DATES",
+                ValidationErrorCodes.INVALID_CAMPAIGN_DATES,
             );
         }
         if (!isValidLoyaltyRewardValidDays(data.rewardValidDays)) {
             throw new ValidationError(
                 "Campaign reward validity must be a positive integer",
-                "INVALID_LOYALTY_REWARD_VALIDITY",
+                ValidationErrorCodes.INVALID_LOYALTY_REWARD_VALIDITY,
             );
         }
         if (
@@ -489,7 +526,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         ) {
             throw new ValidationError(
                 "Campaign maxClaims must be a positive integer",
-                "INVALID_CAMPAIGN_MAX_CLAIMS",
+                ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
             );
         }
     }
@@ -497,64 +534,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
     private validateRewardDefinition(
         reward: LoyaltyCampaignRewardDefinition,
     ): void {
-        if (!Object.values(CouponType).includes(reward.type)) {
-            throw new ValidationError(
-                "Reward definition type is invalid",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-        if (
-            typeof reward.value !== "number" ||
-            !Number.isFinite(reward.value) ||
-            reward.value <= 0 ||
-            (reward.type === CouponType.PERCENT && reward.value > 100)
-        ) {
-            throw new ValidationError(
-                "Reward definition value is invalid",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-        if (
-            reward.description !== undefined &&
-            reward.description !== null &&
-            typeof reward.description !== "string"
-        ) {
-            throw new ValidationError(
-                "Reward definition description is invalid",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-        for (const [field, value] of [
-            ["minPurchaseAmount", reward.minPurchaseAmount],
-            ["maxDiscountAmount", reward.maxDiscountAmount],
-        ] as const) {
-            if (
-                value !== undefined &&
-                value !== null &&
-                (typeof value !== "number" || !Number.isFinite(value) || value < 0)
-            ) {
-                throw new ValidationError(
-                    `Reward definition ${field} is invalid`,
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
-                );
-            }
-        }
-        for (const value of [
-            reward.applicableProducts,
-            reward.applicableCategories,
-            reward.applicableServices,
-        ]) {
-            if (
-                value !== undefined &&
-                (!Array.isArray(value) ||
-                    value.some((item) => typeof item !== "string"))
-            ) {
-                throw new ValidationError(
-                    "Reward definition applicability is invalid",
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
-                );
-            }
-        }
+        assertLoyaltyRewardTemplate(reward);
     }
 
     private buildTemplateData(
@@ -624,9 +604,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             data,
         });
         if (result && result.count === 0) {
-            throw new BusinessRuleViolationError(
+            rejectLoyaltyRewardTemplate(
                 "The campaign reward template is no longer available",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
             );
         }
     }
@@ -648,9 +627,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             },
         });
         if (!template) {
-            throw new BusinessRuleViolationError(
+            rejectLoyaltyRewardTemplate(
                 "The campaign reward template must be an active shared loyalty template for this tenant through claimUntil",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
             );
         }
     }
@@ -662,10 +640,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         this.validateIdentity(tenantId);
         this.validateCampaignFields(data);
         if (!data.reward) {
-            throw new ValidationError(
-                "Campaign reward definition is required",
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
+            assertLoyaltyCampaignRewardProvided(data.reward);
         }
         this.validateRewardDefinition(data.reward);
         const row = await this.db.$transaction(async (tx) => {
@@ -677,11 +652,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 ),
             });
             const campaign = await tx.loyaltyCampaign.create({
-                data: this.buildCampaignData(
-                    tenantId,
-                    data,
-                    template.id,
-                ),
+                data: this.buildCampaignData(tenantId, data, template.id),
             });
             return { ...campaign, rewardCoupon: template };
         });
@@ -718,12 +689,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
             }
             const current = this.mapCampaign(currentRow);
-            if (current.status !== LoyaltyCampaignStatus.DRAFT) {
-                throw new BusinessRuleViolationError(
-                    "Only DRAFT loyalty campaigns can be updated",
-                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
-                );
-            }
+            assertLoyaltyCampaignDraft(
+                current.status === LoyaltyCampaignStatus.DRAFT,
+                "Only DRAFT loyalty campaigns can be updated",
+            );
 
             const candidate = {
                 name: data.name ?? current.name,
@@ -738,7 +707,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     data.rewardValidDays ?? current.rewardValidDays,
                 maxClaims:
                     data.maxClaims === undefined
-                        ? current.maxClaims ?? null
+                        ? (current.maxClaims ?? null)
                         : data.maxClaims,
             };
             this.validateCampaignFields(candidate);
@@ -748,15 +717,14 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             ) {
                 throw new ValidationError(
                     "Campaign maxClaims cannot be lower than claimedCount",
-                    "INVALID_CAMPAIGN_MAX_CLAIMS",
+                    ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
                 );
             }
 
             const templateId = current.rewardCouponId;
             if (!templateId) {
-                throw new BusinessRuleViolationError(
+                rejectLoyaltyRewardTemplate(
                     "Campaign reward template is missing",
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
                 );
             }
             const existingTemplate = await tx.coupon.findFirst({
@@ -769,9 +737,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 },
             });
             if (!existingTemplate) {
-                throw new BusinessRuleViolationError(
+                rejectLoyaltyRewardTemplate(
                     "The campaign reward template is missing",
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
                 );
             }
             if (reward) {
@@ -816,7 +783,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             if (data.targetValue !== undefined) {
                 updateData.targetValue = new Prisma.Decimal(data.targetValue);
             }
-            if (data.startsAt !== undefined) updateData.startsAt = data.startsAt;
+            if (data.startsAt !== undefined)
+                updateData.startsAt = data.startsAt;
             if (data.endsAt !== undefined) updateData.endsAt = data.endsAt;
             if (data.claimUntil !== undefined) {
                 updateData.claimUntil = data.claimUntil;
@@ -824,7 +792,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             if (data.rewardValidDays !== undefined) {
                 updateData.rewardValidDays = data.rewardValidDays;
             }
-            if (data.maxClaims !== undefined) updateData.maxClaims = data.maxClaims;
+            if (data.maxClaims !== undefined)
+                updateData.maxClaims = data.maxClaims;
 
             const result = await tx.loyaltyCampaign.updateMany({
                 where: {
@@ -834,12 +803,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 },
                 data: updateData,
             });
-            if (result.count === 0) {
-                throw new BusinessRuleViolationError(
-                    "The loyalty campaign is no longer DRAFT",
-                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
-                );
-            }
+            assertLoyaltyCampaignDraft(
+                result.count > 0,
+                "The loyalty campaign is no longer DRAFT",
+            );
             const updated = await tx.loyaltyCampaign.findFirst({
                 where: { id: campaignId, tenantId },
                 include: { rewardCoupon: true },
@@ -862,12 +829,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
             }
             const current = this.mapCampaign(currentRow);
-            if (current.status !== LoyaltyCampaignStatus.DRAFT) {
-                throw new BusinessRuleViolationError(
-                    "Only DRAFT loyalty campaigns can be deleted",
-                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
-                );
-            }
+            assertLoyaltyCampaignDraft(
+                current.status === LoyaltyCampaignStatus.DRAFT,
+                "Only DRAFT loyalty campaigns can be deleted",
+            );
             const result = await tx.loyaltyCampaign.deleteMany({
                 where: {
                     id: campaignId,
@@ -875,12 +840,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     status: LoyaltyCampaignStatus.DRAFT,
                 },
             });
-            if (result.count === 0) {
-                throw new BusinessRuleViolationError(
-                    "The loyalty campaign is no longer DRAFT",
-                    "LOYALTY_CAMPAIGN_NOT_DRAFT",
-                );
-            }
+            assertLoyaltyCampaignDraft(
+                result.count > 0,
+                "The loyalty campaign is no longer DRAFT",
+            );
             if (current.rewardCouponId && current.claimedCount === 0) {
                 await tx.coupon.deleteMany({
                     where: {
@@ -956,41 +919,6 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         return row ? this.mapCampaign(row) : null;
     }
 
-    async findActiveCampaignAt(
-        tenantId: string,
-        sourceType: LoyaltySourceType,
-        at: Date,
-    ): Promise<LoyaltyCampaign | null> {
-        this.validateIdentity(tenantId);
-        if (!(at instanceof Date) || !Number.isFinite(at.getTime())) {
-            throw new ValidationError("Campaign lookup date is invalid", "INVALID_CAMPAIGN_DATE");
-        }
-        let source: LoyaltyCampaignSource | null = null;
-        if (sourceType === LoyaltySourceType.APPOINTMENT) {
-            source = LoyaltyCampaignSource.BOOKING;
-        } else if (sourceType === LoyaltySourceType.ORDER) {
-            source = LoyaltyCampaignSource.STORE;
-        }
-        if (!source) {
-            throw new ValidationError(
-                "Campaign source type is invalid",
-                "INVALID_LOYALTY_SOURCE_TYPE",
-            );
-        }
-        const row = await this.db.loyaltyCampaign.findFirst({
-            where: {
-                tenantId,
-                status: LoyaltyCampaignStatus.ACTIVE,
-                source: { in: [source, LoyaltyCampaignSource.ALL] },
-                startsAt: { lte: at },
-                endsAt: { gt: at },
-            },
-            include: { rewardCoupon: true },
-            orderBy: { startsAt: "desc" },
-        });
-        return row ? this.mapCampaign(row) : null;
-    }
-
     private async calculateCampaignProgressValue(
         ledger: LoyaltyLedgerDelegate,
         tenantId: string,
@@ -1019,13 +947,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     entryType: LoyaltyLedgerEntryType.REVERSAL,
                 },
             });
-            return getLoyaltyCampaignProgressValue(
-                campaign.metric,
-                toFixedDecimalString(
-                    new Prisma.Decimal(
-                        Math.max(accrualCount - reversalCount, 0),
-                    ),
-                ),
+            return this.countProgressValue(
+                campaign,
+                accrualCount,
+                reversalCount,
             );
         }
 
@@ -1041,32 +966,52 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             },
             _sum: { value: true },
         });
+        return this.spendProgressValue(campaign, aggregate._sum.value);
+    }
+
+    /**
+     * Normalisation for a COUNT campaign's ledger activity. Shared with the
+     * batched path so a customer's progress cannot differ between reading one
+     * campaign and reading many.
+     */
+    private countProgressValue(
+        campaign: LoyaltyCampaign,
+        accrualCount: number,
+        reversalCount: number,
+    ): string {
         return getLoyaltyCampaignProgressValue(
             campaign.metric,
             toFixedDecimalString(
-                aggregate._sum.value ?? new Prisma.Decimal(0),
+                new Prisma.Decimal(Math.max(accrualCount - reversalCount, 0)),
             ),
         );
     }
 
-    async getCampaignProgress(
-        tenantId: string,
-        campaignId: string,
-        userId: string,
-    ): Promise<LoyaltyCampaignProgress> {
-        this.validateIdentity(tenantId, campaignId, userId);
-        const campaign = await this.getCampaign(tenantId, campaignId);
-        if (!campaign) {
-            throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
-        }
-        const progressValue = await this.calculateCampaignProgressValue(
-            this.db.loyaltyLedgerEntry,
-            tenantId,
-            campaign,
-            userId,
+    /**
+     * Normalisation for a SPEND campaign's ledger activity, shared with the
+     * batched path for the same reason.
+     */
+    private spendProgressValue(
+        campaign: LoyaltyCampaign,
+        total: Prisma.Decimal | null,
+    ): string {
+        return getLoyaltyCampaignProgressValue(
+            campaign.metric,
+            toFixedDecimalString(total ?? new Prisma.Decimal(0)),
         );
+    }
+
+    /**
+     * Builds the progress record for one campaign. Shared with the batched path
+     * so `reachedTarget` is decided identically in both.
+     */
+    private toCampaignProgress(
+        campaign: LoyaltyCampaign,
+        userId: string,
+        progressValue: string,
+    ): LoyaltyCampaignProgress {
         return {
-            campaignId,
+            campaignId: campaign.id,
             userId,
             metric: campaign.metric,
             progressValue,
@@ -1077,24 +1022,181 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         };
     }
 
-    async getCampaignStats(
+    async getCampaignProgress(
         tenantId: string,
         campaignId: string,
-    ): Promise<LoyaltyCampaignStats> {
-        this.validateIdentity(tenantId, campaignId);
-        const campaign = await this.getCampaign(tenantId, campaignId);
+        userId: string,
+        knownCampaign?: LoyaltyCampaign,
+    ): Promise<LoyaltyCampaignProgress> {
+        this.validateIdentity(tenantId, campaignId, userId);
+        // A caller that already holds the campaign passes it; the metric and the
+        // target it needs live on that row, so re-reading it is a wasted query.
+        const campaign =
+            knownCampaign ?? (await this.getCampaign(tenantId, campaignId));
         if (!campaign) {
             throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
         }
-        const claimedCount = campaign.claimedCount;
-        const maxClaims = campaign.maxClaims ?? null;
-        return {
-            campaignId,
-            claimedCount,
-            maxClaims,
-            remainingClaims:
-                maxClaims === null ? null : Math.max(maxClaims - claimedCount, 0),
-        };
+        const progressValue = await this.calculateCampaignProgressValue(
+            this.db.loyaltyLedgerEntry,
+            tenantId,
+            campaign,
+            userId,
+        );
+        return this.toCampaignProgress(campaign, userId, progressValue);
+    }
+
+    async getCampaignsProgressForCustomer(
+        tenantId: string,
+        userId: string,
+        campaigns: LoyaltyCampaign[],
+    ): Promise<LoyaltyCampaignProgress[]> {
+        this.validateIdentity(tenantId, userId);
+        if (campaigns.length === 0) {
+            return [];
+        }
+        // One read per (metric, source) pair rather than per campaign. The
+        // source cannot be collapsed across campaigns: a groupBy that widened
+        // sourceType to the union of the batch would count an ORDER entry
+        // towards a BOOKING campaign, so campaigns are grouped by the exact
+        // source set the single-campaign path would have used.
+        const groups = new Map<string, LoyaltyCampaign[]>();
+        for (const campaign of campaigns) {
+            const key = `${campaign.metric}:${campaign.source}`;
+            const group = groups.get(key);
+            if (group) {
+                group.push(campaign);
+            } else {
+                groups.set(key, [campaign]);
+            }
+        }
+
+        const progressByCampaign = new Map<string, LoyaltyCampaignProgress>();
+        for (const group of groups.values()) {
+            const sample = group[0];
+            const campaignIds = group.map((campaign) => campaign.id);
+            // `entryType` is added per call, once the metric decides which entry
+            // types count, so the shared base is the where-clause without it.
+            const where: Omit<LoyaltyLedgerWhere, "entryType"> = {
+                tenantId,
+                userId,
+                campaignId: { in: campaignIds },
+                sourceType: {
+                    in: getLoyaltyCampaignSourceTypes(sample.source),
+                },
+            };
+
+            if (sample.metric === LoyaltyCampaignMetric.COUNT) {
+                const rows = await this.db.loyaltyLedgerEntry.groupBy({
+                    by: ["campaignId", "entryType"],
+                    where: {
+                        ...where,
+                        entryType: {
+                            in: [
+                                LoyaltyLedgerEntryType.ACCRUAL,
+                                LoyaltyLedgerEntryType.REVERSAL,
+                            ],
+                        },
+                    },
+                    _count: { _all: true },
+                });
+                const counts = new Map<
+                    string,
+                    { accrual: number; reversal: number }
+                >();
+                for (const row of rows) {
+                    const current = counts.get(row.campaignId) ?? {
+                        accrual: 0,
+                        reversal: 0,
+                    };
+                    if (row.entryType === LoyaltyLedgerEntryType.ACCRUAL) {
+                        current.accrual = row._count._all;
+                    } else {
+                        current.reversal = row._count._all;
+                    }
+                    counts.set(row.campaignId, current);
+                }
+                for (const campaign of group) {
+                    const current = counts.get(campaign.id);
+                    const progressValue = this.countProgressValue(
+                        campaign,
+                        current?.accrual ?? 0,
+                        current?.reversal ?? 0,
+                    );
+                    progressByCampaign.set(
+                        campaign.id,
+                        this.toCampaignProgress(
+                            campaign,
+                            userId,
+                            progressValue,
+                        ),
+                    );
+                }
+                continue;
+            }
+
+            const rows = await this.db.loyaltyLedgerEntry.groupBy({
+                by: ["campaignId"],
+                where: {
+                    ...where,
+                    entryType: {
+                        in: [
+                            LoyaltyLedgerEntryType.ACCRUAL,
+                            LoyaltyLedgerEntryType.REVERSAL,
+                        ],
+                    },
+                },
+                _sum: { value: true },
+            });
+            const sums = new Map<string, Prisma.Decimal | null>();
+            for (const row of rows) {
+                sums.set(row.campaignId, row._sum.value);
+            }
+            for (const campaign of group) {
+                const progressValue = this.spendProgressValue(
+                    campaign,
+                    sums.get(campaign.id) ?? null,
+                );
+                progressByCampaign.set(
+                    campaign.id,
+                    this.toCampaignProgress(campaign, userId, progressValue),
+                );
+            }
+        }
+
+        return campaigns.map(
+            (campaign) =>
+                progressByCampaign.get(campaign.id) ??
+                this.toCampaignProgress(campaign, userId, "0.00"),
+        );
+    }
+
+    async findCampaignRewardClaimsForCustomer(
+        tenantId: string,
+        userId: string,
+        campaignIds: string[],
+    ): Promise<LoyaltyCampaignRewardClaim[]> {
+        this.validateIdentity(tenantId, userId);
+        if (campaignIds.length === 0) {
+            return [];
+        }
+        const rows = await this.db.loyaltyRewardClaim.findMany({
+            where: { tenantId, userId, campaignId: { in: campaignIds } },
+            include: { coupon: true },
+        });
+        return rows.map((row) => this.mapCampaignClaim(row));
+    }
+
+    /**
+     * How many reward claims a tenant holds, in one query.
+     *
+     * This counts claim rows rather than summing each campaign's claimedCount
+     * column, so a tenant whose claims were removed by a cascading user delete
+     * reports the number that is actually there. Summing the column would
+     * report the stale one.
+     */
+    async countCampaignRewardClaims(tenantId: string): Promise<number> {
+        this.validateIdentity(tenantId);
+        return this.db.loyaltyRewardClaim.count({ where: { tenantId } });
     }
 
     async findCampaignRewardClaim(
@@ -1120,7 +1222,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         if (!canTransitionLoyaltyCampaignStatus(from, to)) {
             throw new BusinessRuleViolationError(
                 `Invalid loyalty campaign transition: ${from} -> ${to}`,
-                "INVALID_LOYALTY_CAMPAIGN_TRANSITION",
+                LoyaltyErrorCodes.INVALID_CAMPAIGN_TRANSITION,
             );
         }
 
@@ -1137,7 +1239,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
         ) {
             throw new BusinessRuleViolationError(
                 "A campaign can be archived only at or after claimUntil",
-                "LOYALTY_CAMPAIGN_ARCHIVE_TOO_EARLY",
+                LoyaltyErrorCodes.CAMPAIGN_ARCHIVE_TOO_EARLY,
             );
         }
         if (
@@ -1156,12 +1258,12 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 maxClaims: current.maxClaims ?? null,
             });
             if (
-                current.maxClaims !== undefined &&
+                current.maxClaims !== null &&
                 current.maxClaims < current.claimedCount
             ) {
                 throw new ValidationError(
                     "Campaign maxClaims cannot be lower than claimedCount",
-                    "INVALID_CAMPAIGN_MAX_CLAIMS",
+                    ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
                 );
             }
             await this.validateRewardTemplate(
@@ -1169,14 +1271,71 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 current.rewardCouponId!,
                 current.claimUntil,
             );
+            // Last of the activation checks, and deliberately so: the ones above
+            // describe whether this campaign is fit to run, and the caller should
+            // hear about those first. This one describes the tenant's room, and
+            // reporting it ahead of a broken template would answer a question
+            // the caller did not ask.
+            await this.assertNoOtherActiveCampaign(tenantId, campaignId);
         }
 
-        const result = await this.db.loyaltyCampaign.updateMany({
-            where: { id: campaignId, tenantId, status: from },
-            data: { status: to },
-        });
+        let result: { count: number };
+        try {
+            result = await this.db.loyaltyCampaign.updateMany({
+                where: { id: campaignId, tenantId, status: from },
+                data: { status: to },
+            });
+        } catch (error: unknown) {
+            // The check above cannot see a concurrent activation that lands
+            // between it and this write, so the partial unique index is still
+            // the authority. Reaching here means two activations raced, and the
+            // answer is the same business rule the check would have given, not
+            // a 500. This is the only unique index a campaign status update can
+            // violate, so a blanket P2002 match here is exact rather than broad.
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2002"
+            ) {
+                throw new BusinessRuleViolationError(
+                    "Another loyalty campaign is already active for this tenant",
+                    LoyaltyErrorCodes.CAMPAIGN_ALREADY_ACTIVE_PER_TENANT,
+                );
+            }
+            throw error;
+        }
         if (result.count === 0) return null;
         return this.getCampaign(tenantId, campaignId);
+    }
+
+    /**
+     * A tenant may run only one ACTIVE campaign, so an event always has exactly
+     * one campaign to accrue into and the accrual query's "newest start wins"
+     * tie-break never has to choose between two running campaigns.
+     *
+     * The database is what actually guarantees it, through the partial unique
+     * index `loyalty_campaigns_one_active_per_tenant_key`. This exists to turn
+     * the ordinary case into an error that names the conflict, because the index
+     * alone reports an anonymous unique violation that reaches the client as a
+     * 500. It is a check and not a lock: see the P2002 translation at the write.
+     */
+    private async assertNoOtherActiveCampaign(
+        tenantId: string,
+        campaignId: string,
+    ): Promise<void> {
+        const running = await this.db.loyaltyCampaign.findFirst({
+            where: {
+                tenantId,
+                status: LoyaltyCampaignStatus.ACTIVE,
+                id: { not: campaignId },
+            },
+            select: { id: true, name: true },
+        });
+        if (running) {
+            throw new BusinessRuleViolationError(
+                `Tenant already has an active loyalty campaign: ${running.name}`,
+                LoyaltyErrorCodes.CAMPAIGN_ALREADY_ACTIVE_PER_TENANT,
+            );
+        }
     }
 
     async claimCampaignReward(
@@ -1200,7 +1359,10 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     include: { rewardCoupon: true },
                 });
                 if (!campaignRow) {
-                    throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
+                    throw new EntityNotFoundError(
+                        "LoyaltyCampaign",
+                        campaignId,
+                    );
                 }
                 const campaign = this.mapCampaign(campaignRow);
                 if (
@@ -1213,36 +1375,36 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 ) {
                     throw new BusinessRuleViolationError(
                         "The campaign is not claimable at this time",
-                        "LOYALTY_CAMPAIGN_NOT_CLAIMABLE",
+                        LoyaltyErrorCodes.CAMPAIGN_NOT_CLAIMABLE,
                     );
                 }
+                assertLoyaltyCampaignRewardConfigured(
+                    campaign.rewardCouponId,
+                    campaign.rewardValidDays,
+                    "The campaign reward is not configured",
+                );
+
+                const progressValue = await this.calculateCampaignProgressValue(
+                    tx.loyaltyLedgerEntry,
+                    tenantId,
+                    campaign,
+                    userId,
+                );
                 if (
-                    !campaign.rewardCouponId ||
-                    !isValidLoyaltyRewardValidDays(campaign.rewardValidDays)
+                    !new Prisma.Decimal(progressValue).gte(
+                        new Prisma.Decimal(campaign.targetValue),
+                    )
                 ) {
                     throw new BusinessRuleViolationError(
-                        "The campaign reward is not configured",
-                        "INVALID_LOYALTY_REWARD_TEMPLATE",
-                    );
-                }
-
-                const progressValue =
-                    await this.calculateCampaignProgressValue(
-                        tx.loyaltyLedgerEntry,
-                        tenantId,
-                        campaign,
-                        userId,
-                    );
-                if (!new Prisma.Decimal(progressValue).gte(new Prisma.Decimal(campaign.targetValue))) {
-                    throw new BusinessRuleViolationError(
                         "The loyalty campaign target has not been reached",
-                        "LOYALTY_TARGET_NOT_REACHED",
+                        LoyaltyErrorCodes.TARGET_NOT_REACHED,
                     );
                 }
 
                 const template = await tx.coupon.findFirst({
                     where: {
-                        id: campaign.rewardCouponId,
+                        // The guard above already rejected an unconfigured reward.
+                        id: campaign.rewardCouponId!,
                         tenantId,
                         ownerId: null,
                         isReward: false,
@@ -1252,9 +1414,8 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     },
                 });
                 if (!template) {
-                    throw new BusinessRuleViolationError(
+                    rejectLoyaltyRewardTemplate(
                         "The campaign reward template is inactive, expired, or not shared",
-                        "INVALID_LOYALTY_REWARD_TEMPLATE",
                     );
                 }
 
@@ -1285,7 +1446,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                     if (winner) return this.toCampaignClaimResult(winner);
                     throw new BusinessRuleViolationError(
                         "The campaign has reached its claim limit",
-                        "LOYALTY_CAMPAIGN_CLAIM_LIMIT_REACHED",
+                        LoyaltyErrorCodes.CAMPAIGN_CLAIM_LIMIT_REACHED,
                     );
                 }
 
@@ -1296,7 +1457,7 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
                 if (!Number.isFinite(expiresAt.getTime())) {
                     throw new ValidationError(
                         "Campaign reward validity produces an invalid expiry date",
-                        "INVALID_LOYALTY_REWARD_VALIDITY",
+                        ValidationErrorCodes.INVALID_LOYALTY_REWARD_VALIDITY,
                     );
                 }
 
@@ -1348,5 +1509,4 @@ export class PrismaLoyaltyRepository implements ILoyaltyRepository {
             throw error;
         }
     }
-
 }

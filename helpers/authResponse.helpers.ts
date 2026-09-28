@@ -1,10 +1,26 @@
-import { Response, Request, CookieOptions } from "express";
+import type { CookieOptions, Request, Response } from "express";
 import config from "@/config/index.config";
-import {
-    AUTH_CONSTANTS,
-    isProduction,
-} from "@/core/domain/constants";
 import { DOMAIN_CONSTANTS } from "@/config/infrastructure-constants";
+import { AUTH_CONSTANTS, isProduction } from "@/core/domain/constants";
+import type { ErrorDetail } from "@/types/api-response";
+
+/**
+ * Result bag produced by the auth use cases and the OAuth provider callbacks.
+ * It is wrapped into the `StandardResponse` envelope by the response middleware,
+ * so its shape is described here instead of being `any`.
+ */
+interface AuthResult {
+    code?: number;
+    success?: boolean;
+    message?: string;
+    token?: string;
+    data?: Record<string, unknown>;
+    errors?: ErrorDetail[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 const production: boolean = config.production;
 const ENVIRONMENT: string = config.ENVIRONMENT;
@@ -31,7 +47,7 @@ export function getCookieDomain(req: Request): string | undefined {
         // nip.io with IP: [a,b,c,d,nip,io] -> 6 parts
         // We want the last 6 parts to cover any subdomain of that IP nip.io address
         if (parts.length >= DOMAIN_CONSTANTS.NIPIO_PARTS) {
-            return "." + parts.slice(-DOMAIN_CONSTANTS.NIPIO_PARTS).join(".");
+            return `.${parts.slice(-DOMAIN_CONSTANTS.NIPIO_PARTS).join(".")}`;
         }
         return DOMAIN_CONSTANTS.LOCAL_NIPIO;
     }
@@ -41,7 +57,7 @@ export function getCookieDomain(req: Request): string | undefined {
     if (production && !domain.includes("localhost") && domain.includes(".")) {
         const parts = domain.split(".");
         if (parts.length >= 2) {
-            return "." + parts.slice(-2).join(".");
+            return `.${parts.slice(-2).join(".")}`;
         }
     }
 
@@ -68,30 +84,30 @@ export function cookieOptions(req: Request): CookieOptions {
 export function authResponse(
     req: Request,
     res: Response,
-    result: any,
+    result: AuthResult,
     statusCode: number,
 ) {
     const code =
         result && typeof result.code === "number" ? result.code : statusCode;
 
-    if (result && result.success) {
+    if (result?.success) {
         const opts = Object.assign({}, cookieOptions(req), {
             expires: new Date(Date.now() + AUTH_CONSTANTS.COOKIE_EXPIRES_MS),
         });
 
         // Extract token from result data
         let token: string | undefined;
-        let data: any = result.data;
+        let data: unknown = result.data;
 
         if (result.token) {
             token = result.token;
-        } else if (result.data && result.data.token) {
+        } else if (result.data && typeof result.data.token === "string") {
             token = result.data.token;
             // Clean up token from data if it exists there to avoid redundancy
             const { token: _, ...rest } = result.data;
             data = Object.keys(rest).length ? rest : undefined;
             // Unwrap user object if it's the only thing left
-            if (data && data.user && Object.keys(data).length === 1) {
+            if (isRecord(data) && data.user && Object.keys(data).length === 1) {
                 data = data.user;
             }
         }
@@ -113,25 +129,24 @@ export function authResponse(
 export function providerResponse(
     req: Request,
     res: Response,
-    result: any,
+    result: AuthResult,
     statusCode: number,
 ) {
     const code =
         result && typeof result.code === "number" ? result.code : statusCode;
 
     let token: string | undefined;
-    if (result && result.token) token = result.token;
-    else if (result && result.data && result.data.token)
+    if (result?.token) token = result.token;
+    else if (result?.data && typeof result.data.token === "string")
         token = result.data.token;
     else if (
-        result &&
-        result.data &&
-        result.data.data &&
-        result.data.data.token
+        result?.data &&
+        isRecord(result.data.data) &&
+        typeof result.data.data.token === "string"
     )
         token = result.data.data.token;
 
-    if (result && result.success) {
+    if (result?.success) {
         const opts = Object.assign({}, cookieOptions(req), {
             expires: new Date(Date.now() + AUTH_CONSTANTS.COOKIE_EXPIRES_MS),
         });

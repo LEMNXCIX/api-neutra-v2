@@ -1,20 +1,21 @@
-import {
-    Appointment,
-    AppointmentStatus,
-    canTransitionAppointmentStatus,
-} from "@/core/entities/appointment.entity";
-import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
+import { prisma } from "@/config/db.config";
 import { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appointment.use-case";
 import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
-import { prisma } from "@/config/db.config";
-import { AuthenticatedUser } from "@/types/rbac";
+import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
 import {
-    APPOINTMENT_OPERATIONAL_ROLES,
-    hasAnyRole,
-    hasPermission,
-} from "@/middleware/authorization.middleware";
+    canSystemFlagForReview,
+    canTransitionAppointmentStatus,
+} from "@/core/domain/appointment/appointment.policy";
+import { hasAnyRole, hasPermission } from "@/core/domain/rbac/access-policy";
+import {
+    type Appointment,
+    AppointmentStatus,
+} from "@/core/entities/appointment.entity";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
+import { APPOINTMENT_OPERATIONAL_ROLES } from "@/middleware/authorization.middleware";
+import { AuthErrorCodes, BusinessErrorCodes } from "@/types/error-codes";
+import type { AuthenticatedUser } from "@/types/rbac";
 
 const manager = {
     id: "staff-1",
@@ -39,8 +40,12 @@ function appointment(
         startTime: new Date("2030-01-01T10:00:00.000Z"),
         endTime: new Date("2030-01-01T11:00:00.000Z"),
         status,
-        notes: undefined,
-        cancellationReason: undefined,
+        statusChangedAt: null,
+        statusChangeReason: null,
+        statusChangedById: null,
+        notes: null,
+        cancellationReason: null,
+        couponId: null,
         confirmationSent: false,
         reminderSent: false,
         tenantId: "tenant-1",
@@ -118,6 +123,32 @@ describe("appointment transition policy", () => {
         ).toBe(false);
     });
 
+    /**
+     * The two halves of the lifecycle, pinned together because they are easy to
+     * conflate and nothing else in the code compares them. NEEDS_REVIEW is
+     * unreachable by hand and reachable by the system, and the sweep consults
+     * the second rule before it writes.
+     */
+    test.each([
+        AppointmentStatus.PENDING,
+        AppointmentStatus.CONFIRMED,
+        AppointmentStatus.IN_PROGRESS,
+    ])("the sweep may flag %s for review", (status) => {
+        expect(canSystemFlagForReview(status)).toBe(true);
+    });
+
+    test.each([
+        AppointmentStatus.NEEDS_REVIEW,
+        AppointmentStatus.COMPLETED,
+        AppointmentStatus.CANCELLED,
+        AppointmentStatus.NO_SHOW,
+    ])(
+        "the sweep may not flag %s, which is already decided or already flagged",
+        (status) => {
+            expect(canSystemFlagForReview(status)).toBe(false);
+        },
+    );
+
     test.each([
         AppointmentStatus.COMPLETED,
         AppointmentStatus.CANCELLED,
@@ -139,7 +170,9 @@ describe("UpdateAppointmentStatusUseCase", () => {
 
         await expect(
             useCase.execute("tenant-1", "appointment-1", "UNKNOWN", manager),
-        ).rejects.toMatchObject({ code: "INVALID_APPOINTMENT_STATUS" });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.INVALID_APPOINTMENT_STATUS,
+        });
         expect(appointmentRepository.findById).not.toHaveBeenCalled();
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
@@ -148,9 +181,7 @@ describe("UpdateAppointmentStatusUseCase", () => {
         const { useCase, appointmentRepository } = statusUseCase(
             AppointmentStatus.CONFIRMED,
         );
-        const updated = appointment(
-            AppointmentStatus.IN_PROGRESS,
-        );
+        const updated = appointment(AppointmentStatus.IN_PROGRESS);
         appointmentRepository.updateStatus.mockResolvedValue(updated);
 
         const result = await useCase.execute(
@@ -186,7 +217,9 @@ describe("UpdateAppointmentStatusUseCase", () => {
                 AppointmentStatus.COMPLETED,
                 manager,
             ),
-        ).rejects.toMatchObject({ code: "INVALID_STATUS_TRANSITION" });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.INVALID_STATUS_TRANSITION,
+        });
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
 
@@ -202,7 +235,9 @@ describe("UpdateAppointmentStatusUseCase", () => {
                 AppointmentStatus.IN_PROGRESS,
                 manager,
             ),
-        ).rejects.toMatchObject({ code: "APPOINTMENT_STATUS_CONFLICT" });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.APPOINTMENT_STATUS_CONFLICT,
+        });
         expect(featureRepository.getTenantFeatureStatus).not.toHaveBeenCalled();
     });
 });
@@ -219,7 +254,10 @@ describe("PrismaAppointmentRepository status CAS", () => {
         findFirst.mockResolvedValue(
             appointment(AppointmentStatus.IN_PROGRESS) as never,
         );
-        const transaction = jest.spyOn(prisma, "$transaction") as unknown as jest.Mock;
+        const transaction = jest.spyOn(
+            prisma,
+            "$transaction",
+        ) as unknown as jest.Mock;
         transaction.mockImplementation(
             (callback: (tx: typeof prisma) => Promise<unknown>) =>
                 callback(prisma),
@@ -262,10 +300,7 @@ describe("PrismaAppointmentRepository status CAS", () => {
 });
 
 describe("appointment mutation authorization", () => {
-    test.each([
-        AppointmentStatus.PENDING,
-        AppointmentStatus.CONFIRMED,
-    ])(
+    test.each([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED])(
         "preserves customer self-cancellation for %s appointments",
         async (status) => {
             const { useCase, appointmentRepository } = cancelUseCase(status);
@@ -305,7 +340,7 @@ describe("appointment mutation authorization", () => {
                 ...customer,
                 id: "other-customer",
             }),
-        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        ).rejects.toMatchObject({ code: AuthErrorCodes.FORBIDDEN });
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
 
@@ -343,7 +378,7 @@ describe("appointment mutation authorization", () => {
 
         await expect(
             useCase.execute("tenant-1", "appointment-1", customer),
-        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        ).rejects.toMatchObject({ code: AuthErrorCodes.FORBIDDEN });
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
 
@@ -372,7 +407,7 @@ describe("appointment mutation authorization", () => {
 
         await expect(
             useCase.execute("tenant-1", "appointment-1", customer),
-        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        ).rejects.toMatchObject({ code: AuthErrorCodes.FORBIDDEN });
         expect(appointmentRepository.findById).not.toHaveBeenCalled();
     });
 });

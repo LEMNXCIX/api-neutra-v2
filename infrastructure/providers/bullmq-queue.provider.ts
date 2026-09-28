@@ -1,5 +1,5 @@
-import { IQueueProvider } from "@/core/providers/queue-provider.interface";
 import type { Queue } from "bullmq";
+import type { IQueueProvider } from "@/core/providers/queue-provider.interface";
 
 export class BullMQQueueProvider implements IQueueProvider {
     constructor(private readonly queue: Pick<Queue, "add">) {}

@@ -1,15 +1,14 @@
+import type { CreateServiceDTO } from "@/core/application/dtos/requests/service.request";
 import {
+    BusinessRuleViolationError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
+import type { ICategoryRepository } from "@/core/repositories/category.repository.interface";
+import type {
     IServiceRepository,
     ServiceCreateData,
 } from "@/core/repositories/service.repository.interface";
-import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
-import { CreateServiceDTO } from "@/core/application/dtos/requests/service.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    EntityNotFoundError,
-    ValidationError,
-    BusinessRuleViolationError,
-} from "@/core/domain/errors/domain-errors";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class CreateServiceUseCase {
     constructor(

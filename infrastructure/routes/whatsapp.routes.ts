@@ -1,12 +1,14 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import { WhatsAppWebhookController } from "@/infrastructure/webhooks/whatsapp-webhook.controller";
-
-import { WhatsAppConfigController } from "@/interface-adapters/controllers/whatsapp-config.controller";
-import { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.controller";
+import { type Application, Router } from "express";
+import {
+    ConfigureWhatsAppDto,
+    SendNotificationDto,
+} from "@/core/application/dtos/requests/whatsapp.request";
+import type { WhatsAppWebhookController } from "@/infrastructure/webhooks/whatsapp-webhook.controller";
+import type { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.controller";
+import type { WhatsAppConfigController } from "@/interface-adapters/controllers/whatsapp-config.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { validateDto } from "@/middleware/validation.middleware";
-import { ConfigureWhatsAppDto } from "@/core/application/dtos/requests/whatsapp.request";
 
 function whatsappRoutes(
     app: Application,
@@ -203,6 +205,7 @@ function whatsappRoutes(
         authenticate,
         requirePermission("whatsapp:write"),
         requireTenantFeature("WHATSAPP_API"),
+        validateDto(SendNotificationDto),
         (req, res) => whatsappController.sendTemplate(req, res),
     );
 

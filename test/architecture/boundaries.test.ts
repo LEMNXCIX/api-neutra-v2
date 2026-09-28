@@ -1,5 +1,5 @@
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 const ROOT = path.resolve(__dirname, "../..");
 
@@ -26,7 +26,6 @@ describe("Clean Architecture boundaries", () => {
         "core/ports",
         "core/providers",
         "core/services",
-        "core/presenters",
         "core/utils",
     ];
 
@@ -49,7 +48,9 @@ describe("Clean Architecture boundaries", () => {
                 lines.forEach((line, idx) => {
                     for (const pattern of forbiddenInCore) {
                         if (pattern.test(line)) {
-                            violations.push(`${rel}:${idx + 1} → ${line.trim()}`);
+                            violations.push(
+                                `${rel}:${idx + 1} → ${line.trim()}`,
+                            );
                         }
                     }
                     if (

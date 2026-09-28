@@ -1,10 +1,13 @@
-import { IPermissionRepository, PermissionUpdateData } from "@/core/repositories/permission.repository.interface";
-import { UpdatePermissionDTO } from "@/core/application/dtos/requests/permission.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { UpdatePermissionDTO } from "@/core/application/dtos/requests/permission.request";
 import {
-    EntityNotFoundError,
     DuplicateEntityError,
+    EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type {
+    IPermissionRepository,
+    PermissionUpdateData,
+} from "@/core/repositories/permission.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class UpdatePermissionUseCase {
     constructor(private permissionRepository: IPermissionRepository) {}

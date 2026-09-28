@@ -1,8 +1,9 @@
-import { runCommand, type CommandRunner, type CommandResult } from "./command.adapter";
-import type {
-    CheckRunResult,
-    DoctorContext,
-} from "../domain/check-result";
+import type { CheckRunResult, DoctorContext } from "../domain/check-result";
+import {
+    type CommandResult,
+    type CommandRunner,
+    runCommand,
+} from "./command.adapter";
 
 const DOCKER_TIMEOUT_MS = 60_000;
 

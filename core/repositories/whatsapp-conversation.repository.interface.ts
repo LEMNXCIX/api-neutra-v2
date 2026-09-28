@@ -1,4 +1,4 @@
-import { WhatsAppConversation } from "../entities/whatsapp-conversation.entity";
+import type { WhatsAppConversation } from "../entities/whatsapp-conversation.entity";
 
 export interface IWhatsAppConversationRepository {
     create(

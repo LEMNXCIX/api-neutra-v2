@@ -1,5 +1,5 @@
-import { ICryptoProvider } from "@/core/providers/crypto-provider.interface";
-import crypto from "crypto";
+import crypto from "node:crypto";
+import type { ICryptoProvider } from "@/core/providers/crypto-provider.interface";
 
 export class NodeCryptoProvider implements ICryptoProvider {
     randomBytes(size: number): string {

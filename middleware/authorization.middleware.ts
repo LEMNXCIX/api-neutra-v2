@@ -1,38 +1,22 @@
-import { Request, Response, NextFunction } from "express";
-import { AuthenticatedUser } from "@/types/rbac";
+import type { NextFunction, Request, Response } from "express";
 import {
     DomainError,
-    UnauthorizedError,
     ForbiddenError,
+    UnauthorizedError,
 } from "@/core/domain/errors/domain-errors";
-import { ROLE_CONSTANTS } from "@/core/domain/constants";
-
-function isSuperAdmin(user: AuthenticatedUser | undefined): boolean {
-    return user?.role?.name === ROLE_CONSTANTS.SUPER_ADMIN;
-}
+import {
+    evaluateRoleLevel,
+    hasAnyRole,
+    hasPermission,
+    isSuperAdmin,
+} from "@/core/domain/rbac/access-policy";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 export const APPOINTMENT_OPERATIONAL_ROLES = [
     "STAFF",
     "MANAGER",
     "ADMIN",
 ] as const;
-
-export function hasPermission(
-    user: AuthenticatedUser | undefined,
-    permission: string,
-): boolean {
-    if (!user?.role) return false;
-    if (isSuperAdmin(user)) return true;
-    return user.role.permissions?.includes(permission) ?? false;
-}
-
-export function hasAnyRole(
-    user: AuthenticatedUser | undefined,
-    roles: readonly string[],
-): boolean {
-    if (!user?.role) return false;
-    return isSuperAdmin(user) || roles.includes(user.role.name);
-}
 
 export function requirePermission(permission: string) {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -58,7 +42,7 @@ export function requireAnyPermission(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user;
 
-        if (!user || !user.role || !user.role.permissions) {
+        if (!user?.role?.permissions) {
             throw new UnauthorizedError("You must be logged in");
         }
 
@@ -84,7 +68,7 @@ export function requireAllPermissions(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user;
 
-        if (!user || !user.role || !user.role.permissions) {
+        if (!user?.role?.permissions) {
             throw new UnauthorizedError("You must be logged in");
         }
 
@@ -131,7 +115,7 @@ export function requireRole(minLevel: number) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user;
 
-        if (!user || !user.role) {
+        if (!user?.role) {
             throw new UnauthorizedError("You must be logged in");
         }
 
@@ -139,20 +123,50 @@ export function requireRole(minLevel: number) {
             return next();
         }
 
-        if (user.role.level < minLevel) {
-            throw new ForbiddenError(
-                `You need role level ${minLevel} or higher (current: ${user.role.level})`,
-            );
+        const levelDecision = evaluateRoleLevel(user, minLevel);
+        if (!levelDecision.allowed) {
+            throw new ForbiddenError(levelDecision.message);
         }
 
         next();
     };
 }
 
+/**
+ * Platform-operator gate for global rows. The role decision is delegated to the
+ * domain policy instead of re-reading `role.name`: the same rule already had
+ * three copies (here, a local one in `loyalty.routes.ts`, and one in
+ * `loyalty.controller.ts` before it moved to `isSuperAdmin`), and each copy is
+ * a place the rule can drift. Refusals go through `next(error)` rather than a
+ * response so the global error handler still maps them.
+ */
+export function requireSuperAdmin(
+    req: Request,
+    _res: Response,
+    next: NextFunction,
+): void {
+    if (!req.user?.role) {
+        next(new UnauthorizedError());
+        return;
+    }
+
+    if (!isSuperAdmin(req.user)) {
+        next(
+            new ForbiddenError(
+                "Super administrator access is required",
+                AuthErrorCodes.SUPER_ADMIN_REQUIRED,
+            ),
+        );
+        return;
+    }
+
+    next();
+}
+
 export function requireOwnership(
     getResourceOwnerId: (req: Request) => Promise<string | null>,
 ) {
-    return async (req: Request, res: Response, next: NextFunction) => {
+    return async (req: Request, _res: Response, next: NextFunction) => {
         const user = req.user;
 
         if (!user) {
@@ -165,6 +179,7 @@ export function requireOwnership(
             if (ownerId !== user.id) {
                 throw new ForbiddenError(
                     "You can only access your own resources",
+                    AuthErrorCodes.RESOURCE_NOT_OWNED,
                 );
             }
 

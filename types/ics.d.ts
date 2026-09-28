@@ -1,4 +1,4 @@
-declare module 'ics' {
+declare module "ics" {
     export type DateArray = [number, number, number, number, number];
 
     export interface DurationObject {
@@ -72,11 +72,11 @@ declare module 'ics' {
 
     export function createEvent(
         attributes: EventAttributes,
-        callback: (error: any, value: string) => void
+        callback: (error: any, value: string) => void,
     ): void;
 
     export function createEvents(
         events: EventAttributes[],
-        callback: (error: any, value: string) => void
+        callback: (error: any, value: string) => void,
     ): void;
 }

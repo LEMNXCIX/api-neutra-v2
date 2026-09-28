@@ -1,12 +1,15 @@
-import { Request, Response } from "express";
-import { CreateCategoryUseCase } from "@/core/application/categories/create-category.use-case";
-import { GetCategoriesUseCase } from "@/core/application/categories/get-categories.use-case";
-import { UpdateCategoryUseCase } from "@/core/application/categories/update-category.use-case";
-import { DeleteCategoryUseCase } from "@/core/application/categories/delete-category.use-case";
-import { GetCategoryStatsUseCase } from "@/core/application/categories/get-category-stats.use-case";
-
+import type { Request, Response } from "express";
+import type { CreateCategoryUseCase } from "@/core/application/categories/create-category.use-case";
+import type { DeleteCategoryUseCase } from "@/core/application/categories/delete-category.use-case";
+import type { GetCategoriesUseCase } from "@/core/application/categories/get-categories.use-case";
+import type { GetCategoryStatsUseCase } from "@/core/application/categories/get-category-stats.use-case";
+import type { UpdateCategoryUseCase } from "@/core/application/categories/update-category.use-case";
+import type {
+    CreateCategoryDTO,
+    UpdateCategoryDTO,
+} from "@/core/application/dtos/requests/category.request";
+import { CategoryResponse } from "@/core/application/dtos/responses/category/category.response";
 import { CategoryType } from "@/core/entities/category.entity";
-import { CategoryPresenter } from "@/core/presenters/category.presenter";
 import { present } from "@/core/utils/use-case-result";
 
 export class CategoryController {
@@ -22,20 +25,20 @@ export class CategoryController {
         const tenantId = req.tenantId!;
         const result = await this.createCategoryUseCase.execute(
             tenantId,
-            req.body,
+            req.validatedBody as CreateCategoryDTO,
         );
         return res
             .status(201)
-            .json(present(result, CategoryPresenter.toResponse));
+            .json(present(result, CategoryResponse.fromEntity));
     };
 
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId;
         const page = req.query.page
-            ? parseInt(req.query.page as string)
+            ? parseInt(req.query.page as string, 10)
             : undefined;
         const limit = req.query.limit
-            ? parseInt(req.query.limit as string)
+            ? parseInt(req.query.limit as string, 10)
             : undefined;
         const rawType = req.query.type as string | undefined;
         const validTypes = Object.values(CategoryType) as string[];
@@ -56,7 +59,13 @@ export class CategoryController {
             limit,
             type,
         );
-        return res.json(present(result, CategoryPresenter.toResponseList));
+        return res.json(
+            present(result, (categories) =>
+                Array.isArray(categories)
+                    ? categories.map((c) => CategoryResponse.fromEntity(c))
+                    : [],
+            ),
+        );
     };
 
     getById = async (req: Request, res: Response) => {
@@ -66,7 +75,7 @@ export class CategoryController {
             tenantId,
             id,
         );
-        return res.json(present(result, CategoryPresenter.toResponse));
+        return res.json(present(result, CategoryResponse.fromEntity));
     };
 
     update = async (req: Request, res: Response) => {
@@ -75,9 +84,9 @@ export class CategoryController {
         const result = await this.updateCategoryUseCase.execute(
             tenantId,
             id,
-            req.body,
+            req.validatedBody as UpdateCategoryDTO,
         );
-        return res.json(present(result, CategoryPresenter.toResponse));
+        return res.json(present(result, CategoryResponse.fromEntity));
     };
 
     delete = async (req: Request, res: Response) => {

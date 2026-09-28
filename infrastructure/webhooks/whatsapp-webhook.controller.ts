@@ -1,6 +1,6 @@
-import { Request, Response } from "express";
-import { ProcessWhatsAppWebhookUseCase } from "@/core/application/whatsapp/process-whatsapp-webhook.use-case";
+import type { Request, Response } from "express";
 import config from "@/config/index.config";
+import type { ProcessWhatsAppWebhookUseCase } from "@/core/application/whatsapp/process-whatsapp-webhook.use-case";
 import type { ILogger } from "@/core/providers/logger.interface";
 
 /**

@@ -32,9 +32,6 @@
       ],
       "@/types/*": [
         "./types/*"
-      ],
-      "@/libs/*": [
-        "./libs/*"
       ]
     },
     "strict": true,

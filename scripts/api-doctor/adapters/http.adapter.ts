@@ -1,7 +1,4 @@
-import type {
-    CheckRunResult,
-    DoctorContext,
-} from "../domain/check-result";
+import type { CheckRunResult, DoctorContext } from "../domain/check-result";
 
 type FetchImplementation = typeof fetch;
 

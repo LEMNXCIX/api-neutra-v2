@@ -1,3 +1,10 @@
+import {
+    AuthErrorCodes,
+    BusinessErrorCodes,
+    ResourceErrorCodes,
+    ValidationErrorCodes,
+} from "@/types/error-codes";
+
 export class DomainError extends Error {
     constructor(
         message: string,
@@ -10,18 +17,27 @@ export class DomainError extends Error {
 
 export class EntityNotFoundError extends DomainError {
     constructor(entity: string, id: string) {
-        super(`${entity} with id '${id}' not found`, "ENTITY_NOT_FOUND");
+        super(
+            `${entity} with id '${id}' not found`,
+            ResourceErrorCodes.NOT_FOUND,
+        );
     }
 }
 
 export class BusinessRuleViolationError extends DomainError {
-    constructor(message: string, code: string = "BUSINESS_RULE_VIOLATION") {
+    constructor(
+        message: string,
+        code: string = BusinessErrorCodes.BUSINESS_RULE_VIOLATION,
+    ) {
         super(message, code);
     }
 }
 
 export class InvalidStateError extends DomainError {
-    constructor(message: string, code: string = "INVALID_STATE") {
+    constructor(
+        message: string,
+        code: string = ResourceErrorCodes.INVALID_STATE,
+    ) {
         super(message, code);
     }
 }
@@ -30,13 +46,16 @@ export class DuplicateEntityError extends DomainError {
     constructor(entity: string, field: string, value: string) {
         super(
             `${entity} with ${field} '${value}' already exists`,
-            "DUPLICATE_ENTITY",
+            ResourceErrorCodes.ALREADY_EXISTS,
         );
     }
 }
 
 export class ValidationError extends DomainError {
-    constructor(message: string, code: string = "VALIDATION_ERROR") {
+    constructor(
+        message: string,
+        code: string = ValidationErrorCodes.VALIDATION_ERROR,
+    ) {
         super(message, code);
     }
 }
@@ -44,14 +63,17 @@ export class ValidationError extends DomainError {
 export class UnauthorizedError extends DomainError {
     constructor(
         message: string = "Unauthorized",
-        code: string = "UNAUTHORIZED",
+        code: string = AuthErrorCodes.UNAUTHORIZED,
     ) {
         super(message, code);
     }
 }
 
 export class ForbiddenError extends DomainError {
-    constructor(message: string = "Forbidden", code: string = "FORBIDDEN") {
+    constructor(
+        message: string = "Forbidden",
+        code: string = AuthErrorCodes.FORBIDDEN,
+    ) {
         super(message, code);
     }
 }

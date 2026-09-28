@@ -1,11 +1,14 @@
-import { Feature as PrismaFeature, Prisma } from "@prisma/client";
+import { Prisma, type Feature as PrismaFeature } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IFeatureRepository, FeatureCreateData } from "@/core/repositories/feature.repository.interface";
-import { Feature } from "@/core/entities/feature.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Feature } from "@/core/entities/feature.entity";
+import type {
+    FeatureCreateData,
+    IFeatureRepository,
+} from "@/core/repositories/feature.repository.interface";
 
 export class PrismaFeatureRepository implements IFeatureRepository {
     private mapToEntity(data: PrismaFeature): Feature {

@@ -1,11 +1,11 @@
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
+import type { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
 import {
     EntityNotFoundError,
-    UnauthorizedError,
     ForbiddenError,
+    UnauthorizedError,
 } from "@/core/domain/errors/domain-errors";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class DeleteAppointmentUseCase {
     constructor(private appointmentRepository: IAppointmentRepository) {}

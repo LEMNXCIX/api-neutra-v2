@@ -1,6 +1,6 @@
-import { IBannerRepository } from "@/core/repositories/banner.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import type { IBannerRepository } from "@/core/repositories/banner.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class TrackBannerAnalyticsUseCase {
     constructor(private bannerRepository: IBannerRepository) {}

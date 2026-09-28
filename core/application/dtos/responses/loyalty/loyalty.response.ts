@@ -1,5 +1,9 @@
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
+    CouponResponse,
+    type ICouponResponse,
+} from "@/core/application/dtos/responses/coupon/coupon.response";
+import type { Coupon, CouponType } from "@/core/entities/coupon.entity";
+import type {
     LoyaltyCampaign,
     LoyaltyCampaignCustomerSummary,
     LoyaltyCampaignMetric,
@@ -9,14 +13,12 @@ import {
     LoyaltyRewardClaimStatus,
     LoyaltyStatus,
 } from "@/core/entities/loyalty.entity";
-import { ICouponResponse } from "@/core/application/dtos/responses/coupon/coupon.response";
-import { CouponPresenter } from "@/core/presenters/coupon.presenter";
 
 export interface ILoyaltyCampaignResponse {
     id: string;
     tenantId: string;
     name: string;
-    description?: string;
+    description?: string | null;
     source: LoyaltyCampaignSource;
     metric: LoyaltyCampaignMetric;
     targetValue: string;
@@ -24,10 +26,10 @@ export interface ILoyaltyCampaignResponse {
     startsAt: Date;
     endsAt: Date;
     claimUntil: Date;
-    rewardCouponId?: string;
+    rewardCouponId?: string | null;
     reward?: ILoyaltyCampaignRewardResponse;
-    rewardValidDays?: number;
-    maxClaims?: number;
+    rewardValidDays?: number | null;
+    maxClaims?: number | null;
     claimedCount: number;
     createdAt: Date;
     updatedAt: Date;
@@ -171,8 +173,7 @@ export class LoyaltyPresenter {
             target: summary.target ?? summary.targetValue,
             remaining: summary.remaining ?? summary.remainingValue,
             status: summary.status ?? summary.customerStatus,
-            campaignStatus:
-                summary.campaignStatus ?? summary.lifecycleStatus,
+            campaignStatus: summary.campaignStatus ?? summary.lifecycleStatus,
             ...(summary.claim
                 ? {
                       claim: {
@@ -186,7 +187,7 @@ export class LoyaltyPresenter {
                   }
                 : {}),
             ...(summary.coupon
-                ? { coupon: CouponPresenter.toResponse(summary.coupon) }
+                ? { coupon: CouponResponse.fromEntity(summary.coupon) }
                 : {}),
         };
     }
@@ -214,21 +215,19 @@ export class LoyaltyPresenter {
             status: claim.status,
             createdAt: claim.createdAt,
             updatedAt: claim.updatedAt,
-            coupon: CouponPresenter.toResponse(rewardCoupon),
+            coupon: CouponResponse.fromEntity(rewardCoupon),
         };
     }
 
-    static toTenantCampaignOverviewResponse(
-        overview: {
-            tenantId: string;
-            name: string;
-            slug: string;
-            type: string;
-            active: boolean;
-            campaigns: LoyaltyCampaign[];
-            stats: ILoyaltyTenantCampaignOverviewResponse["stats"];
-        },
-    ): ILoyaltyTenantCampaignOverviewResponse {
+    static toTenantCampaignOverviewResponse(overview: {
+        tenantId: string;
+        name: string;
+        slug: string;
+        type: string;
+        active: boolean;
+        campaigns: LoyaltyCampaign[];
+        stats: ILoyaltyTenantCampaignOverviewResponse["stats"];
+    }): ILoyaltyTenantCampaignOverviewResponse {
         return {
             tenantId: overview.tenantId,
             name: overview.name,

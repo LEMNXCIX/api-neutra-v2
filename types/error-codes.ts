@@ -17,6 +17,26 @@ export enum AuthErrorCodes {
     INSUFFICIENT_PERMISSIONS = "AUTH_INSUFFICIENT_PERMISSIONS",
     PERMISSION_DENIED = "AUTH_PERMISSION_DENIED",
     ACCOUNT_INACTIVE = "AUTH_ACCOUNT_INACTIVE",
+    USER_ALREADY_EXISTS = "AUTH_USER_ALREADY_EXISTS",
+    /**
+     * The caller already holds an account in the tenant they are registering
+     * against. Distinct from USER_ALREADY_EXISTS, which means the email is
+     * taken by an account in some *other* tenant and the answer is to sign in
+     * there or reuse that password.
+     */
+    ALREADY_MEMBER_OF_TENANT = "AUTH_ALREADY_MEMBER_OF_TENANT",
+    /**
+     * The email is taken by an account in a different tenant, and the password
+     * offered does not match it. The remedy is to sign in to the tenant where
+     * the account already exists, not to pick a different email.
+     */
+    EMAIL_TAKEN_IN_OTHER_TENANT = "AUTH_EMAIL_TAKEN_IN_OTHER_TENANT",
+    // Distinguished from FORBIDDEN: the caller is authenticated and the failure
+    // is about the subject of the request, not a missing role. FORBIDDEN was
+    // covering five unrelated situations and the client could only answer
+    // "you do not have permission", which sent users to the wrong remedy.
+    RESOURCE_NOT_OWNED = "AUTH_RESOURCE_NOT_OWNED",
+    SUPER_ADMIN_REQUIRED = "AUTH_SUPER_ADMIN_REQUIRED",
 }
 
 // Validation Errors (VALIDATION_*)
@@ -28,6 +48,20 @@ export enum ValidationErrorCodes {
     INVALID_LENGTH = "VALIDATION_INVALID_LENGTH",
     INVALID_ENUM_VALUE = "VALIDATION_INVALID_ENUM_VALUE",
     INVALID_DATA_TYPE = "VALIDATION_INVALID_DATA_TYPE",
+    /** Default code of the `ValidationError` constructor. */
+    VALIDATION_ERROR = "VALIDATION_ERROR",
+
+    // Loyalty campaign validation
+    INVALID_CAMPAIGN = "VALIDATION_INVALID_CAMPAIGN",
+    INVALID_CAMPAIGN_NAME = "VALIDATION_INVALID_CAMPAIGN_NAME",
+    INVALID_CAMPAIGN_DATE = "VALIDATION_INVALID_CAMPAIGN_DATE",
+    INVALID_CAMPAIGN_DATES = "VALIDATION_INVALID_CAMPAIGN_DATES",
+    INVALID_CAMPAIGN_SOURCE = "VALIDATION_INVALID_CAMPAIGN_SOURCE",
+    INVALID_CAMPAIGN_TARGET = "VALIDATION_INVALID_CAMPAIGN_TARGET",
+    INVALID_CAMPAIGN_MAX_CLAIMS = "VALIDATION_INVALID_CAMPAIGN_MAX_CLAIMS",
+    INVALID_LOYALTY_CAMPAIGN_ACTION = "VALIDATION_INVALID_LOYALTY_CAMPAIGN_ACTION",
+    INVALID_LOYALTY_REWARD_VALIDITY = "VALIDATION_INVALID_LOYALTY_REWARD_VALIDITY",
+    INVALID_LOYALTY_SOURCE_TYPE = "VALIDATION_INVALID_LOYALTY_SOURCE_TYPE",
 }
 
 // Resource Errors (RESOURCE_*)
@@ -37,6 +71,8 @@ export enum ResourceErrorCodes {
     ALREADY_EXISTS = "RESOURCE_ALREADY_EXISTS",
     CONFLICT = "RESOURCE_CONFLICT",
     GONE = "RESOURCE_GONE",
+    /** Default code of the `InvalidStateError` constructor. */
+    INVALID_STATE = "RESOURCE_INVALID_STATE",
 }
 
 // Tenant Errors (TENANT_*)
@@ -46,6 +82,11 @@ export enum TenantErrorCodes {
     TENANT_INACTIVE = "TENANT_INACTIVE",
     TENANT_SLUG_EXISTS = "TENANT_SLUG_EXISTS",
     FEATURE_NOT_ENABLED = "TENANT_FEATURE_NOT_ENABLED",
+    TYPE_NOT_ALLOWED = "TENANT_TYPE_NOT_ALLOWED",
+    // The user authenticated successfully and then turned out not to belong to
+    // the tenant they asked for. Not a permission problem: the remedy is adding
+    // them to the organization, not granting a role.
+    MEMBERSHIP_REQUIRED = "TENANT_MEMBERSHIP_REQUIRED",
 }
 
 // Business Logic Errors (BUSINESS_*)
@@ -60,7 +101,54 @@ export enum BusinessErrorCodes {
     // Booking errors
     RESOURCE_NOT_FOUND = "BUSINESS_RESOURCE_NOT_FOUND",
     RESOURCE_CONFLICT = "BUSINESS_RESOURCE_CONFLICT",
+    INVALID_APPOINTMENT_STATUS = "BUSINESS_INVALID_APPOINTMENT_STATUS",
+    APPOINTMENT_STATUS_CONFLICT = "BUSINESS_APPOINTMENT_STATUS_CONFLICT",
+    ORDER_STATUS_CONFLICT = "BUSINESS_ORDER_STATUS_CONFLICT",
+    START_TIME_NOT_IN_FUTURE = "BUSINESS_START_TIME_NOT_IN_FUTURE",
+    HOLIDAY_CLOSED = "BUSINESS_HOLIDAY_CLOSED",
+    OUTSIDE_WORKING_HOURS = "BUSINESS_OUTSIDE_WORKING_HOURS",
+    STAFF_HOURS_CONFLICT = "BUSINESS_STAFF_HOURS_CONFLICT",
+
+    // Coupon errors
+    INVALID_COUPON = "BUSINESS_INVALID_COUPON",
+    COUPON_UNAVAILABLE = "BUSINESS_COUPON_UNAVAILABLE",
+    COUPON_NOT_OWNED = "BUSINESS_COUPON_NOT_OWNED",
+    REWARD_COUPON_NOT_OWNED = "BUSINESS_REWARD_COUPON_NOT_OWNED",
+
+    // Tenant feature gates
+    COUPONS_FEATURE_REQUIRED = "BUSINESS_COUPONS_FEATURE_REQUIRED",
+    LOYALTY_FEATURE_REQUIRED = "BUSINESS_LOYALTY_FEATURE_REQUIRED",
+    LOYALTY_REQUIRES_COUPONS = "BUSINESS_LOYALTY_REQUIRES_COUPONS",
+    LOYALTY_OBLIGATIONS_EXIST = "BUSINESS_LOYALTY_OBLIGATIONS_EXIST",
+
     BUSINESS_RULE_VIOLATION = "BUSINESS_RULE_VIOLATION",
+}
+
+/**
+ * Loyalty campaign and reward errors (LOYALTY_*)
+ */
+export enum LoyaltyErrorCodes {
+    TEMPLATE_NOT_REDEEMABLE = "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
+    /**
+     * Wire value kept as shipped. Renaming it to the `LOYALTY_` prefix order
+     * is a breaking change for clients, so it stays until one is agreed.
+     */
+    INVALID_REWARD_TEMPLATE = "INVALID_LOYALTY_REWARD_TEMPLATE",
+    CAMPAIGN_SOURCE_NOT_COMPATIBLE = "LOYALTY_CAMPAIGN_SOURCE_NOT_COMPATIBLE",
+    CAMPAIGN_TRANSITION_CONFLICT = "LOYALTY_CAMPAIGN_TRANSITION_CONFLICT",
+    /**
+     * A tenant may run only one ACTIVE campaign at a time, so an event always
+     * has exactly one campaign to accrue into. Distinct from
+     * CAMPAIGN_TRANSITION_CONFLICT, which reports that the campaign's own
+     * lifecycle moved underneath the caller.
+     */
+    CAMPAIGN_ALREADY_ACTIVE_PER_TENANT = "LOYALTY_CAMPAIGN_ALREADY_ACTIVE_PER_TENANT",
+    INVALID_CAMPAIGN_TRANSITION = "LOYALTY_INVALID_CAMPAIGN_TRANSITION",
+    CAMPAIGN_ARCHIVE_TOO_EARLY = "LOYALTY_CAMPAIGN_ARCHIVE_TOO_EARLY",
+    CAMPAIGN_NOT_CLAIMABLE = "LOYALTY_CAMPAIGN_NOT_CLAIMABLE",
+    CAMPAIGN_CLAIM_LIMIT_REACHED = "LOYALTY_CAMPAIGN_CLAIM_LIMIT_REACHED",
+    CAMPAIGN_NOT_DRAFT = "LOYALTY_CAMPAIGN_NOT_DRAFT",
+    TARGET_NOT_REACHED = "LOYALTY_TARGET_NOT_REACHED",
 }
 
 // Database Errors (DB_*)
@@ -110,6 +198,7 @@ export type ErrorCode =
     | ResourceErrorCodes
     | TenantErrorCodes
     | BusinessErrorCodes
+    | LoyaltyErrorCodes
     | DatabaseErrorCodes
     | ExternalServiceErrorCodes
     | SystemErrorCodes
@@ -125,6 +214,7 @@ export const ErrorCodes = {
     ...ResourceErrorCodes,
     ...TenantErrorCodes,
     ...BusinessErrorCodes,
+    ...LoyaltyErrorCodes,
     ...DatabaseErrorCodes,
     ...ExternalServiceErrorCodes,
     ...SystemErrorCodes,
@@ -132,33 +222,16 @@ export const ErrorCodes = {
     ...WhatsAppErrorCodes,
 } as const;
 
-const DOMAIN_CODE_TO_HTTP: Record<string, number> = {
-    ENTITY_NOT_FOUND: 404,
-    BUSINESS_RULE_VIOLATION: 422,
-    INVALID_STATE: 409,
-    DUPLICATE_ENTITY: 409,
-    VALIDATION_ERROR: 400,
-    UNAUTHORIZED: 401,
-    FORBIDDEN: 403,
-    // Custom codes used with BusinessRuleViolationError (must keep 422)
-    CART_EMPTY: 422,
-    INSUFFICIENT_STOCK: 422,
-    // Custom code used as business rule in social-login (legacy)
-    TENANT_NOT_FOUND: 404,
-};
-
-/**
- * Map domain semantic code → HTTP status.
- * Prefer {@link httpStatusFromDomainError} when the error instance is available
- * (custom codes like CART_EMPTY still map via class hierarchy).
- */
-export function httpStatusFromDomainCode(code: string): number {
-    return DOMAIN_CODE_TO_HTTP[code] ?? 400;
-}
-
 /**
  * Prefer class hierarchy so custom codes on BusinessRuleViolationError /
  * InvalidStateError / etc. keep the correct HTTP status (422, 409, …).
+ *
+ * Resolution is by error class, never by the code. Every DomainError subclass
+ * appears in the switch below, so a custom code on a known class still resolves
+ * correctly. An earlier version fell through to a code-keyed map for
+ * unrecognised classes, but every production caller guards on
+ * `instanceof DomainError`, so that path was unreachable and the map's
+ * unprefixed keys were dead weight a reader could mistake for live behaviour.
  */
 export function httpStatusFromDomainError(error: {
     code: string;
@@ -179,7 +252,11 @@ export function httpStatusFromDomainError(error: {
         case "ValidationError":
             return 400;
         default:
-            return httpStatusFromDomainCode(error.code);
+            // Unreachable from production: every caller guards on
+            // `instanceof DomainError` and all seven subclasses are listed
+            // above. An unrecognised class name is a server-side surprise, so
+            // it is reported as such rather than as a client error.
+            return 500;
     }
 }
 
@@ -190,6 +267,12 @@ export function getHttpStatusFromErrorCode(errorCode: ErrorCode): number {
     // Auth errors -> 401
     if (errorCode.startsWith("AUTH_")) {
         if (errorCode === AuthErrorCodes.FORBIDDEN) return 403;
+        if (errorCode === AuthErrorCodes.RESOURCE_NOT_OWNED) return 403;
+        if (errorCode === AuthErrorCodes.SUPER_ADMIN_REQUIRED) return 403;
+        // Thrown as ForbiddenError, so the class resolver already answers 403.
+        // It was declared but never emitted, so the two resolvers had never been
+        // compared for it.
+        if (errorCode === AuthErrorCodes.ACCOUNT_INACTIVE) return 403;
         return 401;
     }
 
@@ -212,6 +295,10 @@ export function getHttpStatusFromErrorCode(errorCode: ErrorCode): number {
     if (errorCode.startsWith("TENANT_")) {
         if (errorCode === "TENANT_NOT_FOUND") return 404;
         if (errorCode === "TENANT_INACTIVE") return 403;
+        // Authenticated but not a member: ForbiddenError already yields 403
+        // through httpStatusFromDomainError, and this keeps the two resolvers
+        // from disagreeing for the same code.
+        if (errorCode === TenantErrorCodes.MEMBERSHIP_REQUIRED) return 403;
         return 400;
     }
 

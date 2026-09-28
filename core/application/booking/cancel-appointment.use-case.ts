@@ -1,19 +1,20 @@
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import type { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
 import {
-    AppointmentStatus,
     isCancellable,
     isCustomerCancellable,
-} from "@/core/entities/appointment.entity";
-import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+} from "@/core/domain/appointment/appointment.policy";
 import {
     EntityNotFoundError,
+    ForbiddenError,
     InvalidStateError,
     UnauthorizedError,
-    ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
+import { AppointmentStatus } from "@/core/entities/appointment.entity";
+import type { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class CancelAppointmentUseCase {
     constructor(
@@ -56,7 +57,7 @@ export class CancelAppointmentUseCase {
         if (!isCancellable(appointment.status)) {
             throw new InvalidStateError(
                 `Appointment with status '${appointment.status}' cannot be cancelled`,
-                "INVALID_STATUS_TRANSITION",
+                BusinessErrorCodes.INVALID_STATUS_TRANSITION,
             );
         }
 
@@ -74,13 +75,13 @@ export class CancelAppointmentUseCase {
         if (!updated) {
             throw new InvalidStateError(
                 "Appointment status changed before it could be cancelled",
-                "APPOINTMENT_STATUS_CONFLICT",
+                BusinessErrorCodes.APPOINTMENT_STATUS_CONFLICT,
             );
         }
 
         const features =
             await this.featureRepository.getTenantFeatureStatus(tenantId);
-        if (features["EMAIL_NOTIFICATIONS"]) {
+        if (features.EMAIL_NOTIFICATIONS) {
             await this.queueProvider.enqueue("notifications", {
                 type: "CANCELLED",
                 appointmentId: id,

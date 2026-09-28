@@ -1,21 +1,23 @@
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
-import { IServiceRepository } from "@/core/repositories/service.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { GetAvailabilityDTO } from "@/core/application/dtos/requests/appointment.request";
+import {
+    fitsInRanges,
+    getDayRanges,
+    hasWorkingHoursSchedule,
+    intersectRanges,
+    isDayClosed,
+    isHoliday,
+    type TimeRange,
+    toMinutes,
+} from "@/core/domain/booking/working-hours";
 import {
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
-import { GetAvailabilityDTO } from "@/core/application/dtos/requests/appointment.request";
-import {
-    TimeRange,
-    fitsInRanges,
-    getDayRanges,
-    intersectRanges,
-    isHoliday,
-    toMinutes,
-} from "@/core/utils/working-hours";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import type { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import type { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetAvailabilityUseCase {
     constructor(
@@ -79,12 +81,23 @@ export class GetAvailabilityUseCase {
             return Success([]);
         }
 
-        const staffRanges = getDayRanges(staff.workingHours, targetDate);
-        const tenantRanges = getDayRanges(settings?.businessHours, targetDate);
+        const staffSchedule = staff.workingHours;
+        const tenantSchedule = settings?.businessHours;
+        if (
+            isDayClosed(tenantSchedule, targetDate) ||
+            isDayClosed(staffSchedule, targetDate)
+        ) {
+            return Success([]);
+        }
+
+        const staffRanges = getDayRanges(staffSchedule, targetDate);
+        const tenantRanges = getDayRanges(tenantSchedule, targetDate);
         const ranges = intersectRanges(staffRanges, tenantRanges);
-        const hasHours = !!staff.workingHours || tenantRanges.length > 0;
-        if (hasHours && !ranges.length) {
-            return Success([]); // day off
+        const hasSchedule =
+            hasWorkingHoursSchedule(staffSchedule) ||
+            hasWorkingHoursSchedule(tenantSchedule);
+        if (hasSchedule && !ranges.length) {
+            return Success([]);
         }
 
         // Legacy fallback: no schedule defined anywhere → 9:00-17:00
@@ -124,9 +137,7 @@ export class GetAvailabilityUseCase {
         const interval = 30;
         const availableSlots: string[] = [];
 
-        const openFrom = Math.min(
-            ...workRanges.map((r) => toMinutes(r.start)),
-        );
+        const openFrom = Math.min(...workRanges.map((r) => toMinutes(r.start)));
         const openTo = Math.max(...workRanges.map((r) => toMinutes(r.end)));
         const now = new Date();
 
@@ -157,9 +168,7 @@ export class GetAvailabilityUseCase {
                 const hours = Math.floor(slotStartMin / 60)
                     .toString()
                     .padStart(2, "0");
-                const minutes = (slotStartMin % 60)
-                    .toString()
-                    .padStart(2, "0");
+                const minutes = (slotStartMin % 60).toString().padStart(2, "0");
                 availableSlots.push(`${hours}:${minutes}`);
             }
         }

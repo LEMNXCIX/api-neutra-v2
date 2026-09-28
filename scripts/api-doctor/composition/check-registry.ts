@@ -1,14 +1,18 @@
-import { runCommand, type CommandRunner } from "../adapters/command.adapter";
+import { createArchitectureRulesCheck } from "../adapters/architecture.adapter";
 import { createNpmAuditCheck } from "../adapters/audit.adapter";
+import { type CommandRunner, runCommand } from "../adapters/command.adapter";
 import { createDockerComposeCheck } from "../adapters/docker.adapter";
-import { checkRuntimeHealth, checkRuntimeReady } from "../adapters/http.adapter";
+import {
+    checkRuntimeHealth,
+    checkRuntimeReady,
+} from "../adapters/http.adapter";
 import { createProductionArtifactCheck } from "../adapters/openapi.adapter";
+import { createPrismaValidateCheck } from "../adapters/prisma.adapter";
 import {
     checkNodeContract,
     checkPackageLock,
     checkRequiredEnvironment,
 } from "../adapters/project.adapter";
-import { createPrismaValidateCheck } from "../adapters/prisma.adapter";
 import type {
     CheckCategory,
     CheckRunResult,
@@ -61,8 +65,14 @@ function integrationCheck(runner: CommandRunner): DoctorCheck {
     return {
         id: "integration",
         category: "runtime",
-        enabledIn: FULL_PROFILE,
-        blockingIn: FULL_PROFILE,
+        // Gated rather than full-only: the eight suites under `test/` are the
+        // only coverage that touches a real database, and for a long time
+        // nothing ran them at all, because the ci profile skipped this check.
+        // It stays behind --include-integration so a local run without a
+        // database is still possible, but CI passes the flag and treats a
+        // skip here as the failure it is.
+        enabledIn: GATED_PROFILES,
+        blockingIn: GATED_PROFILES,
         run: async (context): Promise<CheckRunResult> => {
             if (!context.includeIntegration) {
                 return {
@@ -76,7 +86,10 @@ function integrationCheck(runner: CommandRunner): DoctorCheck {
                     timeoutMs: 600_000,
                 });
                 if (result.timedOut) {
-                    return { status: "FAIL", message: "Integration tests timed out" };
+                    return {
+                        status: "FAIL",
+                        message: "Integration tests timed out",
+                    };
                 }
                 return result.exitCode === 0
                     ? { status: "PASS", message: "Integration tests passed" }
@@ -143,6 +156,19 @@ export function createCheckRegistry(
             GATED_PROFILES,
             120_000,
         ),
+        // Real Clean Architecture rules, not a shell-out. The command check above
+        // only recognises the @/ alias form of an import, so a core/ module
+        // could reach infrastructure through a relative path or a require()
+        // and still pass it. This one resolves all three, and also enforces
+        // that the domain layer exists, that entities stay types only, that a
+        // business rule is not implemented in two layers at once, and that the
+        // deleted presenter layer stays deleted.
+        //
+        // Note: keep this comment free of a literal aliased import specifier.
+        // verify-production-build.ts rewrites aliases in the emitted dist
+        // without skipping comments, so writing one out here makes it resolve a
+        // phantom specifier and fail the production build.
+        createArchitectureRulesCheck(ALL_PROFILES, GATED_PROFILES),
         commandCheck(
             "unit",
             "static",

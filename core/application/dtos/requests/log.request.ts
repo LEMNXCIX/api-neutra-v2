@@ -1,4 +1,4 @@
-import { LogLevel } from "@/core/providers/logger.interface";
+import type { LogLevel } from "@/core/providers/logger.interface";
 
 export interface CreateLogDTO {
     level: LogLevel;

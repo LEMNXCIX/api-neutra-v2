@@ -1,17 +1,17 @@
 import {
-    Log as PrismaLog,
-    Prisma,
+    type Prisma,
+    type PrismaClient,
+    type Log as PrismaLog,
     LogLevel as PrismaLogLevel,
 } from "@prisma/client";
-import { PrismaClient } from "@prisma/client";
-import {
-    ILogRepository,
-    LogFilters,
-    LogEntry,
-    LogStats,
-    LogCreateData,
-} from "@/core/repositories/log.repository.interface";
 import { LogLevel } from "@/core/providers/logger.interface";
+import type {
+    ILogRepository,
+    LogCreateData,
+    LogEntry,
+    LogFilters,
+    LogStats,
+} from "@/core/repositories/log.repository.interface";
 
 export class PrismaLogRepository implements ILogRepository {
     private prisma: PrismaClient;
@@ -109,7 +109,7 @@ export class PrismaLogRepository implements ILogRepository {
 
     async getStats(timeframe: string = "last_7_days"): Promise<LogStats> {
         const now = new Date();
-        let startDate = new Date();
+        const startDate = new Date();
 
         if (timeframe === "last_24h") {
             startDate.setHours(now.getHours() - 24);

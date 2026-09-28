@@ -1,44 +1,43 @@
 import {
-    Appointment as PrismaAppointment,
-    AppointmentStatus as PrismaAppointmentStatus,
     Prisma,
+    type Appointment as PrismaAppointment,
+    type AppointmentStatus as PrismaAppointmentStatus,
 } from "@prisma/client";
 import { prisma } from "@/config/db.config";
 import {
-    IAppointmentRepository,
-    AppointmentCreateData,
-    AppointmentUpdateData,
-    AppointmentFilters,
-    AppointmentStatusUpdate,
-    AppointmentReviewCandidate,
-    AppointmentReviewCandidateQuery,
-} from "@/core/repositories/appointment.repository.interface";
-import {
-    Appointment,
-    AppointmentStatus,
-} from "@/core/entities/appointment.entity";
-import {
-    hasReachedUsageLimit,
-    isCouponOwnedBy,
-    isExpired,
-    isLoyaltyTemplateCoupon,
-    isPersonalCoupon,
-    isRewardCoupon,
-} from "@/core/entities/coupon.entity";
-import {
-    getLoyaltyCampaignContributionValue,
-    getLoyaltyCampaignSource,
-    LoyaltyCampaignMetric,
-    LoyaltyCampaignSource,
-    LoyaltyLedgerEntryType,
-    LoyaltySourceType,
-} from "@/core/entities/loyalty.entity";
+    assertCouponRedeemable,
+    assertCouponsFeatureEnabled,
+    toRedeemableCoupon,
+} from "@/core/domain/coupon/coupon.policy";
 import {
     BusinessRuleViolationError,
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import {
+    getLoyaltyCampaignAccrualCriteria,
+    getLoyaltyCampaignContributionValue,
+} from "@/core/domain/loyalty/loyalty.policy";
+import {
+    type Appointment,
+    AppointmentStatus,
+} from "@/core/entities/appointment.entity";
+import {
+    type LoyaltyCampaignMetric,
+    LoyaltyLedgerEntryType,
+    LoyaltySourceType,
+} from "@/core/entities/loyalty.entity";
+import type {
+    AppointmentCreateData,
+    AppointmentFilters,
+    AppointmentReviewCandidate,
+    AppointmentReviewCandidateQuery,
+    AppointmentStatusUpdate,
+    AppointmentUpdateData,
+    IAppointmentRepository,
+} from "@/core/repositories/appointment.repository.interface";
 import { extractTenantTimezone } from "@/core/utils/tenant-time";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 type AppointmentStatusAuditFields = {
     statusChangedAt?: Date | null;
@@ -47,7 +46,13 @@ type AppointmentStatusAuditFields = {
 };
 
 type AppointmentWithIncludes = Prisma.AppointmentGetPayload<{
-    include: { user: true; service: true; staff: true; coupon: true; tenant: true };
+    include: {
+        user: true;
+        service: true;
+        staff: true;
+        coupon: true;
+        tenant: true;
+    };
 }> &
     AppointmentStatusAuditFields;
 
@@ -57,6 +62,23 @@ type AppointmentWithCoupon = Prisma.AppointmentGetPayload<{
     AppointmentStatusAuditFields;
 
 type AppointmentBase = PrismaAppointment & AppointmentStatusAuditFields;
+
+/**
+ * Prisma's AppointmentStatus and the domain enum are declared separately
+ * (core/ may not import @prisma/client), so the row value is proven to be a
+ * real member before narrowing. A value outside the enum is a schema/domain
+ * disagreement and must surface rather than be silently relabelled.
+ */
+function isAppointmentStatus(value: string): value is AppointmentStatus {
+    return (Object.values(AppointmentStatus) as string[]).includes(value);
+}
+
+function toAppointmentStatus(value: string): AppointmentStatus {
+    if (!isAppointmentStatus(value)) {
+        throw new Error(`Unsupported appointment status: ${value}`);
+    }
+    return value;
+}
 
 export class PrismaAppointmentRepository implements IAppointmentRepository {
     private mapToEntity(
@@ -73,18 +95,18 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             staffId: appointment.staffId,
             startTime: appointment.startTime,
             endTime: appointment.endTime,
-            status: appointment.status as AppointmentStatus,
-            statusChangedAt: appointment.statusChangedAt ?? undefined,
-            statusChangeReason: appointment.statusChangeReason ?? undefined,
-            statusChangedById: appointment.statusChangedById ?? undefined,
-            notes: appointment.notes ?? undefined,
-            cancellationReason: appointment.cancellationReason ?? undefined,
+            status: toAppointmentStatus(appointment.status),
+            statusChangedAt: appointment.statusChangedAt,
+            statusChangeReason: appointment.statusChangeReason,
+            statusChangedById: appointment.statusChangedById,
+            notes: appointment.notes,
+            cancellationReason: appointment.cancellationReason,
             confirmationSent: appointment.confirmationSent,
             reminderSent: appointment.reminderSent,
             tenantId: appointment.tenantId,
             createdAt: appointment.createdAt,
             updatedAt: appointment.updatedAt,
-            couponId: appointment.couponId ?? undefined,
+            couponId: appointment.couponId,
             discountAmount: appointment.discountAmount ?? 0,
             subtotal: appointment.subtotal ?? 0,
             total: appointment.total ?? 0,
@@ -187,47 +209,10 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                       if (!coupon) {
                           throw new EntityNotFoundError("Coupon", couponId);
                       }
-                      if (isLoyaltyTemplateCoupon(coupon)) {
-                          throw new BusinessRuleViolationError(
-                              "Loyalty reward templates cannot be redeemed",
-                              "LOYALTY_TEMPLATE_NOT_REDEEMABLE",
-                          );
-                      }
-                      if (!isCouponOwnedBy(coupon, data.userId)) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon is not available for this user",
-                              "COUPON_NOT_OWNED",
-                          );
-                      }
-                      if (
-                          isRewardCoupon(coupon) &&
-                          !isPersonalCoupon(coupon)
-                      ) {
-                          throw new BusinessRuleViolationError(
-                              "Reward coupon is not assigned to a customer",
-                              "REWARD_COUPON_NOT_OWNED",
-                          );
-                      }
-                      if (!coupon.active) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon is not active",
-                          );
-                      }
-                      if (isExpired(coupon)) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon has expired",
-                          );
-                      }
-                      if (
-                          hasReachedUsageLimit({
-                              usageCount: coupon.usageCount,
-                              usageLimit: coupon.usageLimit ?? undefined,
-                          })
-                      ) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon usage limit reached",
-                          );
-                      }
+                      assertCouponRedeemable(
+                          toRedeemableCoupon(coupon),
+                          data.userId,
+                      );
                       if (
                           coupon.applicableServices.length > 0 &&
                           !coupon.applicableServices.includes(data.serviceId)
@@ -289,21 +274,15 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                           total: total.toNumber(),
                       };
 
-                      const couponsEnabled =
-                          await tx.tenantFeature.findFirst({
-                              where: {
-                                  tenantId,
-                                  enabled: true,
-                                  feature: { key: "COUPONS" },
-                              },
-                              select: { id: true },
-                          });
-                      if (!couponsEnabled) {
-                          throw new BusinessRuleViolationError(
-                              "Coupon validation is not available for this tenant",
-                              "COUPONS_FEATURE_REQUIRED",
-                          );
-                      }
+                      const couponsEnabled = await tx.tenantFeature.findFirst({
+                          where: {
+                              tenantId,
+                              enabled: true,
+                              feature: { key: "COUPONS" },
+                          },
+                          select: { id: true },
+                      });
+                      assertCouponsFeatureEnabled(couponsEnabled !== null);
 
                       const usage = await tx.coupon.updateMany({
                           where: {
@@ -333,7 +312,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                       if (usage.count === 0) {
                           throw new BusinessRuleViolationError(
                               "The coupon is not available for this appointment",
-                              "COUPON_UNAVAILABLE",
+                              BusinessErrorCodes.COUPON_UNAVAILABLE,
                           );
                       }
                       return createAppointment(tx, appointmentData);
@@ -416,7 +395,10 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             prisma.appointment.count({ where }),
         ]);
 
-        return { appointments: appointments.map((a) => this.mapToEntity(a)), total };
+        return {
+            appointments: appointments.map((a) => this.mapToEntity(a)),
+            total,
+        };
     }
 
     private buildWhere(
@@ -584,23 +566,26 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                         },
                         select: { id: true },
                     })) !== null;
+                const accrual = getLoyaltyCampaignAccrualCriteria(
+                    LoyaltySourceType.APPOINTMENT,
+                    eventAt,
+                );
                 const campaign = loyaltyEnabled
                     ? await tx.loyaltyCampaign.findFirst({
                           where: {
                               tenantId,
-                              status: "ACTIVE",
-                              source: {
-                                  in: [
-                                      getLoyaltyCampaignSource(
-                                          LoyaltySourceType.APPOINTMENT,
-                                      ),
-                                      LoyaltyCampaignSource.ALL,
-                                  ],
-                              },
-                              startsAt: { lte: eventAt },
-                              endsAt: { gt: eventAt },
+                              status: accrual.status,
+                              source: { in: accrual.sources },
+                              startsAt: { lte: accrual.startsAtOnOrBefore },
+                              endsAt: { gt: accrual.endsAtAfter },
                           },
-                          orderBy: { startsAt: "desc" },
+                          orderBy: {
+                              // Newest start wins: the domain states this rule
+                              // in the accrual criteria contract, and both
+                              // adapters order identically, so it is a constant
+                              // here rather than a per-caller choice.
+                              startsAt: "desc",
+                          },
                           select: { id: true, metric: true },
                       })
                     : null;
@@ -608,9 +593,9 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 if (campaign) {
                     const value = getLoyaltyCampaignContributionValue({
                         metric: campaign.metric as LoyaltyCampaignMetric,
-                        netTotal: new Prisma.Decimal(
-                            appointment.total,
-                        ).toFixed(2),
+                        netTotal: new Prisma.Decimal(appointment.total).toFixed(
+                            2,
+                        ),
                     });
                     await tx.loyaltyLedgerEntry.upsert({
                         where: {
@@ -657,9 +642,14 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 status: {
                     in: ["PENDING", "CONFIRMED", "IN_PROGRESS"],
                 },
-                // The lower bound excludes appointments that started before this
-                // deployment; the upper bound is the absolute grace deadline.
-                startTime: { gte: activationCutoff },
+                // The lower bound is optional. When it is absent the only
+                // temporal rule is the two-hour grace on endTime; when it is
+                // present it is a deployment floor a caller opted into. It is
+                // spread rather than passed as null, because a null bound is not
+                // the same as no bound.
+                ...(activationCutoff
+                    ? { startTime: { gte: activationCutoff } }
+                    : {}),
                 endTime: { lte: eligibleThrough },
             },
             select: {
@@ -676,7 +666,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         return appointments.map((appointment) => ({
             id: appointment.id,
             tenantId: appointment.tenantId,
-            status: appointment.status as AppointmentStatus,
+            status: toAppointmentStatus(appointment.status),
             endTime: appointment.endTime,
             tenantTimezone: extractTenantTimezone(appointment.tenant.config),
         }));
@@ -686,7 +676,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
         tenantId: string,
         id: string,
         expectedStatus: AppointmentStatus,
-        activationCutoff: Date,
+        activationCutoff: Date | null,
         eligibleThrough: Date,
         changedAt: Date,
         reason: string,
@@ -696,7 +686,15 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 id,
                 tenantId,
                 status: expectedStatus as PrismaAppointmentStatus,
-                startTime: { gte: activationCutoff },
+                // Same optional lower bound as the candidate query, and for the
+                // same reason: Prisma rejects a null bound outright with
+                // "Argument `gte` must not be null", so the filter has to be
+                // absent rather than null. A null here used to pass the type
+                // check, because a method parameter narrowed from `Date | null`
+                // to `Date` is compared bivariantly.
+                ...(activationCutoff
+                    ? { startTime: { gte: activationCutoff } }
+                    : {}),
                 endTime: { lte: eligibleThrough },
             },
             data: {

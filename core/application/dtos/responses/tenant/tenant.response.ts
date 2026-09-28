@@ -1,7 +1,7 @@
-import {
+import type {
     Tenant,
-    TenantType,
     TenantConfig,
+    TenantType,
 } from "@/core/entities/tenant.entity";
 
 export interface ITenantResponse {

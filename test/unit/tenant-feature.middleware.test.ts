@@ -1,9 +1,9 @@
+import type { NextFunction, Request, Response } from "express";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
 import {
     createRequireTenantFeature,
     requireTenantType,
 } from "@/middleware/tenant-feature.middleware";
-import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import type { Request, Response, NextFunction } from "express";
 
 const getFeatureStatus = jest.fn();
 const featureRepository = {

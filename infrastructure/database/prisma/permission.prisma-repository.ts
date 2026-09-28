@@ -1,11 +1,15 @@
-import { Permission as PrismaPermission, Prisma } from "@prisma/client";
+import { Prisma, type Permission as PrismaPermission } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IPermissionRepository, PermissionCreateData, PermissionUpdateData } from "@/core/repositories/permission.repository.interface";
-import { Permission } from "@/core/entities/permission.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Permission } from "@/core/entities/permission.entity";
+import type {
+    IPermissionRepository,
+    PermissionCreateData,
+    PermissionUpdateData,
+} from "@/core/repositories/permission.repository.interface";
 
 export class PrismaPermissionRepository implements IPermissionRepository {
     private mapToEntity(data: PrismaPermission): Permission {
@@ -71,18 +75,19 @@ export class PrismaPermissionRepository implements IPermissionRepository {
         tenantId: string | undefined,
         id: string,
     ): Promise<Permission | null> {
-        const permission = await prisma.permission.findUnique({
-            where: { id },
-        });
+        // Scoped in the query, not by a filter over a global read. The
+        // previous shape was `findUnique({ where: { id } })` with the tenant
+        // test applied to the returned row, which meant the row crossed the
+        // repository boundary unscoped and the answer depended on a comparison
+        // happening afterwards. Same idiom the role repository's `findById`
+        // already uses, so the two cannot drift apart.
+        const where: Prisma.PermissionWhereInput = {
+            id,
+            ...this.buildTenantWhere(tenantId),
+        };
 
-        if (
-            permission &&
-            tenantId &&
-            permission.tenantId !== tenantId &&
-            permission.tenantId !== null
-        ) {
-            return null;
-        }
+        const permission = await prisma.permission.findFirst({ where });
+
         return permission ? this.mapToEntity(permission) : null;
     }
 
@@ -125,24 +130,53 @@ export class PrismaPermissionRepository implements IPermissionRepository {
         }
     }
 
+    /**
+     * One statement carrying the scope, so a row cannot change owner between
+     * a read and the write. `updateMany` rather than `update` because
+     * `Permission.tenantId` is nullable, so `{ id, tenantId }` is not a unique
+     * selector Prisma will take in `where` — the only way to carry the tenant
+     * in a write predicate is `buildTenantWhere`'s own-rows-plus-global form.
+     * Same shape as `PrismaUserRepository.updateForTenant`, and a count of
+     * zero answers with the same `EntityNotFoundError` the global path
+     * already threw, so a caller cannot tell the two apart.
+     */
     async update(
         tenantId: string | undefined,
         id: string,
         data: PermissionUpdateData,
     ): Promise<Permission> {
-        const existing = await this.findById(tenantId, id);
-        if (!existing) throw new EntityNotFoundError("Permission", id);
+        const where: Prisma.PermissionWhereInput = {
+            id,
+            ...this.buildTenantWhere(tenantId),
+        };
 
         try {
-            const permission = await prisma.permission.update({
-                where: { id },
+            const { count } = await prisma.permission.updateMany({
+                where,
                 data: {
                     name: data.name,
                     description: data.description,
                     active: data.active,
                 },
             });
-            return this.mapToEntity(permission);
+
+            // The row is not writable in this scope: it belongs to another
+            // tenant, or it was reassigned after the use case read it. A
+            // success here would claim a write that never happened.
+            if (count === 0) {
+                throw new EntityNotFoundError("Permission", id);
+            }
+
+            // `updateMany` returns no row, so the updated permission is read
+            // back through the same tenant-scoped lookup the global update's
+            // return value used to come from.
+            const updated = await this.findById(tenantId, id);
+
+            if (!updated) {
+                throw new EntityNotFoundError("Permission", id);
+            }
+
+            return updated;
         } catch (error: unknown) {
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -160,12 +194,19 @@ export class PrismaPermissionRepository implements IPermissionRepository {
     }
 
     async delete(tenantId: string | undefined, id: string): Promise<void> {
-        const existing = await this.findById(tenantId, id);
-        if (!existing) throw new EntityNotFoundError("Permission", id);
+        // Same one-statement reasoning as `update`. `RolePermission.permission`
+        // is `onDelete: Cascade`, and `deleteMany` issues the same DELETE the
+        // single-row form did, so the cascade is unchanged.
+        const where: Prisma.PermissionWhereInput = {
+            id,
+            ...this.buildTenantWhere(tenantId),
+        };
 
-        await prisma.permission.delete({
-            where: { id },
-        });
+        const { count } = await prisma.permission.deleteMany({ where });
+
+        if (count === 0) {
+            throw new EntityNotFoundError("Permission", id);
+        }
     }
 
     async upsertByName(

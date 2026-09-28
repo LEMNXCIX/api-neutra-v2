@@ -1,6 +1,6 @@
-import { ProcessIncomingMessageUseCase } from "@/core/application/whatsapp/process-incoming-message.use-case";
-import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
-import { IncomingWhatsAppMessage } from "@/core/ports/whatsapp-bot-service.interface";
+import type { ProcessIncomingMessageUseCase } from "@/core/application/whatsapp/process-incoming-message.use-case";
+import type { IncomingWhatsAppMessage } from "@/core/ports/whatsapp-bot-service.interface";
+import type { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
 
 export type WhatsAppWebhookBody = {
     object?: string;

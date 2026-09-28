@@ -13,6 +13,8 @@ import {
     isValidLoyaltyRewardValidDays,
     isValidPositiveDecimalString,
     MAX_LOYALTY_PRISMA_INT,
+} from "@/core/domain/loyalty/loyalty.policy";
+import {
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
     LoyaltyCampaignStatus,
@@ -26,21 +28,17 @@ const claimUntil = new Date("2030-02-01T00:00:00.000Z");
 
 describe("loyalty campaign domain validation", () => {
     test("accepts only ordered, valid campaign dates", () => {
+        expect(isValidLoyaltyCampaignDates(startsAt, endsAt, claimUntil)).toBe(
+            true,
+        );
+        expect(isValidLoyaltyCampaignDates(endsAt, startsAt, claimUntil)).toBe(
+            false,
+        );
+        expect(isValidLoyaltyCampaignDates(startsAt, endsAt, endsAt)).toBe(
+            true,
+        );
         expect(
-            isValidLoyaltyCampaignDates(startsAt, endsAt, claimUntil),
-        ).toBe(true);
-        expect(
-            isValidLoyaltyCampaignDates(endsAt, startsAt, claimUntil),
-        ).toBe(false);
-        expect(
-            isValidLoyaltyCampaignDates(startsAt, endsAt, endsAt),
-        ).toBe(true);
-        expect(
-            isValidLoyaltyCampaignDates(
-                startsAt,
-                endsAt,
-                new Date("bad"),
-            ),
+            isValidLoyaltyCampaignDates(startsAt, endsAt, new Date("bad")),
         ).toBe(false);
     });
 
@@ -50,22 +48,13 @@ describe("loyalty campaign domain validation", () => {
         expect(isValidPositiveDecimalString("0")).toBe(false);
         expect(isValidPositiveDecimalString("10.123")).toBe(false);
         expect(
-            isValidLoyaltyCampaignTarget(
-                LoyaltyCampaignMetric.COUNT,
-                "10.00",
-            ),
+            isValidLoyaltyCampaignTarget(LoyaltyCampaignMetric.COUNT, "10.00"),
         ).toBe(true);
         expect(
-            isValidLoyaltyCampaignTarget(
-                LoyaltyCampaignMetric.COUNT,
-                "10.50",
-            ),
+            isValidLoyaltyCampaignTarget(LoyaltyCampaignMetric.COUNT, "10.50"),
         ).toBe(false);
         expect(
-            isValidLoyaltyCampaignTarget(
-                LoyaltyCampaignMetric.SPEND,
-                "10.50",
-            ),
+            isValidLoyaltyCampaignTarget(LoyaltyCampaignMetric.SPEND, "10.50"),
         ).toBe(true);
     });
 
@@ -74,19 +63,19 @@ describe("loyalty campaign domain validation", () => {
         expect(isValidLoyaltyCampaignMaxClaims(0)).toBe(false);
         expect(isValidLoyaltyCampaignMaxClaims(1.5)).toBe(false);
         expect(isValidLoyaltyCampaignMaxClaims(null)).toBe(false);
-        expect(
-            isValidLoyaltyCampaignMaxClaims(MAX_LOYALTY_PRISMA_INT),
-        ).toBe(true);
+        expect(isValidLoyaltyCampaignMaxClaims(MAX_LOYALTY_PRISMA_INT)).toBe(
+            true,
+        );
         expect(
             isValidLoyaltyCampaignMaxClaims(MAX_LOYALTY_PRISMA_INT + 1),
         ).toBe(false);
         expect(isValidLoyaltyRewardValidDays(30)).toBe(true);
-        expect(
-            isValidLoyaltyRewardValidDays(MAX_LOYALTY_PRISMA_INT),
-        ).toBe(true);
-        expect(
-            isValidLoyaltyRewardValidDays(MAX_LOYALTY_PRISMA_INT + 1),
-        ).toBe(false);
+        expect(isValidLoyaltyRewardValidDays(MAX_LOYALTY_PRISMA_INT)).toBe(
+            true,
+        );
+        expect(isValidLoyaltyRewardValidDays(MAX_LOYALTY_PRISMA_INT + 1)).toBe(
+            false,
+        );
         expect(isValidLoyaltyRewardValidDays(0)).toBe(false);
         expect(isValidLoyaltyRewardValidDays(30.5)).toBe(false);
     });
@@ -162,15 +151,14 @@ describe("loyalty campaign domain validation", () => {
         [LoyaltyCampaignMetric.COUNT, "4.00", "4.00"],
         [LoyaltyCampaignMetric.SPEND, "19.9", "19.90"],
         [LoyaltyCampaignMetric.SPEND, "-1.00", "0.00"],
-    ])("maps %s net Decimal progress to a fixed string", (
-        metric,
-        netTotal,
-        expected,
-    ) => {
-        expect(getLoyaltyCampaignProgressValue(metric, netTotal)).toBe(
-            expected,
-        );
-    });
+    ])(
+        "maps %s net Decimal progress to a fixed string",
+        (metric, netTotal, expected) => {
+            expect(getLoyaltyCampaignProgressValue(metric, netTotal)).toBe(
+                expected,
+            );
+        },
+    );
 
     test("normalizes source contributions independently from aggregates", () => {
         expect(
@@ -194,9 +182,9 @@ describe("loyalty campaign domain validation", () => {
     });
 
     test("maps generic source types to their specific campaign source", () => {
-        expect(
-            getLoyaltyCampaignSource(LoyaltySourceType.APPOINTMENT),
-        ).toBe(LoyaltyCampaignSource.BOOKING);
+        expect(getLoyaltyCampaignSource(LoyaltySourceType.APPOINTMENT)).toBe(
+            LoyaltyCampaignSource.BOOKING,
+        );
         expect(getLoyaltyCampaignSource(LoyaltySourceType.ORDER)).toBe(
             LoyaltyCampaignSource.STORE,
         );
@@ -209,14 +197,14 @@ describe("loyalty campaign domain validation", () => {
             LoyaltyCampaignSource.ALL,
             [LoyaltySourceType.APPOINTMENT, LoyaltySourceType.ORDER],
         ],
-    ])("maps %s progress to its compatible ledger sources", (
-        campaignSource,
-        sourceTypes,
-    ) => {
-        expect(getLoyaltyCampaignSourceTypes(campaignSource)).toEqual(
-            sourceTypes,
-        );
-    });
+    ])(
+        "maps %s progress to its compatible ledger sources",
+        (campaignSource, sourceTypes) => {
+            expect(getLoyaltyCampaignSourceTypes(campaignSource)).toEqual(
+                sourceTypes,
+            );
+        },
+    );
 
     test("matches campaign sources to tenant types", () => {
         expect(

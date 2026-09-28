@@ -1,9 +1,10 @@
+import { prisma } from "@/config/db.config";
 import { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
 import { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
-import { Order, OrderStatus } from "@/core/entities/order.entity";
-import { IOrderRepository } from "@/core/repositories/order.repository.interface";
-import { prisma } from "@/config/db.config";
+import type { Order, OrderStatus } from "@/core/entities/order.entity";
+import type { IOrderRepository } from "@/core/repositories/order.repository.interface";
 import { PrismaOrderRepository } from "@/infrastructure/database/prisma/order.prisma-repository";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 function order(status: OrderStatus): Order {
     return {
@@ -74,10 +75,104 @@ function deliveredOrderRow() {
     };
 }
 
+type CampaignRow = {
+    id: string;
+    tenantId: string;
+    status: string;
+    source: string;
+    metric: string;
+    startsAt: Date;
+    endsAt: Date;
+};
+
+type CampaignSelectionQuery = {
+    where: {
+        tenantId: string;
+        status: string;
+        source: { in: string[] };
+        startsAt: { lte: Date };
+        endsAt: { gt: Date };
+    };
+    orderBy: { startsAt: "asc" | "desc" };
+};
+
+/**
+ * Answers the campaign-selection query the adapter actually emitted, the way
+ * Postgres would: filter, then order, then take the first row.
+ */
+function selectCampaign(
+    query: CampaignSelectionQuery,
+    rows: CampaignRow[],
+): CampaignRow | null {
+    const { where, orderBy } = query;
+    const eligible = rows
+        .filter(
+            (row) =>
+                row.tenantId === where.tenantId &&
+                row.status === where.status &&
+                where.source.in.includes(row.source) &&
+                row.startsAt.getTime() <= where.startsAt.lte.getTime() &&
+                row.endsAt.getTime() > where.endsAt.gt.getTime(),
+        )
+        .sort((a, b) =>
+            orderBy.startsAt === "desc"
+                ? b.startsAt.getTime() - a.startsAt.getTime()
+                : a.startsAt.getTime() - b.startsAt.getTime(),
+        );
+    return eligible[0] ?? null;
+}
+
+function campaignRow(overrides: Partial<CampaignRow> = {}): CampaignRow {
+    return {
+        id: "campaign-store",
+        tenantId: "tenant-1",
+        status: "ACTIVE",
+        source: "STORE",
+        metric: "COUNT",
+        startsAt: new Date("2029-12-01T00:00:00.000Z"),
+        endsAt: new Date("2030-12-31T00:00:00.000Z"),
+        ...overrides,
+    };
+}
+
+/** The campaigns an ORDER event competes for: two STORE, one BOOKING, one ALL. */
+function competingCampaigns() {
+    return [
+        campaignRow({ id: "campaign-store-older" }),
+        campaignRow({
+            id: "campaign-store-newer",
+            startsAt: new Date("2030-01-01T00:00:00.000Z"),
+        }),
+        campaignRow({ id: "campaign-booking", source: "BOOKING" }),
+        campaignRow({ id: "campaign-all", source: "ALL" }),
+    ];
+}
+
+function selectCampaignOver(rows: CampaignRow[]) {
+    return jest
+        .spyOn(prisma.loyaltyCampaign, "findFirst")
+        .mockImplementation((async (args: unknown) => {
+            const selected = selectCampaign(
+                args as CampaignSelectionQuery,
+                rows,
+            );
+            return selected
+                ? { id: selected.id, metric: selected.metric }
+                : null;
+        }) as never);
+}
+
+function deliverOrder() {
+    return new PrismaOrderRepository().updateStatus("tenant-1", "order-1", {
+        expectedStatus: "ENVIADO",
+        status: "ENTREGADO",
+        qualifyLoyalty: true,
+    });
+}
+
 describe("ChangeOrderStatusUseCase", () => {
     test("guards delivery and requests loyalty qualification when enabled", async () => {
-        const { useCase, orderRepository, featureRepository } =
-            statusUseCase();
+        const { useCase, orderRepository, featureRepository } = statusUseCase();
 
         const result = await useCase.execute(
             "tenant-1",
@@ -101,8 +196,7 @@ describe("ChangeOrderStatusUseCase", () => {
     });
 
     test("does not qualify delivery when LOYALTY is disabled", async () => {
-        const { useCase, orderRepository, featureRepository } =
-            statusUseCase();
+        const { useCase, orderRepository, featureRepository } = statusUseCase();
         featureRepository.getTenantFeatureStatus.mockResolvedValue({
             LOYALTY: false,
         });
@@ -116,9 +210,8 @@ describe("ChangeOrderStatusUseCase", () => {
     });
 
     test("does not look up loyalty for non-delivery transitions", async () => {
-        const { useCase, orderRepository, featureRepository } = statusUseCase(
-            "PAGADO",
-        );
+        const { useCase, orderRepository, featureRepository } =
+            statusUseCase("PAGADO");
         orderRepository.updateStatus.mockResolvedValue(order("ENVIADO"));
 
         await useCase.execute("tenant-1", "order-1", "ENVIADO");
@@ -131,9 +224,7 @@ describe("ChangeOrderStatusUseCase", () => {
                 status: "ENVIADO",
             },
         );
-        expect(
-            featureRepository.getTenantFeatureStatus,
-        ).not.toHaveBeenCalled();
+        expect(featureRepository.getTenantFeatureStatus).not.toHaveBeenCalled();
     });
 
     test("reports a conflict when the expected delivery state is stale", async () => {
@@ -142,7 +233,9 @@ describe("ChangeOrderStatusUseCase", () => {
 
         await expect(
             useCase.execute("tenant-1", "order-1", "ENTREGADO"),
-        ).rejects.toMatchObject({ code: "ORDER_STATUS_CONFLICT" });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.ORDER_STATUS_CONFLICT,
+        });
     });
 });
 
@@ -285,9 +378,9 @@ describe("UpdateOrderUseCase", () => {
             },
         );
         expect(orderRepository.update).not.toHaveBeenCalled();
-        expect(
-            featureRepository.getTenantFeatureStatus,
-        ).toHaveBeenCalledWith("tenant-1");
+        expect(featureRepository.getTenantFeatureStatus).toHaveBeenCalledWith(
+            "tenant-1",
+        );
         expect(result.success).toBe(true);
     });
 
@@ -299,12 +392,12 @@ describe("UpdateOrderUseCase", () => {
             useCase.execute("tenant-1", "order-1", {
                 status: "ENTREGADO",
             }),
-        ).rejects.toMatchObject({ code: "INVALID_STATUS_TRANSITION" });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.INVALID_STATUS_TRANSITION,
+        });
         expect(orderRepository.updateStatus).not.toHaveBeenCalled();
         expect(orderRepository.update).not.toHaveBeenCalled();
-        expect(
-            featureRepository.getTenantFeatureStatus,
-        ).not.toHaveBeenCalled();
+        expect(featureRepository.getTenantFeatureStatus).not.toHaveBeenCalled();
     });
 
     test("keeps tracking-only updates on the repository update path", async () => {
@@ -339,22 +432,15 @@ describe("Prisma order loyalty delivery edge cases", () => {
             deliveredOrderRow() as never,
         );
         const featureLookup = mockCommittedLoyaltyFeature(false);
-        const campaignLookup = jest.spyOn(
-            prisma.loyaltyCampaign,
-            "findFirst",
-        );
+        const campaignLookup = jest.spyOn(prisma.loyaltyCampaign, "findFirst");
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
         await expect(
-            new PrismaOrderRepository().updateStatus(
-                "tenant-1",
-                "order-1",
-                {
-                    expectedStatus: "ENVIADO",
-                    status: "ENTREGADO",
-                    qualifyLoyalty: true,
-                },
-            ),
+            new PrismaOrderRepository().updateStatus("tenant-1", "order-1", {
+                expectedStatus: "ENVIADO",
+                status: "ENTREGADO",
+                qualifyLoyalty: true,
+            }),
         ).resolves.toMatchObject({ status: "ENTREGADO" });
 
         expect(transaction).toHaveBeenCalledTimes(1);
@@ -374,20 +460,14 @@ describe("Prisma order loyalty delivery edge cases", () => {
             deliveredOrderRow() as never,
         );
         mockCommittedLoyaltyFeature();
-        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue(
-            null,
-        );
+        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue(null);
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
-        await new PrismaOrderRepository().updateStatus(
-            "tenant-1",
-            "order-1",
-            {
-                expectedStatus: "ENVIADO",
-                status: "ENTREGADO",
-                qualifyLoyalty: true,
-            },
-        );
+        await new PrismaOrderRepository().updateStatus("tenant-1", "order-1", {
+            expectedStatus: "ENVIADO",
+            status: "ENTREGADO",
+            qualifyLoyalty: true,
+        });
 
         expect(upsert).not.toHaveBeenCalled();
     });
@@ -439,22 +519,15 @@ describe("Prisma order loyalty delivery edge cases", () => {
         );
         jest.spyOn(prisma.order, "updateMany").mockResolvedValue({ count: 0 });
         const findFirst = jest.spyOn(prisma.order, "findFirst");
-        const campaignLookup = jest.spyOn(
-            prisma.loyaltyCampaign,
-            "findFirst",
-        );
+        const campaignLookup = jest.spyOn(prisma.loyaltyCampaign, "findFirst");
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
         await expect(
-            new PrismaOrderRepository().updateStatus(
-                "tenant-1",
-                "order-1",
-                {
-                    expectedStatus: "ENVIADO",
-                    status: "ENTREGADO",
-                    qualifyLoyalty: true,
-                },
-            ),
+            new PrismaOrderRepository().updateStatus("tenant-1", "order-1", {
+                expectedStatus: "ENVIADO",
+                status: "ENTREGADO",
+                qualifyLoyalty: true,
+            }),
         ).resolves.toBeNull();
         expect(findFirst).not.toHaveBeenCalled();
         expect(campaignLookup).not.toHaveBeenCalled();
@@ -482,15 +555,174 @@ describe("Prisma order loyalty delivery edge cases", () => {
         );
 
         await expect(
-            new PrismaOrderRepository().updateStatus(
-                "tenant-1",
-                "order-1",
-                {
-                    expectedStatus: "ENVIADO",
-                    status: "ENTREGADO",
-                    qualifyLoyalty: true,
-                },
-            ),
+            new PrismaOrderRepository().updateStatus("tenant-1", "order-1", {
+                expectedStatus: "ENVIADO",
+                status: "ENTREGADO",
+                qualifyLoyalty: true,
+            }),
         ).rejects.toBe(error);
+    });
+});
+
+describe("Prisma order campaign selection", () => {
+    const eventAt = new Date("2030-01-15T12:00:00.000Z");
+
+    beforeEach(() => {
+        jest.useFakeTimers().setSystemTime(eventAt);
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+        jest.restoreAllMocks();
+    });
+
+    function givenCommittedDelivery(rows: CampaignRow[]) {
+        const transaction = useTransactionCallback();
+        transaction.mockImplementation(
+            (callback: (tx: typeof prisma) => Promise<unknown>) =>
+                callback(prisma),
+        );
+        jest.spyOn(prisma.order, "updateMany").mockResolvedValue({ count: 1 });
+        jest.spyOn(prisma.order, "findFirst").mockResolvedValue(
+            deliveredOrderRow() as never,
+        );
+        mockCommittedLoyaltyFeature();
+        return {
+            lookup: selectCampaignOver(rows),
+            upsert: jest
+                .spyOn(prisma.loyaltyLedgerEntry, "upsert")
+                .mockResolvedValue({} as never),
+        };
+    }
+
+    test("accrues the delivered order into the eligible campaign", async () => {
+        const { lookup, upsert } = givenCommittedDelivery([
+            campaignRow({ id: "campaign-store" }),
+        ]);
+
+        await deliverOrder();
+
+        expect(upsert).toHaveBeenCalledTimes(1);
+        expect(upsert.mock.calls[0][0].create).toMatchObject({
+            campaignId: "campaign-store",
+            sourceType: "ORDER",
+            sourceId: "order-1",
+            entryType: "ACCRUAL",
+            reason: "order.delivered",
+            createdAt: eventAt,
+        });
+        const emitted = lookup.mock.calls[0][0] as CampaignSelectionQuery;
+        expect(selectCampaign(emitted, competingCampaigns())).toMatchObject({
+            id: "campaign-store-newer",
+        });
+    });
+
+    test.each([["STORE"], ["ALL"]])(
+        "maps an ORDER event onto its own source and the catch-all",
+        async (rowSource) => {
+            const rows = [
+                campaignRow({ id: "campaign-booking-only", source: "BOOKING" }),
+                campaignRow({
+                    id: "campaign-elsewhere",
+                    source: rowSource,
+                    startsAt: new Date("2029-01-01T00:00:00.000Z"),
+                }),
+            ];
+            const { lookup, upsert } = givenCommittedDelivery(rows);
+
+            await deliverOrder();
+
+            const emitted = lookup.mock.calls[0][0] as CampaignSelectionQuery;
+            expect(emitted.where.source.in).toEqual(["STORE", "ALL"]);
+            expect(upsert.mock.calls[0][0].create.campaignId).toBe(
+                "campaign-elsewhere",
+            );
+        },
+    );
+
+    test("never accrues an ORDER event into a BOOKING-only campaign", async () => {
+        const { upsert } = givenCommittedDelivery([
+            campaignRow({ id: "campaign-booking-only", source: "BOOKING" }),
+        ]);
+
+        await deliverOrder();
+
+        expect(upsert).not.toHaveBeenCalled();
+    });
+
+    test("accrues into the catch-all when no source-specific campaign is eligible", async () => {
+        const { upsert } = givenCommittedDelivery([
+            campaignRow({ id: "campaign-booking-only", source: "BOOKING" }),
+            campaignRow({ id: "campaign-all", source: "ALL" }),
+        ]);
+
+        await deliverOrder();
+
+        expect(upsert.mock.calls[0][0].create.campaignId).toBe("campaign-all");
+    });
+
+    test("accrues into the newest start when two eligible campaigns overlap", async () => {
+        const { upsert } = givenCommittedDelivery([
+            campaignRow({ id: "campaign-store-older" }),
+            campaignRow({
+                id: "campaign-store-newer",
+                startsAt: new Date("2030-01-01T00:00:00.000Z"),
+            }),
+        ]);
+
+        await deliverOrder();
+
+        expect(upsert.mock.calls[0][0].create.campaignId).toBe(
+            "campaign-store-newer",
+        );
+    });
+
+    test.each([
+        [
+            "a window that ended before the event",
+            new Date("2029-12-31T00:00:00.000Z"),
+        ],
+        [
+            "a window that starts after the event",
+            new Date("2030-06-01T00:00:00.000Z"),
+        ],
+    ])("accrues nowhere into %s", async (_label, bound) => {
+        const { upsert } = givenCommittedDelivery([
+            campaignRow({
+                id: "campaign-outside",
+                startsAt:
+                    bound.getTime() > eventAt.getTime()
+                        ? bound
+                        : new Date("2029-01-01T00:00:00.000Z"),
+                endsAt:
+                    bound.getTime() > eventAt.getTime()
+                        ? new Date("2030-12-31T00:00:00.000Z")
+                        : bound,
+            }),
+        ]);
+
+        await deliverOrder();
+
+        expect(upsert).not.toHaveBeenCalled();
+    });
+
+    test("accrues nowhere into a non-ACTIVE campaign", async () => {
+        const { upsert } = givenCommittedDelivery([
+            campaignRow({ id: "campaign-ended", status: "ENDED" }),
+        ]);
+
+        await deliverOrder();
+
+        expect(upsert).not.toHaveBeenCalled();
+    });
+
+    test("accrues nowhere into another tenant's campaign", async () => {
+        const { upsert } = givenCommittedDelivery([
+            campaignRow({ id: "campaign-other-tenant", tenantId: "tenant-2" }),
+        ]);
+
+        await deliverOrder();
+
+        expect(upsert).not.toHaveBeenCalled();
     });
 });

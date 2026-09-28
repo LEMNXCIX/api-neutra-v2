@@ -1,8 +1,11 @@
-import { IWhatsAppConversationRepository } from "@/core/repositories/whatsapp-conversation.repository.interface";
-import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
-import { WhatsAppService } from "./whatsapp.service";
+import type {
+    IncomingWhatsAppMessage,
+    IWhatsAppBotService,
+} from "@/core/ports/whatsapp-bot-service.interface";
 import type { ILogger } from "@/core/providers/logger.interface";
-import { IWhatsAppBotService } from "@/core/ports/whatsapp-bot-service.interface";
+import type { IWhatsAppConversationRepository } from "@/core/repositories/whatsapp-conversation.repository.interface";
+import type { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
+import type { WhatsAppService } from "./whatsapp.service";
 
 export class WhatsAppBotService implements IWhatsAppBotService {
     constructor(
@@ -13,13 +16,12 @@ export class WhatsAppBotService implements IWhatsAppBotService {
     ) {}
 
     async processIncomingMessage(
-        message: any,
+        message: IncomingWhatsAppMessage,
         tenantId: string,
     ): Promise<void> {
         try {
             const from = message.from; // User's phone number
             const text = message.text?.body;
-            const waMessageId = message.id;
 
             // 1. Save incoming message (if not already handled by webhook controller dispatch)
             // Ideally, the webhook controller or a use case calls this service.
@@ -34,9 +36,20 @@ export class WhatsAppBotService implements IWhatsAppBotService {
                 );
 
             if (!conversation) {
+                // A conversation is keyed by Meta's message id, and the provider
+                // allows that id to be absent. Creating one without it stored
+                // `undefined` in a non-nullable column, and the conversation
+                // could never be correlated again. Refuse instead, and say why.
+                if (!message.id) {
+                    this.logger.warn(
+                        `Discarding WhatsApp message with no provider id from ${from}: the conversation cannot be correlated`,
+                    );
+                    return;
+                }
+
                 conversation = await this.conversationRepository.create({
                     tenantId,
-                    waConversationId: waMessageId, // Initial conversation ID often linked to first message or session
+                    waConversationId: message.id,
                     phoneNumber: from,
                     status: "active",
                     lastMessageAt: new Date(),
@@ -66,8 +79,10 @@ export class WhatsAppBotService implements IWhatsAppBotService {
                     // await this.whatsappService.sendTextMessage(from, "Recibí tu mensaje: " + text, tenantId);
                 }
             }
-        } catch (error: any) {
-            this.logger.error(`Error processing bot message: ${error.message}`);
+        } catch (error) {
+            const detail =
+                error instanceof Error ? error.message : String(error);
+            this.logger.error(`Error processing bot message: ${detail}`);
         }
     }
 }

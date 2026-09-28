@@ -1,5 +1,5 @@
-import { ILogRepository } from "@/core/repositories/log.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { ILogRepository } from "@/core/repositories/log.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetLogStatsUseCase {
     constructor(private logRepository: ILogRepository) {}

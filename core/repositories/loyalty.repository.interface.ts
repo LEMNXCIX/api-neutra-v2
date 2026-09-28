@@ -1,14 +1,12 @@
-import { Coupon } from "@/core/entities/coupon.entity";
-import {
+import type { Coupon } from "@/core/entities/coupon.entity";
+import type {
     LoyaltyCampaign,
     LoyaltyCampaignMetric,
     LoyaltyCampaignProgress,
     LoyaltyCampaignReward,
     LoyaltyCampaignRewardClaim,
     LoyaltyCampaignSource,
-    LoyaltyCampaignStats,
     LoyaltyCampaignStatus,
-    LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
 
 export type LoyaltyCampaignRewardDefinition = LoyaltyCampaignReward;
@@ -56,20 +54,37 @@ export interface ILoyaltyRepository {
         tenantId: string,
         campaignId: string,
     ): Promise<LoyaltyCampaign | null>;
-    findActiveCampaignAt(
-        tenantId: string,
-        sourceType: LoyaltySourceType,
-        at: Date,
-    ): Promise<LoyaltyCampaign | null>;
     getCampaignProgress(
         tenantId: string,
         campaignId: string,
         userId: string,
+        knownCampaign?: LoyaltyCampaign,
     ): Promise<LoyaltyCampaignProgress>;
-    getCampaignStats(
+    /**
+     * Progress for every campaign in one pass, so a caller holding a list of
+     * campaigns does not pay two ledger reads per COUNT campaign and one per
+     * SPEND campaign. Returns one entry per campaign, including the campaigns
+     * with no ledger activity, which report zero exactly as the single-campaign
+     * path does.
+     */
+    getCampaignsProgressForCustomer(
         tenantId: string,
-        campaignId: string,
-    ): Promise<LoyaltyCampaignStats>;
+        userId: string,
+        campaigns: LoyaltyCampaign[],
+    ): Promise<LoyaltyCampaignProgress[]>;
+    /**
+     * Every reward claim this customer holds across the given campaigns, in
+     * one read. Campaigns with no claim are absent from the result.
+     */
+    findCampaignRewardClaimsForCustomer(
+        tenantId: string,
+        userId: string,
+        campaignIds: string[],
+    ): Promise<LoyaltyCampaignRewardClaim[]>;
+    /**
+     * How many reward claims the tenant holds, in one read.
+     */
+    countCampaignRewardClaims(tenantId: string): Promise<number>;
     findCampaignRewardClaim(
         tenantId: string,
         campaignId: string,

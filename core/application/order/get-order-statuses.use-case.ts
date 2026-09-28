@@ -1,5 +1,4 @@
-import { OrderStatus } from "@/core/entities/order.entity";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetOrderStatusesUseCase {
     execute(): UseCaseResult {

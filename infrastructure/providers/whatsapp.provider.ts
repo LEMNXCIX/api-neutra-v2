@@ -1,9 +1,12 @@
-import {
+import type { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
+import type {
     INotificationProvider,
     NotificationMessage,
 } from "@/core/ports/notification-provider.interface";
-import { WhatsAppComponent, IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
-import { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
+import type {
+    IWhatsAppService,
+    WhatsAppComponent,
+} from "@/core/ports/whatsapp-service.interface";
 import type { ILogger } from "@/core/providers/logger.interface";
 
 export class WhatsAppProvider implements INotificationProvider {
@@ -16,12 +19,12 @@ export class WhatsAppProvider implements INotificationProvider {
     async send(
         recipient: string,
         message: NotificationMessage,
-        options?: any,
+        options?: Record<string, unknown>,
     ): Promise<boolean> {
         try {
             const tenantId = options?.tenantId;
 
-            if (!tenantId) {
+            if (typeof tenantId !== "string" || !tenantId) {
                 this.logger.warn(
                     "[WhatsAppProvider] Missing tenantId in options. Cannot send WhatsApp message.",
                 );
@@ -39,7 +42,10 @@ export class WhatsAppProvider implements INotificationProvider {
                     tenantId,
                     to: recipient,
                     templateName: message.templateId, // e.g. "appointment_confirmed"
-                    languageCode: options?.language || "es",
+                    languageCode:
+                        typeof options?.language === "string"
+                            ? options.language
+                            : "es",
                     components:
                         (message.data?.components as WhatsAppComponent[]) || [],
                 });

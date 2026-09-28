@@ -1,15 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type {
-    CheckRunResult,
-    DoctorContext,
-} from "../domain/check-result";
+import type { CheckRunResult, DoctorContext } from "../domain/check-result";
 
 type JsonRecord = Record<string, unknown>;
 
-type JsonReadResult =
-    | { ok: true; value: unknown }
-    | { ok: false };
+type JsonReadResult = { ok: true; value: unknown } | { ok: false };
 
 function asRecord(value: unknown): JsonRecord | null {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -110,9 +105,11 @@ function dockerMajors(content: string): number[] {
 
 function ciNodeMajors(content: string): number[] {
     return uniqueMajors(
-        [...content.matchAll(/^\s*node-version:\s*["']?(\d+)(?:\.x|\.\*)?["']?\s*$/gim)].map(
-            (match) => Number(match[1]),
-        ),
+        [
+            ...content.matchAll(
+                /^\s*node-version:\s*["']?(\d+)(?:\.x|\.\*)?["']?\s*$/gim,
+            ),
+        ].map((match) => Number(match[1])),
     );
 }
 
@@ -154,12 +151,16 @@ export async function checkNodeContract(
     const minimum = parseNodeMinimum(engines?.node);
     const expectedMajor = minimum?.major ?? null;
     if (!packageRecord || minimum === null) {
-        return fail("Node runtime contract could not be read from package.json");
+        return fail(
+            "Node runtime contract could not be read from package.json",
+        );
     }
 
     const mismatches: string[] = [];
     if (!nodeVersionSatisfiesMinimum(process.versions.node, minimum)) {
-        mismatches.push("actual Node version does not satisfy package.json engines");
+        mismatches.push(
+            "actual Node version does not satisfy package.json engines",
+        );
     }
 
     const declarations: Array<{
@@ -196,7 +197,10 @@ export async function checkNodeContract(
             continue;
         }
         const majors = declaration.extract(content);
-        if (majors.length === 0 || majors.some((major) => major !== expectedMajor)) {
+        if (
+            majors.length === 0 ||
+            majors.some((major) => major !== expectedMajor)
+        ) {
             mismatches.push(`${declaration.label} major mismatch`);
         }
     }
@@ -233,7 +237,9 @@ export async function checkPackageLock(
         "optionalDependencies",
         "peerDependencies",
     ]) {
-        if (dependencyMap(packageRecord[field]) !== dependencyMap(root[field])) {
+        if (
+            dependencyMap(packageRecord[field]) !== dependencyMap(root[field])
+        ) {
             mismatches.push(`${field} map mismatch`);
         }
     }
@@ -250,12 +256,10 @@ export async function checkRequiredEnvironment(
     const missing: string[] = [];
     try {
         const hasDatabaseUrl = context.hasEnvKey("DATABASE_URL");
-        const hasLegacyDatabase = [
-            "DB_USERNAME",
-            "DB_PASSWORD",
-            "DB_HOST",
-        ].every((key) => context.hasEnvKey(key)) &&
-            context.hasEnvKey("DB_NAME");
+        const hasLegacyDatabase =
+            ["DB_USERNAME", "DB_PASSWORD", "DB_HOST"].every((key) =>
+                context.hasEnvKey(key),
+            ) && context.hasEnvKey("DB_NAME");
 
         if (!hasDatabaseUrl && !hasLegacyDatabase) {
             missing.push("DATABASE_URL or complete DB_* configuration");

@@ -23,6 +23,13 @@ export interface AppointmentEmailData {
     duration: number;
     notes?: string | null;
     cancellationReason?: string | null;
+    /**
+     * Deep link to add the appointment to a calendar. No caller supplies it
+     * today, so the confirmation template hides its button when this is absent
+     * rather than rendering a link to "#". Supplying it needs a decision about
+     * calendar provider and timezone, which this type deliberately does not make.
+     */
+    calendarLink?: string | null;
 }
 
 export interface IEmailService {

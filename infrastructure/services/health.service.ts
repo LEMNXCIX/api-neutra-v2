@@ -1,4 +1,4 @@
-import {
+import type {
     HealthReadiness,
     IHealthService,
 } from "@/core/ports/health-service.interface";
@@ -38,10 +38,7 @@ export class HealthService implements IHealthService {
                         () => false,
                     ),
                 new Promise<boolean>((resolve) => {
-                    timeout = setTimeout(
-                        () => resolve(false),
-                        this.timeoutMs,
-                    );
+                    timeout = setTimeout(() => resolve(false), this.timeoutMs);
                 }),
             ]);
         } finally {

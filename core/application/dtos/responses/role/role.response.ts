@@ -1,5 +1,5 @@
-import { Permission } from "@/core/entities/permission.entity";
-import { Role } from "@/core/entities/role.entity";
+import type { Permission } from "@/core/entities/permission.entity";
+import type { Role } from "@/core/entities/role.entity";
 
 export interface IPermissionMinimalResponse {
     id: string;

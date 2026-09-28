@@ -1,5 +1,5 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetUserByEmailUseCase {
     constructor(private userRepository: IUserRepository) {}

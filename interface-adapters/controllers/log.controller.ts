@@ -1,6 +1,6 @@
-import { Request, Response } from "express";
-import { GetLogsUseCase } from "@/core/application/log/get-logs.use-case";
-import { GetLogStatsUseCase } from "@/core/application/log/get-log-stats.use-case";
+import type { Request, Response } from "express";
+import type { GetLogStatsUseCase } from "@/core/application/log/get-log-stats.use-case";
+import type { GetLogsUseCase } from "@/core/application/log/get-logs.use-case";
 
 export class LogController {
     constructor(

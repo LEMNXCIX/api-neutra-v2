@@ -1,32 +1,36 @@
-jest.mock('uuid', () => ({ v4: () => `test-uuid-${Math.random().toString(36).substring(7)}` }));
-import api from './test-client';
-import { getAuthToken } from './helpers/auth.helper';
+jest.mock("uuid", () => ({
+    v4: () => `test-uuid-${Math.random().toString(36).substring(7)}`,
+}));
 
-describe('Users routes', () => {
-  let token: string;
+import { getAuthToken } from "./helpers/auth.helper";
+import api from "./test-client";
 
-  beforeAll(async () => {
-    token = await getAuthToken();
-  });
+describe("Users routes", () => {
+    let token: string;
 
-  test('GET /api/users without auth should return 401 or 403', async () => {
-    const res = await api.get('/api/users');
-    expect([401, 403]).toContain(res.status);
-  });
+    beforeAll(async () => {
+        token = await getAuthToken();
+    });
 
-  test('GET /api/users with auth should return 200', async () => {
-    const res = await api.get('/api/users')
-      .set('Authorization', `Bearer ${token}`);
-    expect([200, 401, 403]).toContain(res.status);
-  });
+    test("GET /api/users without auth should return 401 or 403", async () => {
+        const res = await api.get("/api/users");
+        expect([401, 403]).toContain(res.status);
+    });
 
-  test('GET /api/users/find/:id without auth should return 401 or 403', async () => {
-    const res = await api.get('/api/users/find/123');
-    expect([401, 403]).toContain(res.status);
-  });
+    test("GET /api/users with auth should return 200", async () => {
+        const res = await api
+            .get("/api/users")
+            .set("Authorization", `Bearer ${token}`);
+        expect([200, 401, 403]).toContain(res.status);
+    });
 
-  test('GET /api/users/stats without auth should return 401 or 403', async () => {
-    const res = await api.get('/api/users/stats');
-    expect([401, 403]).toContain(res.status);
-  });
+    test("GET /api/users/find/:id without auth should return 401 or 403", async () => {
+        const res = await api.get("/api/users/find/123");
+        expect([401, 403]).toContain(res.status);
+    });
+
+    test("GET /api/users/stats without auth should return 401 or 403", async () => {
+        const res = await api.get("/api/users/stats");
+        expect([401, 403]).toContain(res.status);
+    });
 });

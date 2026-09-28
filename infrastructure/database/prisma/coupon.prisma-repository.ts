@@ -1,35 +1,26 @@
-import { randomUUID } from "node:crypto";
-import { Coupon as PrismaCoupon, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import {
-    ICouponRepository,
-    CreateCouponData,
-    UpdateCouponData,
-} from "@/core/repositories/coupon.repository.interface";
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
     BusinessRuleViolationError,
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Coupon } from "@/core/entities/coupon.entity";
+import type {
+    CreateCouponData,
+    ICouponRepository,
+    UpdateCouponData,
+} from "@/core/repositories/coupon.repository.interface";
+import {
+    mapCoupon,
+    toCouponType,
+} from "@/infrastructure/database/prisma/coupon-mapper";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 type CouponWhereInput = Prisma.CouponWhereInput & {
     ownerId?: Prisma.StringNullableFilter<"Coupon"> | string | null;
     isReward?: Prisma.BoolFilter<"Coupon"> | boolean;
 };
-
-type CouponUncheckedCreateInput = Prisma.CouponUncheckedCreateInput & {
-    ownerId?: string;
-    isReward?: boolean;
-    sourceCouponId?: string;
-};
-
-function toCouponType(value: string): CouponType {
-    if (value === CouponType.PERCENT || value === CouponType.FIXED) {
-        return value;
-    }
-    throw new Error(`Unsupported coupon type: ${value}`);
-}
 
 function sharedCouponWhere(
     conditions: Prisma.CouponWhereInput = {},
@@ -46,37 +37,12 @@ function couponOwnerFilters(
 }
 
 export class PrismaCouponRepository implements ICouponRepository {
-    private mapToEntity(data: PrismaCoupon): Coupon {
-        return {
-            id: data.id,
-            code: data.code,
-            type: toCouponType(data.type),
-            value: data.value,
-            description: data.description ?? undefined,
-            ownerId: data.ownerId ?? undefined,
-            isReward: data.isReward ?? false,
-            isLoyaltyTemplate: data.isLoyaltyTemplate ?? false,
-            sourceCouponId: data.sourceCouponId ?? undefined,
-            minPurchaseAmount: data.minPurchaseAmount ?? undefined,
-            maxDiscountAmount: data.maxDiscountAmount ?? undefined,
-            usageLimit: data.usageLimit ?? undefined,
-            usageCount: data.usageCount,
-            active: data.active,
-            expiresAt: data.expiresAt,
-            applicableProducts: data.applicableProducts,
-            applicableCategories: data.applicableCategories,
-            applicableServices: data.applicableServices,
-            createdAt: data.createdAt,
-            updatedAt: data.updatedAt,
-        };
-    }
-
     async findAll(tenantId: string | undefined): Promise<Coupon[]> {
         const coupons = await prisma.coupon.findMany({
             where: sharedCouponWhere(tenantId ? { tenantId } : {}),
             orderBy: { createdAt: "desc" },
         });
-        return coupons.map(this.mapToEntity);
+        return coupons.map(mapCoupon);
     }
 
     async findById(
@@ -90,7 +56,7 @@ export class PrismaCouponRepository implements ICouponRepository {
             OR: couponOwnerFilters(userId),
         };
         const coupon = await prisma.coupon.findFirst({ where });
-        return coupon ? this.mapToEntity(coupon) : null;
+        return coupon ? mapCoupon(coupon) : null;
     }
 
     async findByCode(
@@ -104,7 +70,7 @@ export class PrismaCouponRepository implements ICouponRepository {
             OR: couponOwnerFilters(userId),
         };
         const coupon = await prisma.coupon.findFirst({ where });
-        return coupon ? this.mapToEntity(coupon) : null;
+        return coupon ? mapCoupon(coupon) : null;
     }
 
     async findActive(tenantId: string | undefined): Promise<Coupon[]> {
@@ -117,7 +83,7 @@ export class PrismaCouponRepository implements ICouponRepository {
             }),
             orderBy: { createdAt: "desc" },
         });
-        return coupons.map(this.mapToEntity);
+        return coupons.map(mapCoupon);
     }
 
     async findAllPaginated(
@@ -178,7 +144,7 @@ export class PrismaCouponRepository implements ICouponRepository {
         ]);
 
         return {
-            coupons: coupons.map(this.mapToEntity),
+            coupons: coupons.map(mapCoupon),
             total,
         };
     }
@@ -202,7 +168,7 @@ export class PrismaCouponRepository implements ICouponRepository {
                     applicableServices: data.applicableServices || [],
                 },
             });
-            return this.mapToEntity(coupon);
+            return mapCoupon(coupon);
         } catch (error: unknown) {
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -246,7 +212,7 @@ export class PrismaCouponRepository implements ICouponRepository {
                 where: { id, tenantId },
                 data: updateData,
             });
-            return this.mapToEntity(coupon);
+            return mapCoupon(coupon);
         } catch (error: unknown) {
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -313,79 +279,8 @@ export class PrismaCouponRepository implements ICouponRepository {
         if (result.count === 0) {
             throw new BusinessRuleViolationError(
                 "The coupon is not available for this user",
-                "COUPON_UNAVAILABLE",
+                BusinessErrorCodes.COUPON_UNAVAILABLE,
             );
-        }
-    }
-
-    async cloneRewardCoupon(
-        tenantId: string,
-        templateId: string,
-        userId: string,
-        code?: string,
-    ): Promise<Coupon> {
-        try {
-            const coupon = await prisma.$transaction(async (tx) => {
-                const where: CouponWhereInput = {
-                    id: templateId,
-                    tenantId,
-                    ownerId: null,
-                    isReward: false,
-                    active: true,
-                    expiresAt: { gte: new Date() },
-                };
-                const template = await tx.coupon.findFirst({ where });
-                if (!template) {
-                    throw new EntityNotFoundError("Coupon", templateId);
-                }
-                const expiresAt = new Date(template.expiresAt).getTime();
-                if (
-                    !template.active ||
-                    !Number.isFinite(expiresAt) ||
-                    expiresAt <= Date.now()
-                ) {
-                    throw new BusinessRuleViolationError(
-                        "The reward coupon template is inactive or expired",
-                        "INVALID_LOYALTY_REWARD_TEMPLATE",
-                    );
-                }
-
-                const data: CouponUncheckedCreateInput = {
-                    tenantId,
-                    code:
-                        code?.trim().toUpperCase() ||
-                        `LOYALTY-${randomUUID().replace(/-/g, "").toUpperCase()}`,
-                    type: toCouponType(template.type),
-                    value: template.value,
-                    description: template.description,
-                    minPurchaseAmount: template.minPurchaseAmount,
-                    maxDiscountAmount: template.maxDiscountAmount,
-                    usageLimit: 1,
-                    usageCount: 0,
-                    active: true,
-                    expiresAt: template.expiresAt,
-                    applicableProducts: template.applicableProducts,
-                    applicableCategories: template.applicableCategories,
-                    applicableServices: template.applicableServices,
-                    ownerId: userId,
-                    isReward: true,
-                    sourceCouponId: templateId,
-                };
-                return tx.coupon.create({ data });
-            });
-            return this.mapToEntity(coupon);
-        } catch (error: unknown) {
-            if (
-                error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === "P2002"
-            ) {
-                throw new DuplicateEntityError(
-                    "Coupon",
-                    "code",
-                    code ?? "",
-                );
-            }
-            throw error;
         }
     }
 

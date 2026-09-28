@@ -1,3 +1,4 @@
+import { plainToInstance, Transform } from "class-transformer";
 import {
     IsArray,
     IsDateString,
@@ -9,18 +10,17 @@ import {
     IsObject,
     IsOptional,
     IsString,
-    Min,
     Max,
+    Min,
     ValidateIf,
     ValidateNested,
 } from "class-validator";
-import { plainToInstance, Transform } from "class-transformer";
+import { MAX_LOYALTY_PRISMA_INT } from "@/core/domain/loyalty/loyalty.policy";
 import { CouponType } from "@/core/entities/coupon.entity";
 import {
     LoyaltyCampaignAction,
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
-    MAX_LOYALTY_PRISMA_INT,
 } from "@/core/entities/loyalty.entity";
 
 export interface LoyaltyRewardDefinitionDTO {
@@ -34,9 +34,7 @@ export interface LoyaltyRewardDefinitionDTO {
     applicableServices?: string[];
 }
 
-export class LoyaltyRewardDefinitionDto
-    implements LoyaltyRewardDefinitionDTO
-{
+export class LoyaltyRewardDefinitionDto implements LoyaltyRewardDefinitionDTO {
     @IsEnum(CouponType)
     type!: CouponType;
 
@@ -120,8 +118,7 @@ export class CreateLoyaltyCampaignDto implements CreateLoyaltyCampaignDTO {
     @IsObject()
     @ValidateNested()
     @Transform(
-        ({ value }) =>
-            plainToInstance(LoyaltyRewardDefinitionDto, value),
+        ({ value }) => plainToInstance(LoyaltyRewardDefinitionDto, value),
         { toClassOnly: true },
     )
     reward!: LoyaltyRewardDefinitionDto;
@@ -192,8 +189,7 @@ export class UpdateLoyaltyCampaignDto implements UpdateLoyaltyCampaignDTO {
     @IsObject()
     @ValidateNested()
     @Transform(
-        ({ value }) =>
-            plainToInstance(LoyaltyRewardDefinitionDto, value),
+        ({ value }) => plainToInstance(LoyaltyRewardDefinitionDto, value),
         { toClassOnly: true },
     )
     reward?: LoyaltyRewardDefinitionDto;
@@ -216,7 +212,12 @@ export const LoyaltyCampaignLifecycleAction = LoyaltyCampaignAction;
 export type LoyaltyCampaignLifecycleAction = LoyaltyCampaignAction;
 
 export interface LoyaltyCampaignLifecycleDTO {
-    action: LoyaltyCampaignLifecycleAction | "activate" | "end" | "archive" | "delete";
+    action:
+        | LoyaltyCampaignLifecycleAction
+        | "activate"
+        | "end"
+        | "archive"
+        | "delete";
 }
 
 export class LoyaltyCampaignLifecycleDto

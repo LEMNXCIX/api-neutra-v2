@@ -7,7 +7,6 @@ const middlewareFiles = [
     "middleware/tenant-feature.middleware.ts",
     "middleware/authenticate.middleware.ts",
     "middleware/optional-authenticate.middleware.ts",
-    "middleware/feature.middleware.ts",
     "middleware/error.middleware.ts",
     "middleware/request.middleware.ts",
     "middleware/response.middleware.ts",
@@ -18,7 +17,10 @@ const middlewareFiles = [
 describe("middleware/container decoupling", () => {
     test("middleware modules do not import Container", () => {
         for (const relativePath of middlewareFiles) {
-            const source = fs.readFileSync(path.join(ROOT, relativePath), "utf8");
+            const source = fs.readFileSync(
+                path.join(ROOT, relativePath),
+                "utf8",
+            );
             expect(source).not.toMatch(
                 /from\s+["'][^"']*infrastructure\/config\/container["']/,
             );
@@ -44,23 +46,26 @@ describe("middleware/container decoupling", () => {
             "utf8",
         );
 
-        expect(source).not.toMatch(
-            /export\s+const\s+\w+\s*=\s*new\s+Queue/,
-        );
+        expect(source).not.toMatch(/export\s+const\s+\w+\s*=\s*new\s+Queue/);
         expect(source).toContain("export function createNotificationQueue");
         expect(source).toContain("export function createMaintenanceQueue");
     });
 
     test("appointment review worker exposes a Container-free factory", () => {
         const source = fs.readFileSync(
-            path.join(ROOT, "infrastructure/workers/appointment-review.worker.ts"),
+            path.join(
+                ROOT,
+                "infrastructure/workers/appointment-review.worker.ts",
+            ),
             "utf8",
         );
 
         expect(source).not.toMatch(
             /from\s+["'][^"']*infrastructure\/config\/container["']/,
         );
-        expect(source).toContain("export function createAppointmentReviewWorker");
+        expect(source).toContain(
+            "export function createAppointmentReviewWorker",
+        );
     });
 
     test("explicit runtime composition exposes factories without Container", () => {
@@ -103,15 +108,17 @@ describe("middleware/container decoupling", () => {
 
         expect(sources.runtime).not.toMatch(/logger\.instance/);
         expect(sources.email).toMatch(/createEmailService\(logger: ILogger\)/);
-        expect(sources.nodemailer).toMatch(/constructor\(private readonly logger: ILogger\)/);
+        expect(sources.nodemailer).toMatch(
+            /constructor\(private readonly logger: ILogger\)/,
+        );
         expect(sources.webhook).toMatch(/private readonly logger: ILogger/);
         expect(sources.wideLog).toMatch(/logger: ILogger/);
         expect(sources.tenant).toMatch(/logger: ILogger/);
         expect(sources.worker).toMatch(/logger: ILogger/);
-        expect(sources.db).toMatch(/connection = async function \(logger: ILogger\)/);
-        expect(sources.app).toContain(
-            "connection(runtime.providers.logger)",
+        expect(sources.db).toMatch(
+            /connection = async function \(logger: ILogger\)/,
         );
+        expect(sources.app).toContain("connection(runtime.providers.logger)");
     });
 
     test("logger-backed middleware uses injected providers", () => {
@@ -121,7 +128,10 @@ describe("middleware/container decoupling", () => {
             "middleware/response.middleware.ts",
             "middleware/cors.middleware.ts",
         ]) {
-            const source = fs.readFileSync(path.join(ROOT, relativePath), "utf8");
+            const source = fs.readFileSync(
+                path.join(ROOT, relativePath),
+                "utf8",
+            );
             expect(source).not.toMatch(/helpers\/logger\.helpers/);
             expect(source).not.toMatch(/new\s+PinoLoggerProvider/);
         }
@@ -140,12 +150,14 @@ describe("middleware/container decoupling", () => {
             "infrastructure/providers/pino-logger.provider.ts",
             "infrastructure/providers/redis.provider.ts",
             "middleware/optional-authenticate.factory.ts",
-            "middleware/feature.middleware.ts",
             "infrastructure/services/whatsapp.service.ts",
             "infrastructure/services/whatsapp-bot.service.ts",
             "app.ts",
         ]) {
-            const source = fs.readFileSync(path.join(ROOT, relativePath), "utf8");
+            const source = fs.readFileSync(
+                path.join(ROOT, relativePath),
+                "utf8",
+            );
             expect(source).not.toMatch(/helpers\/logger\.helpers/);
         }
     });
@@ -158,7 +170,7 @@ describe("middleware/container decoupling", () => {
             "const requireTenantFeature = createRequireTenantFeature(",
             "const tenantMiddleware = createTenantMiddleware(",
         ];
-        const firstRoute = source.indexOf('healthRoutes(app');
+        const firstRoute = source.indexOf("healthRoutes(app");
 
         expect(firstRoute).toBeGreaterThanOrEqual(0);
         for (const binding of bindings) {

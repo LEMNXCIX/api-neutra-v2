@@ -1,46 +1,27 @@
-import {
-    Application,
-    NextFunction,
-    Request,
-    Response,
-    Router,
-} from "express";
 import type { RequestHandler } from "express";
 import {
-    requireConcreteTenantContext,
-    requireTenantType,
-} from "@/middleware/tenant-feature.middleware";
-import { requirePermission } from "@/middleware/authorization.middleware";
-import { LoyaltyController } from "@/interface-adapters/controllers/loyalty.controller";
+    type Application,
+    type NextFunction,
+    type Request,
+    type Response,
+    Router,
+} from "express";
 import {
     CreateLoyaltyCampaignDto,
     UpdateLoyaltyCampaignDto,
 } from "@/core/application/dtos/requests/loyalty.request";
-import { validateDto } from "@/middleware/validation.middleware";
 import { ROLE_CONSTANTS } from "@/core/domain/constants";
+import { ForbiddenError } from "@/core/domain/errors/domain-errors";
+import type { LoyaltyController } from "@/interface-adapters/controllers/loyalty.controller";
 import {
-    ForbiddenError,
-    UnauthorizedError,
-} from "@/core/domain/errors/domain-errors";
-
-function requireSuperAdmin(
-    req: Request,
-    _res: Response,
-    next: NextFunction,
-): void {
-    if (!req.user?.role) {
-        return next(new UnauthorizedError());
-    }
-    if (req.user.role.name !== ROLE_CONSTANTS.SUPER_ADMIN) {
-        return next(
-            new ForbiddenError(
-                "Super administrator access is required",
-                "FORBIDDEN",
-            ),
-        );
-    }
-    return next();
-}
+    requirePermission,
+    requireSuperAdmin,
+} from "@/middleware/authorization.middleware";
+import {
+    requireConcreteTenantContext,
+    requireTenantType,
+} from "@/middleware/tenant-feature.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function requireActiveTenant(
     req: Request,
@@ -51,14 +32,10 @@ function requireActiveTenant(
         req.user?.role?.name !== ROLE_CONSTANTS.SUPER_ADMIN &&
         req.tenant?.active === false
     ) {
-        return next(
-            new ForbiddenError(
-                "This tenant is inactive",
-                "TENANT_INACTIVE",
-            ),
-        );
+        next(new ForbiddenError("This tenant is inactive", "TENANT_INACTIVE"));
+        return;
     }
-    return next();
+    next();
 }
 
 export function loyaltyRoutes(
@@ -77,11 +54,7 @@ export function loyaltyRoutes(
     ];
     app.use("/api/loyalty", router);
 
-    router.get(
-        "/me",
-        ...tenantGates,
-        loyaltyController.getCustomerCampaigns,
-    );
+    router.get("/me", ...tenantGates, loyaltyController.getCustomerCampaigns);
 
     router.get(
         "/me/campaigns/:campaignId",

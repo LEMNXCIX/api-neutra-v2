@@ -1,8 +1,8 @@
 import express from "express";
 import request from "supertest";
-import { IHealthService } from "@/core/ports/health-service.interface";
-import { HealthController } from "@/interface-adapters/controllers/health.controller";
+import type { IHealthService } from "@/core/ports/health-service.interface";
 import { healthRoutes } from "@/infrastructure/routes/health.routes";
+import { HealthController } from "@/interface-adapters/controllers/health.controller";
 
 function testApp(service: IHealthService) {
     const app = express();

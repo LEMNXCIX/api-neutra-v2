@@ -1,15 +1,9 @@
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { createCheckRegistry } from "./composition/check-registry";
 import { runDoctor } from "./application/run-doctor";
-import {
-    renderReport,
-    type ReportFormat,
-} from "./reporting/reporter";
-import type {
-    DoctorContext,
-    DoctorProfile,
-} from "./domain/check-result";
+import { createCheckRegistry } from "./composition/check-registry";
+import type { DoctorContext, DoctorProfile } from "./domain/check-result";
+import { type ReportFormat, renderReport } from "./reporting/reporter";
 
 export interface DoctorCliOptions {
     profile: DoctorProfile;

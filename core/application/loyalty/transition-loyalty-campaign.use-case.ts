@@ -1,21 +1,24 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
-import {
-    assertLoyaltyCampaignSourceCompatible,
-    isValidLoyaltyCampaignDates,
-    isValidLoyaltyRewardValidDays,
-    LoyaltyCampaign,
-    LoyaltyCampaignStatus,
-} from "@/core/entities/loyalty.entity";
+import { LoyaltyCampaignLifecycleAction } from "@/core/application/dtos/requests/loyalty.request";
+import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { LoyaltyCampaignLifecycleAction } from "@/core/application/dtos/requests/loyalty.request";
-import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import {
+    assertLoyaltyCampaignRewardConfigured,
+    assertLoyaltyCampaignSourceCompatible,
+    isValidLoyaltyCampaignDates,
+} from "@/core/domain/loyalty/loyalty.policy";
+import {
+    type LoyaltyCampaign,
+    LoyaltyCampaignStatus,
+} from "@/core/entities/loyalty.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
+import { LoyaltyErrorCodes, ValidationErrorCodes } from "@/types/error-codes";
 
 function normalizeAction(
     action: LoyaltyCampaignLifecycleAction | string,
@@ -40,7 +43,7 @@ function normalizeAction(
     }
     throw new ValidationError(
         "Campaign lifecycle action is invalid",
-        "INVALID_LOYALTY_CAMPAIGN_ACTION",
+        ValidationErrorCodes.INVALID_LOYALTY_CAMPAIGN_ACTION,
     );
 }
 
@@ -64,7 +67,7 @@ export class TransitionLoyaltyCampaignUseCase {
         if (!campaignId?.trim()) {
             throw new ValidationError(
                 "Campaign ID is required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
         const campaign = await this.loyaltyRepository.getCampaign(
@@ -91,18 +94,14 @@ export class TransitionLoyaltyCampaignUseCase {
             ) {
                 throw new BusinessRuleViolationError(
                     "Campaign dates are invalid",
-                    "INVALID_CAMPAIGN_DATES",
+                    ValidationErrorCodes.INVALID_CAMPAIGN_DATES,
                 );
             }
-            if (
-                !campaign.rewardCouponId ||
-                !isValidLoyaltyRewardValidDays(campaign.rewardValidDays)
-            ) {
-                throw new BusinessRuleViolationError(
-                    "Campaign reward template is invalid",
-                    "INVALID_LOYALTY_REWARD_TEMPLATE",
-                );
-            }
+            assertLoyaltyCampaignRewardConfigured(
+                campaign.rewardCouponId,
+                campaign.rewardValidDays,
+                "Campaign reward template is invalid",
+            );
         }
 
         const target =
@@ -121,7 +120,7 @@ export class TransitionLoyaltyCampaignUseCase {
         if (!transitioned) {
             throw new BusinessRuleViolationError(
                 "The loyalty campaign lifecycle changed concurrently",
-                "LOYALTY_CAMPAIGN_TRANSITION_CONFLICT",
+                LoyaltyErrorCodes.CAMPAIGN_TRANSITION_CONFLICT,
             );
         }
         return Success(

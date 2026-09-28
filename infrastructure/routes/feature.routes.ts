@@ -1,7 +1,15 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import { requirePermission } from "@/middleware/authorization.middleware";
-import { FeatureController } from "@/interface-adapters/controllers/feature.controller";
+import { type Application, Router } from "express";
+import {
+    CreateFeatureDto,
+    UpdateFeatureDto,
+} from "@/core/application/dtos/requests/feature.request";
+import type { FeatureController } from "@/interface-adapters/controllers/feature.controller";
+import {
+    requirePermission,
+    requireSuperAdmin,
+} from "@/middleware/authorization.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function featureRoutes(
     app: Application,
@@ -41,6 +49,16 @@ function featureRoutes(
      *         createdAt:
      *           type: string
      *           format: date-time
+     */
+
+    /**
+     * The three writes below are platform-catalog mutations: `Feature` carries
+     * no `tenantId` and `key` is globally `@unique`, so a write here is visible
+     * to every tenant's `getTenantFeatureStatus` gating. `requirePermission` is
+     * kept alongside `requireSuperAdmin` as a conjunction on purpose — the
+     * permission names the capability, the role names the operator who is
+     * allowed to act outside a tenant, and dropping either lets through a
+     * different class of caller.
      */
 
     /**
@@ -104,6 +122,8 @@ function featureRoutes(
         "/",
         authenticate,
         requirePermission("features:write"),
+        requireSuperAdmin,
+        validateDto(CreateFeatureDto),
         featureController.create,
     );
 
@@ -146,6 +166,8 @@ function featureRoutes(
         "/:id",
         authenticate,
         requirePermission("features:write"),
+        requireSuperAdmin,
+        validateDto(UpdateFeatureDto),
         featureController.update,
     );
 
@@ -178,6 +200,7 @@ function featureRoutes(
         "/:id",
         authenticate,
         requirePermission("features:delete"),
+        requireSuperAdmin,
         featureController.delete,
     );
 }

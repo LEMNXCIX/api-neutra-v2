@@ -1,30 +1,31 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
-import { Tenant } from "@/core/entities/tenant.entity";
-import {
-    assertLoyaltyCampaignFeatures,
-    assertLoyaltyCampaignSourceCompatible,
-    isValidLoyaltyCampaignDates,
-    isValidLoyaltyCampaignMaxClaims,
-    isValidLoyaltyCampaignTarget,
-    isValidLoyaltyRewardValidDays,
-    LoyaltyCampaign,
-} from "@/core/entities/loyalty.entity";
-import { CouponType } from "@/core/entities/coupon.entity";
-import {
-    EntityNotFoundError,
-    ValidationError,
-} from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
+import type {
     CreateLoyaltyCampaignDTO,
     LoyaltyRewardDefinitionDTO,
 } from "@/core/application/dtos/requests/loyalty.request";
 import {
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
+import {
+    assertLoyaltyCampaignFeatures,
+    assertLoyaltyCampaignSourceCompatible,
+    assertLoyaltyRewardTemplate,
+    isValidLoyaltyCampaignDates,
+    isValidLoyaltyCampaignMaxClaims,
+    isValidLoyaltyCampaignTarget,
+    isValidLoyaltyRewardValidDays,
+} from "@/core/domain/loyalty/loyalty.policy";
+import type { LoyaltyCampaign } from "@/core/entities/loyalty.entity";
+import type { Tenant } from "@/core/entities/tenant.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type {
     CreateLoyaltyCampaignData,
+    ILoyaltyRepository,
     LoyaltyCampaignRewardDefinition,
 } from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export function toLoyaltyCampaignDate(
     value: Date | string,
@@ -34,7 +35,7 @@ export function toLoyaltyCampaignDate(
     if (!Number.isFinite(date.getTime())) {
         throw new ValidationError(
             `${field} must be a valid date`,
-            "INVALID_CAMPAIGN_DATES",
+            ValidationErrorCodes.INVALID_CAMPAIGN_DATES,
         );
     }
     return date;
@@ -43,88 +44,25 @@ export function toLoyaltyCampaignDate(
 export function toLoyaltyRewardDefinition(
     reward: LoyaltyRewardDefinitionDTO,
 ): LoyaltyCampaignRewardDefinition {
-    if (!reward || !Object.values(CouponType).includes(reward.type)) {
-        throw new ValidationError(
-            "Reward definition type is invalid",
-            "INVALID_LOYALTY_REWARD_TEMPLATE",
-        );
-    }
-    if (
-        typeof reward.value !== "number" ||
-        !Number.isFinite(reward.value) ||
-        reward.value <= 0 ||
-        (reward.type === CouponType.PERCENT && reward.value > 100)
-    ) {
-        throw new ValidationError(
-            "Reward definition value is invalid",
-            "INVALID_LOYALTY_REWARD_TEMPLATE",
-        );
-    }
-    for (const [field, value] of [
-        ["minPurchaseAmount", reward.minPurchaseAmount],
-        ["maxDiscountAmount", reward.maxDiscountAmount],
-    ] as const) {
-        if (
-            value !== undefined &&
-            value !== null &&
-            (typeof value !== "number" || !Number.isFinite(value) || value < 0)
-        ) {
-            throw new ValidationError(
-                `Reward definition ${field} is invalid`,
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-    }
-    if (
-        reward.description !== undefined &&
-        reward.description !== null &&
-        typeof reward.description !== "string"
-    ) {
-        throw new ValidationError(
-            "Reward definition description is invalid",
-            "INVALID_LOYALTY_REWARD_TEMPLATE",
-        );
-    }
-    const normalizeIds = (
-        values: string[] | undefined,
-        field: string,
-    ): string[] => {
-        if (values === undefined) return [];
-        if (
-            !Array.isArray(values) ||
-            values.some(
-                (value) =>
-                    typeof value !== "string" || value.trim().length === 0,
-            )
-        ) {
-            throw new ValidationError(
-                `Reward definition ${field} is invalid`,
-                "INVALID_LOYALTY_REWARD_TEMPLATE",
-            );
-        }
-        return [...new Set(values.map((value) => value.trim()))];
-    };
+    assertLoyaltyRewardTemplate(reward);
+    const normalizeIds = (values: string[] | undefined): string[] => [
+        ...new Set((values ?? []).map((value) => value.trim())),
+    ];
     return {
         type: reward.type,
         value: reward.value,
+        // The definition is the entity's required-nullable shape, so an absent
+        // request field normalises to null here. Both spellings already reached
+        // the Coupon row as null and both pass assertLoyaltyRewardTemplate.
         description:
             reward.description === undefined || reward.description === null
-                ? reward.description
+                ? null
                 : reward.description.trim(),
-        minPurchaseAmount: reward.minPurchaseAmount ?? undefined,
-        maxDiscountAmount: reward.maxDiscountAmount ?? undefined,
-        applicableProducts: normalizeIds(
-            reward.applicableProducts,
-            "applicableProducts",
-        ),
-        applicableCategories: normalizeIds(
-            reward.applicableCategories,
-            "applicableCategories",
-        ),
-        applicableServices: normalizeIds(
-            reward.applicableServices,
-            "applicableServices",
-        ),
+        minPurchaseAmount: reward.minPurchaseAmount ?? null,
+        maxDiscountAmount: reward.maxDiscountAmount ?? null,
+        applicableProducts: normalizeIds(reward.applicableProducts),
+        applicableCategories: normalizeIds(reward.applicableCategories),
+        applicableServices: normalizeIds(reward.applicableServices),
     };
 }
 
@@ -136,15 +74,14 @@ export async function loadLoyaltyCampaignTenant(
     if (!tenantId?.trim()) {
         throw new ValidationError(
             "Tenant ID is required",
-            "MISSING_REQUIRED_FIELDS",
+            ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
         );
     }
     const tenant = await tenantRepository.findById(tenantId);
     if (!tenant) {
         throw new EntityNotFoundError("Tenant", tenantId);
     }
-    const features =
-        await featureRepository.getTenantFeatureStatus(tenantId);
+    const features = await featureRepository.getTenantFeatureStatus(tenantId);
     assertLoyaltyCampaignFeatures(features);
     return tenant;
 }
@@ -168,20 +105,20 @@ export class CreateLoyaltyCampaignUseCase {
         if (!data || typeof data !== "object") {
             throw new ValidationError(
                 "Campaign data is required",
-                "INVALID_CAMPAIGN",
+                ValidationErrorCodes.INVALID_CAMPAIGN,
             );
         }
         assertLoyaltyCampaignSourceCompatible(tenant.type, data.source);
         if (!isValidLoyaltyCampaignTarget(data.metric, data.targetValue)) {
             throw new ValidationError(
                 "Campaign target is invalid",
-                "INVALID_CAMPAIGN_TARGET",
+                ValidationErrorCodes.INVALID_CAMPAIGN_TARGET,
             );
         }
         if (!isValidLoyaltyRewardValidDays(data.rewardValidDays)) {
             throw new ValidationError(
                 "Campaign reward validity is invalid",
-                "INVALID_LOYALTY_REWARD_VALIDITY",
+                ValidationErrorCodes.INVALID_LOYALTY_REWARD_VALIDITY,
             );
         }
         if (
@@ -191,19 +128,16 @@ export class CreateLoyaltyCampaignUseCase {
         ) {
             throw new ValidationError(
                 "Campaign maxClaims is invalid",
-                "INVALID_CAMPAIGN_MAX_CLAIMS",
+                ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
             );
         }
         const startsAt = toLoyaltyCampaignDate(data.startsAt, "startsAt");
         const endsAt = toLoyaltyCampaignDate(data.endsAt, "endsAt");
-        const claimUntil = toLoyaltyCampaignDate(
-            data.claimUntil,
-            "claimUntil",
-        );
+        const claimUntil = toLoyaltyCampaignDate(data.claimUntil, "claimUntil");
         if (!isValidLoyaltyCampaignDates(startsAt, endsAt, claimUntil)) {
             throw new ValidationError(
                 "Campaign dates must satisfy startsAt < endsAt <= claimUntil",
-                "INVALID_CAMPAIGN_DATES",
+                ValidationErrorCodes.INVALID_CAMPAIGN_DATES,
             );
         }
         const reward = toLoyaltyRewardDefinition(data.reward);

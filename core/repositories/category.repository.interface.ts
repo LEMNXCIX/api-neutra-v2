@@ -1,4 +1,4 @@
-import { Category, CategoryType } from "@/core/entities/category.entity";
+import type { Category, CategoryType } from "@/core/entities/category.entity";
 
 export type CategoryCreateData = {
     name: string;

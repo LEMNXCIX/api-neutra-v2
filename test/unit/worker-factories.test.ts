@@ -22,8 +22,8 @@ jest.mock("@/infrastructure/services/queue.service", () => ({
     APPOINTMENT_REVIEW_SWEEP_JOB_NAME: "appointment-review-sweep",
     MAINTENANCE_QUEUE_NAME: "maintenance",
     redisOptions: { host: "localhost", port: 6379 },
-    scheduleAppointmentReviewSweep: jest.fn(
-        (_maintenanceQueue: unknown) => Promise.resolve(),
+    scheduleAppointmentReviewSweep: jest.fn((_maintenanceQueue: unknown) =>
+        Promise.resolve(),
     ),
 }));
 jest.mock("@/infrastructure/services/email.service", () => ({
@@ -85,9 +85,10 @@ describe("appointment review worker factory", () => {
         );
         expect(schedule).toHaveBeenCalledWith(maintenanceQueue);
 
-        const processor = WorkerMock.mock.calls[0]![1] as (
-            job: { id: string; name: string },
-        ) => Promise<unknown>;
+        const processor = WorkerMock.mock.calls[0]![1] as (job: {
+            id: string;
+            name: string;
+        }) => Promise<unknown>;
         await expect(
             processor({ id: "sweep-1", name: "appointment-review-sweep" }),
         ).resolves.toEqual(expect.objectContaining({ candidates: 1 }));
@@ -104,9 +105,10 @@ describe("appointment review worker factory", () => {
             schedule: jest.fn().mockResolvedValue(undefined),
         });
 
-        const processor = WorkerMock.mock.calls[0]![1] as (
-            job: { id: string; name: string },
-        ) => Promise<unknown>;
+        const processor = WorkerMock.mock.calls[0]![1] as (job: {
+            id: string;
+            name: string;
+        }) => Promise<unknown>;
         await processor({ id: "other-1", name: "other-job" });
 
         expect(execute).not.toHaveBeenCalled();
@@ -164,9 +166,10 @@ describe("appointment review worker factory", () => {
             expect.any(Function),
         );
 
-        const processor = WorkerMock.mock.calls[0]![1] as (
-            job: { id: string; data: Record<string, unknown> },
-        ) => Promise<unknown>;
+        const processor = WorkerMock.mock.calls[0]![1] as (job: {
+            id: string;
+            data: Record<string, unknown>;
+        }) => Promise<unknown>;
         await processor({
             id: "notification-1",
             data: {

@@ -1,12 +1,12 @@
-import { Product as PrismaProduct, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import {
-    IProductRepository,
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import type { Product } from "@/core/entities/product.entity";
+import type {
     CreateProductData,
+    IProductRepository,
     UpdateProductData,
 } from "@/core/repositories/product.repository.interface";
-import { Product } from "@/core/entities/product.entity";
-import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 type ProductWithCategories = Prisma.ProductGetPayload<{
     include: { categories: true; tenant: true };

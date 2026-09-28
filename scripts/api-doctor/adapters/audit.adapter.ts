@@ -1,8 +1,9 @@
-import { runCommand, type CommandRunner, type CommandResult } from "./command.adapter";
-import type {
-    CheckRunResult,
-    DoctorContext,
-} from "../domain/check-result";
+import type { CheckRunResult, DoctorContext } from "../domain/check-result";
+import {
+    type CommandResult,
+    type CommandRunner,
+    runCommand,
+} from "./command.adapter";
 
 const AUDIT_TIMEOUT_MS = 120_000;
 
@@ -43,7 +44,8 @@ function parseAudit(output: string): AuditSummary | null {
     const critical = numberValue(counts.critical) ?? 0;
     const total =
         numberValue(counts.total) ??
-        high + critical +
+        high +
+            critical +
             (numberValue(counts.moderate) ?? 0) +
             (numberValue(counts.low) ?? 0) +
             (numberValue(counts.info) ?? 0);

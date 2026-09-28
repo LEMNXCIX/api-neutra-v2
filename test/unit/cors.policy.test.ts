@@ -1,9 +1,9 @@
+import { CORS_CONSTANTS } from "@/config/infrastructure-constants";
 import {
+    buildStaticAllowlist,
     isOriginAllowed,
     parseOriginsList,
-    buildStaticAllowlist,
 } from "@/middleware/cors.middleware";
-import { CORS_CONSTANTS } from "@/config/infrastructure-constants";
 
 describe("CORS policy (delivery layer)", () => {
     describe("parseOriginsList", () => {

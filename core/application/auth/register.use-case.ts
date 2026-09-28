@@ -1,19 +1,23 @@
-import { IUserRepository, UserCreateData } from "@/core/repositories/user.repository.interface";
+import type { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
 import {
+    BusinessRuleViolationError,
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
+import type {
     IPasswordHasher,
     ITokenGenerator,
 } from "@/core/providers/auth-providers.interface";
-import { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
-import { IQueueProvider } from "@/core/providers/queue-provider.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    ValidationError,
-    DuplicateEntityError,
-    EntityNotFoundError,
-    BusinessRuleViolationError,
-} from "@/core/domain/errors/domain-errors";
+import type { ILogger } from "@/core/providers/logger.interface";
+import type { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import type {
+    IUserRepository,
+    UserCreateData,
+} from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 export class RegisterUseCase {
     constructor(
@@ -23,6 +27,7 @@ export class RegisterUseCase {
         private queueProvider: IQueueProvider,
         private tenantRepository: ITenantRepository,
         private roleRepository: IRoleRepository,
+        private logger: ILogger,
     ) {}
 
     async execute(
@@ -56,10 +61,14 @@ export class RegisterUseCase {
                     ut.tenant?.slug === currentTenantId,
             );
             if (alreadyInTenant) {
-                throw new DuplicateEntityError(
-                    "User",
-                    "tenant",
-                    currentTenantId,
+                // Not DuplicateEntityError: that renders as
+                // "User with tenant '<uuid>' already exists", which names the
+                // tenant as the conflicting field and shows a raw id, so the
+                // caller learns nothing about what to do next. The situation is
+                // ordinary and the remedy is to sign in.
+                throw new BusinessRuleViolationError(
+                    "You already have an account in this tenant. Sign in instead of registering.",
+                    AuthErrorCodes.ALREADY_MEMBER_OF_TENANT,
                 );
             }
 
@@ -69,13 +78,20 @@ export class RegisterUseCase {
             );
 
             if (!passwordMatches) {
+                // The wording matters here. This used to open with "An account
+                // with this email already exists", which reads as though
+                // registering here were impossible, when the account belongs to
+                // a different tenant and this one is free to take it. Say which
+                // tenant the email is taken in, and give the two ways forward.
                 throw new BusinessRuleViolationError(
-                    "An account with this email already exists. Use the same password to join this tenant.",
-                    "USER_ALREADY_EXISTS",
+                    "That email already has an account in another tenant, and the password does not match it. Sign in to that tenant, or use the password you registered there to join this one.",
+                    AuthErrorCodes.EMAIL_TAKEN_IN_OTHER_TENANT,
                 );
             }
         } else {
-            const hashedPassword = await this.passwordHasher.hash(data.password);
+            const hashedPassword = await this.passwordHasher.hash(
+                data.password,
+            );
 
             const newUserData: UserCreateData = {
                 name: data.name,
@@ -127,7 +143,12 @@ export class RegisterUseCase {
 
         const { password: _, ...safeUser } = userWithRole;
 
-        await this.queueProvider
+        // The welcome email is not allowed to fail the registration, so the
+        // enqueue is not awaited. It used to swallow the rejection entirely,
+        // which made a permanently broken queue provider indistinguishable
+        // from a healthy one. Logged with the same context pattern
+        // CreateOrderUseCase uses for its non-fatal confirmation email.
+        this.queueProvider
             .enqueue("notifications", {
                 type: "WELCOME_EMAIL",
                 email: userWithRole.email,
@@ -135,7 +156,17 @@ export class RegisterUseCase {
                 tenantId: currentTenantId,
                 origin: origin,
             })
-            .catch((err) => {});
+            .catch((error: unknown) => {
+                this.logger.error(
+                    "Failed to enqueue welcome email for new user",
+                    error,
+                    {
+                        userId: userWithRole.id,
+                        tenantId: currentTenantId,
+                        email: userWithRole.email,
+                    },
+                );
+            });
 
         return Success({ ...safeUser, token }, "User created successfully");
     }

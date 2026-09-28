@@ -1,20 +1,20 @@
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import type { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
 import {
-    AppointmentStatus,
+    assertAppointmentStatus,
     canTransitionAppointmentStatus,
-    isAppointmentStatus,
-} from "@/core/entities/appointment.entity";
-import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
-import { IQueueProvider } from "@/core/providers/queue-provider.interface";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+} from "@/core/domain/appointment/appointment.policy";
 import {
     EntityNotFoundError,
-    InvalidStateError,
-    BusinessRuleViolationError,
-    UnauthorizedError,
     ForbiddenError,
+    InvalidStateError,
+    UnauthorizedError,
 } from "@/core/domain/errors/domain-errors";
+import { AppointmentStatus } from "@/core/entities/appointment.entity";
+import type { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class UpdateAppointmentStatusUseCase {
     constructor(
@@ -39,12 +39,7 @@ export class UpdateAppointmentStatusUseCase {
                 "You need 'appointments:write' permission to update appointments",
             );
         }
-        if (!isAppointmentStatus(status)) {
-            throw new BusinessRuleViolationError(
-                "Invalid appointment status",
-                "INVALID_APPOINTMENT_STATUS",
-            );
-        }
+        assertAppointmentStatus(status);
 
         const appointment = await this.appointmentRepository.findById(
             tenantId,
@@ -58,7 +53,7 @@ export class UpdateAppointmentStatusUseCase {
         if (!canTransitionAppointmentStatus(appointment.status, status)) {
             throw new InvalidStateError(
                 `Appointment cannot transition from '${appointment.status}' to '${status}'`,
-                "INVALID_STATUS_TRANSITION",
+                BusinessErrorCodes.INVALID_STATUS_TRANSITION,
             );
         }
 
@@ -84,14 +79,14 @@ export class UpdateAppointmentStatusUseCase {
         if (!updated) {
             throw new InvalidStateError(
                 "Appointment status changed before the update could be applied",
-                "APPOINTMENT_STATUS_CONFLICT",
+                BusinessErrorCodes.APPOINTMENT_STATUS_CONFLICT,
             );
         }
 
         const resolvedFeatures =
             features ??
             (await this.featureRepository.getTenantFeatureStatus(tenantId));
-        const emailEnabled = resolvedFeatures["EMAIL_NOTIFICATIONS"];
+        const emailEnabled = resolvedFeatures.EMAIL_NOTIFICATIONS;
 
         if (emailEnabled) {
             if (status === AppointmentStatus.CONFIRMED) {

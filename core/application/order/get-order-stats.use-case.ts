@@ -1,5 +1,5 @@
-import { IOrderRepository } from "@/core/repositories/order.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { IOrderRepository } from "@/core/repositories/order.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetOrderStatsUseCase {
     constructor(private orderRepository: IOrderRepository) {}

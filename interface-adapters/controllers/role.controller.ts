@@ -1,10 +1,14 @@
-import { Request, Response } from "express";
-import { CreateRoleUseCase } from "@/core/application/roles/create-role.use-case";
-import { GetRolesUseCase } from "@/core/application/roles/get-roles.use-case";
-import { UpdateRoleUseCase } from "@/core/application/roles/update-role.use-case";
-import { DeleteRoleUseCase } from "@/core/application/roles/delete-role.use-case";
-import { GetRolesPaginatedUseCase } from "@/core/application/roles/get-roles-paginated.use-case";
-import { RolePresenter } from "@/core/presenters/role.presenter";
+import type { Request, Response } from "express";
+import type {
+    CreateRoleDTO,
+    UpdateRoleDTO,
+} from "@/core/application/dtos/requests/role.request";
+import { RoleResponse } from "@/core/application/dtos/responses/role/role.response";
+import type { CreateRoleUseCase } from "@/core/application/roles/create-role.use-case";
+import type { DeleteRoleUseCase } from "@/core/application/roles/delete-role.use-case";
+import type { GetRolesUseCase } from "@/core/application/roles/get-roles.use-case";
+import type { GetRolesPaginatedUseCase } from "@/core/application/roles/get-roles-paginated.use-case";
+import type { UpdateRoleUseCase } from "@/core/application/roles/update-role.use-case";
 import { present } from "@/core/utils/use-case-result";
 
 export class RoleController {
@@ -18,17 +22,31 @@ export class RoleController {
 
     create = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
-        const result = await this.createRoleUseCase.execute(tenantId, req.body);
-        return res.status(201).json(present(result, RolePresenter.toResponse));
+        // `role.routes.ts` carries no `validateDto`, so `req.body` is whatever
+        // the client sent. Reading the five fields a role write accepts —
+        // rather than forwarding it — keeps the body equal to the
+        // repository's own allowlist: a `tenantId` in the body is not what
+        // scopes the role, and any other key is one the repository does not
+        // copy, so forwarding it only widens the set of things that can reach
+        // a future column. Same shape as UserController.update after bd92bab.
+        const data: CreateRoleDTO = {
+            name: req.body?.name,
+            description: req.body?.description,
+            level: req.body?.level,
+            active: req.body?.active,
+            permissionIds: req.body?.permissionIds,
+        };
+        const result = await this.createRoleUseCase.execute(tenantId, data);
+        return res.status(201).json(present(result, RoleResponse.fromEntity));
     };
 
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const page = req.query.page
-            ? parseInt(req.query.page as string)
+            ? parseInt(req.query.page as string, 10)
             : undefined;
         const limit = req.query.limit
-            ? parseInt(req.query.limit as string)
+            ? parseInt(req.query.limit as string, 10)
             : undefined;
         const search = req.query.search
             ? (req.query.search as string)
@@ -41,10 +59,22 @@ export class RoleController {
                 limit,
                 search,
             );
-            return res.json(present(result, RolePresenter.toResponseList));
+            return res.json(
+                present(result, (roles) =>
+                    Array.isArray(roles)
+                        ? roles.map((r) => RoleResponse.fromEntity(r))
+                        : [],
+                ),
+            );
         } else {
             const result = await this.getRolesUseCase.execute(tenantId);
-            return res.json(present(result, RolePresenter.toResponseList));
+            return res.json(
+                present(result, (roles) =>
+                    Array.isArray(roles)
+                        ? roles.map((r) => RoleResponse.fromEntity(r))
+                        : [],
+                ),
+            );
         }
     };
 
@@ -52,18 +82,25 @@ export class RoleController {
         const tenantId = req.tenantId!;
         const { id } = req.params;
         const result = await this.getRolesUseCase.executeById(tenantId, id);
-        return res.json(present(result, RolePresenter.toResponse));
+        return res.json(present(result, RoleResponse.fromEntity));
     };
 
     update = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const { id } = req.params;
-        const result = await this.updateRoleUseCase.execute(
-            tenantId,
-            id,
-            req.body,
-        );
-        return res.json(present(result, RolePresenter.toResponse));
+        // Same narrowing as `create` above: five fields, no `validateDto` to
+        // do it, and the update path replaces the role's whole permission set,
+        // so anything extra in the body is a chance to reach a column the
+        // repository never meant to expose on this endpoint.
+        const data: UpdateRoleDTO = {
+            name: req.body?.name,
+            description: req.body?.description,
+            level: req.body?.level,
+            active: req.body?.active,
+            permissionIds: req.body?.permissionIds,
+        };
+        const result = await this.updateRoleUseCase.execute(tenantId, id, data);
+        return res.json(present(result, RoleResponse.fromEntity));
     };
 
     delete = async (req: Request, res: Response) => {

@@ -1,8 +1,8 @@
-import cors, { CorsOptions } from "cors";
-import { RequestHandler } from "express";
+import cors, { type CorsOptions } from "cors";
+import type { RequestHandler } from "express";
 import config from "@/config/index.config";
-import { isProduction as checkProduction } from "@/core/domain/constants";
 import { CORS_CONSTANTS } from "@/config/infrastructure-constants";
+import { isProduction as checkProduction } from "@/core/domain/constants";
 import type { ILogger } from "@/core/providers/logger.interface";
 
 export type CorsPolicyOptions = {
@@ -14,7 +14,9 @@ export type CorsPolicyOptions = {
 /**
  * Parse comma-separated origins (trimmed, empty entries dropped).
  */
-export function parseOriginsList(value: string | string[] | undefined): string[] {
+export function parseOriginsList(
+    value: string | string[] | undefined,
+): string[] {
     if (!value) return [];
     const raw = Array.isArray(value) ? value : value.split(",");
     return raw.map((o) => o.trim()).filter(Boolean);

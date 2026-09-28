@@ -8,7 +8,7 @@ import {
     MaxLength,
     MinLength,
 } from "class-validator";
-import { TenantType, TenantConfig } from "@/core/entities/tenant.entity";
+import { type TenantConfig, TenantType } from "@/core/entities/tenant.entity";
 
 export class CreateTenantDto {
     @IsString()

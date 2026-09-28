@@ -1,28 +1,33 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
-import {
-    assertLoyaltyCampaignSourceCompatible,
-    isValidLoyaltyCampaignDates,
-    isValidLoyaltyCampaignMaxClaims,
-    isValidLoyaltyCampaignTarget,
-    isValidLoyaltyRewardValidDays,
-    LoyaltyCampaign,
-    LoyaltyCampaignStatus,
-} from "@/core/entities/loyalty.entity";
-import {
-    BusinessRuleViolationError,
-    EntityNotFoundError,
-    ValidationError,
-} from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { UpdateLoyaltyCampaignDTO } from "@/core/application/dtos/requests/loyalty.request";
-import { UpdateLoyaltyCampaignData } from "@/core/repositories/loyalty.repository.interface";
+import type { UpdateLoyaltyCampaignDTO } from "@/core/application/dtos/requests/loyalty.request";
 import {
     loadLoyaltyCampaignTenant,
     toLoyaltyCampaignDate,
     toLoyaltyRewardDefinition,
 } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import {
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
+import {
+    assertLoyaltyCampaignDraft,
+    assertLoyaltyCampaignSourceCompatible,
+    isValidLoyaltyCampaignDates,
+    isValidLoyaltyCampaignMaxClaims,
+    isValidLoyaltyCampaignTarget,
+    isValidLoyaltyRewardValidDays,
+} from "@/core/domain/loyalty/loyalty.policy";
+import {
+    type LoyaltyCampaign,
+    LoyaltyCampaignStatus,
+} from "@/core/entities/loyalty.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type {
+    ILoyaltyRepository,
+    UpdateLoyaltyCampaignData,
+} from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class UpdateLoyaltyCampaignUseCase {
     constructor(
@@ -44,13 +49,13 @@ export class UpdateLoyaltyCampaignUseCase {
         if (!campaignId?.trim()) {
             throw new ValidationError(
                 "Campaign ID is required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
         if (!data || typeof data !== "object") {
             throw new ValidationError(
                 "Campaign update is required",
-                "INVALID_CAMPAIGN",
+                ValidationErrorCodes.INVALID_CAMPAIGN,
             );
         }
         const current = await this.loyaltyRepository.getCampaign(
@@ -60,12 +65,10 @@ export class UpdateLoyaltyCampaignUseCase {
         if (!current) {
             throw new EntityNotFoundError("LoyaltyCampaign", campaignId);
         }
-        if (current.status !== LoyaltyCampaignStatus.DRAFT) {
-            throw new BusinessRuleViolationError(
-                "Only DRAFT loyalty campaigns can be updated",
-                "LOYALTY_CAMPAIGN_NOT_DRAFT",
-            );
-        }
+        assertLoyaltyCampaignDraft(
+            current.status === LoyaltyCampaignStatus.DRAFT,
+            "Only DRAFT loyalty campaigns can be updated",
+        );
         const source = data.source ?? current.source;
         assertLoyaltyCampaignSourceCompatible(tenant.type, source);
         const metric = data.metric ?? current.metric;
@@ -73,7 +76,7 @@ export class UpdateLoyaltyCampaignUseCase {
         if (!isValidLoyaltyCampaignTarget(metric, targetValue)) {
             throw new ValidationError(
                 "Campaign target is invalid",
-                "INVALID_CAMPAIGN_TARGET",
+                ValidationErrorCodes.INVALID_CAMPAIGN_TARGET,
             );
         }
         if (
@@ -82,7 +85,7 @@ export class UpdateLoyaltyCampaignUseCase {
         ) {
             throw new ValidationError(
                 "Campaign reward validity is invalid",
-                "INVALID_LOYALTY_REWARD_VALIDITY",
+                ValidationErrorCodes.INVALID_LOYALTY_REWARD_VALIDITY,
             );
         }
         if (
@@ -92,7 +95,7 @@ export class UpdateLoyaltyCampaignUseCase {
         ) {
             throw new ValidationError(
                 "Campaign maxClaims is invalid",
-                "INVALID_CAMPAIGN_MAX_CLAIMS",
+                ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
             );
         }
 
@@ -144,7 +147,7 @@ export class UpdateLoyaltyCampaignUseCase {
         if (!isValidLoyaltyCampaignDates(startsAt, endsAt, claimUntil)) {
             throw new ValidationError(
                 "Campaign dates must satisfy startsAt < endsAt <= claimUntil",
-                "INVALID_CAMPAIGN_DATES",
+                ValidationErrorCodes.INVALID_CAMPAIGN_DATES,
             );
         }
 

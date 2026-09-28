@@ -1,13 +1,14 @@
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { IPermissionRepository } from "@/core/repositories/permission.repository.interface";
-import { Permission } from "@/core/entities/permission.entity";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { CreateTenantDTO } from "@/core/application/dtos/requests/tenant.request";
 import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
-import { CreateTenantDTO } from "@/core/application/dtos/requests/tenant.request";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { assertTenantFeatureDependencies } from "@/core/entities/feature.entity";
+import { assertTenantFeatureDependencies } from "@/core/domain/feature/feature.policy";
+import type { Permission } from "@/core/entities/permission.entity";
+import type { Role } from "@/core/entities/role.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { IPermissionRepository } from "@/core/repositories/permission.repository.interface";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class CreateTenantUseCase {
     constructor(
@@ -35,6 +36,7 @@ export class CreateTenantUseCase {
             type: data.type,
             config: data.config,
             active: true,
+            createdById: creatorId,
         });
 
         const defaultPermissions = [
@@ -120,7 +122,7 @@ export class CreateTenantUseCase {
             },
         ];
 
-        let adminRole;
+        let adminRole: Role | undefined;
         for (const r of roles) {
             const permissionIds = r.permissions
                 .map(
@@ -152,9 +154,9 @@ export class CreateTenantUseCase {
 
         // Sync onboarding feature selection into the tenantFeature table
         // (source of truth for server-side enforcement).
-        const selectedFeatures = Object.entries(data.config?.features ?? {}).filter(
-            ([, enabled]) => enabled === true,
-        );
+        const selectedFeatures = Object.entries(
+            data.config?.features ?? {},
+        ).filter(([, enabled]) => enabled === true);
         if (selectedFeatures.length) {
             await this.featureRepository.updateTenantFeatures(
                 tenant.id,

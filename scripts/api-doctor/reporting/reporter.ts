@@ -1,7 +1,4 @@
-import type {
-    CheckResult,
-    DoctorReport,
-} from "../domain/check-result";
+import type { CheckResult, DoctorReport } from "../domain/check-result";
 
 export type ReportFormat = "text" | "json" | "sarif";
 
@@ -56,8 +53,7 @@ export function renderJsonReport(report: DoctorReport): string {
 
 export function renderSarifReport(report: DoctorReport): string {
     const sarif = {
-        $schema:
-            "https://json.schemastore.org/sarif-2.1.0.json",
+        $schema: "https://json.schemastore.org/sarif-2.1.0.json",
         version: "2.1.0",
         runs: [
             {

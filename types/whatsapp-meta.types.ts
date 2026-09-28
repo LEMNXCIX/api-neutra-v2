@@ -68,7 +68,9 @@ export interface MetaWebhookPayload {
 }
 
 /** Narrow an unknown value into a webhook payload (replaces `as any`) */
-export function isMetaWebhookPayload(value: unknown): value is MetaWebhookPayload {
+export function isMetaWebhookPayload(
+    value: unknown,
+): value is MetaWebhookPayload {
     return (
         typeof value === "object" &&
         value !== null &&

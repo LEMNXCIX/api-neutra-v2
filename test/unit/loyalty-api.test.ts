@@ -1,38 +1,39 @@
+import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
 import express, {
-    Application,
-    NextFunction,
-    Request,
-    Response,
-    Router,
+    type Application,
+    type NextFunction,
+    type Request,
+    type Response,
+    type Router,
 } from "express";
 import request from "supertest";
-import { validate } from "class-validator";
-import { plainToInstance } from "class-transformer";
-import { LoyaltyController } from "@/interface-adapters/controllers/loyalty.controller";
-import { loyaltyRoutes } from "@/infrastructure/routes/loyalty.routes";
 import {
-    requireConcreteTenantContext,
-    requireTenantType,
-} from "@/middleware/tenant-feature.middleware";
-import { requirePermission } from "@/middleware/authorization.middleware";
+    CreateLoyaltyCampaignDto,
+    LoyaltyRewardDefinitionDto,
+    UpdateLoyaltyCampaignDto,
+} from "@/core/application/dtos/requests/loyalty.request";
 import { GetAllTenantsLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-all-tenants-loyalty-overview.use-case";
-import { Tenant, TenantType } from "@/core/entities/tenant.entity";
+import { ROLE_CONSTANTS } from "@/core/domain/constants";
+import { MAX_LOYALTY_PRISMA_INT } from "@/core/domain/loyalty/loyalty.policy";
+import { CouponType } from "@/core/entities/coupon.entity";
 import {
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
     LoyaltyCampaignStatus,
     LoyaltyRewardClaimStatus,
     LoyaltyStatus,
-    MAX_LOYALTY_PRISMA_INT,
 } from "@/core/entities/loyalty.entity";
-import { CouponType } from "@/core/entities/coupon.entity";
+import { type Tenant, TenantType } from "@/core/entities/tenant.entity";
 import { Success } from "@/core/utils/use-case-result";
+import { loyaltyRoutes } from "@/infrastructure/routes/loyalty.routes";
+import { LoyaltyController } from "@/interface-adapters/controllers/loyalty.controller";
+import { requirePermission } from "@/middleware/authorization.middleware";
 import {
-    CreateLoyaltyCampaignDto,
-    LoyaltyRewardDefinitionDto,
-    UpdateLoyaltyCampaignDto,
-} from "@/core/application/dtos/requests/loyalty.request";
-import { ROLE_CONSTANTS } from "@/core/domain/constants";
+    requireConcreteTenantContext,
+    requireTenantType,
+} from "@/middleware/tenant-feature.middleware";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 jest.mock("@/middleware/tenant-feature.middleware", () => ({
     requireConcreteTenantContext: jest.fn(
@@ -46,6 +47,11 @@ jest.mock("@/middleware/authorization.middleware", () => ({
     requirePermission: jest.fn(
         () => (_req: Request, _res: Response, next: NextFunction) => next(),
     ),
+    // This mock replaces the whole module, so every export must be listed or
+    // it arrives as undefined and Express rejects the handler at registration.
+    requireSuperAdmin: jest.fn(
+        (_req: Request, _res: Response, next: NextFunction) => next(),
+    ),
 }));
 
 const authenticate = jest.fn(
@@ -53,7 +59,8 @@ const authenticate = jest.fn(
 );
 const requireTenantFeature = jest.fn(
     (_featureKey: string) =>
-        (_req: Request, _res: Response, next: NextFunction) => next(),
+        (_req: Request, _res: Response, next: NextFunction) =>
+            next(),
 );
 
 function tenant(overrides: Partial<Tenant> = {}): Tenant {
@@ -184,7 +191,7 @@ describe("cross-tenant loyalty overview", () => {
     test("keeps disabled tenants visible", async () => {
         const loyaltyRepository = {
             listCampaigns: jest.fn().mockResolvedValue([]),
-            getCampaignStats: jest.fn(),
+            countCampaignRewardClaims: jest.fn().mockResolvedValue(0),
         };
         const useCase = new GetAllTenantsLoyaltyOverviewUseCase(
             loyaltyRepository as never,
@@ -291,9 +298,7 @@ describe("loyalty campaign HTTP API", () => {
         setup.customer.executeList.mockResolvedValue(
             Success([selectedSummary]),
         );
-        setup.customer.execute.mockResolvedValue(
-            Success(selectedSummary),
-        );
+        setup.customer.execute.mockResolvedValue(Success(selectedSummary));
         setup.claim.execute.mockResolvedValue(
             Success({
                 claim,
@@ -344,7 +349,9 @@ describe("loyalty campaign HTTP API", () => {
             }),
         );
         await request(app)
-            .post("/api/loyalty/me/campaigns/campaign-1/claim?userId=customer-2")
+            .post(
+                "/api/loyalty/me/campaigns/campaign-1/claim?userId=customer-2",
+            )
             .send({ userId: "customer-2" })
             .expect(200);
         await request(app).get("/api/loyalty/admin/campaigns").expect(200);
@@ -413,11 +420,9 @@ describe("loyalty campaign HTTP API", () => {
             "tenant-1",
             "campaign-1",
         );
-        expect(setup.transition.execute.mock.calls.map((call) => call[2])).toEqual([
-            "activate",
-            "end",
-            "archive",
-        ]);
+        expect(
+            setup.transition.execute.mock.calls.map((call) => call[2]),
+        ).toEqual(["activate", "end", "archive"]);
     });
 
     test("registers only campaign routes and applies tenant gates to tenant-scoped routes", () => {
@@ -438,13 +443,16 @@ describe("loyalty campaign HTTP API", () => {
                 stack: Array<{ handle: unknown }>;
             };
         };
-        const routeLayers = (router as unknown as { stack: RouteLayer[] }).stack.filter(
-            (layer) => layer.route,
-        );
+        const routeLayers = (
+            router as unknown as { stack: RouteLayer[] }
+        ).stack.filter((layer) => layer.route);
         const routes = routeLayers.flatMap((layer) =>
             Object.entries(layer.route!.methods)
                 .filter(([, enabled]) => enabled)
-                .map(([method]) => `${method.toUpperCase()} ${layer.route!.path}`),
+                .map(
+                    ([method]) =>
+                        `${method.toUpperCase()} ${layer.route!.path}`,
+                ),
         );
 
         expect(routes).toEqual([
@@ -477,9 +485,9 @@ describe("loyalty campaign HTTP API", () => {
         expect(customerRoute.stack[1]!.handle).toBe(
             requireConcreteTenantContext,
         );
-        expect(
-            (customerRoute.stack[2]!.handle as { name: string }).name,
-        ).toBe("requireActiveTenant");
+        expect((customerRoute.stack[2]!.handle as { name: string }).name).toBe(
+            "requireActiveTenant",
+        );
         expect(requireTenantType).toHaveBeenCalledWith(
             "STORE",
             "BOOKING",
@@ -504,7 +512,7 @@ describe("loyalty campaign HTTP API", () => {
                 } as never,
                 response,
             ),
-        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        ).rejects.toMatchObject({ code: AuthErrorCodes.FORBIDDEN });
         expect(setup.allTenants.execute).not.toHaveBeenCalled();
     });
 });

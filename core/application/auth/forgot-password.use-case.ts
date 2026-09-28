@@ -1,10 +1,10 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { IQueueProvider } from "@/core/providers/queue-provider.interface";
-import { IConfigProvider } from "@/core/providers/config-provider.interface";
-import { ICryptoProvider } from "@/core/providers/crypto-provider.interface";
 import { AUTH_CONSTANTS } from "@/core/domain/constants";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import type { IConfigProvider } from "@/core/providers/config-provider.interface";
+import type { ICryptoProvider } from "@/core/providers/crypto-provider.interface";
+import type { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class ForgotPasswordUseCase {
     constructor(

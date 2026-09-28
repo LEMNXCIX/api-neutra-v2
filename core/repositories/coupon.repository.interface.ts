@@ -1,4 +1,4 @@
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
+import type { Coupon, CouponType } from "@/core/entities/coupon.entity";
 
 export type CreateCouponData = {
     code: string;
@@ -70,12 +70,6 @@ export interface ICouponRepository {
         id: string,
         userId?: string,
     ): Promise<void>;
-    cloneRewardCoupon(
-        tenantId: string,
-        templateId: string,
-        userId: string,
-        code?: string,
-    ): Promise<Coupon>;
     getStats(tenantId: string): Promise<{
         totalCoupons: number;
         activeCoupons: number;

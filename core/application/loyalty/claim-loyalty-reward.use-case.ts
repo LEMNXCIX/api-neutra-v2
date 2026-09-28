@@ -1,15 +1,16 @@
-import { assertLoyaltyCampaignFeatures } from "@/core/entities/loyalty.entity";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import {
-    ILoyaltyRepository,
-    LoyaltyCampaignClaimResult,
-} from "@/core/repositories/loyalty.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 import {
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { assertLoyaltyCampaignFeatures } from "@/core/domain/loyalty/loyalty.policy";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type {
+    ILoyaltyRepository,
+    LoyaltyCampaignClaimResult,
+} from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
+import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class ClaimLoyaltyRewardUseCase {
     constructor(
@@ -26,7 +27,7 @@ export class ClaimLoyaltyRewardUseCase {
         if (!tenantId?.trim() || !campaignId?.trim() || !userId?.trim()) {
             throw new ValidationError(
                 "Tenant, campaign, and customer identity are required",
-                "MISSING_REQUIRED_FIELDS",
+                ValidationErrorCodes.MISSING_REQUIRED_FIELDS,
             );
         }
 
@@ -41,9 +42,6 @@ export class ClaimLoyaltyRewardUseCase {
             campaignId,
             userId,
         );
-        return Success(
-            result,
-            "Loyalty campaign reward claimed successfully",
-        );
+        return Success(result, "Loyalty campaign reward claimed successfully");
     }
 }
