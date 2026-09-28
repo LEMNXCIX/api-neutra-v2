@@ -3,6 +3,7 @@ import {
     BusinessErrorCodes,
     DatabaseErrorCodes,
     ExternalServiceErrorCodes,
+    getHttpStatusFromErrorCode,
     LoyaltyErrorCodes,
     RateLimitErrorCodes,
     ResourceErrorCodes,
@@ -10,7 +11,6 @@ import {
     TenantErrorCodes,
     ValidationErrorCodes,
     WhatsAppErrorCodes,
-    getHttpStatusFromErrorCode,
 } from "@/types/error-codes";
 
 /**
@@ -112,9 +112,9 @@ describe("getHttpStatusFromErrorCode", () => {
     });
 
     it("maps every BUSINESS_ member to 422", () => {
-        expect(
-            getHttpStatusFromErrorCode(BusinessErrorCodes.CART_EMPTY),
-        ).toBe(422);
+        expect(getHttpStatusFromErrorCode(BusinessErrorCodes.CART_EMPTY)).toBe(
+            422,
+        );
         expect(
             getHttpStatusFromErrorCode(BusinessErrorCodes.INSUFFICIENT_STOCK),
         ).toBe(422);
@@ -122,9 +122,7 @@ describe("getHttpStatusFromErrorCode", () => {
 
     it("maps DB_ to 500", () => {
         expect(
-            getHttpStatusFromErrorCode(
-                DatabaseErrorCodes.CONSTRAINT_VIOLATION,
-            ),
+            getHttpStatusFromErrorCode(DatabaseErrorCodes.CONSTRAINT_VIOLATION),
         ).toBe(500);
     });
 
@@ -182,9 +180,9 @@ describe("getHttpStatusFromErrorCode", () => {
      */
     describe("known mis-ordered prefixes", () => {
         it("cannot classify INVALID_REWARD_TEMPLATE and defaults to 500", () => {
-            expect(
-                LoyaltyErrorCodes.INVALID_REWARD_TEMPLATE,
-            ).toBe("INVALID_LOYALTY_REWARD_TEMPLATE");
+            expect(LoyaltyErrorCodes.INVALID_REWARD_TEMPLATE).toBe(
+                "INVALID_LOYALTY_REWARD_TEMPLATE",
+            );
             expect(
                 getHttpStatusFromErrorCode(
                     LoyaltyErrorCodes.INVALID_REWARD_TEMPLATE,
@@ -195,11 +193,13 @@ describe("getHttpStatusFromErrorCode", () => {
         it("cannot classify INVALID_CAMPAIGN_TRANSITION's siblings either", () => {
             // The sibling members do carry the prefix and classify as 422-expected
             // 500-by-default, which is what makes the two anomalies visible.
+            expect(LoyaltyErrorCodes.CAMPAIGN_NOT_DRAFT).toBe(
+                "LOYALTY_CAMPAIGN_NOT_DRAFT",
+            );
             expect(
-                LoyaltyErrorCodes.CAMPAIGN_NOT_DRAFT,
-            ).toBe("LOYALTY_CAMPAIGN_NOT_DRAFT");
-            expect(
-                getHttpStatusFromErrorCode(LoyaltyErrorCodes.CAMPAIGN_NOT_DRAFT),
+                getHttpStatusFromErrorCode(
+                    LoyaltyErrorCodes.CAMPAIGN_NOT_DRAFT,
+                ),
             ).toBe(500);
         });
     });

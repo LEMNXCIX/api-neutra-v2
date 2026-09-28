@@ -1,16 +1,16 @@
-import { Service as PrismaService, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import {
-    IServiceRepository,
-    ServiceCreateData,
-    ServiceUpdateData,
-} from "@/core/repositories/service.repository.interface";
-import { Service } from "@/core/entities/service.entity";
-import { Category } from "@/core/entities/category.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Category } from "@/core/entities/category.entity";
+import type { Service } from "@/core/entities/service.entity";
+import type {
+    IServiceRepository,
+    ServiceCreateData,
+    ServiceUpdateData,
+} from "@/core/repositories/service.repository.interface";
 
 type ServiceWithCategory = Prisma.ServiceGetPayload<{
     include: { category: true; tenant: true };
@@ -40,10 +40,12 @@ export class PrismaServiceRepository implements IServiceRepository {
             active: service.active,
             tenantId: service.tenantId,
             tenant: service.tenant
-
-            ? { id: service.tenant.id, name: service.tenant.name, slug: service.tenant.slug }
-
-            : undefined,
+                ? {
+                      id: service.tenant.id,
+                      name: service.tenant.name,
+                      slug: service.tenant.slug,
+                  }
+                : undefined,
             createdAt: service.createdAt,
             updatedAt: service.updatedAt,
         };

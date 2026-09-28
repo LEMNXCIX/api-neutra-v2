@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import type { ILogger } from '@/core/providers/logger.interface';
+import type { NextFunction, Request, Response } from "express";
+import type { ILogger } from "@/core/providers/logger.interface";
 
 export function createRequestMiddleware(logger: ILogger) {
     return function requestMiddleware(
@@ -11,7 +11,7 @@ export function createRequestMiddleware(logger: ILogger) {
             method: req.method,
             url: req.originalUrl,
             body: req.body,
-            headers: req.headers as Record<string, string>
+            headers: req.headers as Record<string, string>,
         });
         next();
     };

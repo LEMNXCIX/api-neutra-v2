@@ -1,6 +1,6 @@
 import { AppointmentStatus } from "@/core/entities/appointment.entity";
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetAppointmentsNeedingReviewUseCase {
     constructor(

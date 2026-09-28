@@ -1,15 +1,17 @@
-import { IUserRepository, UserCreateData } from "@/core/repositories/user.repository.interface";
-import { ITokenGenerator } from "@/core/providers/auth-providers.interface";
-import { IUidProvider } from "@/core/providers/uid-provider.interface";
-import { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
-import { SocialLoginDTO } from "@/core/application/dtos/requests/auth.request";
-import { User } from "@/core/entities/user.entity";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { SocialLoginDTO } from "@/core/application/dtos/requests/auth.request";
 import {
     BusinessRuleViolationError,
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type { User } from "@/core/entities/user.entity";
+import type { ITokenGenerator } from "@/core/providers/auth-providers.interface";
+import type { IUidProvider } from "@/core/providers/uid-provider.interface";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type {
+    IUserRepository,
+    UserCreateData,
+} from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { TenantErrorCodes } from "@/types/error-codes";
 
 export class SocialLoginUseCase {
@@ -26,8 +28,7 @@ export class SocialLoginUseCase {
     ): Promise<UseCaseResult> {
         const providerField = `${data.provider}Id`;
         const providerId = data.id;
-        const email =
-            data.emails && data.emails[0] ? data.emails[0].value : null;
+        const email = data.emails?.[0] ? data.emails[0].value : null;
 
         if (!providerId || !email) {
             throw new BusinessRuleViolationError("Invalid provider data");
@@ -44,10 +45,9 @@ export class SocialLoginUseCase {
             if (user) {
                 user = await this.userRepository.update(user.id, {
                     [providerField]: providerId,
-                    profilePic:
-                        data.photos && data.photos[0]
-                            ? data.photos[0].value
-                            : user.profilePic,
+                    profilePic: data.photos?.[0]
+                        ? data.photos[0].value
+                        : user.profilePic,
                 });
             } else {
                 const newUserData: UserCreateData = {
@@ -55,10 +55,9 @@ export class SocialLoginUseCase {
                     email: email,
                     password: this.uidProvider.generate(),
                     [providerField]: providerId,
-                    profilePic:
-                        data.photos && data.photos[0]
-                            ? data.photos[0].value
-                            : undefined,
+                    profilePic: data.photos?.[0]
+                        ? data.photos[0].value
+                        : undefined,
                 };
                 user = await this.userRepository.create(newUserData);
             }
@@ -90,7 +89,7 @@ export class SocialLoginUseCase {
             (ut) => ut.tenantId === tenantId || ut.tenant?.slug === tenantId,
         );
 
-        if (!userTenant || !userTenant.role) {
+        if (!userTenant?.role) {
             throw new ForbiddenError(
                 "User not authorized for this tenant",
                 TenantErrorCodes.MEMBERSHIP_REQUIRED,

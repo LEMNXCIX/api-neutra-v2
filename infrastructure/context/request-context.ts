@@ -1,8 +1,8 @@
-import { AsyncLocalStorage } from 'async_hooks';
-import { Request } from 'express';
+import { AsyncLocalStorage } from "node:async_hooks";
+import type { Request } from "express";
 
 function isErrorBag(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
+    return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export interface IRequestContext {

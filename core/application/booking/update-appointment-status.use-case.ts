@@ -1,21 +1,19 @@
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import {
-    AppointmentStatus,
-} from "@/core/entities/appointment.entity";
+import type { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
 import {
     assertAppointmentStatus,
     canTransitionAppointmentStatus,
 } from "@/core/domain/appointment/appointment.policy";
-import { AppointmentMutationActor } from "@/core/application/dtos/requests/appointment.request";
-import { IQueueProvider } from "@/core/providers/queue-provider.interface";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     EntityNotFoundError,
+    ForbiddenError,
     InvalidStateError,
     UnauthorizedError,
-    ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
+import { AppointmentStatus } from "@/core/entities/appointment.entity";
+import type { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class UpdateAppointmentStatusUseCase {
@@ -88,7 +86,7 @@ export class UpdateAppointmentStatusUseCase {
         const resolvedFeatures =
             features ??
             (await this.featureRepository.getTenantFeatureStatus(tenantId));
-        const emailEnabled = resolvedFeatures["EMAIL_NOTIFICATIONS"];
+        const emailEnabled = resolvedFeatures.EMAIL_NOTIFICATIONS;
 
         if (emailEnabled) {
             if (status === AppointmentStatus.CONFIRMED) {

@@ -1,15 +1,12 @@
-import { ITokenGenerator } from "@/core/providers/auth-providers.interface";
-import { ICacheProvider } from "@/core/providers/cache-provider.interface";
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import {
-    ROLE_CONSTANTS,
-    TENANT_CONSTANTS,
-} from "@/core/domain/constants";
+import type { AuthenticatedUser } from "@/core/domain/auth.types";
+import { ROLE_CONSTANTS, TENANT_CONSTANTS } from "@/core/domain/constants";
 import {
     ForbiddenError,
     UnauthorizedError,
 } from "@/core/domain/errors/domain-errors";
-import { AuthenticatedUser } from "@/core/domain/auth.types";
+import type { ITokenGenerator } from "@/core/providers/auth-providers.interface";
+import type { ICacheProvider } from "@/core/providers/cache-provider.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
 import { AuthErrorCodes, TenantErrorCodes } from "@/types/error-codes";
 
 export type ResolveAuthInput = {
@@ -50,17 +47,14 @@ export class ResolveAuthenticatedUserUseCase {
 
         const requireMembership = input.requireTenantMembership !== false;
 
-        const tenantId =
-            input.tenantId || decoded.tenantId;
+        const tenantId = input.tenantId || decoded.tenantId;
 
         // Permissions are cached per (user, tenant). When membership is not
         // being asserted, the tenant in the request is one the caller may not
         // belong to yet, so caching under it would file another tenant's
         // permissions under this user. Fall back to the tenant the token was
         // issued for, which is a tenant they demonstrably hold.
-        const cacheTenantId = requireMembership
-            ? tenantId
-            : decoded.tenantId;
+        const cacheTenantId = requireMembership ? tenantId : decoded.tenantId;
         const cacheKey = `${CACHE_KEY_PREFIX}:${decoded.id}:${cacheTenantId || "global"}`;
 
         const cachedPermissions = await this.cache.get(cacheKey);
@@ -124,17 +118,14 @@ export class ResolveAuthenticatedUserUseCase {
             // point x-tenant-id/x-tenant-slug at any tenant and read its data.
             // The join-tenant flow opts out by name, and is the only caller that
             // does; it grants the membership this check would otherwise refuse.
-            if (
-                requireMembership &&
-                (!userTenant || !userTenant.role)
-            ) {
+            if (requireMembership && !userTenant?.role) {
                 throw new ForbiddenError(
                     "User is not authorized for this tenant",
                     TenantErrorCodes.MEMBERSHIP_REQUIRED,
                 );
             }
 
-            if (userTenant && userTenant.role) {
+            if (userTenant?.role) {
                 permissions =
                     userTenant.role.permissions?.map((p) => p.name) ?? [];
 

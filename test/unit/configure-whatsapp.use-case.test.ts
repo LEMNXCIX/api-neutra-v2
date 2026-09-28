@@ -4,7 +4,10 @@ import {
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
 
-function setup(opts?: { features?: Record<string, boolean>; existing?: unknown }) {
+function setup(opts?: {
+    features?: Record<string, boolean>;
+    existing?: unknown;
+}) {
     const featureRepository = {
         getTenantFeatureStatus: jest
             .fn()
@@ -12,9 +15,7 @@ function setup(opts?: { features?: Record<string, boolean>; existing?: unknown }
         updateTenantFeatures: jest.fn(),
     };
     const whatsappConfigRepository = {
-        findByTenantId: jest
-            .fn()
-            .mockResolvedValue(opts?.existing ?? null),
+        findByTenantId: jest.fn().mockResolvedValue(opts?.existing ?? null),
         create: jest.fn().mockImplementation(async (data) => data),
         update: jest.fn().mockImplementation(async (_tid, data) => data),
     };
@@ -37,12 +38,10 @@ describe("ConfigureWhatsAppUseCase", () => {
             features: {},
         });
 
-        await expect(
-            useCase.execute("t1", FULL_CONFIG),
-        ).rejects.toThrow(ForbiddenError);
-        expect(
-            whatsappConfigRepository.findByTenantId,
-        ).not.toHaveBeenCalled();
+        await expect(useCase.execute("t1", FULL_CONFIG)).rejects.toThrow(
+            ForbiddenError,
+        );
+        expect(whatsappConfigRepository.findByTenantId).not.toHaveBeenCalled();
     });
 
     test("creates config when none exists and credentials are complete", async () => {

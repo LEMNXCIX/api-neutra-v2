@@ -1,21 +1,21 @@
-import { Request, Response } from "express";
-import { GetAllUsersUseCase } from "@/core/application/users/get-all-users.use-case";
-import { GetUserByIdUseCase } from "@/core/application/users/get-user-by-id.use-case";
-import { GetUserByEmailUseCase } from "@/core/application/users/get-user-by-email.use-case";
-import { GetUsersStatsUseCase } from "@/core/application/users/get-users-stats.use-case";
-import { GetUsersSummaryStatsUseCase } from "@/core/application/users/get-users-summary-stats.use-case";
-import { CreateUserUseCase } from "@/core/application/users/create-user.use-case";
-import { GetOrCreateByProviderUseCase } from "@/core/application/users/get-or-create-by-provider.use-case";
-import { UpdateUserUseCase } from "@/core/application/users/update-user.use-case";
-import { DeleteUserUseCase } from "@/core/application/users/delete-user.use-case";
-import { AssignRoleToUserUseCase } from "@/core/application/users/assign-role.use-case";
-import { present } from "@/core/utils/use-case-result";
-import { UserResponse } from "@/core/application/dtos/responses/user/user.response";
-import { UserPublicResponse } from "@/core/application/dtos/responses/user/user-public.response";
-import {
+import type { Request, Response } from "express";
+import type {
     AssignRoleDTO,
     UpdateUserDTO,
 } from "@/core/application/dtos/requests/user.request";
+import { UserResponse } from "@/core/application/dtos/responses/user/user.response";
+import { UserPublicResponse } from "@/core/application/dtos/responses/user/user-public.response";
+import type { AssignRoleToUserUseCase } from "@/core/application/users/assign-role.use-case";
+import type { CreateUserUseCase } from "@/core/application/users/create-user.use-case";
+import type { DeleteUserUseCase } from "@/core/application/users/delete-user.use-case";
+import type { GetAllUsersUseCase } from "@/core/application/users/get-all-users.use-case";
+import type { GetOrCreateByProviderUseCase } from "@/core/application/users/get-or-create-by-provider.use-case";
+import type { GetUserByEmailUseCase } from "@/core/application/users/get-user-by-email.use-case";
+import type { GetUserByIdUseCase } from "@/core/application/users/get-user-by-id.use-case";
+import type { GetUsersStatsUseCase } from "@/core/application/users/get-users-stats.use-case";
+import type { GetUsersSummaryStatsUseCase } from "@/core/application/users/get-users-summary-stats.use-case";
+import type { UpdateUserUseCase } from "@/core/application/users/update-user.use-case";
+import { present } from "@/core/utils/use-case-result";
 
 export class UserController {
     constructor(

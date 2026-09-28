@@ -1,19 +1,19 @@
-import { Request, Response } from "express";
-import { OrderStatus } from "@/core/entities/order.entity";
-import { CreateOrderUseCase } from "@/core/application/order/create-order.use-case";
-import { GetOrderUseCase } from "@/core/application/order/get-order.use-case";
-import { GetUserOrdersUseCase } from "@/core/application/order/get-user-orders.use-case";
-import { GetOrdersPaginatedUseCase } from "@/core/application/order/get-orders-paginated.use-case";
-import { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
-import { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
-import { GetOrderStatusesUseCase } from "@/core/application/order/get-order-statuses.use-case";
-import { GetOrderStatsUseCase } from "@/core/application/order/get-order-stats.use-case";
-import { OrderResponse } from "@/core/application/dtos/responses/order/order.response";
-import { present } from "@/core/utils/use-case-result";
-import {
+import type { Request, Response } from "express";
+import type {
     ChangeOrderStatusDto,
     UpdateOrderDTO,
 } from "@/core/application/dtos/requests/order.request";
+import { OrderResponse } from "@/core/application/dtos/responses/order/order.response";
+import type { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
+import type { CreateOrderUseCase } from "@/core/application/order/create-order.use-case";
+import type { GetOrderUseCase } from "@/core/application/order/get-order.use-case";
+import type { GetOrderStatsUseCase } from "@/core/application/order/get-order-stats.use-case";
+import type { GetOrderStatusesUseCase } from "@/core/application/order/get-order-statuses.use-case";
+import type { GetOrdersPaginatedUseCase } from "@/core/application/order/get-orders-paginated.use-case";
+import type { GetUserOrdersUseCase } from "@/core/application/order/get-user-orders.use-case";
+import type { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
+import type { OrderStatus } from "@/core/entities/order.entity";
+import { present } from "@/core/utils/use-case-result";
 
 export class OrderController {
     constructor(
@@ -108,23 +108,20 @@ export class OrderController {
         const { search, status, page, limit } = req.query;
 
         // Always paginated: unbounded list endpoints are a memory/DoS risk.
-        const parsedPage = page ? parseInt(page as string) : 1;
-        const parsedLimit = limit ? parseInt(limit as string) : 50;
-        const result = await this.getOrdersPaginatedUseCase.execute(
-            tenantId,
-            {
-                search: search as string,
-                status: status as string,
-                page: Math.max(1, parsedPage),
-                limit: Math.min(100, Math.max(1, parsedLimit)),
-                startDate: req.query.startDate
-                    ? new Date(req.query.startDate as string)
-                    : undefined,
-                endDate: req.query.endDate
-                    ? new Date(req.query.endDate as string)
-                    : undefined,
-            },
-        );
+        const parsedPage = page ? parseInt(page as string, 10) : 1;
+        const parsedLimit = limit ? parseInt(limit as string, 10) : 50;
+        const result = await this.getOrdersPaginatedUseCase.execute(tenantId, {
+            search: search as string,
+            status: status as string,
+            page: Math.max(1, parsedPage),
+            limit: Math.min(100, Math.max(1, parsedLimit)),
+            startDate: req.query.startDate
+                ? new Date(req.query.startDate as string)
+                : undefined,
+            endDate: req.query.endDate
+                ? new Date(req.query.endDate as string)
+                : undefined,
+        });
         return res.json(
             present(result, (orders) =>
                 Array.isArray(orders)
@@ -136,8 +133,7 @@ export class OrderController {
 
     async changeStatus(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const { idOrder, status } =
-            req.validatedBody as ChangeOrderStatusDto;
+        const { idOrder, status } = req.validatedBody as ChangeOrderStatusDto;
         const result = await this.changeOrderStatusUseCase.execute(
             tenantId,
             idOrder,

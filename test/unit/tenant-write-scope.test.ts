@@ -73,9 +73,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { prisma } from "@/config/db.config";
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 import { PrismaPermissionRepository } from "@/infrastructure/database/prisma/permission.prisma-repository";
 import { PrismaRoleRepository } from "@/infrastructure/database/prisma/role.prisma-repository";
-import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 const ROOT = join(__dirname, "../..");
 
@@ -204,8 +204,7 @@ function setup() {
     prismaDb.permission.findUnique.mockImplementation(
         async (args: { where?: Where }) => {
             const found =
-                applyWhere(permissionRows, args.where, false)[0] ??
-                undefined;
+                applyWhere(permissionRows, args.where, false)[0] ?? undefined;
             const row = found ?? permissionRows[0];
             const snapshot = permissionRow(row);
             if (reassignAfterRead && reassignAfterRead.id === row.id) {
@@ -239,15 +238,17 @@ function setup() {
     );
     prismaDb.permission.delete.mockResolvedValue({});
 
-    prismaDb.role.findFirst.mockImplementation(async (args: { where?: Where }) => {
-        const found = applyWhere(roleRows, args.where)[0];
-        if (!found) return null;
-        const snapshot = roleRow(found);
-        if (reassignAfterRead && reassignAfterRead.id === found.id) {
-            found.tenantId = reassignAfterRead.to;
-        }
-        return snapshot;
-    });
+    prismaDb.role.findFirst.mockImplementation(
+        async (args: { where?: Where }) => {
+            const found = applyWhere(roleRows, args.where)[0];
+            if (!found) return null;
+            const snapshot = roleRow(found);
+            if (reassignAfterRead && reassignAfterRead.id === found.id) {
+                found.tenantId = reassignAfterRead.to;
+            }
+            return snapshot;
+        },
+    );
     prismaDb.role.findUnique.mockResolvedValue(roleRow(roleRows[0]));
     prismaDb.role.findMany.mockResolvedValue([]);
     prismaDb.role.updateMany.mockImplementation(
@@ -260,10 +261,12 @@ function setup() {
             count: applyWhere(roleRows, where).length,
         }),
     );
-    prismaDb.role.update.mockImplementation(async ({ where }: { where: Where }) => {
-        const found = applyWhere(roleRows, where)[0] ?? roleRows[0];
-        return roleRow(found);
-    });
+    prismaDb.role.update.mockImplementation(
+        async ({ where }: { where: Where }) => {
+            const found = applyWhere(roleRows, where)[0] ?? roleRows[0];
+            return roleRow(found);
+        },
+    );
     prismaDb.role.delete.mockResolvedValue({});
     prismaDb.rolePermission.createMany.mockResolvedValue({ count: 0 });
     prismaDb.rolePermission.deleteMany.mockResolvedValue({ count: 0 });
@@ -337,7 +340,8 @@ describe("case 1 — permission update is scoped in the write, not only in the r
         // re-open the gap between that read and the write, which is the shape
         // this path no longer has: one scoped statement, then the read-back
         // that produces the returned entity.
-        const write = prismaDb.permission.updateMany.mock.invocationCallOrder[0];
+        const write =
+            prismaDb.permission.updateMany.mock.invocationCallOrder[0];
         const reads = prismaDb.permission.findFirst.mock.invocationCallOrder;
         expect(reads.every((order) => order > write)).toBe(true);
         expect(prismaDb.permission.findUnique).not.toHaveBeenCalled();
@@ -395,7 +399,9 @@ describe("case 5 — the permission read is scoped in the query, not by a post-f
     test("without a tenant the predicate is absent, not a filter that hides everything", async () => {
         const { permissions } = setup();
 
-        await expect(permissions.findById(undefined, VICTIM_PERMISSION)).resolves.toMatchObject({
+        await expect(
+            permissions.findById(undefined, VICTIM_PERMISSION),
+        ).resolves.toMatchObject({
             id: VICTIM_PERMISSION,
         });
         expect(prismaDb.permission.findFirst.mock.calls[0][0].where).toEqual({
@@ -576,7 +582,9 @@ describe("the same defect on permission delete, closed the same way", () => {
     test("a permission owned by the victim's tenant is not deleted", async () => {
         const { permissions } = setup();
 
-        const error = await settle(permissions.delete(TENANT, VICTIM_PERMISSION));
+        const error = await settle(
+            permissions.delete(TENANT, VICTIM_PERMISSION),
+        );
 
         expect(prismaDb.permission.delete).not.toHaveBeenCalled();
         expect(prismaDb.permission.deleteMany).toHaveBeenCalledWith({
@@ -614,9 +622,15 @@ describe("the sources, read directly", () => {
 
     test("neither repository issues a permission or role write on a bare `where: { id }`", () => {
         const unguarded = [
-            ...permissionSource.matchAll(/prisma\.permission\.(update|delete)\s*\(\s*\{[^}]*where:\s*\{\s*id\s*[,}]/g),
-            ...roleSource.matchAll(/prisma\.role\.(update|delete)\s*\(\s*\{[^}]*where:\s*\{\s*id\s*[,}]/g),
-            ...roleSource.matchAll(/tx\.role\.update\s*\(\s*\{[^}]*where:\s*\{\s*id\s*[,}]/g),
+            ...permissionSource.matchAll(
+                /prisma\.permission\.(update|delete)\s*\(\s*\{[^}]*where:\s*\{\s*id\s*[,}]/g,
+            ),
+            ...roleSource.matchAll(
+                /prisma\.role\.(update|delete)\s*\(\s*\{[^}]*where:\s*\{\s*id\s*[,}]/g,
+            ),
+            ...roleSource.matchAll(
+                /tx\.role\.update\s*\(\s*\{[^}]*where:\s*\{\s*id\s*[,}]/g,
+            ),
         ].map((match) => match[0].replace(/\s+/g, " "));
 
         expect(unguarded).toEqual([]);

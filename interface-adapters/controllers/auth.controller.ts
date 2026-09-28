@@ -1,23 +1,23 @@
-import { Request, Response } from "express";
-import { LoginUseCase } from "@/core/application/auth/login.use-case";
-import { RegisterUseCase } from "@/core/application/auth/register.use-case";
-import { SocialLoginUseCase } from "@/core/application/auth/social-login.use-case";
-import { ForgotPasswordUseCase } from "@/core/application/auth/forgot-password.use-case";
-import { ResetPasswordUseCase } from "@/core/application/auth/reset-password.use-case";
-import { JoinTenantUseCase } from "@/core/application/auth/join-tenant.use-case";
-import {
-    authResponse,
-    providerResponse,
-    deleteCookie,
-} from "@/helpers/authResponse.helpers";
-import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
-import { Success } from "@/core/utils/use-case-result";
+import type { Request, Response } from "express";
+import type { ForgotPasswordUseCase } from "@/core/application/auth/forgot-password.use-case";
+import type { JoinTenantUseCase } from "@/core/application/auth/join-tenant.use-case";
+import type { LoginUseCase } from "@/core/application/auth/login.use-case";
+import type { RegisterUseCase } from "@/core/application/auth/register.use-case";
+import type { ResetPasswordUseCase } from "@/core/application/auth/reset-password.use-case";
+import type { SocialLoginUseCase } from "@/core/application/auth/social-login.use-case";
 import type {
     ForgotPasswordDTO,
     LoginDTO,
     ResetPasswordDTO,
 } from "@/core/application/dtos/requests/auth.request";
 import type { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
+import { Success } from "@/core/utils/use-case-result";
+import {
+    authResponse,
+    deleteCookie,
+    providerResponse,
+} from "@/helpers/authResponse.helpers";
+import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
 
 export class AuthController {
     constructor(

@@ -1,13 +1,13 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import { requirePermission } from "@/middleware/authorization.middleware";
-import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
-import { BannerController } from "@/interface-adapters/controllers/banner.controller";
-import { validateDto } from "@/middleware/validation.middleware";
+import { type Application, Router } from "express";
 import {
     CreateBannerDto,
     UpdateBannerDto,
 } from "@/core/application/dtos/requests/banner.request";
+import type { BannerController } from "@/interface-adapters/controllers/banner.controller";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function bannerRoutes(
     app: Application,
@@ -70,7 +70,8 @@ function bannerRoutes(
     router.get(
         "/",
         requireTenantFeature("BANNERS"),
-        bannerController.getActive);
+        bannerController.getActive,
+    );
 
     /**
      * @swagger
@@ -152,7 +153,8 @@ function bannerRoutes(
     router.get(
         "/:id",
         requireTenantFeature("BANNERS"),
-        bannerController.getById);
+        bannerController.getById,
+    );
 
     /**
      * @swagger
@@ -173,7 +175,8 @@ function bannerRoutes(
     router.post(
         "/:id/impression",
         requireTenantFeature("BANNERS"),
-        bannerController.trackImpression);
+        bannerController.trackImpression,
+    );
 
     /**
      * @swagger
@@ -194,7 +197,8 @@ function bannerRoutes(
     router.post(
         "/:id/click",
         requireTenantFeature("BANNERS"),
-        bannerController.trackClick);
+        bannerController.trackClick,
+    );
 
     /**
      * @swagger

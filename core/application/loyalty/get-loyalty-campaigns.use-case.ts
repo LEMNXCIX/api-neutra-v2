@@ -1,17 +1,15 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
-import {
+import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
+import { assertLoyaltyCampaignSourceCompatible } from "@/core/domain/loyalty/loyalty.policy";
+import type {
     LoyaltyCampaign,
     LoyaltyCampaignSource,
     LoyaltyCampaignStatus,
 } from "@/core/entities/loyalty.entity";
-import {
-    assertLoyaltyCampaignSourceCompatible,
-} from "@/core/domain/loyalty/loyalty.policy";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
-import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export interface GetLoyaltyCampaignsOptions {
     source?: LoyaltyCampaignSource;

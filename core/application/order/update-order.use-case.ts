@@ -1,7 +1,7 @@
-import { IOrderRepository } from "@/core/repositories/order.repository.interface";
-import { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
-import { UpdateOrderDTO } from "@/core/application/dtos/requests/order.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { UpdateOrderDTO } from "@/core/application/dtos/requests/order.request";
+import type { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
+import type { IOrderRepository } from "@/core/repositories/order.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class UpdateOrderUseCase {
     constructor(

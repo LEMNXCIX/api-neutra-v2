@@ -1,17 +1,17 @@
-import { Request, Response } from "express";
-import { GetCartUseCase } from "@/core/application/cart/get-cart.use-case";
-import { AddToCartUseCase } from "@/core/application/cart/add-to-cart.use-case";
-import { RemoveFromCartUseCase } from "@/core/application/cart/remove-from-cart.use-case";
-import { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
-import { ChangeAmountUseCase } from "@/core/application/cart/change-amount.use-case";
-import { GetCartStatsUseCase } from "@/core/application/cart/get-cart-stats.use-case";
-import { CreateCartUseCase } from "@/core/application/cart/create-cart.use-case";
-import { CartResponse } from "@/core/application/dtos/responses/cart/cart.response";
-import { present } from "@/core/utils/use-case-result";
-import {
+import type { Request, Response } from "express";
+import type { AddToCartUseCase } from "@/core/application/cart/add-to-cart.use-case";
+import type { ChangeAmountUseCase } from "@/core/application/cart/change-amount.use-case";
+import type { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
+import type { CreateCartUseCase } from "@/core/application/cart/create-cart.use-case";
+import type { GetCartUseCase } from "@/core/application/cart/get-cart.use-case";
+import type { GetCartStatsUseCase } from "@/core/application/cart/get-cart-stats.use-case";
+import type { RemoveFromCartUseCase } from "@/core/application/cart/remove-from-cart.use-case";
+import type {
     AddToCartDTO,
     RemoveFromCartDTO,
 } from "@/core/application/dtos/requests/cart.request";
+import { CartResponse } from "@/core/application/dtos/responses/cart/cart.response";
+import { present } from "@/core/utils/use-case-result";
 
 export class CartController {
     constructor(

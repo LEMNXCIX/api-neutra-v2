@@ -1,7 +1,10 @@
-import { IRoleRepository, RoleCreateData } from "@/core/repositories/role.repository.interface";
-import { CreateRoleDTO } from "@/core/application/dtos/requests/role.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { CreateRoleDTO } from "@/core/application/dtos/requests/role.request";
 import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
+import type {
+    IRoleRepository,
+    RoleCreateData,
+} from "@/core/repositories/role.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class CreateRoleUseCase {
     constructor(private roleRepository: IRoleRepository) {}

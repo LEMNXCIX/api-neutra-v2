@@ -1,9 +1,9 @@
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     EntityNotFoundError,
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { AuthErrorCodes } from "@/types/error-codes";
 
 export class DeleteRoleUseCase {

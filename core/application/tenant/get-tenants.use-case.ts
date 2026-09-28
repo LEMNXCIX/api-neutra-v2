@@ -1,5 +1,5 @@
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetTenantsUseCase {
     constructor(private tenantRepository: ITenantRepository) {}

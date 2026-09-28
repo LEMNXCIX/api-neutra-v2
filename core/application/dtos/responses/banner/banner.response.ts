@@ -1,4 +1,4 @@
-import { Banner } from "@/core/entities/banner.entity";
+import type { Banner } from "@/core/entities/banner.entity";
 
 export interface IBannerResponse {
     id: string;

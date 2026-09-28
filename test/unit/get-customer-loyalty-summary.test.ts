@@ -1,6 +1,7 @@
 jest.mock("@/config/db.config", () => ({ prisma: {} }));
 
 import { Prisma } from "@prisma/client";
+import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
 import {
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
@@ -9,7 +10,6 @@ import {
 } from "@/core/entities/loyalty.entity";
 import { TenantType } from "@/core/entities/tenant.entity";
 import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
-import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
 
 const now = new Date("2030-01-15T00:00:00.000Z");
 const startsAt = new Date("2030-01-01T00:00:00.000Z");
@@ -46,21 +46,17 @@ function campaignRow(overrides: Record<string, unknown> = {}) {
  */
 function countingDatabase(rows: ReturnType<typeof campaignRow>[]) {
     const queries: string[] = [];
-    const record =
-        (label: string, value: unknown) =>
-        async () => {
-            queries.push(label);
-            return value;
-        };
+    const record = (label: string, value: unknown) => async () => {
+        queries.push(label);
+        return value;
+    };
     const ledgerCount = async (args: {
         where: { campaignId: string; entryType: string };
     }) => {
         queries.push(`ledger.count:${args.where.campaignId}`);
         return args.where.entryType === "ACCRUAL" ? 3 : 1;
     };
-    const ledgerAggregate = async (args: {
-        where: { campaignId: string };
-    }) => {
+    const ledgerAggregate = async (args: { where: { campaignId: string } }) => {
         queries.push(`ledger.aggregate:${args.where.campaignId}`);
         return { _sum: { value: new Prisma.Decimal("4.00") } };
     };
@@ -72,9 +68,7 @@ function countingDatabase(rows: ReturnType<typeof campaignRow>[]) {
             },
             findFirst: async (args: { where: { id: string } }) => {
                 queries.push(`campaign.findFirst:${args.where.id}`);
-                return (
-                    rows.find((row) => row.id === args.where.id) ?? null
-                );
+                return rows.find((row) => row.id === args.where.id) ?? null;
             },
         },
         loyaltyLedgerEntry: {
@@ -119,7 +113,9 @@ function countingDatabase(rows: ReturnType<typeof campaignRow>[]) {
             findMany: async (args: {
                 where: { campaignId: { in: string[] } };
             }) => {
-                queries.push(`claim.findMany:${args.where.campaignId.in.length}`);
+                queries.push(
+                    `claim.findMany:${args.where.campaignId.in.length}`,
+                );
                 return [];
             },
         },
@@ -191,14 +187,11 @@ describe("customer loyalty summary query count", () => {
         // Was seven reads: the campaign list, two ledger counts per campaign,
         // and a claim lookup per campaign that an ACTIVE campaign never needed.
         expect([...queries].sort()).toEqual(
-            [
-                "campaign.findMany",
-                "ledger.groupBy:COUNT:STORE",
-            ].sort(),
+            ["campaign.findMany", "ledger.groupBy:COUNT:STORE"].sort(),
         );
-        expect(queries.filter((q) => q.startsWith("campaign.findFirst"))).toEqual(
-            [],
-        );
+        expect(
+            queries.filter((q) => q.startsWith("campaign.findFirst")),
+        ).toEqual([]);
     });
 
     test("reads SPEND campaigns in one grouped ledger query, not one each", async () => {
@@ -310,5 +303,6 @@ describe("customer loyalty summary query count", () => {
             "ledger.count:count-1",
             "ledger.count:count-1",
             "claim.findFirst",
-        ]);    });
+        ]);
+    });
 });

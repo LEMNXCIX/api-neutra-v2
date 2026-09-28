@@ -1,7 +1,7 @@
-import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
-import { CategoryType } from "@/core/entities/category.entity";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import type { CategoryType } from "@/core/entities/category.entity";
+import type { ICategoryRepository } from "@/core/repositories/category.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetCategoriesUseCase {
     constructor(private categoryRepository: ICategoryRepository) {}
@@ -19,20 +19,14 @@ export class GetCategoriesUseCase {
             type,
         );
 
-        return Success(
-            result.categories,
-            "Categories retrieved successfully",
-            {
-                pagination: {
-                    page: page || 1,
-                    limit: limit || result.categories.length,
-                    total: result.total,
-                    totalPages: limit
-                        ? Math.ceil(result.total / limit)
-                        : 1,
-                },
+        return Success(result.categories, "Categories retrieved successfully", {
+            pagination: {
+                page: page || 1,
+                limit: limit || result.categories.length,
+                total: result.total,
+                totalPages: limit ? Math.ceil(result.total / limit) : 1,
             },
-        );
+        });
     }
 
     async executeById(tenantId: string, id: string): Promise<UseCaseResult> {

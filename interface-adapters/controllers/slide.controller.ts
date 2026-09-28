@@ -1,15 +1,15 @@
-import { Request, Response } from "express";
-import { CreateSlideUseCase } from "@/core/application/slide/create-slide.use-case";
-import { UpdateSlideUseCase } from "@/core/application/slide/update-slide.use-case";
-import { GetSlidesUseCase } from "@/core/application/slide/get-slides.use-case";
-import { DeleteSlideUseCase } from "@/core/application/slide/delete-slide.use-case";
-import { GetSliderStatsUseCase } from "@/core/application/slide/get-slider-stats.use-case";
-import { SlideResponse } from "@/core/application/dtos/responses/slide/slide.response";
-import { present } from "@/core/utils/use-case-result";
-import {
+import type { Request, Response } from "express";
+import type {
     CreateSlideshowDTO,
     UpdateSlideshowDTO,
 } from "@/core/application/dtos/requests/slide.request";
+import { SlideResponse } from "@/core/application/dtos/responses/slide/slide.response";
+import type { CreateSlideUseCase } from "@/core/application/slide/create-slide.use-case";
+import type { DeleteSlideUseCase } from "@/core/application/slide/delete-slide.use-case";
+import type { GetSliderStatsUseCase } from "@/core/application/slide/get-slider-stats.use-case";
+import type { GetSlidesUseCase } from "@/core/application/slide/get-slides.use-case";
+import type { UpdateSlideUseCase } from "@/core/application/slide/update-slide.use-case";
+import { present } from "@/core/utils/use-case-result";
 
 export class SlideController {
     constructor(

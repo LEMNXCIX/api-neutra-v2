@@ -1,17 +1,17 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
 import {
-    IUserRepository,
-    FindUserOptions,
-    UserCreateData,
-} from "@/core/repositories/user.repository.interface";
-import { User, UserTenant } from "@/core/entities/user.entity";
-import { Role } from "@/core/entities/role.entity";
-import { Permission } from "@/core/entities/permission.entity";
-import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Permission } from "@/core/entities/permission.entity";
+import type { Role } from "@/core/entities/role.entity";
+import type { User, UserTenant } from "@/core/entities/user.entity";
+import type {
+    FindUserOptions,
+    IUserRepository,
+    UserCreateData,
+} from "@/core/repositories/user.repository.interface";
 
 interface PrismaTenantRelation {
     id: string;
@@ -334,9 +334,7 @@ export class PrismaUserRepository implements IUserRepository {
      * the column as plaintext; the only flow that legitimately writes it,
      * `reset-password`, hashes first and goes through the global path.
      */
-    private buildTenantUpdateData(
-        data: Partial<User>,
-    ): Prisma.UserUpdateInput {
+    private buildTenantUpdateData(data: Partial<User>): Prisma.UserUpdateInput {
         const updateData: Prisma.UserUpdateInput = {};
         if (data.name !== undefined) updateData.name = data.name;
         if (data.email !== undefined) updateData.email = data.email;

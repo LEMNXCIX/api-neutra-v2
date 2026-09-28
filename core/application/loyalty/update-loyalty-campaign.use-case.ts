@@ -1,10 +1,13 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import type { UpdateLoyaltyCampaignDTO } from "@/core/application/dtos/requests/loyalty.request";
 import {
-    LoyaltyCampaign,
-    LoyaltyCampaignStatus,
-} from "@/core/entities/loyalty.entity";
+    loadLoyaltyCampaignTenant,
+    toLoyaltyCampaignDate,
+    toLoyaltyRewardDefinition,
+} from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import {
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
 import {
     assertLoyaltyCampaignDraft,
     assertLoyaltyCampaignSourceCompatible,
@@ -14,17 +17,16 @@ import {
     isValidLoyaltyRewardValidDays,
 } from "@/core/domain/loyalty/loyalty.policy";
 import {
-    EntityNotFoundError,
-    ValidationError,
-} from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { UpdateLoyaltyCampaignDTO } from "@/core/application/dtos/requests/loyalty.request";
-import { UpdateLoyaltyCampaignData } from "@/core/repositories/loyalty.repository.interface";
-import {
-    loadLoyaltyCampaignTenant,
-    toLoyaltyCampaignDate,
-    toLoyaltyRewardDefinition,
-} from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+    type LoyaltyCampaign,
+    LoyaltyCampaignStatus,
+} from "@/core/entities/loyalty.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type {
+    ILoyaltyRepository,
+    UpdateLoyaltyCampaignData,
+} from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class UpdateLoyaltyCampaignUseCase {

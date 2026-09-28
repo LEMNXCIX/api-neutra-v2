@@ -1,5 +1,5 @@
-import { Order, OrderStatus } from "@/core/entities/order.entity";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import type { Order, OrderStatus } from "@/core/entities/order.entity";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
 export function canTransitionTo(
@@ -29,10 +29,7 @@ export function assertCartStockAvailable(input: {
     totalQuantity: number;
 }): void {
     if (input.stock < input.totalQuantity) {
-        const availableToAdd = Math.max(
-            0,
-            input.stock - input.cartQuantity,
-        );
+        const availableToAdd = Math.max(0, input.stock - input.cartQuantity);
         throw new BusinessRuleViolationError(
             input.cartQuantity > 0
                 ? `Cannot add ${input.requestedQuantity} items. Only ${availableToAdd} more available (${input.stock} total stock, ${input.cartQuantity} already in cart)`

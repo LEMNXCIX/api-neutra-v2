@@ -1,4 +1,5 @@
 import { prisma } from "@/config/db.config";
+import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 import { CouponType } from "@/core/entities/coupon.entity";
 import {
     LoyaltyCampaignMetric,
@@ -6,7 +7,6 @@ import {
     LoyaltyCampaignStatus,
 } from "@/core/entities/loyalty.entity";
 import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
-import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 import { LoyaltyErrorCodes } from "@/types/error-codes";
 
 /**
@@ -66,14 +66,27 @@ async function buildTenantCampaigns(): Promise<{
     };
 
     const active = await prisma.loyaltyCampaign.create({
-        data: { ...shared, name: "Already running", status: LoyaltyCampaignStatus.ACTIVE },
+        data: {
+            ...shared,
+            name: "Already running",
+            status: LoyaltyCampaignStatus.ACTIVE,
+        },
         select: { id: true },
     });
     const draft = await prisma.loyaltyCampaign.create({
-        data: { ...shared, name: "Waiting", status: LoyaltyCampaignStatus.DRAFT },
+        data: {
+            ...shared,
+            name: "Waiting",
+            status: LoyaltyCampaignStatus.DRAFT,
+        },
         select: { id: true },
     });
-    return { tenantId: tenant.id, templateId: template.id, activeId: active.id, draftId: draft.id };
+    return {
+        tenantId: tenant.id,
+        templateId: template.id,
+        activeId: active.id,
+        draftId: draft.id,
+    };
 }
 
 async function cleanTenant(tenantId: string): Promise<void> {

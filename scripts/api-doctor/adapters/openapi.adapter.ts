@@ -1,8 +1,5 @@
-import { runCommand, type CommandRunner } from "./command.adapter";
-import type {
-    CheckRunResult,
-    DoctorContext,
-} from "../domain/check-result";
+import type { CheckRunResult, DoctorContext } from "../domain/check-result";
+import { type CommandRunner, runCommand } from "./command.adapter";
 
 const ARTIFACT_TIMEOUT_MS = 180_000;
 
@@ -39,11 +36,14 @@ export function createProductionArtifactCheck(
             return verification.exitCode === 0
                 ? {
                       status: "PASS",
-                      message: "Production artifact and OpenAPI verification passed",
+                      message:
+                          "Production artifact and OpenAPI verification passed",
                   }
                 : failed("Production artifact verification failed");
         } catch {
-            return failed("Production artifact verification could not be executed");
+            return failed(
+                "Production artifact verification could not be executed",
+            );
         }
     };
 }

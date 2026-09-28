@@ -1,4 +1,4 @@
-import {
+import type {
     INotificationProvider,
     NotificationMessage,
 } from "@/core/ports/notification-provider.interface";
@@ -8,7 +8,9 @@ export class NotificationService {
 
     constructor(providers: INotificationProvider[]) {
         this.providers = new Map();
-        providers.forEach((p) => this.registerProvider(p));
+        providers.forEach((p) => {
+            this.registerProvider(p);
+        });
     }
 
     private registerProvider(provider: INotificationProvider) {

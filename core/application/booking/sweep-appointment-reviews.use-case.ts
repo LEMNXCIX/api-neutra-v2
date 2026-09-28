@@ -1,8 +1,8 @@
-import { AppointmentStatus } from "@/core/entities/appointment.entity";
-import { IConfigProvider } from "@/core/providers/config-provider.interface";
-import { ILogger } from "@/core/providers/logger.interface";
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
 import { canSystemFlagForReview } from "@/core/domain/appointment/appointment.policy";
+import { AppointmentStatus } from "@/core/entities/appointment.entity";
+import type { IConfigProvider } from "@/core/providers/config-provider.interface";
+import type { ILogger } from "@/core/providers/logger.interface";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
 import { formatInstantInTenantTimezone } from "@/core/utils/tenant-time";
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
@@ -146,16 +146,19 @@ export class SweepAppointmentReviewsUseCase {
 
             if (!updated) {
                 conflicts += 1;
-                this.logger.info("Appointment review sweep skipped a conflict", {
-                    appointmentId: candidate.id,
-                    tenantId: candidate.tenantId,
-                    expectedStatus: candidate.status,
-                    tenantEndTime: formatInstantInTenantTimezone(
-                        candidate.endTime,
-                        candidate.tenantTimezone,
-                    ),
-                    timezone: candidate.tenantTimezone ?? "UTC",
-                });
+                this.logger.info(
+                    "Appointment review sweep skipped a conflict",
+                    {
+                        appointmentId: candidate.id,
+                        tenantId: candidate.tenantId,
+                        expectedStatus: candidate.status,
+                        tenantEndTime: formatInstantInTenantTimezone(
+                            candidate.endTime,
+                            candidate.tenantTimezone,
+                        ),
+                        timezone: candidate.tenantTimezone ?? "UTC",
+                    },
+                );
                 continue;
             }
 

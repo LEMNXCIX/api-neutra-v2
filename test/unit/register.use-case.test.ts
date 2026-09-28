@@ -34,9 +34,11 @@ function setup(options?: {
     passwordMatches?: boolean;
 }) {
     const userRepository = {
-        findByEmail: jest.fn().mockResolvedValue(
-            options?.user === undefined ? existingUser : options.user,
-        ),
+        findByEmail: jest
+            .fn()
+            .mockResolvedValue(
+                options?.user === undefined ? existingUser : options.user,
+            ),
         create: jest.fn(),
         findById: jest.fn().mockResolvedValue(userWithSuperadminMembership),
         addTenant: jest.fn().mockResolvedValue(undefined),

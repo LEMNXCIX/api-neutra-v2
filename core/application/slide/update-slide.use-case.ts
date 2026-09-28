@@ -1,9 +1,9 @@
-import {
+import type { UpdateSlideshowDTO } from "@/core/application/dtos/requests/slide.request";
+import type {
     ISlideRepository,
     SlideshowUpdateData,
 } from "@/core/repositories/slide.repository.interface";
-import { UpdateSlideshowDTO } from "@/core/application/dtos/requests/slide.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class UpdateSlideUseCase {
     constructor(private slideRepository: ISlideRepository) {}
@@ -19,11 +19,7 @@ export class UpdateSlideUseCase {
             desc: data.desc,
             active: data.active,
         };
-        const slide = await this.slideRepository.update(
-            tenantId,
-            id,
-            repoData,
-        );
+        const slide = await this.slideRepository.update(tenantId, id, repoData);
         return Success(slide, "Slide actualizado");
     }
 }

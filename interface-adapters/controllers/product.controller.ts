@@ -1,20 +1,19 @@
-import { Request, Response } from "express";
-import { GetAllProductsUseCase } from "@/core/application/products/get-all-products.use-case";
-import { GetProductUseCase } from "@/core/application/products/get-product.use-case";
-import { CreateProductUseCase } from "@/core/application/products/create-product.use-case";
-import { UpdateProductUseCase } from "@/core/application/products/update-product.use-case";
-import { DeleteProductUseCase } from "@/core/application/products/delete-product.use-case";
-import { SearchProductsUseCase } from "@/core/application/products/search-products.use-case";
-import { GetProductStatsUseCase } from "@/core/application/products/get-product-stats.use-case";
-import { GetProductSummaryStatsUseCase } from "@/core/application/products/get-product-summary-stats.use-case";
-
-import { ProductResponse } from "@/core/application/dtos/responses/product/product.response";
-import { present } from "@/core/utils/use-case-result";
-import {
+import type { Request, Response } from "express";
+import type {
     CreateProductDto,
     SearchProductDto,
     UpdateProductDTO,
 } from "@/core/application/dtos/requests/product.request";
+import { ProductResponse } from "@/core/application/dtos/responses/product/product.response";
+import type { CreateProductUseCase } from "@/core/application/products/create-product.use-case";
+import type { DeleteProductUseCase } from "@/core/application/products/delete-product.use-case";
+import type { GetAllProductsUseCase } from "@/core/application/products/get-all-products.use-case";
+import type { GetProductUseCase } from "@/core/application/products/get-product.use-case";
+import type { GetProductStatsUseCase } from "@/core/application/products/get-product-stats.use-case";
+import type { GetProductSummaryStatsUseCase } from "@/core/application/products/get-product-summary-stats.use-case";
+import type { SearchProductsUseCase } from "@/core/application/products/search-products.use-case";
+import type { UpdateProductUseCase } from "@/core/application/products/update-product.use-case";
+import { present } from "@/core/utils/use-case-result";
 
 export class ProductController {
     constructor(

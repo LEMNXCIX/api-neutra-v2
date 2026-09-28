@@ -1,4 +1,4 @@
-import { Feature } from "../entities/feature.entity";
+import type { Feature } from "../entities/feature.entity";
 
 export interface FeatureCreateData {
     key: string;

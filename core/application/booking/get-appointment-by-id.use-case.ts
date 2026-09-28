@@ -1,6 +1,6 @@
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetAppointmentByIdUseCase {
     constructor(private appointmentRepository: IAppointmentRepository) {}

@@ -1,9 +1,12 @@
-import { Application, Router } from 'express';
-import type { RequestHandler } from 'express';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { validateDto } from '@/middleware/validation.middleware';
-import { CreateRoleDto, UpdateRoleDto } from '@/core/application/dtos/requests/role.request';
-import { RoleController } from '@/interface-adapters/controllers/role.controller';
+import type { RequestHandler } from "express";
+import { type Application, Router } from "express";
+import {
+    CreateRoleDto,
+    UpdateRoleDto,
+} from "@/core/application/dtos/requests/role.request";
+import type { RoleController } from "@/interface-adapters/controllers/role.controller";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function roleRoutes(
     app: Application,
@@ -11,7 +14,7 @@ function roleRoutes(
     authenticate: RequestHandler,
 ) {
     const router = Router();
-    app.use('/api/roles', router);
+    app.use("/api/roles", router);
 
     /**
      * @swagger
@@ -60,7 +63,12 @@ function roleRoutes(
      *       403:
      *         description: Forbidden
      */
-    router.get('/', authenticate, requirePermission('roles:read'), roleController.getAll);
+    router.get(
+        "/",
+        authenticate,
+        requirePermission("roles:read"),
+        roleController.getAll,
+    );
 
     /**
      * @swagger
@@ -86,7 +94,12 @@ function roleRoutes(
      *       404:
      *         description: Role not found
      */
-    router.get('/:id', authenticate, requirePermission('roles:read'), roleController.getById);
+    router.get(
+        "/:id",
+        authenticate,
+        requirePermission("roles:read"),
+        roleController.getById,
+    );
 
     /**
      * @swagger
@@ -117,7 +130,13 @@ function roleRoutes(
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('roles:write'), validateDto(CreateRoleDto), roleController.create);
+    router.post(
+        "/",
+        authenticate,
+        requirePermission("roles:write"),
+        validateDto(CreateRoleDto),
+        roleController.create,
+    );
 
     /**
      * @swagger
@@ -156,7 +175,13 @@ function roleRoutes(
      *       404:
      *         description: Role not found
      */
-    router.put('/:id', authenticate, requirePermission('roles:write'), validateDto(UpdateRoleDto), roleController.update);
+    router.put(
+        "/:id",
+        authenticate,
+        requirePermission("roles:write"),
+        validateDto(UpdateRoleDto),
+        roleController.update,
+    );
 
     /**
      * @swagger
@@ -180,7 +205,12 @@ function roleRoutes(
      *       404:
      *         description: Role not found
      */
-    router.delete('/:id', authenticate, requirePermission('roles:delete'), roleController.delete);
+    router.delete(
+        "/:id",
+        authenticate,
+        requirePermission("roles:delete"),
+        roleController.delete,
+    );
 }
 
 export default roleRoutes;

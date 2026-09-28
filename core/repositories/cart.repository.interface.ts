@@ -1,4 +1,4 @@
-import { Cart, CartItem } from "@/core/entities/cart.entity";
+import type { Cart, CartItem } from "@/core/entities/cart.entity";
 
 export interface CartStats {
     yearMonth: string;

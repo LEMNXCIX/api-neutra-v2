@@ -1,5 +1,5 @@
-import { IServiceRepository } from "@/core/repositories/service.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { IServiceRepository } from "@/core/repositories/service.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetServicesUseCase {
     constructor(private serviceRepository: IServiceRepository) {}

@@ -1,10 +1,8 @@
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import { type Coupon, CouponType } from "@/core/entities/coupon.entity";
 import { BusinessErrorCodes, LoyaltyErrorCodes } from "@/types/error-codes";
 
-export function isPersonalCoupon(
-    coupon: { ownerId?: string | null },
-): boolean {
+export function isPersonalCoupon(coupon: { ownerId?: string | null }): boolean {
     return coupon.ownerId !== undefined && coupon.ownerId !== null;
 }
 
@@ -15,9 +13,7 @@ export function isCouponOwnedBy(
     return !isPersonalCoupon(coupon) || coupon.ownerId === userId;
 }
 
-export function isRewardCoupon(
-    coupon: Pick<Coupon, "isReward">,
-): boolean {
+export function isRewardCoupon(coupon: Pick<Coupon, "isReward">): boolean {
     return coupon.isReward === true;
 }
 
@@ -65,9 +61,7 @@ type StoredCoupon = Omit<RedeemableCoupon, "usageLimit"> & {
     usageLimit?: number | null;
 };
 
-export function toRedeemableCoupon(
-    coupon: StoredCoupon,
-): RedeemableCoupon {
+export function toRedeemableCoupon(coupon: StoredCoupon): RedeemableCoupon {
     return { ...coupon, usageLimit: coupon.usageLimit ?? undefined };
 }
 

@@ -1,4 +1,4 @@
-import { Request } from "express";
+import type { Request } from "express";
 import { AUTH_CONSTANTS } from "@/core/domain/constants";
 
 /**

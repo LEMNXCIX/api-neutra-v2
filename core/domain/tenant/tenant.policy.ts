@@ -1,4 +1,4 @@
-import { Tenant, TenantType } from "@/core/entities/tenant.entity";
+import { type Tenant, TenantType } from "@/core/entities/tenant.entity";
 
 /** HYBRID satisfies both capabilities, so it is true for both predicates. */
 export function isBookingType(tenant: Pick<Tenant, "type">): boolean {

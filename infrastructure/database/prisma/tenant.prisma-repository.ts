@@ -1,15 +1,15 @@
-import { Tenant as PrismaTenant, Prisma } from "@prisma/client";
+import { Prisma, type Tenant as PrismaTenant } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import {
-    Tenant,
-    TenantType,
-    TenantConfig,
-} from "@/core/entities/tenant.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import {
+    type Tenant,
+    type TenantConfig,
+    TenantType,
+} from "@/core/entities/tenant.entity";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 
 /**
  * Prisma's TenantType and the domain enum are declared separately (core/ may
@@ -30,8 +30,6 @@ function toTenantType(value: string): TenantType {
 
 export class TenantPrismaRepository implements ITenantRepository {
     private prisma = prisma;
-
-    constructor() {}
 
     private toEntity(data: PrismaTenant): Tenant {
         return {

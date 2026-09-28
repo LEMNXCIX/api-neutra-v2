@@ -1,12 +1,10 @@
+import { prisma } from "@/config/db.config";
 import { ChangeOrderStatusUseCase } from "@/core/application/order/change-order-status.use-case";
 import { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
-import { Order, OrderStatus } from "@/core/entities/order.entity";
-import { IOrderRepository } from "@/core/repositories/order.repository.interface";
-import { prisma } from "@/config/db.config";
+import type { Order, OrderStatus } from "@/core/entities/order.entity";
+import type { IOrderRepository } from "@/core/repositories/order.repository.interface";
 import { PrismaOrderRepository } from "@/infrastructure/database/prisma/order.prisma-repository";
-import {
-    BusinessErrorCodes,
-} from "@/types/error-codes";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 function order(status: OrderStatus): Order {
     return {
@@ -174,8 +172,7 @@ function deliverOrder() {
 
 describe("ChangeOrderStatusUseCase", () => {
     test("guards delivery and requests loyalty qualification when enabled", async () => {
-        const { useCase, orderRepository, featureRepository } =
-            statusUseCase();
+        const { useCase, orderRepository, featureRepository } = statusUseCase();
 
         const result = await useCase.execute(
             "tenant-1",
@@ -199,8 +196,7 @@ describe("ChangeOrderStatusUseCase", () => {
     });
 
     test("does not qualify delivery when LOYALTY is disabled", async () => {
-        const { useCase, orderRepository, featureRepository } =
-            statusUseCase();
+        const { useCase, orderRepository, featureRepository } = statusUseCase();
         featureRepository.getTenantFeatureStatus.mockResolvedValue({
             LOYALTY: false,
         });
@@ -214,9 +210,8 @@ describe("ChangeOrderStatusUseCase", () => {
     });
 
     test("does not look up loyalty for non-delivery transitions", async () => {
-        const { useCase, orderRepository, featureRepository } = statusUseCase(
-            "PAGADO",
-        );
+        const { useCase, orderRepository, featureRepository } =
+            statusUseCase("PAGADO");
         orderRepository.updateStatus.mockResolvedValue(order("ENVIADO"));
 
         await useCase.execute("tenant-1", "order-1", "ENVIADO");
@@ -229,9 +224,7 @@ describe("ChangeOrderStatusUseCase", () => {
                 status: "ENVIADO",
             },
         );
-        expect(
-            featureRepository.getTenantFeatureStatus,
-        ).not.toHaveBeenCalled();
+        expect(featureRepository.getTenantFeatureStatus).not.toHaveBeenCalled();
     });
 
     test("reports a conflict when the expected delivery state is stale", async () => {
@@ -240,7 +233,9 @@ describe("ChangeOrderStatusUseCase", () => {
 
         await expect(
             useCase.execute("tenant-1", "order-1", "ENTREGADO"),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.ORDER_STATUS_CONFLICT });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.ORDER_STATUS_CONFLICT,
+        });
     });
 });
 
@@ -383,9 +378,9 @@ describe("UpdateOrderUseCase", () => {
             },
         );
         expect(orderRepository.update).not.toHaveBeenCalled();
-        expect(
-            featureRepository.getTenantFeatureStatus,
-        ).toHaveBeenCalledWith("tenant-1");
+        expect(featureRepository.getTenantFeatureStatus).toHaveBeenCalledWith(
+            "tenant-1",
+        );
         expect(result.success).toBe(true);
     });
 
@@ -397,12 +392,12 @@ describe("UpdateOrderUseCase", () => {
             useCase.execute("tenant-1", "order-1", {
                 status: "ENTREGADO",
             }),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.INVALID_STATUS_TRANSITION });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.INVALID_STATUS_TRANSITION,
+        });
         expect(orderRepository.updateStatus).not.toHaveBeenCalled();
         expect(orderRepository.update).not.toHaveBeenCalled();
-        expect(
-            featureRepository.getTenantFeatureStatus,
-        ).not.toHaveBeenCalled();
+        expect(featureRepository.getTenantFeatureStatus).not.toHaveBeenCalled();
     });
 
     test("keeps tracking-only updates on the repository update path", async () => {
@@ -437,22 +432,15 @@ describe("Prisma order loyalty delivery edge cases", () => {
             deliveredOrderRow() as never,
         );
         const featureLookup = mockCommittedLoyaltyFeature(false);
-        const campaignLookup = jest.spyOn(
-            prisma.loyaltyCampaign,
-            "findFirst",
-        );
+        const campaignLookup = jest.spyOn(prisma.loyaltyCampaign, "findFirst");
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
         await expect(
-            new PrismaOrderRepository().updateStatus(
-                "tenant-1",
-                "order-1",
-                {
-                    expectedStatus: "ENVIADO",
-                    status: "ENTREGADO",
-                    qualifyLoyalty: true,
-                },
-            ),
+            new PrismaOrderRepository().updateStatus("tenant-1", "order-1", {
+                expectedStatus: "ENVIADO",
+                status: "ENTREGADO",
+                qualifyLoyalty: true,
+            }),
         ).resolves.toMatchObject({ status: "ENTREGADO" });
 
         expect(transaction).toHaveBeenCalledTimes(1);
@@ -472,20 +460,14 @@ describe("Prisma order loyalty delivery edge cases", () => {
             deliveredOrderRow() as never,
         );
         mockCommittedLoyaltyFeature();
-        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue(
-            null,
-        );
+        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue(null);
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
-        await new PrismaOrderRepository().updateStatus(
-            "tenant-1",
-            "order-1",
-            {
-                expectedStatus: "ENVIADO",
-                status: "ENTREGADO",
-                qualifyLoyalty: true,
-            },
-        );
+        await new PrismaOrderRepository().updateStatus("tenant-1", "order-1", {
+            expectedStatus: "ENVIADO",
+            status: "ENTREGADO",
+            qualifyLoyalty: true,
+        });
 
         expect(upsert).not.toHaveBeenCalled();
     });
@@ -537,22 +519,15 @@ describe("Prisma order loyalty delivery edge cases", () => {
         );
         jest.spyOn(prisma.order, "updateMany").mockResolvedValue({ count: 0 });
         const findFirst = jest.spyOn(prisma.order, "findFirst");
-        const campaignLookup = jest.spyOn(
-            prisma.loyaltyCampaign,
-            "findFirst",
-        );
+        const campaignLookup = jest.spyOn(prisma.loyaltyCampaign, "findFirst");
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
         await expect(
-            new PrismaOrderRepository().updateStatus(
-                "tenant-1",
-                "order-1",
-                {
-                    expectedStatus: "ENVIADO",
-                    status: "ENTREGADO",
-                    qualifyLoyalty: true,
-                },
-            ),
+            new PrismaOrderRepository().updateStatus("tenant-1", "order-1", {
+                expectedStatus: "ENVIADO",
+                status: "ENTREGADO",
+                qualifyLoyalty: true,
+            }),
         ).resolves.toBeNull();
         expect(findFirst).not.toHaveBeenCalled();
         expect(campaignLookup).not.toHaveBeenCalled();
@@ -580,15 +555,11 @@ describe("Prisma order loyalty delivery edge cases", () => {
         );
 
         await expect(
-            new PrismaOrderRepository().updateStatus(
-                "tenant-1",
-                "order-1",
-                {
-                    expectedStatus: "ENVIADO",
-                    status: "ENTREGADO",
-                    qualifyLoyalty: true,
-                },
-            ),
+            new PrismaOrderRepository().updateStatus("tenant-1", "order-1", {
+                expectedStatus: "ENVIADO",
+                status: "ENTREGADO",
+                qualifyLoyalty: true,
+            }),
         ).rejects.toBe(error);
     });
 });
@@ -707,8 +678,14 @@ describe("Prisma order campaign selection", () => {
     });
 
     test.each([
-        ["a window that ended before the event", new Date("2029-12-31T00:00:00.000Z")],
-        ["a window that starts after the event", new Date("2030-06-01T00:00:00.000Z")],
+        [
+            "a window that ended before the event",
+            new Date("2029-12-31T00:00:00.000Z"),
+        ],
+        [
+            "a window that starts after the event",
+            new Date("2030-06-01T00:00:00.000Z"),
+        ],
     ])("accrues nowhere into %s", async (_label, bound) => {
         const { upsert } = givenCommittedDelivery([
             campaignRow({
@@ -717,9 +694,10 @@ describe("Prisma order campaign selection", () => {
                     bound.getTime() > eventAt.getTime()
                         ? bound
                         : new Date("2029-01-01T00:00:00.000Z"),
-                endsAt: bound.getTime() > eventAt.getTime()
-                    ? new Date("2030-12-31T00:00:00.000Z")
-                    : bound,
+                endsAt:
+                    bound.getTime() > eventAt.getTime()
+                        ? new Date("2030-12-31T00:00:00.000Z")
+                        : bound,
             }),
         ]);
 

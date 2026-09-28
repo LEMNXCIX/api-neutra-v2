@@ -1,10 +1,7 @@
 import {
-    LoyaltyCampaign,
-    LoyaltyCampaignCustomerSummary,
-    LoyaltyCampaignProgress,
-    LoyaltyCampaignRewardClaim,
-    LoyaltyCampaignStatus,
-} from "@/core/entities/loyalty.entity";
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
 import {
     assertLoyaltyCampaignFeatures,
     getEffectiveLoyaltyCampaignStatus,
@@ -12,14 +9,17 @@ import {
     getLoyaltyCampaignProgressValue,
     getLoyaltyCampaignRemainingValue,
 } from "@/core/domain/loyalty/loyalty.policy";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
 import {
-    EntityNotFoundError,
-    ValidationError,
-} from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+    type LoyaltyCampaign,
+    type LoyaltyCampaignCustomerSummary,
+    type LoyaltyCampaignProgress,
+    type LoyaltyCampaignRewardClaim,
+    LoyaltyCampaignStatus,
+} from "@/core/entities/loyalty.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationErrorCodes } from "@/types/error-codes";
 
 function validateIdentity(...values: string[]): void {
@@ -164,9 +164,8 @@ export class GetCustomerLoyaltySummaryUseCase {
         validateIdentity(tenantId, userId);
         await this.assertTenantAccess(tenantId);
         const now = new Date();
-        const allCampaigns = await this.loyaltyRepository.listCampaigns(
-            tenantId,
-        );
+        const allCampaigns =
+            await this.loyaltyRepository.listCampaigns(tenantId);
         // A DRAFT campaign is invisible, and an ARCHIVED one only exists for a
         // customer who already claimed it. Both are dropped before any ledger
         // or claim read, so neither costs a query.
@@ -202,8 +201,7 @@ export class GetCustomerLoyaltySummaryUseCase {
             await Promise.all(
                 visible.map((campaign) => {
                     if (
-                        campaign.status ===
-                            LoyaltyCampaignStatus.ARCHIVED &&
+                        campaign.status === LoyaltyCampaignStatus.ARCHIVED &&
                         !claimByCampaign.has(campaign.id)
                     ) {
                         return null;
@@ -213,8 +211,7 @@ export class GetCustomerLoyaltySummaryUseCase {
                     // up, fetch it" signal that would send us back to the
                     // database.
                     const knownClaim =
-                        campaign.status ===
-                        LoyaltyCampaignStatus.ARCHIVED
+                        campaign.status === LoyaltyCampaignStatus.ARCHIVED
                             ? (claimByCampaign.get(campaign.id) ?? null)
                             : null;
                     return buildLoyaltyCampaignCustomerSummary(
@@ -225,8 +222,7 @@ export class GetCustomerLoyaltySummaryUseCase {
                         now,
                         knownClaim,
                         progressByCampaign.find(
-                            (progress) =>
-                                progress.campaignId === campaign.id,
+                            (progress) => progress.campaignId === campaign.id,
                         ),
                     );
                 }),

@@ -1,4 +1,3 @@
-import { CouponType } from "@/core/entities/coupon.entity";
 import {
     IsArray,
     IsBoolean,
@@ -10,6 +9,7 @@ import {
     IsString,
     Min,
 } from "class-validator";
+import { CouponType } from "@/core/entities/coupon.entity";
 
 export interface CreateCouponDTO {
     code: string;

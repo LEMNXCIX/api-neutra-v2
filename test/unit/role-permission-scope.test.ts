@@ -47,12 +47,12 @@ jest.mock("@/config/db.config", () => {
 });
 
 import { prisma } from "@/config/db.config";
-import { PrismaRoleRepository } from "@/infrastructure/database/prisma/role.prisma-repository";
-import { RoleController } from "@/interface-adapters/controllers/role.controller";
 import { CreateRoleUseCase } from "@/core/application/roles/create-role.use-case";
 import { ForbiddenError } from "@/core/domain/errors/domain-errors";
+import type { Role } from "@/core/entities/role.entity";
 import { Success } from "@/core/utils/use-case-result";
-import { Role } from "@/core/entities/role.entity";
+import { PrismaRoleRepository } from "@/infrastructure/database/prisma/role.prisma-repository";
+import { RoleController } from "@/interface-adapters/controllers/role.controller";
 
 const TENANT = "tenant-attacker";
 const VICTIM_TENANT = "tenant-victim";
@@ -143,8 +143,9 @@ function setup() {
             where?.id ? roleRow() : null,
     );
     prismaDb.role.findUnique.mockResolvedValue(roleRow());
-    prismaDb.role.create.mockImplementation(async ({ data }: { data: { name: string } }) =>
-        roleRow({ name: data.name }),
+    prismaDb.role.create.mockImplementation(
+        async ({ data }: { data: { name: string } }) =>
+            roleRow({ name: data.name }),
     );
     prismaDb.role.update.mockResolvedValue(roleRow());
     prismaDb.role.updateMany.mockResolvedValue({ count: 1 });
@@ -152,19 +153,26 @@ function setup() {
     prismaDb.rolePermission.create.mockResolvedValue({});
     prismaDb.rolePermission.createMany.mockResolvedValue({ count: 0 });
     prismaDb.rolePermission.deleteMany.mockResolvedValue({ count: 0 });
-    prismaDb.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) =>
-        callback({
-            permission: prismaDb.permission,
-            role: prismaDb.role,
-            rolePermission: prismaDb.rolePermission,
-        }),
+    prismaDb.$transaction.mockImplementation(
+        async (callback: (tx: unknown) => unknown) =>
+            callback({
+                permission: prismaDb.permission,
+                role: prismaDb.role,
+                rolePermission: prismaDb.rolePermission,
+            }),
     );
 
     return new PrismaRoleRepository();
 }
 
 /** The nested `create` rows Prisma would turn into `role_permissions`. */
-function connectedIds(call: { data: { permissions?: { create: Array<{ permission: { connect: { id: string } } }> } } }) {
+function connectedIds(call: {
+    data: {
+        permissions?: {
+            create: Array<{ permission: { connect: { id: string } } }>;
+        };
+    };
+}) {
     return (call.data.permissions?.create ?? []).map(
         (entry) => entry.permission.connect.id,
     );
@@ -278,7 +286,9 @@ describe("PrismaRoleRepository.create — permission scope", () => {
         await repository.create(TENANT, { name: "EDITOR" });
 
         expect(prismaDb.permission.findMany).not.toHaveBeenCalled();
-        expect(prismaDb.role.create.mock.calls[0][0].data.permissions).toBeUndefined();
+        expect(
+            prismaDb.role.create.mock.calls[0][0].data.permissions,
+        ).toBeUndefined();
     });
 });
 
@@ -416,7 +426,9 @@ describe("the two remaining write sites", () => {
         });
 
         expect(prismaDb.permission.findMany).not.toHaveBeenCalled();
-        expect(prismaDb.role.create.mock.calls[0][0].data.permissions).toBeUndefined();
+        expect(
+            prismaDb.role.create.mock.calls[0][0].data.permissions,
+        ).toBeUndefined();
     });
 
     test("assignPermission writes a permission of the acting tenant's scope", async () => {
@@ -482,18 +494,29 @@ const UNRECOGNISED = {
 describe("RoleController narrowing", () => {
     const filler = { execute: jest.fn() } as never;
     const controllerWith = (create: unknown, update: unknown) =>
-        new RoleController(create as never, filler, update as never, filler, filler);
+        new RoleController(
+            create as never,
+            filler,
+            update as never,
+            filler,
+            filler,
+        );
 
     test("create hands the use case only the five narrowed fields", async () => {
         const create = {
             execute: jest
                 .fn()
-                .mockResolvedValue(Success(entityRole(), "Role created successfully")),
+                .mockResolvedValue(
+                    Success(entityRole(), "Role created successfully"),
+                ),
         };
         const res = resStub();
 
         await controllerWith(create, filler).create(
-            { tenantId: TENANT, body: { ...DTO_FIELDS, ...UNRECOGNISED } } as never,
+            {
+                tenantId: TENANT,
+                body: { ...DTO_FIELDS, ...UNRECOGNISED },
+            } as never,
             res as never,
         );
 
@@ -510,7 +533,9 @@ describe("RoleController narrowing", () => {
         const update = {
             execute: jest
                 .fn()
-                .mockResolvedValue(Success(entityRole(), "Role updated successfully")),
+                .mockResolvedValue(
+                    Success(entityRole(), "Role updated successfully"),
+                ),
         };
         const res = resStub();
 

@@ -1,16 +1,12 @@
 jest.mock("@/config/db.config", () => ({ prisma: {} }));
 
-import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
 import { CreateTenantUseCase } from "@/core/application/tenant/create-tenant.use-case";
 import { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
 import { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-tenant-features.use-case";
-import {
-    assertTenantFeatureDependencies,
-} from "@/core/domain/feature/feature.policy";
+import { assertTenantFeatureDependencies } from "@/core/domain/feature/feature.policy";
 import { TenantType } from "@/core/entities/tenant.entity";
-import {
-    BusinessErrorCodes,
-} from "@/types/error-codes";
+import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 function createUseCase() {
     const tenantRepository = {
@@ -20,12 +16,16 @@ function createUseCase() {
             ...data,
         })),
     };
-    const userRepository = { addTenant: jest.fn().mockResolvedValue(undefined) };
+    const userRepository = {
+        addTenant: jest.fn().mockResolvedValue(undefined),
+    };
     const roleRepository = {
-        createWithPermissions: jest.fn().mockImplementation(async (_id, data) => ({
-            id: `role-${data.name}`,
-            ...data,
-        })),
+        createWithPermissions: jest
+            .fn()
+            .mockImplementation(async (_id, data) => ({
+                id: `role-${data.name}`,
+                ...data,
+            })),
     };
     const permissionRepository = {
         upsertByName: jest.fn().mockImplementation(async (_id, name) => ({
@@ -146,7 +146,9 @@ describe("tenant feature dependency policy", () => {
                 },
                 "creator-1",
             ),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS,
+        });
         expect(tenantRepository.create).not.toHaveBeenCalled();
     });
 
@@ -179,11 +181,11 @@ describe("tenant feature dependency policy", () => {
             useCase.execute("tenant-1", {
                 config: { features: { LOYALTY: true, COUPONS: false } },
             }),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.LOYALTY_REQUIRES_COUPONS,
+        });
         expect(tenantRepository.update).not.toHaveBeenCalled();
-        expect(
-            featureRepository.updateTenantFeatures,
-        ).not.toHaveBeenCalled();
+        expect(featureRepository.updateTenantFeatures).not.toHaveBeenCalled();
     });
 
     test("update blocks disabling a dependency while obligations remain", async () => {
@@ -196,10 +198,12 @@ describe("tenant feature dependency policy", () => {
             useCase.execute("tenant-1", {
                 config: { features: { LOYALTY: false } },
             }),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.LOYALTY_OBLIGATIONS_EXIST });
-        expect(loyaltyRepository.hasLiveLoyaltyObligations).toHaveBeenCalledWith(
-            "tenant-1",
-        );
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.LOYALTY_OBLIGATIONS_EXIST,
+        });
+        expect(
+            loyaltyRepository.hasLiveLoyaltyObligations,
+        ).toHaveBeenCalledWith("tenant-1");
         expect(tenantRepository.update).not.toHaveBeenCalled();
     });
 
@@ -275,10 +279,12 @@ describe("tenant feature dependency policy", () => {
                 useCase.execute("tenant-1", {
                     features: { [feature]: false },
                 }),
-            ).rejects.toMatchObject({ code: BusinessErrorCodes.LOYALTY_OBLIGATIONS_EXIST });
-            expect(loyaltyRepository.hasLiveLoyaltyObligations).toHaveBeenCalledWith(
-                "tenant-1",
-            );
+            ).rejects.toMatchObject({
+                code: BusinessErrorCodes.LOYALTY_OBLIGATIONS_EXIST,
+            });
+            expect(
+                loyaltyRepository.hasLiveLoyaltyObligations,
+            ).toHaveBeenCalledWith("tenant-1");
             expect(
                 featureRepository.updateTenantFeatures,
             ).not.toHaveBeenCalled();
@@ -293,9 +299,9 @@ describe("tenant feature dependency policy", () => {
             features: { LOYALTY: false, COUPONS: false },
         });
 
-        expect(loyaltyRepository.hasLiveLoyaltyObligations).toHaveBeenCalledWith(
-            "tenant-1",
-        );
+        expect(
+            loyaltyRepository.hasLiveLoyaltyObligations,
+        ).toHaveBeenCalledWith("tenant-1");
         expect(featureRepository.updateTenantFeatures).toHaveBeenCalledWith(
             "tenant-1",
             { LOYALTY: false, COUPONS: false },

@@ -1,112 +1,116 @@
-import handlebars from 'handlebars';
-import fs from 'fs';
-import path from 'path';
+import fs from "node:fs";
+import path from "node:path";
+import handlebars from "handlebars";
 
-const templatesPath = path.join(process.cwd(), 'infrastructure', 'email-templates');
-const outputPath = path.join(templatesPath, 'verification');
+const templatesPath = path.join(
+    process.cwd(),
+    "infrastructure",
+    "email-templates",
+);
+const outputPath = path.join(templatesPath, "verification");
 
 if (!fs.existsSync(outputPath)) {
     fs.mkdirSync(outputPath, { recursive: true });
 }
 
 const tenantConfig = {
-    tenantName: 'Neutra Demo',
-    primaryColor: '#6da',
-    tenantLogo: 'https://via.placeholder.com/150',
-    websiteUrl: 'https://demo.neutra.com',
-    supportEmail: 'support@demo.neutra.com'
+    tenantName: "Neutra Demo",
+    primaryColor: "#6da",
+    tenantLogo: "https://via.placeholder.com/150",
+    websiteUrl: "https://demo.neutra.com",
+    supportEmail: "support@demo.neutra.com",
 };
 
 const templates = [
     {
-        name: 'welcome',
-        data: { name: 'John Doe' }
+        name: "welcome",
+        data: { name: "John Doe" },
     },
     {
-        name: 'appointment-confirmation',
+        name: "appointment-confirmation",
         data: {
-            userName: 'John Doe',
-            serviceName: 'Haircut',
-            staffName: 'Alice Smith',
-            appointmentDate: '2025-01-01',
-            appointmentTime: '10:00 AM',
+            userName: "John Doe",
+            serviceName: "Haircut",
+            staffName: "Alice Smith",
+            appointmentDate: "2025-01-01",
+            appointmentTime: "10:00 AM",
             duration: 30,
-            notes: 'Prefer silent appointment',
-            appointmentId: '12345',
-            calendarLink: '#'
-        }
+            notes: "Prefer silent appointment",
+            appointmentId: "12345",
+            calendarLink: "#",
+        },
     },
     {
-        name: 'appointment-cancellation',
+        name: "appointment-cancellation",
         data: {
-            userName: 'John Doe',
-            serviceName: 'Haircut',
-            staffName: 'Alice Smith',
-            appointmentDate: '2025-01-01',
-            appointmentTime: '10:00 AM',
-            cancellationReason: 'Scheduling conflict',
-            appointmentId: '12345'
-        }
+            userName: "John Doe",
+            serviceName: "Haircut",
+            staffName: "Alice Smith",
+            appointmentDate: "2025-01-01",
+            appointmentTime: "10:00 AM",
+            cancellationReason: "Scheduling conflict",
+            appointmentId: "12345",
+        },
     },
     {
-        name: 'appointment-reminder',
+        name: "appointment-reminder",
         data: {
-            userName: 'John Doe',
-            serviceName: 'Haircut',
-            staffName: 'Alice Smith',
-            appointmentDate: '2025-01-01',
-            appointmentTime: '10:00 AM',
+            userName: "John Doe",
+            serviceName: "Haircut",
+            staffName: "Alice Smith",
+            appointmentDate: "2025-01-01",
+            appointmentTime: "10:00 AM",
             duration: 30,
-            appointmentId: '12345'
-        }
+            appointmentId: "12345",
+        },
     },
     {
-        name: 'appointment-pending-approval',
+        name: "appointment-pending-approval",
         data: {
-            staffName: 'Alice Smith',
-            userName: 'John Doe',
-            serviceName: 'Haircut',
-            appointmentDate: '2025-01-01',
-            appointmentTime: '10:00 AM',
+            staffName: "Alice Smith",
+            userName: "John Doe",
+            serviceName: "Haircut",
+            appointmentDate: "2025-01-01",
+            appointmentTime: "10:00 AM",
             duration: 30,
-            notes: 'First time customer',
-            approveLink: 'https://api.neutra.com/approve',
-            rejectLink: 'https://api.neutra.com/reject'
-        }
+            notes: "First time customer",
+            approveLink: "https://api.neutra.com/approve",
+            rejectLink: "https://api.neutra.com/reject",
+        },
     },
     {
-        name: 'order-confirmation',
+        name: "order-confirmation",
         data: {
             order: {
-                id: 'ORD-001',
-                createdAt: '2025-01-01',
-                status: 'PAID',
-                total: '50.00',
+                id: "ORD-001",
+                createdAt: "2025-01-01",
+                status: "PAID",
+                total: "50.00",
                 items: [
-                    { productName: 'Shampoo', quantity: 2, price: '15.00' },
-                    { productName: 'Conditioner', quantity: 1, price: '20.00' }
-                ]
-            }
-        }
+                    { productName: "Shampoo", quantity: 2, price: "15.00" },
+                    { productName: "Conditioner", quantity: 1, price: "20.00" },
+                ],
+            },
+        },
     },
     {
-        name: 'password-reset',
+        name: "password-reset",
         data: {
-            resetLink: 'https://demo.neutra.com/reset-password?token=123'
-        }
-    }
+            resetLink: "https://demo.neutra.com/reset-password?token=123",
+        },
+    },
 ];
 
 async function verify() {
-    console.log('Starting verification...');
+    console.log("Starting verification...");
 
     // Load Base Layout
-    const layoutPath = path.join(templatesPath, 'base-layout.hbs');
+    const layoutPath = path.join(templatesPath, "base-layout.hbs");
     if (!fs.existsSync(layoutPath)) {
-        console.error('Base layout not found!');
+        console.error("Base layout not found!");
         return;
     }
-    const layoutContent = fs.readFileSync(layoutPath, 'utf-8');
+    const layoutContent = fs.readFileSync(layoutPath, "utf-8");
     const compiledLayout = handlebars.compile(layoutContent);
 
     for (const t of templates) {
@@ -117,7 +121,7 @@ async function verify() {
             continue;
         }
 
-        const itemContent = fs.readFileSync(itemPath, 'utf-8');
+        const itemContent = fs.readFileSync(itemPath, "utf-8");
         const compiledItem = handlebars.compile(itemContent);
 
         const emailData = {
@@ -136,7 +140,7 @@ async function verify() {
         fs.writeFileSync(out, finalHtml);
         console.log(`  - Generated ${out}`);
     }
-    console.log('Verification complete.');
+    console.log("Verification complete.");
 }
 
 verify();

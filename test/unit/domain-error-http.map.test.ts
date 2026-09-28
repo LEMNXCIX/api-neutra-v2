@@ -37,9 +37,9 @@ describe("Domain error → HTTP mapping", () => {
         ).toBe(409);
         expect(httpStatusFromDomainError(new UnauthorizedError())).toBe(401);
         expect(httpStatusFromDomainError(new ForbiddenError())).toBe(403);
-        expect(
-            httpStatusFromDomainError(new ValidationError("invalid")),
-        ).toBe(400);
+        expect(httpStatusFromDomainError(new ValidationError("invalid"))).toBe(
+            400,
+        );
     });
 
     test("reports an unrecognised error class as a server fault", () => {

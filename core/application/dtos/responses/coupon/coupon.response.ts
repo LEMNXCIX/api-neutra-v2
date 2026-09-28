@@ -1,4 +1,4 @@
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
+import type { Coupon, CouponType } from "@/core/entities/coupon.entity";
 
 export interface ICouponResponse {
     id: string;

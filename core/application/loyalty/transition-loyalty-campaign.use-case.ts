@@ -1,23 +1,23 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import { LoyaltyCampaignLifecycleAction } from "@/core/application/dtos/requests/loyalty.request";
+import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
 import {
-    LoyaltyCampaign,
-    LoyaltyCampaignStatus,
-} from "@/core/entities/loyalty.entity";
+    BusinessRuleViolationError,
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
 import {
     assertLoyaltyCampaignRewardConfigured,
     assertLoyaltyCampaignSourceCompatible,
     isValidLoyaltyCampaignDates,
 } from "@/core/domain/loyalty/loyalty.policy";
 import {
-    BusinessRuleViolationError,
-    EntityNotFoundError,
-    ValidationError,
-} from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { LoyaltyCampaignLifecycleAction } from "@/core/application/dtos/requests/loyalty.request";
-import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+    type LoyaltyCampaign,
+    LoyaltyCampaignStatus,
+} from "@/core/entities/loyalty.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { LoyaltyErrorCodes, ValidationErrorCodes } from "@/types/error-codes";
 
 function normalizeAction(

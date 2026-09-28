@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 import {
-    isProduction as checkProduction,
     isDevelopment as checkDevelopment,
+    isProduction as checkProduction,
 } from "@/core/domain/constants";
 
 dotenv.config();

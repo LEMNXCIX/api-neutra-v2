@@ -1,17 +1,17 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
-import { Tenant } from "@/core/entities/tenant.entity";
-import {
-    LoyaltyCampaign,
-    LoyaltyCampaignStatus,
-} from "@/core/entities/loyalty.entity";
+import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
 import {
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { loadLoyaltyCampaignTenant } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import {
+    type LoyaltyCampaign,
+    LoyaltyCampaignStatus,
+} from "@/core/entities/loyalty.entity";
+import type { Tenant } from "@/core/entities/tenant.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationErrorCodes } from "@/types/error-codes";
 
 export interface LoyaltyCampaignTenantStats {
@@ -42,8 +42,9 @@ export async function buildLoyaltyCampaignTenantOverview(
     // the loop bought a query per campaign and nothing else. Counting claim rows
     // is also the honest total when a campaign's claimedCount has drifted from
     // its claims.
-    const totalClaims =
-        await loyaltyRepository.countCampaignRewardClaims(tenant.id);
+    const totalClaims = await loyaltyRepository.countCampaignRewardClaims(
+        tenant.id,
+    );
     return {
         tenantId: tenant.id,
         name: tenant.name,
@@ -60,7 +61,8 @@ export async function buildLoyaltyCampaignTenantOverview(
                 (campaign) => campaign.status === LoyaltyCampaignStatus.ENDED,
             ).length,
             archivedCampaignCount: campaigns.filter(
-                (campaign) => campaign.status === LoyaltyCampaignStatus.ARCHIVED,
+                (campaign) =>
+                    campaign.status === LoyaltyCampaignStatus.ARCHIVED,
             ).length,
             totalClaims,
         },
@@ -81,7 +83,9 @@ export class GetTenantLoyaltyOverviewUseCase {
         private featureRepository: IFeatureRepository,
     ) {}
 
-    async execute(tenantId: string): Promise<UseCaseResult<LoyaltyCampaignTenantOverview>> {
+    async execute(
+        tenantId: string,
+    ): Promise<UseCaseResult<LoyaltyCampaignTenantOverview>> {
         if (!tenantId?.trim()) {
             throw new ValidationError(
                 "Tenant ID is required",

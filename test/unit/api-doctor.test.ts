@@ -1,33 +1,32 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    rmSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runDoctor } from "../../scripts/api-doctor/application/run-doctor";
+import { createNpmAuditCheck } from "../../scripts/api-doctor/adapters/audit.adapter";
+import type {
+    CommandResult,
+    CommandRunner,
+} from "../../scripts/api-doctor/adapters/command.adapter";
+import { createRuntimeEndpointCheck } from "../../scripts/api-doctor/adapters/http.adapter";
+import { createProductionArtifactCheck } from "../../scripts/api-doctor/adapters/openapi.adapter";
+import { createPrismaValidateCheck } from "../../scripts/api-doctor/adapters/prisma.adapter";
 import {
-    renderJsonReport,
-    renderSarifReport,
-    renderTextReport,
-} from "../../scripts/api-doctor/reporting/reporter";
+    checkNodeContract,
+    checkPackageLock,
+    checkRequiredEnvironment,
+} from "../../scripts/api-doctor/adapters/project.adapter";
+import { runDoctor } from "../../scripts/api-doctor/application/run-doctor";
 import {
     buildDoctorContext,
     InvalidDoctorArgumentsError,
     parseArgs,
 } from "../../scripts/api-doctor/cli";
 import { createCheckRegistry } from "../../scripts/api-doctor/composition/check-registry";
-import {
-    createProductionArtifactCheck,
-} from "../../scripts/api-doctor/adapters/openapi.adapter";
-import {
-    checkNodeContract,
-    checkPackageLock,
-    checkRequiredEnvironment,
-} from "../../scripts/api-doctor/adapters/project.adapter";
-import { createPrismaValidateCheck } from "../../scripts/api-doctor/adapters/prisma.adapter";
-import { createNpmAuditCheck } from "../../scripts/api-doctor/adapters/audit.adapter";
-import { createRuntimeEndpointCheck } from "../../scripts/api-doctor/adapters/http.adapter";
-import type {
-    CommandResult,
-    CommandRunner,
-} from "../../scripts/api-doctor/adapters/command.adapter";
 import type {
     CheckStatus,
     DoctorCheck,
@@ -35,6 +34,11 @@ import type {
     DoctorProfile,
     DoctorReport,
 } from "../../scripts/api-doctor/domain/check-result";
+import {
+    renderJsonReport,
+    renderSarifReport,
+    renderTextReport,
+} from "../../scripts/api-doctor/reporting/reporter";
 
 function context(overrides: Partial<DoctorContext> = {}): DoctorContext {
     return {
@@ -85,7 +89,9 @@ describe("api-doctor runner", () => {
 
         const report = await runDoctor(checks, context({ profile: "ci" }));
 
-        expect(report.checks.map((result) => [result.id, result.status])).toEqual([
+        expect(
+            report.checks.map((result) => [result.id, result.status]),
+        ).toEqual([
             ["pass", "PASS"],
             ["disabled", "SKIP"],
             ["optional-failure", "FAIL"],
@@ -115,13 +121,18 @@ describe("api-doctor runner", () => {
             },
         };
 
-        const result = await runDoctor([throwingCheck], context({ profile: "ci" }));
+        const result = await runDoctor(
+            [throwingCheck],
+            context({ profile: "ci" }),
+        );
 
         expect(result.checks[0]).toMatchObject({
             status: "FAIL",
             message: "Check execution failed",
         });
-        expect(JSON.stringify(result)).not.toContain("secret-value-must-not-escape");
+        expect(JSON.stringify(result)).not.toContain(
+            "secret-value-must-not-escape",
+        );
     });
 });
 
@@ -197,16 +208,16 @@ describe("api-doctor project checks", () => {
                 },
             },
         };
+        writeFileSync(join(root, "package.json"), JSON.stringify(packageJson));
+        writeFileSync(join(root, "package-lock.json"), JSON.stringify(lock));
         writeFileSync(
-            join(root, "package.json"),
-            JSON.stringify(packageJson),
+            join(root, "Dockerfile.dev"),
+            `FROM node:${major}-alpine\n`,
         );
         writeFileSync(
-            join(root, "package-lock.json"),
-            JSON.stringify(lock),
+            join(root, "Dockerfile.prod"),
+            `FROM node:${major}-alpine\n`,
         );
-        writeFileSync(join(root, "Dockerfile.dev"), `FROM node:${major}-alpine\n`);
-        writeFileSync(join(root, "Dockerfile.prod"), `FROM node:${major}-alpine\n`);
         mkdirSync(join(root, ".github/workflows"), { recursive: true });
         writeFileSync(
             join(root, ".github/workflows/CI.yml"),
@@ -373,11 +384,7 @@ describe("api-doctor adapters", () => {
             context(),
         );
         expect(vulnerable.status).toBe("FAIL");
-        expect(vulnerable.details).toEqual([
-            "total=2",
-            "high=1",
-            "critical=1",
-        ]);
+        expect(vulnerable.details).toEqual(["total=2", "high=1", "critical=1"]);
         expect(JSON.stringify(vulnerable)).not.toContain("secret-package");
 
         const networkRunner: CommandRunner = async () =>
@@ -386,9 +393,7 @@ describe("api-doctor adapters", () => {
                 errorCode: "ENOTFOUND",
                 stderr: "request to registry.npmjs.org failed",
             });
-        const unavailable = await createNpmAuditCheck(networkRunner)(
-            context(),
-        );
+        const unavailable = await createNpmAuditCheck(networkRunner)(context());
         expect(unavailable.status).toBe("SKIP");
     });
 
@@ -420,11 +425,7 @@ describe("api-doctor adapters", () => {
         const warned = await createNpmAuditCheck(warningRunner)(context());
 
         expect(warned.status).toBe("WARN");
-        expect(warned.details).toEqual([
-            "total=2",
-            "high=0",
-            "critical=0",
-        ]);
+        expect(warned.details).toEqual(["total=2", "high=0", "critical=0"]);
         expect(JSON.stringify(warned)).not.toContain("breaking-package");
         expect(JSON.stringify(warned)).not.toContain("unfixable-package");
     });

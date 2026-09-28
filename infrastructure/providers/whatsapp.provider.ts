@@ -1,9 +1,12 @@
-import {
+import type { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
+import type {
     INotificationProvider,
     NotificationMessage,
 } from "@/core/ports/notification-provider.interface";
-import { WhatsAppComponent, IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
-import { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
+import type {
+    IWhatsAppService,
+    WhatsAppComponent,
+} from "@/core/ports/whatsapp-service.interface";
 import type { ILogger } from "@/core/providers/logger.interface";
 
 export class WhatsAppProvider implements INotificationProvider {

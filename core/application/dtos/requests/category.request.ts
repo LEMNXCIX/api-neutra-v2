@@ -1,4 +1,3 @@
-import { CategoryType } from "@/core/entities/category.entity";
 import {
     IsBoolean,
     IsEnum,
@@ -6,6 +5,7 @@ import {
     IsOptional,
     IsString,
 } from "class-validator";
+import { CategoryType } from "@/core/entities/category.entity";
 
 export interface CreateCategoryDTO {
     name: string;

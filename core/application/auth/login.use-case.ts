@@ -1,16 +1,16 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
+import type { LoginDTO } from "@/core/application/dtos/requests/auth.request";
 import {
+    ForbiddenError,
+    UnauthorizedError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
+import type {
     IPasswordHasher,
     ITokenGenerator,
 } from "@/core/providers/auth-providers.interface";
-import { ICacheProvider } from "@/core/providers/cache-provider.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    ValidationError,
-    UnauthorizedError,
-    ForbiddenError,
-} from "@/core/domain/errors/domain-errors";
-import { LoginDTO } from "@/core/application/dtos/requests/auth.request";
+import type { ICacheProvider } from "@/core/providers/cache-provider.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { AuthErrorCodes, TenantErrorCodes } from "@/types/error-codes";
 
 export class LoginUseCase {
@@ -36,7 +36,7 @@ export class LoginUseCase {
             includePermissions: true,
         });
 
-        if (!user || !user.password) {
+        if (!user?.password) {
             throw new UnauthorizedError(
                 "Invalid credentials",
                 AuthErrorCodes.INVALID_CREDENTIALS,
@@ -69,7 +69,7 @@ export class LoginUseCase {
             userTenant = globalSuperAdmin;
         }
 
-        if (!userTenant || !userTenant.role) {
+        if (!userTenant?.role) {
             throw new ForbiddenError(
                 "User is not authorized for this tenant",
                 TenantErrorCodes.MEMBERSHIP_REQUIRED,

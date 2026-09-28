@@ -1,6 +1,6 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import { LogController } from "@/interface-adapters/controllers/log.controller";
+import { type Application, Router } from "express";
+import type { LogController } from "@/interface-adapters/controllers/log.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
 
 export default function logRoutes(

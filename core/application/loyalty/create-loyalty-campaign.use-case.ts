@@ -1,10 +1,11 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
-import { Tenant } from "@/core/entities/tenant.entity";
+import type {
+    CreateLoyaltyCampaignDTO,
+    LoyaltyRewardDefinitionDTO,
+} from "@/core/application/dtos/requests/loyalty.request";
 import {
-    LoyaltyCampaign,
-} from "@/core/entities/loyalty.entity";
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
 import {
     assertLoyaltyCampaignFeatures,
     assertLoyaltyCampaignSourceCompatible,
@@ -14,19 +15,16 @@ import {
     isValidLoyaltyCampaignTarget,
     isValidLoyaltyRewardValidDays,
 } from "@/core/domain/loyalty/loyalty.policy";
-import {
-    EntityNotFoundError,
-    ValidationError,
-} from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    CreateLoyaltyCampaignDTO,
-    LoyaltyRewardDefinitionDTO,
-} from "@/core/application/dtos/requests/loyalty.request";
-import {
+import type { LoyaltyCampaign } from "@/core/entities/loyalty.entity";
+import type { Tenant } from "@/core/entities/tenant.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type {
     CreateLoyaltyCampaignData,
+    ILoyaltyRepository,
     LoyaltyCampaignRewardDefinition,
 } from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationErrorCodes } from "@/types/error-codes";
 
 export function toLoyaltyCampaignDate(
@@ -47,8 +45,9 @@ export function toLoyaltyRewardDefinition(
     reward: LoyaltyRewardDefinitionDTO,
 ): LoyaltyCampaignRewardDefinition {
     assertLoyaltyRewardTemplate(reward);
-    const normalizeIds = (values: string[] | undefined): string[] =>
-        [...new Set((values ?? []).map((value) => value.trim()))];
+    const normalizeIds = (values: string[] | undefined): string[] => [
+        ...new Set((values ?? []).map((value) => value.trim())),
+    ];
     return {
         type: reward.type,
         value: reward.value,
@@ -82,8 +81,7 @@ export async function loadLoyaltyCampaignTenant(
     if (!tenant) {
         throw new EntityNotFoundError("Tenant", tenantId);
     }
-    const features =
-        await featureRepository.getTenantFeatureStatus(tenantId);
+    const features = await featureRepository.getTenantFeatureStatus(tenantId);
     assertLoyaltyCampaignFeatures(features);
     return tenant;
 }
@@ -135,10 +133,7 @@ export class CreateLoyaltyCampaignUseCase {
         }
         const startsAt = toLoyaltyCampaignDate(data.startsAt, "startsAt");
         const endsAt = toLoyaltyCampaignDate(data.endsAt, "endsAt");
-        const claimUntil = toLoyaltyCampaignDate(
-            data.claimUntil,
-            "claimUntil",
-        );
+        const claimUntil = toLoyaltyCampaignDate(data.claimUntil, "claimUntil");
         if (!isValidLoyaltyCampaignDates(startsAt, endsAt, claimUntil)) {
             throw new ValidationError(
                 "Campaign dates must satisfy startsAt < endsAt <= claimUntil",

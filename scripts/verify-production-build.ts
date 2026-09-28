@@ -24,11 +24,7 @@ function javascriptFiles(root: string): string[] {
     return files;
 }
 
-function relativeAlias(
-    file: string,
-    alias: string,
-    root: string,
-): string {
+function relativeAlias(file: string, alias: string, root: string): string {
     let target = path.resolve(root, alias);
     const targetRelative = path.relative(root, target);
     if (
@@ -43,7 +39,9 @@ function relativeAlias(
         target = `${target}.js`;
     }
 
-    let relative = path.relative(path.dirname(file), target).replace(/\\/g, "/");
+    let relative = path
+        .relative(path.dirname(file), target)
+        .replace(/\\/g, "/");
     if (!relative.startsWith(".")) relative = `./${relative}`;
     return relative;
 }
@@ -63,10 +61,7 @@ function isCodeLine(line: string): boolean {
 }
 
 function codeLines(source: string): string {
-    return source
-        .split("\n")
-        .filter(isCodeLine)
-        .join("\n");
+    return source.split("\n").filter(isCodeLine).join("\n");
 }
 
 export function rewriteProductionAliases(root = distRoot): number {
@@ -88,11 +83,8 @@ export function rewriteProductionAliases(root = distRoot): number {
                 isCodeLine(line)
                     ? line.replace(
                           aliasPattern,
-                          (
-                              _match: string,
-                              quote: string,
-                              alias: string,
-                          ) => `${quote}${relativeAlias(file, alias, root)}${quote}`,
+                          (_match: string, quote: string, alias: string) =>
+                              `${quote}${relativeAlias(file, alias, root)}${quote}`,
                       )
                     : line,
             )
@@ -169,7 +161,9 @@ if (require.main === module) {
         verifyProductionBuild();
     } catch (error) {
         console.error(
-            error instanceof Error ? error.message : "Production verification failed",
+            error instanceof Error
+                ? error.message
+                : "Production verification failed",
         );
         process.exitCode = 1;
     }

@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from "express";
-import { TenantErrorCodes } from "@/types/error-codes";
-import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { NextFunction, Request, Response } from "express";
 import { isSuperAdmin } from "@/core/domain/rbac/access-policy";
 import {
     evaluateFeatureEnabled,
     evaluateTenantType,
 } from "@/core/domain/tenant/feature-policy";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { TenantErrorCodes } from "@/types/error-codes";
 
 function hasConcreteTenant(req: Request): boolean {
     if (typeof req.tenantId !== "string") return false;

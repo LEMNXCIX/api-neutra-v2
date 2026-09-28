@@ -1,13 +1,13 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
-import { ICacheProvider } from "@/core/providers/cache-provider.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     EntityNotFoundError,
     ForbiddenError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { ICacheProvider } from "@/core/providers/cache-provider.interface";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { TenantErrorCodes } from "@/types/error-codes";
 
 /**
@@ -51,7 +51,10 @@ export class AssignRoleToUserUseCase {
         // 403 is the honest and consistent status (requirePermission answers 403
         // too). A global findById would have to be added just to tell the two
         // apart, which is the leak this closes.
-        const user = await this.userRepository.findByIdForTenant(tenant, userId);
+        const user = await this.userRepository.findByIdForTenant(
+            tenant,
+            userId,
+        );
         if (!user) {
             throw new ForbiddenError(
                 "You are not allowed to assign a role to this user in this tenant",
@@ -90,7 +93,7 @@ export class AssignRoleToUserUseCase {
                 tenant,
                 userId,
             );
-            if (existingStaff && existingStaff.active) {
+            if (existingStaff?.active) {
                 await this.staffRepository.update(tenant, existingStaff.id, {
                     active: false,
                 });

@@ -1,18 +1,18 @@
-import {
-    IStaffRepository,
-    CreateStaffData,
-} from "@/core/repositories/staff.repository.interface";
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { CreateStaffDTO } from "@/core/application/dtos/requests/staff.request";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { CreateStaffDTO } from "@/core/application/dtos/requests/staff.request";
+import { getStaffDayKeysClosedByBusinessHours } from "@/core/domain/booking/working-hours";
 import {
     BusinessRuleViolationError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type {
+    CreateStaffData,
+    IStaffRepository,
+} from "@/core/repositories/staff.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { BusinessErrorCodes } from "@/types/error-codes";
-import { getStaffDayKeysClosedByBusinessHours } from "@/core/domain/booking/working-hours";
 
 export class CreateStaffUseCase {
     constructor(

@@ -1,9 +1,9 @@
-import { ICartRepository } from "@/core/repositories/cart.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { ICartRepository } from "@/core/repositories/cart.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class ChangeAmountUseCase {
     constructor(private cartRepository: ICartRepository) {}
@@ -34,7 +34,7 @@ export class ChangeAmountUseCase {
                 productId,
                 amount,
             );
-        } catch (error: unknown) {
+        } catch (_error: unknown) {
             throw new EntityNotFoundError("CartItem", productId);
         }
 

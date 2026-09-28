@@ -1,5 +1,5 @@
-import { User } from "@/core/entities/user.entity";
-import { IUserPublicResponse } from "./user-public.response";
+import type { User } from "@/core/entities/user.entity";
+import type { IUserPublicResponse } from "./user-public.response";
 
 export interface IUserResponse extends IUserPublicResponse {
     tenants?: Array<{

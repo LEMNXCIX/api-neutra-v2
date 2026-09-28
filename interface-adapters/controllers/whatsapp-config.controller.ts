@@ -1,9 +1,9 @@
-import { Request, Response } from "express";
-import { GetWhatsAppConfigUseCase } from "@/core/application/whatsapp/get-whatsapp-config.use-case";
-import { ConfigureWhatsAppUseCase } from "@/core/application/whatsapp/configure-whatsapp.use-case";
+import type { Request, Response } from "express";
+import type { ConfigureWhatsAppDTO } from "@/core/application/dtos/requests/whatsapp.request";
 import { WhatsAppConfigResponse } from "@/core/application/dtos/responses/whatsapp/whatsapp-config.response";
+import type { ConfigureWhatsAppUseCase } from "@/core/application/whatsapp/configure-whatsapp.use-case";
+import type { GetWhatsAppConfigUseCase } from "@/core/application/whatsapp/get-whatsapp-config.use-case";
 import { present } from "@/core/utils/use-case-result";
-import { ConfigureWhatsAppDTO } from "@/core/application/dtos/requests/whatsapp.request";
 
 export class WhatsAppConfigController {
     constructor(

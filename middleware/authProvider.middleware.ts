@@ -1,13 +1,13 @@
-import config from "@/config/index.config";
 import dotenv from "dotenv";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as FacebookStrategy } from "passport-facebook";
+import { Strategy as GitHubStrategy } from "passport-github2";
 import type {
     StrategyOptions as GoogleStrategyOptions,
     VerifyCallback,
 } from "passport-google-oauth20";
-import { Strategy as FacebookStrategy } from "passport-facebook";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as TwitterStrategy } from "passport-twitter";
-import { Strategy as GitHubStrategy } from "passport-github2";
+import config from "@/config/index.config";
 import { isProduction } from "@/core/domain/constants";
 
 dotenv.config();

@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { prisma } from "@/config/db.config";
 import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
+import { getLoyaltyCampaignAccrualCriteria } from "@/core/domain/loyalty/loyalty.policy";
 import {
-    Appointment,
+    type Appointment,
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
-import { getLoyaltyCampaignAccrualCriteria } from "@/core/domain/loyalty/loyalty.policy";
-import { prisma } from "@/config/db.config";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
 import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
 import { PrismaOrderRepository } from "@/infrastructure/database/prisma/order.prisma-repository";
 
@@ -120,11 +120,8 @@ describe("appointment loyalty accrual use case", () => {
     });
 
     test("requests qualification when NEEDS_REVIEW is resolved as COMPLETED", async () => {
-        const {
-            useCase,
-            appointmentRepository,
-            featureRepository,
-        } = statusUseCase(AppointmentStatus.NEEDS_REVIEW);
+        const { useCase, appointmentRepository, featureRepository } =
+            statusUseCase(AppointmentStatus.NEEDS_REVIEW);
         appointmentRepository.updateStatus.mockResolvedValue(
             appointment(AppointmentStatus.COMPLETED),
         );
@@ -221,9 +218,7 @@ describe("appointment loyalty accrual use case", () => {
                 "booking-page",
             );
 
-            expect(appointmentRepository.updateStatus).toHaveBeenCalledTimes(
-                1,
-            );
+            expect(appointmentRepository.updateStatus).toHaveBeenCalledTimes(1);
             expect(
                 appointmentRepository.updateStatus.mock.calls[0][2],
             ).not.toHaveProperty("qualifyLoyalty");
@@ -356,9 +351,7 @@ describe("Prisma appointment loyalty transaction", () => {
             appointment(AppointmentStatus.COMPLETED) as never,
         );
         mockCommittedLoyaltyFeature();
-        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue(
-            null,
-        );
+        jest.spyOn(prisma.loyaltyCampaign, "findFirst").mockResolvedValue(null);
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
         await new PrismaAppointmentRepository().updateStatus(
@@ -387,10 +380,7 @@ describe("Prisma appointment loyalty transaction", () => {
             appointment(AppointmentStatus.COMPLETED) as never,
         );
         const featureLookup = mockCommittedLoyaltyFeature(false);
-        const campaignLookup = jest.spyOn(
-            prisma.loyaltyCampaign,
-            "findFirst",
-        );
+        const campaignLookup = jest.spyOn(prisma.loyaltyCampaign, "findFirst");
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
         await expect(
@@ -431,10 +421,7 @@ describe("Prisma appointment loyalty transaction", () => {
         jest.spyOn(prisma.appointment, "findFirst").mockResolvedValue(
             appointment(status) as never,
         );
-        const campaignLookup = jest.spyOn(
-            prisma.loyaltyCampaign,
-            "findFirst",
-        );
+        const campaignLookup = jest.spyOn(prisma.loyaltyCampaign, "findFirst");
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
         await new PrismaAppointmentRepository().updateStatus(
@@ -463,10 +450,7 @@ describe("Prisma appointment loyalty transaction", () => {
         jest.spyOn(prisma.appointment, "findFirst").mockResolvedValue(
             appointment(AppointmentStatus.COMPLETED) as never,
         );
-        const campaignLookup = jest.spyOn(
-            prisma.loyaltyCampaign,
-            "findFirst",
-        );
+        const campaignLookup = jest.spyOn(prisma.loyaltyCampaign, "findFirst");
         const upsert = jest.spyOn(prisma.loyaltyLedgerEntry, "upsert");
 
         await new PrismaAppointmentRepository().updateStatus(
@@ -713,8 +697,7 @@ function completeAppointment() {
 function givenCommittedCompletion(rows: CampaignRow[]) {
     const transaction = useTransactionCallback();
     transaction.mockImplementation(
-        (callback: (tx: typeof prisma) => Promise<unknown>) =>
-            callback(prisma),
+        (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma),
     );
     jest.spyOn(prisma.appointment, "updateMany").mockResolvedValue({
         count: 1,
@@ -916,7 +899,9 @@ describe("both accrual adapters resolve one campaign from one domain rule", () =
     });
 
     test("resolves the same campaign for the same event in both adapters", async () => {
-        const catchAllOnly = [campaignRow({ id: "campaign-all", source: "ALL" })];
+        const catchAllOnly = [
+            campaignRow({ id: "campaign-all", source: "ALL" }),
+        ];
 
         useTransactionCallback().mockImplementation(
             (callback: (tx: typeof prisma) => Promise<unknown>) =>
@@ -948,16 +933,16 @@ describe("both accrual adapters resolve one campaign from one domain rule", () =
             status: "ENTREGADO",
             qualifyLoyalty: true,
         });
-        const orderQuery = orderLookup.mock.calls[0][0] as CampaignSelectionQuery;
+        const orderQuery = orderLookup.mock
+            .calls[0][0] as CampaignSelectionQuery;
         const orderCampaign = orderUpsert.mock.calls[0][0].create
             .campaignId as string;
         jest.restoreAllMocks();
 
         const { lookup, upsert } = givenCommittedCompletion(catchAllOnly);
         await completeAppointment();
-        const appointmentQuery = lookup.mock.calls[0][
-            0
-        ] as CampaignSelectionQuery;
+        const appointmentQuery = lookup.mock
+            .calls[0][0] as CampaignSelectionQuery;
         const appointmentCampaign = upsert.mock.calls[0][0].create
             .campaignId as string;
 
@@ -996,7 +981,7 @@ describe("both accrual adapters resolve one campaign from one domain rule", () =
         } as never);
         mockCommittedLoyaltyFeature();
         const orderLookup = selectCampaignOver(rows);
-        const orderUpsert = jest
+        const _orderUpsert = jest
             .spyOn(prisma.loyaltyLedgerEntry, "upsert")
             .mockResolvedValue({} as never);
 
@@ -1005,15 +990,15 @@ describe("both accrual adapters resolve one campaign from one domain rule", () =
             status: "ENTREGADO",
             qualifyLoyalty: true,
         });
-        const orderQuery = orderLookup.mock.calls[0][0] as CampaignSelectionQuery;
+        const orderQuery = orderLookup.mock
+            .calls[0][0] as CampaignSelectionQuery;
         const orderCampaign = selectCampaign(orderQuery, rows);
         jest.restoreAllMocks();
 
-        const { lookup, upsert } = givenCommittedCompletion(rows);
+        const { lookup } = givenCommittedCompletion(rows);
         await completeAppointment();
-        const appointmentQuery = lookup.mock.calls[0][
-            0
-        ] as CampaignSelectionQuery;
+        const appointmentQuery = lookup.mock
+            .calls[0][0] as CampaignSelectionQuery;
         const appointmentCampaign = selectCampaign(appointmentQuery, rows);
 
         expect(orderCampaign?.id).toBe("campaign-store");

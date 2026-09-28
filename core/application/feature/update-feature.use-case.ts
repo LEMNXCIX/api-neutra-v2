@@ -1,10 +1,10 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { Feature } from "@/core/entities/feature.entity";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
-    EntityNotFoundError,
     DuplicateEntityError,
+    EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Feature } from "@/core/entities/feature.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class UpdateFeatureUseCase {
     constructor(private featureRepository: IFeatureRepository) {}

@@ -1,4 +1,8 @@
-import { Order, OrderItem, OrderStatus } from "@/core/entities/order.entity";
+import type {
+    Order,
+    OrderItem,
+    OrderStatus,
+} from "@/core/entities/order.entity";
 
 export interface IOrderItemResponse {
     id: string;

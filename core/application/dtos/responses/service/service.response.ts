@@ -1,6 +1,6 @@
-import { Service } from "@/core/entities/service.entity";
+import type { Service } from "@/core/entities/service.entity";
 import {
-    ITenantMinimalResponse,
+    type ITenantMinimalResponse,
     TenantMinimalResponse,
 } from "../shared/tenant-minimal.response";
 
@@ -38,7 +38,7 @@ export class ServiceResponse {
                 : undefined,
             active: service.active,
             tenantId: service.tenantId,
-    tenant: service.tenant
+            tenant: service.tenant
                 ? TenantMinimalResponse.fromEntity(service.tenant)
                 : undefined,
             createdAt: service.createdAt,

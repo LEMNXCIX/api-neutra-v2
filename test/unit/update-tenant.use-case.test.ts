@@ -1,7 +1,7 @@
 import { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
 import {
-    EntityNotFoundError,
     DuplicateEntityError,
+    EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
 
 function setup(existingTenant?: unknown) {
@@ -86,9 +86,9 @@ describe("UpdateTenantUseCase", () => {
         const { useCase, tenantRepository } = setup(EXISTING);
         tenantRepository.findBySlug.mockResolvedValue({ id: "other" });
 
-        await expect(
-            useCase.execute("t1", { slug: "taken" }),
-        ).rejects.toThrow(DuplicateEntityError);
+        await expect(useCase.execute("t1", { slug: "taken" })).rejects.toThrow(
+            DuplicateEntityError,
+        );
     });
 
     test("allows keeping the same slug", async () => {

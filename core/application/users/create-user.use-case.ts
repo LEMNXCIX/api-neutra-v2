@@ -1,8 +1,11 @@
-import { IUserRepository, UserCreateData } from "@/core/repositories/user.repository.interface";
-import { ICartRepository } from "@/core/repositories/cart.repository.interface";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
+import type { ICartRepository } from "@/core/repositories/cart.repository.interface";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type {
+    IUserRepository,
+    UserCreateData,
+} from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class CreateUserUseCase {
     constructor(

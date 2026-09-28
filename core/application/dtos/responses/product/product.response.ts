@@ -1,6 +1,6 @@
-import { Product } from "@/core/entities/product.entity";
+import type { Product } from "@/core/entities/product.entity";
 import {
-    ITenantMinimalResponse,
+    type ITenantMinimalResponse,
     TenantMinimalResponse,
 } from "../shared/tenant-minimal.response";
 
@@ -30,7 +30,7 @@ export class ProductResponse {
             stock: product.stock,
             active: product.active,
             ownerId: product.ownerId,
-    tenant: product.tenant
+            tenant: product.tenant
                 ? TenantMinimalResponse.fromEntity(product.tenant)
                 : undefined,
             createdAt: product.createdAt,

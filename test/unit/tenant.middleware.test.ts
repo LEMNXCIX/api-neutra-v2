@@ -38,9 +38,13 @@ function createRes() {
     return res;
 }
 
-function setup(environment: string, repoOverrides?: Partial<{ findBySlug: unknown; findById: unknown }>) {
+function setup(
+    environment: string,
+    repoOverrides?: Partial<{ findBySlug: unknown; findById: unknown }>,
+) {
     const tenantRepository = {
-        findBySlug: repoOverrides?.findBySlug ?? jest.fn().mockResolvedValue(null),
+        findBySlug:
+            repoOverrides?.findBySlug ?? jest.fn().mockResolvedValue(null),
         findById: repoOverrides?.findById ?? jest.fn().mockResolvedValue(null),
     };
     const logger = {
@@ -66,7 +70,13 @@ async function run(mw: ReturnType<typeof createTenantMiddleware>, req: Req) {
     return { res, next };
 }
 
-const activeTenant = { id: "t1", name: "Store", slug: "store1", type: "STORE", active: true };
+const activeTenant = {
+    id: "t1",
+    name: "Store",
+    slug: "store1",
+    type: "STORE",
+    active: true,
+};
 
 describe("tenant middleware", () => {
     test("resolves tenant from x-tenant-slug header", async () => {
@@ -96,7 +106,9 @@ describe("tenant middleware", () => {
 
     test("403 for inactive tenant", async () => {
         const { mw } = setup("prod", {
-            findBySlug: jest.fn().mockResolvedValue({ ...activeTenant, active: false }),
+            findBySlug: jest
+                .fn()
+                .mockResolvedValue({ ...activeTenant, active: false }),
         });
         const { res, next } = await run(mw, {
             originalUrl: "/api/products",

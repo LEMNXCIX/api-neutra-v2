@@ -1,20 +1,20 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
 import {
-    ICouponRepository,
-    CreateCouponData,
-    UpdateCouponData,
-} from "@/core/repositories/coupon.repository.interface";
-import { Coupon } from "@/core/entities/coupon.entity";
-import {
-    mapCoupon,
-    toCouponType,
-} from "@/infrastructure/database/prisma/coupon-mapper";
-import {
     BusinessRuleViolationError,
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Coupon } from "@/core/entities/coupon.entity";
+import type {
+    CreateCouponData,
+    ICouponRepository,
+    UpdateCouponData,
+} from "@/core/repositories/coupon.repository.interface";
+import {
+    mapCoupon,
+    toCouponType,
+} from "@/infrastructure/database/prisma/coupon-mapper";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
 type CouponWhereInput = Prisma.CouponWhereInput & {

@@ -1,20 +1,23 @@
-import { IOrderRepository, OrderCreateData } from "@/core/repositories/order.repository.interface";
-import { GetCartUseCase } from "@/core/application/cart/get-cart.use-case";
-import { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
-import { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
+import type { ClearCartUseCase } from "@/core/application/cart/clear-cart.use-case";
+import type { GetCartUseCase } from "@/core/application/cart/get-cart.use-case";
+import type { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
+import { assertCouponsFeatureEnabled } from "@/core/domain/coupon/coupon.policy";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
-import { assertCouponsFeatureEnabled } from "@/core/domain/coupon/coupon.policy";
-import { IEmailService } from "@/core/ports/email.port";
-import { IProductRepository } from "@/core/repositories/product.repository.interface";
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { IConfigProvider } from "@/core/providers/config-provider.interface";
-import { ILogger } from "@/core/providers/logger.interface";
-import { Order } from "@/core/entities/order.entity";
+import type { Order } from "@/core/entities/order.entity";
+import type { IEmailService } from "@/core/ports/email.port";
+import type { IConfigProvider } from "@/core/providers/config-provider.interface";
+import type { ILogger } from "@/core/providers/logger.interface";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type {
+    IOrderRepository,
+    OrderCreateData,
+} from "@/core/repositories/order.repository.interface";
+import type { IProductRepository } from "@/core/repositories/product.repository.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
 interface CartProductItem {
@@ -46,7 +49,7 @@ export class CreateOrderUseCase {
         userId: string,
         couponCode?: string,
     ): Promise<UseCaseResult> {
-        let cartResponse;
+        let cartResponse: UseCaseResult;
         try {
             cartResponse = await this.getCartUseCase.execute(tenantId, userId);
         } catch (error: unknown) {
@@ -76,7 +79,7 @@ export class CreateOrderUseCase {
         if (couponCode) {
             const features =
                 await this.featureRepository.getTenantFeatureStatus(tenantId);
-            assertCouponsFeatureEnabled(features["COUPONS"]);
+            assertCouponsFeatureEnabled(features.COUPONS);
 
             const products = await Promise.all(
                 cartItems.map((item) =>
@@ -107,17 +110,16 @@ export class CreateOrderUseCase {
                     sum + parseFloat(String(item.price)) * item.amount,
                 0,
             );
-            const validationResult =
-                await this.validateCouponUseCase.execute(
-                    tenantId,
-                    {
-                        code: couponCode,
-                        orderTotal: subtotal,
-                        productIds,
-                        categoryIds,
-                    },
-                    userId,
-                );
+            const validationResult = await this.validateCouponUseCase.execute(
+                tenantId,
+                {
+                    code: couponCode,
+                    orderTotal: subtotal,
+                    productIds,
+                    categoryIds,
+                },
+                userId,
+            );
 
             if (
                 !validationResult.success ||
@@ -125,7 +127,8 @@ export class CreateOrderUseCase {
                 !validationResult.data.coupon
             ) {
                 throw new BusinessRuleViolationError(
-                    validationResult.message || "The provided coupon is invalid",
+                    validationResult.message ||
+                        "The provided coupon is invalid",
                     BusinessErrorCodes.INVALID_COUPON,
                 );
             }
@@ -173,12 +176,12 @@ export class CreateOrderUseCase {
     ): Promise<void> {
         const features =
             await this.featureRepository.getTenantFeatureStatus(tenantId);
-        if (!features["EMAIL_NOTIFICATIONS"]) {
+        if (!features.EMAIL_NOTIFICATIONS) {
             return;
         }
 
         const user = await this.userRepository.findById(userId);
-        if (!user || !user.email) {
+        if (!user?.email) {
             return;
         }
 

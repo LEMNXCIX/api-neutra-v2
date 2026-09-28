@@ -1,7 +1,9 @@
-import { WhatsAppMessage } from "../entities/whatsapp-message.entity";
+import type { WhatsAppMessage } from "../entities/whatsapp-message.entity";
 
 export interface IWhatsAppMessageRepository {
-    create(message: Omit<WhatsAppMessage, "id" | "createdAt" | "updatedAt">): Promise<WhatsAppMessage>;
+    create(
+        message: Omit<WhatsAppMessage, "id" | "createdAt" | "updatedAt">,
+    ): Promise<WhatsAppMessage>;
     findById(id: string): Promise<WhatsAppMessage | null>;
     findByWaMessageId(waMessageId: string): Promise<WhatsAppMessage | null>;
     findByConversationId(conversationId: string): Promise<WhatsAppMessage[]>;

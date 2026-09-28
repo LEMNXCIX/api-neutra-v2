@@ -1,27 +1,21 @@
-import {
-    Appointment,
-    AppointmentStatus,
-} from "@/core/entities/appointment.entity";
+import { prisma } from "@/config/db.config";
+import { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appointment.use-case";
+import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";
+import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
 import {
     canSystemFlagForReview,
     canTransitionAppointmentStatus,
 } from "@/core/domain/appointment/appointment.policy";
-import { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
-import { CancelAppointmentUseCase } from "@/core/application/booking/cancel-appointment.use-case";
-import { DeleteAppointmentUseCase } from "@/core/application/booking/delete-appointment.use-case";
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import { hasAnyRole, hasPermission } from "@/core/domain/rbac/access-policy";
+import {
+    type Appointment,
+    AppointmentStatus,
+} from "@/core/entities/appointment.entity";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
 import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
-import { prisma } from "@/config/db.config";
-import { AuthenticatedUser } from "@/types/rbac";
 import { APPOINTMENT_OPERATIONAL_ROLES } from "@/middleware/authorization.middleware";
-import {
-    hasAnyRole,
-    hasPermission,
-} from "@/core/domain/rbac/access-policy";
-import {
-    AuthErrorCodes,
-    BusinessErrorCodes,
-} from "@/types/error-codes";
+import { AuthErrorCodes, BusinessErrorCodes } from "@/types/error-codes";
+import type { AuthenticatedUser } from "@/types/rbac";
 
 const manager = {
     id: "staff-1",
@@ -176,7 +170,9 @@ describe("UpdateAppointmentStatusUseCase", () => {
 
         await expect(
             useCase.execute("tenant-1", "appointment-1", "UNKNOWN", manager),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.INVALID_APPOINTMENT_STATUS });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.INVALID_APPOINTMENT_STATUS,
+        });
         expect(appointmentRepository.findById).not.toHaveBeenCalled();
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
@@ -185,9 +181,7 @@ describe("UpdateAppointmentStatusUseCase", () => {
         const { useCase, appointmentRepository } = statusUseCase(
             AppointmentStatus.CONFIRMED,
         );
-        const updated = appointment(
-            AppointmentStatus.IN_PROGRESS,
-        );
+        const updated = appointment(AppointmentStatus.IN_PROGRESS);
         appointmentRepository.updateStatus.mockResolvedValue(updated);
 
         const result = await useCase.execute(
@@ -223,7 +217,9 @@ describe("UpdateAppointmentStatusUseCase", () => {
                 AppointmentStatus.COMPLETED,
                 manager,
             ),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.INVALID_STATUS_TRANSITION });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.INVALID_STATUS_TRANSITION,
+        });
         expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
     });
 
@@ -239,7 +235,9 @@ describe("UpdateAppointmentStatusUseCase", () => {
                 AppointmentStatus.IN_PROGRESS,
                 manager,
             ),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.APPOINTMENT_STATUS_CONFLICT });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.APPOINTMENT_STATUS_CONFLICT,
+        });
         expect(featureRepository.getTenantFeatureStatus).not.toHaveBeenCalled();
     });
 });
@@ -256,7 +254,10 @@ describe("PrismaAppointmentRepository status CAS", () => {
         findFirst.mockResolvedValue(
             appointment(AppointmentStatus.IN_PROGRESS) as never,
         );
-        const transaction = jest.spyOn(prisma, "$transaction") as unknown as jest.Mock;
+        const transaction = jest.spyOn(
+            prisma,
+            "$transaction",
+        ) as unknown as jest.Mock;
         transaction.mockImplementation(
             (callback: (tx: typeof prisma) => Promise<unknown>) =>
                 callback(prisma),
@@ -299,10 +300,7 @@ describe("PrismaAppointmentRepository status CAS", () => {
 });
 
 describe("appointment mutation authorization", () => {
-    test.each([
-        AppointmentStatus.PENDING,
-        AppointmentStatus.CONFIRMED,
-    ])(
+    test.each([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED])(
         "preserves customer self-cancellation for %s appointments",
         async (status) => {
             const { useCase, appointmentRepository } = cancelUseCase(status);

@@ -1,6 +1,6 @@
-import { Request, Response } from "express";
-import { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
-import { SendNotificationDto } from "@/core/application/dtos/requests/whatsapp.request";
+import type { Request, Response } from "express";
+import type { SendNotificationDto } from "@/core/application/dtos/requests/whatsapp.request";
+import type { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
 
 export class WhatsAppController {
     constructor(private sendNotificationUseCase: SendNotificationUseCase) {}

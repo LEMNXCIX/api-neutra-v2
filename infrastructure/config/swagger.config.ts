@@ -1,6 +1,7 @@
-import swaggerJSDoc from 'swagger-jsdoc';
-import path from 'path';
-import config from '@/config/index.config';
+import path from "node:path";
+import swaggerJSDoc from "swagger-jsdoc";
+import config from "@/config/index.config";
+
 const { port } = config;
 const routeExtension =
     path.extname(__filename).toLowerCase() === ".ts" ? "ts" : "js";
@@ -12,31 +13,31 @@ export const swaggerApis = [
 
 const options: swaggerJSDoc.Options = {
     definition: {
-        openapi: '3.0.0',
+        openapi: "3.0.0",
         info: {
-            title: 'Neutra API Documentation',
-            version: '1.0.0',
-            description: 'API documentation for Neutra E-commerce platform',
+            title: "Neutra API Documentation",
+            version: "1.0.0",
+            description: "API documentation for Neutra E-commerce platform",
             contact: {
-                name: 'API Support',
+                name: "API Support",
             },
         },
         servers: [
             {
                 url: `http://localhost:${port}/api`,
-                description: 'Development server',
+                description: "Development server",
             },
             {
-                url: 'https://neutra.ec/api',
-                description: 'Production server',
+                url: "https://neutra.ec/api",
+                description: "Production server",
             },
         ],
         components: {
             securitySchemes: {
                 bearerAuth: {
-                    type: 'http',
-                    scheme: 'bearer',
-                    bearerFormat: 'JWT',
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT",
                 },
             },
         },

@@ -1,5 +1,5 @@
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 /**
  * "My tenants" means the tenants the user CREATED, not the ones they hold a

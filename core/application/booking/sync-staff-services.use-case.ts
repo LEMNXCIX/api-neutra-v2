@@ -1,6 +1,6 @@
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
+import type { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class SyncStaffServicesUseCase {
     constructor(private staffRepository: IStaffRepository) {}

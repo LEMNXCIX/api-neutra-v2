@@ -1,12 +1,12 @@
 jest.mock("@/config/db.config", () => ({ prisma: {} }));
 
 import { DeleteUserUseCase } from "@/core/application/users/delete-user.use-case";
-import { PrismaUserRepository } from "@/infrastructure/database/prisma/user.prisma-repository";
 import {
     EntityNotFoundError,
     ForbiddenError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import { PrismaUserRepository } from "@/infrastructure/database/prisma/user.prisma-repository";
 import { TenantErrorCodes } from "@/types/error-codes";
 
 const ATTACKER_TENANT = "tenant-attacker";
@@ -34,7 +34,10 @@ function memberUser(tenantIds: string[]) {
 function setup({
     tenantIds = [ATTACKER_TENANT],
     exists = true,
-}: { tenantIds?: string[]; exists?: boolean } = {}) {
+}: {
+    tenantIds?: string[];
+    exists?: boolean;
+} = {}) {
     const user = memberUser(tenantIds);
 
     const repository = {
@@ -44,11 +47,10 @@ function setup({
         // Tenant-scoped: mirrors the Prisma membership predicate.
         findByIdForTenant: jest
             .fn()
-            .mockImplementation(
-                async (tenantId: string, id: string) =>
-                    exists && id === VICTIM_ID && tenantIds.includes(tenantId)
-                        ? user
-                        : null,
+            .mockImplementation(async (tenantId: string, id: string) =>
+                exists && id === VICTIM_ID && tenantIds.includes(tenantId)
+                    ? user
+                    : null,
             ),
         deleteForTenant: jest
             .fn()

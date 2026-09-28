@@ -1,4 +1,4 @@
-import { User, UserTenant } from "@/core/entities/user.entity";
+import type { User, UserTenant } from "@/core/entities/user.entity";
 
 export interface UserCreateData {
     name: string;

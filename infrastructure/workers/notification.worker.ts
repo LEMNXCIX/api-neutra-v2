@@ -1,13 +1,13 @@
-import { Worker } from "bullmq";
 import type { Job } from "bullmq";
-import { redisOptions } from "@/infrastructure/services/queue.service";
-import { generateAppointmentIcs } from "@/infrastructure/utils/ics-generator.util";
-import { NotificationService } from "@/core/services/notification.service";
-import type { IEmailService } from "@/core/ports/email.port";
+import { Worker } from "bullmq";
 import type { TenantConfig } from "@/core/entities/tenant.entity";
+import type { IEmailService } from "@/core/ports/email.port";
+import type { ILogger } from "@/core/providers/logger.interface";
 import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
 import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import type { ILogger } from "@/core/providers/logger.interface";
+import type { NotificationService } from "@/core/services/notification.service";
+import { redisOptions } from "@/infrastructure/services/queue.service";
+import { generateAppointmentIcs } from "@/infrastructure/utils/ics-generator.util";
 
 export type NotificationWorkerDependencies = {
     appointmentRepository: IAppointmentRepository;
@@ -93,14 +93,12 @@ export function createNotificationWorker(
                         process.env.SMTP_FROM ||
                         "support@neutra.com",
                     websiteUrl: baseUrl,
-                    primaryColor:
-                        config?.branding?.primaryColor || "#667eea",
+                    primaryColor: config?.branding?.primaryColor || "#667eea",
                 },
                 notificationSettings:
-                    ((config as Record<string, unknown>)?.notifications as Record<
-                        string,
-                        unknown
-                    > | null) ?? null,
+                    ((config as Record<string, unknown>)
+                        ?.notifications as Record<string, unknown> | null) ??
+                    null,
             };
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
@@ -128,11 +126,7 @@ export function createNotificationWorker(
                         true,
                     );
 
-                    if (
-                        !appointment ||
-                        !appointment.user ||
-                        !appointment.user.email
-                    ) {
+                    if (!appointment?.user?.email) {
                         log.warn(
                             `[NotificationWorker] Skipping job: Appointment or user email not found for ID ${appointmentId}`,
                         );
@@ -141,10 +135,8 @@ export function createNotificationWorker(
 
                     const userEmail = appointment.user.email;
                     const userName = appointment.user.name;
-                    const serviceName =
-                        appointment.service?.name || "Service";
-                    const staffName =
-                        appointment.staff?.name || "Staff Member";
+                    const serviceName = appointment.service?.name || "Service";
+                    const staffName = appointment.staff?.name || "Staff Member";
                     const duration = appointment.service?.duration || 30;
 
                     const baseUrl = getBaseUrl(origin);
@@ -210,7 +202,10 @@ export function createNotificationWorker(
                                     appointmentTime:
                                         appointment.startTime.toLocaleTimeString(
                                             [],
-                                            { hour: "2-digit", minute: "2-digit" },
+                                            {
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            },
                                         ),
                                     duration,
                                     notes: appointment.notes,
@@ -278,10 +273,14 @@ export function createNotificationWorker(
                                     appointmentTime:
                                         appointment.startTime.toLocaleTimeString(
                                             [],
-                                            { hour: "2-digit", minute: "2-digit" },
+                                            {
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            },
                                         ),
                                     duration,
-                                    cancellationReason: reason || "Administrativa",
+                                    cancellationReason:
+                                        reason || "Administrativa",
                                 },
                                 tenantConfig,
                             );
@@ -333,11 +332,7 @@ export function createNotificationWorker(
                         true,
                     );
 
-                    if (
-                        !appointment ||
-                        !appointment.staff ||
-                        !appointment.user
-                    ) {
+                    if (!appointment?.staff || !appointment.user) {
                         log.warn(
                             `[NotificationWorker] Skipping PENDING_APPROVAL: Missing appointment, staff, or user for ID ${appointmentId}`,
                         );
@@ -353,8 +348,7 @@ export function createNotificationWorker(
                     }
 
                     const userName = appointment.user.name;
-                    const serviceName =
-                        appointment.service?.name || "Service";
+                    const serviceName = appointment.service?.name || "Service";
                     const staffName = appointment.staff.name;
 
                     const baseUrl = getBaseUrl(origin);
@@ -384,10 +378,13 @@ export function createNotificationWorker(
                                 appointmentDate:
                                     appointment.startTime.toLocaleDateString(),
                                 appointmentTime:
-                                    appointment.startTime.toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    }),
+                                    appointment.startTime.toLocaleTimeString(
+                                        [],
+                                        {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        },
+                                    ),
                                 duration: appointment.service?.duration || 30,
                                 notes: appointment.notes || "Sin notas",
                                 appointmentId: appointment.id,
@@ -484,9 +481,7 @@ export function createNotificationWorker(
             } catch (error: unknown) {
                 const msg =
                     error instanceof Error ? error.message : String(error);
-                log.error(
-                    `[NotificationWorker] Job ${job.id} failed: ${msg}`,
-                );
+                log.error(`[NotificationWorker] Job ${job.id} failed: ${msg}`);
                 throw error;
             }
         },

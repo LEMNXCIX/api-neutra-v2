@@ -1,6 +1,6 @@
-import { createErrorMiddleware } from "@/middleware/error.middleware";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
 import type { ILogger } from "@/core/providers/logger.interface";
+import { createErrorMiddleware } from "@/middleware/error.middleware";
 
 /**
  * The rule under test: a 4xx reaches the client as a warning, and anything the

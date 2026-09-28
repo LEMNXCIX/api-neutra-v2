@@ -1,8 +1,8 @@
-import { ISlideRepository } from '@/core/repositories/slide.repository.interface';
-import { Success, UseCaseResult } from '@/core/utils/use-case-result';
+import type { ISlideRepository } from "@/core/repositories/slide.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class DeleteSlideUseCase {
-    constructor(private slideRepository: ISlideRepository) { }
+    constructor(private slideRepository: ISlideRepository) {}
 
     async execute(tenantId: string, id: string): Promise<UseCaseResult> {
         await this.slideRepository.delete(tenantId, id);

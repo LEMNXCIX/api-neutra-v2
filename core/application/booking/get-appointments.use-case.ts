@@ -1,9 +1,9 @@
-import {
+import type { AppointmentFilters } from "@/core/application/dtos/requests/appointment.request";
+import type {
     IAppointmentRepository,
     AppointmentFilters as RepoFilters,
 } from "@/core/repositories/appointment.repository.interface";
-import { AppointmentFilters } from "@/core/application/dtos/requests/appointment.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetAppointmentsUseCase {
     constructor(private appointmentRepository: IAppointmentRepository) {}

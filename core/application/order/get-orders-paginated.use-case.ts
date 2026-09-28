@@ -1,5 +1,5 @@
-import { IOrderRepository } from "@/core/repositories/order.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { IOrderRepository } from "@/core/repositories/order.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetOrdersPaginatedUseCase {
     constructor(private orderRepository: IOrderRepository) {}
@@ -27,17 +27,13 @@ export class GetOrdersPaginatedUseCase {
             endDate: options.endDate,
         });
 
-        return Success(
-            result.orders,
-            "Orders retrieved successfully",
-            {
-                pagination: {
-                    page: result.page,
-                    limit: result.limit,
-                    total: result.total,
-                    totalPages: result.totalPages,
-                },
+        return Success(result.orders, "Orders retrieved successfully", {
+            pagination: {
+                page: result.page,
+                limit: result.limit,
+                total: result.total,
+                totalPages: result.totalPages,
             },
-        );
+        });
     }
 }

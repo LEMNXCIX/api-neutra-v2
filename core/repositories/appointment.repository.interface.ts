@@ -1,4 +1,4 @@
-import {
+import type {
     Appointment,
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
@@ -68,10 +68,7 @@ export type AppointmentReviewCandidateQuery = {
  * Defines operations for Appointment persistence
  */
 export interface IAppointmentRepository {
-    create(
-        tenantId: string,
-        data: AppointmentCreateData,
-    ): Promise<Appointment>;
+    create(tenantId: string, data: AppointmentCreateData): Promise<Appointment>;
     findById(
         tenantId: string,
         id: string,

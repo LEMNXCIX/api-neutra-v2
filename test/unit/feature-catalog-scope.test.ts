@@ -51,16 +51,16 @@ jest.mock("@/config/db.config", () => {
 });
 
 import { prisma } from "@/config/db.config";
-import { AuthErrorCodes, httpStatusFromDomainError } from "@/types/error-codes";
-import { Success } from "@/core/utils/use-case-result";
 import {
     ForbiddenError,
     UnauthorizedError,
 } from "@/core/domain/errors/domain-errors";
-import { requireSuperAdmin } from "@/middleware/authorization.middleware";
-import { FeatureController } from "@/interface-adapters/controllers/feature.controller";
+import type { Feature } from "@/core/entities/feature.entity";
+import { Success } from "@/core/utils/use-case-result";
 import { PrismaFeatureRepository } from "@/infrastructure/database/prisma/feature.prisma-repository";
-import { Feature } from "@/core/entities/feature.entity";
+import { FeatureController } from "@/interface-adapters/controllers/feature.controller";
+import { requireSuperAdmin } from "@/middleware/authorization.middleware";
+import { AuthErrorCodes, httpStatusFromDomainError } from "@/types/error-codes";
 
 /**
  * Records every call the RBAC middleware makes into the domain policy while
@@ -88,8 +88,12 @@ const readRepoFile = (relative: string) =>
 const authorizationSource = readRepoFile(
     "middleware/authorization.middleware.ts",
 );
-const featureRoutesSource = readRepoFile("infrastructure/routes/feature.routes.ts");
-const loyaltyRoutesSource = readRepoFile("infrastructure/routes/loyalty.routes.ts");
+const featureRoutesSource = readRepoFile(
+    "infrastructure/routes/feature.routes.ts",
+);
+const loyaltyRoutesSource = readRepoFile(
+    "infrastructure/routes/loyalty.routes.ts",
+);
 
 const featureTable = prisma.feature as unknown as {
     findMany: jest.Mock;
@@ -164,7 +168,10 @@ const FEATURE: Feature = {
 
 describe("shared super-admin gate", () => {
     test("admits a super admin and writes no response", () => {
-        const { next, res, thrown } = runMiddleware(requireSuperAdmin, SUPER_ADMIN);
+        const { next, res, thrown } = runMiddleware(
+            requireSuperAdmin,
+            SUPER_ADMIN,
+        );
 
         expect(thrown).toBeUndefined();
         expect(next).toHaveBeenCalledTimes(1);
@@ -194,7 +201,10 @@ describe("shared super-admin gate", () => {
     });
 
     test("refuses an authenticated user without a role through next(error)", () => {
-        const { next, res, thrown } = runMiddleware(requireSuperAdmin, ROLELESS);
+        const { next, res, thrown } = runMiddleware(
+            requireSuperAdmin,
+            ROLELESS,
+        );
 
         expect(thrown).toBeUndefined();
         expect(res.status).not.toHaveBeenCalled();
@@ -276,12 +286,8 @@ describe("loyalty routes no longer carry a private super-admin predicate", () =>
         expect(loyaltyRoutesSource).toMatch(
             /import \{[^}]*\brequireSuperAdmin\b[^}]*\} from "@\/middleware\/authorization\.middleware"/,
         );
-        expect(loyaltyRoutesSource).not.toMatch(
-            /function requireSuperAdmin\b/,
-        );
-        expect(loyaltyRoutesSource).not.toMatch(
-            /const requireSuperAdmin\b/,
-        );
+        expect(loyaltyRoutesSource).not.toMatch(/function requireSuperAdmin\b/);
+        expect(loyaltyRoutesSource).not.toMatch(/const requireSuperAdmin\b/);
     });
 
     test("still uses the shared gate on the cross-tenant admin route", () => {
@@ -302,7 +308,9 @@ describe("controller body narrowing", () => {
             execute: jest.fn().mockResolvedValue(Success(FEATURE, "updated")),
         };
         const controller = new FeatureController(
-            { execute: jest.fn().mockResolvedValue(Success([], "ok")) } as never,
+            {
+                execute: jest.fn().mockResolvedValue(Success([], "ok")),
+            } as never,
             createFeatureUseCase as never,
             updateFeatureUseCase as never,
             {

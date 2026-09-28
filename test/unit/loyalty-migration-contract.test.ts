@@ -11,12 +11,21 @@ const migration = readFileSync(
 
 describe("loyalty campaign contract migration", () => {
     test("checks every required campaign field before enforcing it", () => {
-        const check = migration.indexOf("Loyalty ledger campaign backfill is incomplete");
-        const notNull = migration.indexOf('ALTER COLUMN "campaignId" SET NOT NULL');
+        const check = migration.indexOf(
+            "Loyalty ledger campaign backfill is incomplete",
+        );
+        const notNull = migration.indexOf(
+            'ALTER COLUMN "campaignId" SET NOT NULL',
+        );
 
         expect(check).toBeGreaterThanOrEqual(0);
         expect(check).toBeLessThan(notNull);
-        for (const column of ["campaignId", "sourceType", "sourceId", "value"]) {
+        for (const column of [
+            "campaignId",
+            "sourceType",
+            "sourceId",
+            "value",
+        ]) {
             expect(migration).toContain(`"${column}" IS NULL`);
         }
         expect(migration).toContain(
@@ -31,8 +40,6 @@ describe("loyalty campaign contract migration", () => {
         expect(migration).toContain('DROP COLUMN "sourceAppointmentId"');
         expect(migration).toContain('DROP COLUMN "points"');
         expect(migration).toContain('DROP COLUMN "milestone"');
-        expect(migration).toContain(
-            'SET "config" = "config" - \'loyalty\'',
-        );
+        expect(migration).toContain('SET "config" = "config" - \'loyalty\'');
     });
 });

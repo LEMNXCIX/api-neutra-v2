@@ -1,13 +1,13 @@
-import { Request, Response } from "express";
-import { GetFeaturesUseCase } from "@/core/application/feature/get-features.use-case";
-import { CreateFeatureUseCase } from "@/core/application/feature/create-feature.use-case";
-import { UpdateFeatureUseCase } from "@/core/application/feature/update-feature.use-case";
-import { DeleteFeatureUseCase } from "@/core/application/feature/delete-feature.use-case";
-import { FeatureResponse } from "@/core/application/dtos/responses/feature/feature.response";
-import {
+import type { Request, Response } from "express";
+import type {
     CreateFeatureDTO,
     UpdateFeatureDTO,
 } from "@/core/application/dtos/requests/feature.request";
+import { FeatureResponse } from "@/core/application/dtos/responses/feature/feature.response";
+import type { CreateFeatureUseCase } from "@/core/application/feature/create-feature.use-case";
+import type { DeleteFeatureUseCase } from "@/core/application/feature/delete-feature.use-case";
+import type { GetFeaturesUseCase } from "@/core/application/feature/get-features.use-case";
+import type { UpdateFeatureUseCase } from "@/core/application/feature/update-feature.use-case";
 import { present } from "@/core/utils/use-case-result";
 
 export class FeatureController {

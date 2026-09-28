@@ -51,4 +51,3 @@ export interface Appointment {
     staff?: { id: string; name: string; email?: string; avatar?: string };
     coupon?: { id: string; code: string; type: string; value: number };
 }
-

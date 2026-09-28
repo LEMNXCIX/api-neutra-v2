@@ -58,7 +58,11 @@ describe("architecture.rules", () => {
         // below is cleared by its own work unit; when the list is empty the
         // assertion becomes a plain PASS, which is the state the ci profile
         // gate requires. Never add an entry here to silence a new finding.
-        const knownDebt: Array<{ rule: string; subject: RegExp; clearedBy: string }> = [];
+        const knownDebt: Array<{
+            rule: string;
+            subject: RegExp;
+            clearedBy: string;
+        }> = [];
 
         // No violation may fall outside the known set. Asserting the empty
         // array keeps the offending detail in the jest diff.
@@ -83,12 +87,17 @@ describe("architecture.rules", () => {
                             entry.subject.test(detail),
                     ),
             )
-            .map((entry) => `${entry.clearedBy} was expected to clear ${entry.rule}`);
+            .map(
+                (entry) =>
+                    `${entry.clearedBy} was expected to clear ${entry.rule}`,
+            );
         expect(missing).toEqual([]);
 
         // R1, R3, R6 and R7 must be clean right now and must never regress.
         for (const rule of ["R1", "R3", "R6", "R7"]) {
-            expect(details.filter((detail) => detail.startsWith(rule))).toEqual([]);
+            expect(details.filter((detail) => detail.startsWith(rule))).toEqual(
+                [],
+            );
         }
     });
 
@@ -174,7 +183,7 @@ describe("architecture.rules", () => {
         write(
             "core/entities/loyalty.entity.ts",
             [
-                "export type LoyaltyStatus = \"ACTIVE\" | \"DRAFT\";",
+                'export type LoyaltyStatus = "ACTIVE" | "DRAFT";',
                 "",
                 "export const LoyaltyCampaignCustomerStatus = LoyaltyStatus;",
                 "",
@@ -188,12 +197,12 @@ describe("architecture.rules", () => {
         write(
             "core/application/order/create-order.use-case.ts",
             [
-                "import { BusinessRuleViolationError } from \"@/core/domain/errors/domain-errors\";",
+                'import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";',
                 "",
                 "export function requireCoupons(): void {",
                 "    throw new BusinessRuleViolationError(",
-                "        \"Coupon validation is not available for this tenant\",",
-                "        \"COUPONS_FEATURE_REQUIRED\",",
+                '        "Coupon validation is not available for this tenant",',
+                '        "COUPONS_FEATURE_REQUIRED",',
                 "    );",
                 "}",
                 "",
@@ -202,12 +211,12 @@ describe("architecture.rules", () => {
         write(
             "infrastructure/database/prisma/order.prisma-repository.ts",
             [
-                "import { BusinessRuleViolationError } from \"@/core/domain/errors/domain-errors\";",
+                'import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";',
                 "",
                 "if (!couponsEnabled) {",
                 "    throw new BusinessRuleViolationError(",
-                "        \"Coupon validation is not available for this tenant\",",
-                "        \"COUPONS_FEATURE_REQUIRED\",",
+                '        "Coupon validation is not available for this tenant",',
+                '        "COUPONS_FEATURE_REQUIRED",',
                 "    );",
                 "}",
                 "",
@@ -218,7 +227,7 @@ describe("architecture.rules", () => {
 
         expect(result.status).toBe("FAIL");
         expect(detailsFor(result, "R4")).toEqual([
-            "R4 code \"COUPONS_FEATURE_REQUIRED\" is implemented in core (core/application/order/create-order.use-case.ts:4) and in an outer layer (infrastructure/database/prisma/order.prisma-repository.ts:4)",
+            'R4 code "COUPONS_FEATURE_REQUIRED" is implemented in core (core/application/order/create-order.use-case.ts:4) and in an outer layer (infrastructure/database/prisma/order.prisma-repository.ts:4)',
         ]);
     });
 
@@ -248,7 +257,10 @@ describe("architecture.rules", () => {
             "infrastructure/database/prisma/order.prisma-repository.ts",
             "const row = { discountAmount: 0 };\n",
         );
-        write("core/utils/money.ts", 'const lib = require("../helpers/decimal");\n');
+        write(
+            "core/utils/money.ts",
+            'const lib = require("../helpers/decimal");\n',
+        );
 
         const result = await runIn(sandbox);
 

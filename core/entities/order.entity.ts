@@ -1,4 +1,4 @@
-import { Product } from "@/core/entities/product.entity";
+import type { Product } from "@/core/entities/product.entity";
 
 export type OrderStatus = "PENDIENTE" | "PAGADO" | "ENVIADO" | "ENTREGADO";
 
@@ -28,4 +28,3 @@ export interface Order {
     };
     trackingNumber?: string | null;
 }
-

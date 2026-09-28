@@ -1,5 +1,5 @@
-import { NotificationService } from '@/core/services/notification.service';
-import type { INotificationProvider } from '@/core/ports/notification-provider.interface';
+import type { INotificationProvider } from "@/core/ports/notification-provider.interface";
+import { NotificationService } from "@/core/services/notification.service";
 
 /**
  * Notification service factory.

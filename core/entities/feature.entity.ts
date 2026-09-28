@@ -7,4 +7,3 @@ export interface Feature {
     price: number;
     createdAt?: Date;
 }
-

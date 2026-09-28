@@ -1,22 +1,22 @@
-import { Request, Response } from "express";
-import { CreateTenantUseCase } from "@/core/application/tenant/create-tenant.use-case";
-import { GetTenantsUseCase } from "@/core/application/tenant/get-tenants.use-case";
-import { GetMyTenantsUseCase } from "@/core/application/tenant/get-my-tenants.use-case";
-import { GetTenantByIdUseCase } from "@/core/application/tenant/get-tenant-by-id.use-case";
-import { GetTenantBySlugUseCase } from "@/core/application/tenant/get-tenant-by-slug.use-case";
-import { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
-import { DeleteTenantUseCase } from "@/core/application/tenant/delete-tenant.use-case";
-import { GetTenantFeaturesUseCase } from "@/core/application/tenant/get-tenant-features.use-case";
-import { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-tenant-features.use-case";
-import { TenantResponse } from "@/core/application/dtos/responses/tenant/tenant.response";
-import { present } from "@/core/utils/use-case-result";
-import { AppError } from "@/types/api-response";
-import { AuthErrorCodes } from "@/types/error-codes";
-import {
+import type { Request, Response } from "express";
+import type {
     CreateTenantDTO,
     UpdateTenantDTO,
     UpdateTenantFeaturesDTO,
 } from "@/core/application/dtos/requests/tenant.request";
+import { TenantResponse } from "@/core/application/dtos/responses/tenant/tenant.response";
+import type { CreateTenantUseCase } from "@/core/application/tenant/create-tenant.use-case";
+import type { DeleteTenantUseCase } from "@/core/application/tenant/delete-tenant.use-case";
+import type { GetMyTenantsUseCase } from "@/core/application/tenant/get-my-tenants.use-case";
+import type { GetTenantByIdUseCase } from "@/core/application/tenant/get-tenant-by-id.use-case";
+import type { GetTenantBySlugUseCase } from "@/core/application/tenant/get-tenant-by-slug.use-case";
+import type { GetTenantFeaturesUseCase } from "@/core/application/tenant/get-tenant-features.use-case";
+import type { GetTenantsUseCase } from "@/core/application/tenant/get-tenants.use-case";
+import type { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
+import type { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-tenant-features.use-case";
+import { present } from "@/core/utils/use-case-result";
+import { AppError } from "@/types/api-response";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 export class TenantController {
     constructor(
@@ -44,9 +44,7 @@ export class TenantController {
             req.validatedBody as CreateTenantDTO,
             creatorId,
         );
-        return res
-            .status(201)
-            .json(present(result, TenantResponse.fromEntity));
+        return res.status(201).json(present(result, TenantResponse.fromEntity));
     }
 
     // `_req`: the tenant list is the whole platform, so this handler needs

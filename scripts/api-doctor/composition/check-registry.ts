@@ -1,15 +1,18 @@
-import { runCommand, type CommandRunner } from "../adapters/command.adapter";
+import { createArchitectureRulesCheck } from "../adapters/architecture.adapter";
 import { createNpmAuditCheck } from "../adapters/audit.adapter";
+import { type CommandRunner, runCommand } from "../adapters/command.adapter";
 import { createDockerComposeCheck } from "../adapters/docker.adapter";
-import { checkRuntimeHealth, checkRuntimeReady } from "../adapters/http.adapter";
+import {
+    checkRuntimeHealth,
+    checkRuntimeReady,
+} from "../adapters/http.adapter";
 import { createProductionArtifactCheck } from "../adapters/openapi.adapter";
+import { createPrismaValidateCheck } from "../adapters/prisma.adapter";
 import {
     checkNodeContract,
     checkPackageLock,
     checkRequiredEnvironment,
 } from "../adapters/project.adapter";
-import { createPrismaValidateCheck } from "../adapters/prisma.adapter";
-import { createArchitectureRulesCheck } from "../adapters/architecture.adapter";
 import type {
     CheckCategory,
     CheckRunResult,
@@ -83,7 +86,10 @@ function integrationCheck(runner: CommandRunner): DoctorCheck {
                     timeoutMs: 600_000,
                 });
                 if (result.timedOut) {
-                    return { status: "FAIL", message: "Integration tests timed out" };
+                    return {
+                        status: "FAIL",
+                        message: "Integration tests timed out",
+                    };
                 }
                 return result.exitCode === 0
                     ? { status: "PASS", message: "Integration tests passed" }

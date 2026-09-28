@@ -1,14 +1,14 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import { requirePermission } from "@/middleware/authorization.middleware";
-import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
-import { ProductController } from "@/interface-adapters/controllers/product.controller";
-import { validateDto } from "@/middleware/validation.middleware";
+import { type Application, Router } from "express";
 import {
     CreateProductDto,
     SearchProductDto,
     UpdateProductDto,
 } from "@/core/application/dtos/requests/product.request";
+import type { ProductController } from "@/interface-adapters/controllers/product.controller";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function products(
     app: Application,
@@ -100,7 +100,11 @@ function products(
      *               items:
      *                 $ref: '#/components/schemas/Product'
      */
-    router.post("/search/", validateDto(SearchProductDto), productController.search);
+    router.post(
+        "/search/",
+        validateDto(SearchProductDto),
+        productController.search,
+    );
 
     /**
      * @swagger

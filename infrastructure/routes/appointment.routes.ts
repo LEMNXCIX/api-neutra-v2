@@ -1,22 +1,22 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
-import { AppointmentController } from "@/interface-adapters/controllers/appointment.controller";
-import {
-    requireConcreteTenantContext,
-    requireTenantType,
-} from "@/middleware/tenant-feature.middleware";
-import {
-    APPOINTMENT_OPERATIONAL_ROLES,
-    requireAnyRole,
-    requirePermission,
-} from "@/middleware/authorization.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import { type Application, Router } from "express";
 import {
     CancelAppointmentDto,
     CreateAppointmentDto,
     UpdateAppointmentStatusDto,
 } from "@/core/application/dtos/requests/appointment.request";
+import type { AppointmentController } from "@/interface-adapters/controllers/appointment.controller";
+import {
+    APPOINTMENT_OPERATIONAL_ROLES,
+    requireAnyRole,
+    requirePermission,
+} from "@/middleware/authorization.middleware";
+import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
+import {
+    requireConcreteTenantContext,
+    requireTenantType,
+} from "@/middleware/tenant-feature.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function appointments(
     app: Application,
@@ -132,8 +132,7 @@ function appointments(
     router.get(
         "/availability",
         requireTenantType("BOOKING", "HYBRID"),
-        (req, res) =>
-        appointmentController.getAvailability(req, res),
+        (req, res) => appointmentController.getAvailability(req, res),
     );
 
     /**
@@ -168,8 +167,8 @@ function appointments(
         "/",
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
-        validateDto(CreateAppointmentDto), (req, res) =>
-        appointmentController.create(req, res),
+        validateDto(CreateAppointmentDto),
+        (req, res) => appointmentController.create(req, res),
     );
 
     /**
@@ -229,8 +228,9 @@ function appointments(
     router.get(
         "/",
         requireTenantType("BOOKING", "HYBRID"),
-        authenticate, resolveSuperAdminTenant, (req, res) =>
-        appointmentController.getAll(req, res),
+        authenticate,
+        resolveSuperAdminTenant,
+        (req, res) => appointmentController.getAll(req, res),
     );
 
     /**
@@ -322,8 +322,8 @@ function appointments(
     router.get(
         "/:id",
         requireTenantType("BOOKING", "HYBRID"),
-        authenticate, (req, res) =>
-        appointmentController.getById(req, res),
+        authenticate,
+        (req, res) => appointmentController.getById(req, res),
     );
 
     /**
@@ -368,8 +368,8 @@ function appointments(
         "/:id/cancel",
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
-        validateDto(CancelAppointmentDto), (req, res) =>
-        appointmentController.cancel(req, res),
+        validateDto(CancelAppointmentDto),
+        (req, res) => appointmentController.cancel(req, res),
     );
 
     /**

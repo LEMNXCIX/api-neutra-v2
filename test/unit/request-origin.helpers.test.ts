@@ -9,11 +9,15 @@ import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
  * precedence order between the override header, Origin, Referer and the request
  * host was entirely unverified.
  */
-function requestWith(headers: Record<string, unknown>, host = "api.test"): Request {
+function requestWith(
+    headers: Record<string, unknown>,
+    host = "api.test",
+): Request {
     return {
         headers,
         protocol: "https",
-        get: (name: string) => (name.toLowerCase() === "host" ? host : undefined),
+        get: (name: string) =>
+            name.toLowerCase() === "host" ? host : undefined,
     } as unknown as Request;
 }
 
@@ -29,7 +33,9 @@ describe("resolveRequestOrigin", () => {
     });
 
     it("trims whitespace from the override header", () => {
-        const req = requestWith({ "x-original-origin": "  https://trimmed.example.com  " });
+        const req = requestWith({
+            "x-original-origin": "  https://trimmed.example.com  ",
+        });
 
         expect(resolveRequestOrigin(req)).toBe("https://trimmed.example.com");
     });
@@ -73,7 +79,10 @@ describe("resolveRequestOrigin", () => {
     });
 
     it("falls through to the request host when the Referer will not parse", () => {
-        const req = requestWith({ referer: "not a url at all" }, "fallback.test");
+        const req = requestWith(
+            { referer: "not a url at all" },
+            "fallback.test",
+        );
 
         expect(resolveRequestOrigin(req)).toBe("https://fallback.test");
     });

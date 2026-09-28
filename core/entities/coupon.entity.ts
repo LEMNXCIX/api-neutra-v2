@@ -25,4 +25,3 @@ export interface Coupon {
     createdAt: Date;
     updatedAt: Date;
 }
-

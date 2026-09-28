@@ -1,6 +1,6 @@
-import { createClient, RedisClientType } from "redis";
+import { createClient, type RedisClientType } from "redis";
 import config from "@/config/index.config";
-import { ICacheProvider } from "@/core/providers/cache-provider.interface";
+import type { ICacheProvider } from "@/core/providers/cache-provider.interface";
 import type { ILogger } from "@/core/providers/logger.interface";
 
 export class RedisProvider implements ICacheProvider {

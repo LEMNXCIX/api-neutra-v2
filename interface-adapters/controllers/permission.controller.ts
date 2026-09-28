@@ -1,15 +1,15 @@
-import { Request, Response } from "express";
-import { CreatePermissionUseCase } from "@/core/application/permissions/create-permission.use-case";
-import { GetPermissionsUseCase } from "@/core/application/permissions/get-permissions.use-case";
-import { UpdatePermissionUseCase } from "@/core/application/permissions/update-permission.use-case";
-import { DeletePermissionUseCase } from "@/core/application/permissions/delete-permission.use-case";
-import { GetPermissionsPaginatedUseCase } from "@/core/application/permissions/get-permissions-paginated.use-case";
-import { PermissionResponse } from "@/core/application/dtos/responses/permission/permission.response";
-import { present } from "@/core/utils/use-case-result";
-import {
+import type { Request, Response } from "express";
+import type {
     CreatePermissionDTO,
     UpdatePermissionDTO,
 } from "@/core/application/dtos/requests/permission.request";
+import { PermissionResponse } from "@/core/application/dtos/responses/permission/permission.response";
+import type { CreatePermissionUseCase } from "@/core/application/permissions/create-permission.use-case";
+import type { DeletePermissionUseCase } from "@/core/application/permissions/delete-permission.use-case";
+import type { GetPermissionsUseCase } from "@/core/application/permissions/get-permissions.use-case";
+import type { GetPermissionsPaginatedUseCase } from "@/core/application/permissions/get-permissions-paginated.use-case";
+import type { UpdatePermissionUseCase } from "@/core/application/permissions/update-permission.use-case";
+import { present } from "@/core/utils/use-case-result";
 
 export class PermissionController {
     constructor(
@@ -34,10 +34,10 @@ export class PermissionController {
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const page = req.query.page
-            ? parseInt(req.query.page as string)
+            ? parseInt(req.query.page as string, 10)
             : undefined;
         const limit = req.query.limit
-            ? parseInt(req.query.limit as string)
+            ? parseInt(req.query.limit as string, 10)
             : undefined;
         const search = req.query.search
             ? (req.query.search as string)
@@ -53,7 +53,9 @@ export class PermissionController {
             return res.json(
                 present(result, (permissions) =>
                     Array.isArray(permissions)
-                        ? permissions.map((p) => PermissionResponse.fromEntity(p))
+                        ? permissions.map((p) =>
+                              PermissionResponse.fromEntity(p),
+                          )
                         : [],
                 ),
             );
@@ -62,7 +64,9 @@ export class PermissionController {
             return res.json(
                 present(result, (permissions) =>
                     Array.isArray(permissions)
-                        ? permissions.map((p) => PermissionResponse.fromEntity(p))
+                        ? permissions.map((p) =>
+                              PermissionResponse.fromEntity(p),
+                          )
                         : [],
                 ),
             );

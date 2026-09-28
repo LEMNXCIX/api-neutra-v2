@@ -1,8 +1,8 @@
-import { ICartRepository } from "@/core/repositories/cart.repository.interface";
-import { IProductRepository } from "@/core/repositories/product.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { assertCartStockAvailable } from "@/core/domain/order/order.policy";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import { assertCartStockAvailable } from "@/core/domain/order/order.policy";
+import type { ICartRepository } from "@/core/repositories/cart.repository.interface";
+import type { IProductRepository } from "@/core/repositories/product.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class AddToCartUseCase {
     constructor(

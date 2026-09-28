@@ -1,15 +1,16 @@
 jest.mock("uuid", () => ({ v4: () => "test-uuid" }));
 
-import { AppointmentController } from "@/interface-adapters/controllers/appointment.controller";
 import { GetAppointmentsNeedingReviewUseCase } from "@/core/application/booking/get-appointments-needing-review.use-case";
-import { AppointmentListResponse } from "@/core/application/dtos/responses/appointment/appointment-list.response";
 import { AppointmentResponse } from "@/core/application/dtos/responses/appointment/appointment.response";
-import { Appointment, AppointmentStatus } from "@/core/entities/appointment.entity";
-import { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import { AppointmentListResponse } from "@/core/application/dtos/responses/appointment/appointment-list.response";
+import {
+    type Appointment,
+    AppointmentStatus,
+} from "@/core/entities/appointment.entity";
+import type { IAppointmentRepository } from "@/core/repositories/appointment.repository.interface";
+import { AppointmentController } from "@/interface-adapters/controllers/appointment.controller";
 
-function makeAppointment(
-    overrides: Partial<Appointment> = {},
-): Appointment {
+function makeAppointment(overrides: Partial<Appointment> = {}): Appointment {
     return {
         id: "appointment-1",
         userId: "user-1",

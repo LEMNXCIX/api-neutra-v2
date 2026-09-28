@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -101,7 +101,7 @@ function getAllTsFiles(dir: string): string[] {
 }
 
 let violations = 0;
-let warnings = 0;
+const warnings = 0;
 
 console.log("=== Architecture Boundary Check ===\n");
 
@@ -154,7 +154,10 @@ for (const dir of CORE_DIRS) {
                     violations++;
                 }
             }
-            if (/\bprocess\.env\b/.test(lines[i]) && !/^\s*\/\//.test(lines[i])) {
+            if (
+                /\bprocess\.env\b/.test(lines[i]) &&
+                !/^\s*\/\//.test(lines[i])
+            ) {
                 console.log(
                     `VIOLATION: ${relativePath}:${i + 1} uses process.env (use IConfigProvider / inject config)`,
                 );
@@ -196,7 +199,9 @@ if (fs.existsSync(controllersDir)) {
 // middleware) and only ever warned, so it saw 14 of the 54 sites that
 // existed and none of the 21 in infrastructure/providers. It now scans
 // every file the build emits, and a finding fails the run.
-console.log("\n--- Type Safety Check: `as any` and `: any` in shipped code ---\n");
+console.log(
+    "\n--- Type Safety Check: `as any` and `: any` in shipped code ---\n",
+);
 
 const ANY_PATTERNS = [
     { pattern: /\bas\s+any\b/, label: "'as any'" },
@@ -262,9 +267,7 @@ for (const relativePath of anyScannable) {
 }
 
 // Check for direct repository instantiation outside runtime composition
-console.log(
-    "\n--- Instantiation Check: new Prisma* outside runtime.ts ---\n",
-);
+console.log("\n--- Instantiation Check: new Prisma* outside runtime.ts ---\n");
 
 const runtimePath = path.join(ROOT, "infrastructure/config/runtime.ts");
 const scriptsPath = path.join(ROOT, "scripts");
@@ -343,18 +346,36 @@ const httpCompositionFiles = [
 ];
 const httpCompositionPatterns = [
     { pattern: /from\s+['"][^'"]*express['"]/i, name: "Express import" },
-    { pattern: /\b(?:Request|Response|Router|Express)\b/, name: "Express symbol" },
-    { pattern: /@prisma|config\/db\.config|infrastructure\/database|\bprisma\s*\./i, name: "direct Prisma access" },
-    { pattern: /infrastructure\/config\/container|\bContainer\b/, name: "Container reference" },
-    { pattern: /infrastructure\/routes|\bapp\.(?:get|post|put|delete|patch)\b|\brouter\./i, name: "HTTP route registration" },
-    { pattern: /@\/core\/(?:entities|domain)\//i, name: "core entity/domain import" },
-    { pattern: /\b(?:if|switch|for|while|try|catch|throw)\b/i, name: "business control flow" },
+    {
+        pattern: /\b(?:Request|Response|Router|Express)\b/,
+        name: "Express symbol",
+    },
+    {
+        pattern:
+            /@prisma|config\/db\.config|infrastructure\/database|\bprisma\s*\./i,
+        name: "direct Prisma access",
+    },
+    {
+        pattern: /infrastructure\/config\/container|\bContainer\b/,
+        name: "Container reference",
+    },
+    {
+        pattern:
+            /infrastructure\/routes|\bapp\.(?:get|post|put|delete|patch)\b|\brouter\./i,
+        name: "HTTP route registration",
+    },
+    {
+        pattern: /@\/core\/(?:entities|domain)\//i,
+        name: "core entity/domain import",
+    },
+    {
+        pattern: /\b(?:if|switch|for|while|try|catch|throw)\b/i,
+        name: "business control flow",
+    },
 ];
 
 function stripComments(content: string): string {
-    return content
-        .replace(/\/\*[\s\S]*?\*\//g, "")
-        .replace(/\/\/.*$/gm, "");
+    return content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 }
 
 for (const file of httpCompositionFiles) {

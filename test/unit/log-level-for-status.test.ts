@@ -1,9 +1,4 @@
 import {
-    LogLevel,
-    logLevelForStatus,
-} from "@/core/providers/logger.interface";
-import { httpStatusFromDomainError } from "@/types/error-codes";
-import {
     BusinessRuleViolationError,
     EntityNotFoundError,
     ForbiddenError,
@@ -11,6 +6,8 @@ import {
     UnauthorizedError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import { LogLevel, logLevelForStatus } from "@/core/providers/logger.interface";
+import { httpStatusFromDomainError } from "@/types/error-codes";
 
 /**
  * A 4xx is the caller's problem and the expected answer to a malformed or

@@ -1,5 +1,5 @@
-import { OrderStatus } from "@/core/entities/order.entity";
 import { IsIn, IsOptional, IsString } from "class-validator";
+import type { OrderStatus } from "@/core/entities/order.entity";
 
 export interface CreateOrderDTO {
     userId: string;
@@ -22,12 +22,7 @@ export interface ChangeOrderStatusDTO {
 }
 
 /** `OrderStatus` is a string union, so the members are spelled out once. */
-const ORDER_STATUSES = [
-    "PENDIENTE",
-    "PAGADO",
-    "ENVIADO",
-    "ENTREGADO",
-] as const;
+const ORDER_STATUSES = ["PENDIENTE", "PAGADO", "ENVIADO", "ENTREGADO"] as const;
 
 /**
  * The body of `POST /api/order` is `{ couponCode? }` and nothing else.

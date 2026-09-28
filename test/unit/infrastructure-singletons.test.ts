@@ -1,15 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-
-import { createEmailService } from "@/infrastructure/services/email.service";
-import { createNotificationService } from "@/infrastructure/services/notification.service";
-import { EmailProvider } from "@/infrastructure/providers/email.notification.provider";
-import { WhatsAppProvider } from "@/infrastructure/providers/whatsapp.provider";
-import { PushProvider } from "@/infrastructure/providers/push.provider";
 import { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
 import type { IEmailService } from "@/core/ports/email.port";
-import type { ILogger } from "@/core/providers/logger.interface";
 import type { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
+import type { ILogger } from "@/core/providers/logger.interface";
+import { EmailProvider } from "@/infrastructure/providers/email.notification.provider";
+import { PushProvider } from "@/infrastructure/providers/push.provider";
+import { WhatsAppProvider } from "@/infrastructure/providers/whatsapp.provider";
+import { createEmailService } from "@/infrastructure/services/email.service";
+import { createNotificationService } from "@/infrastructure/services/notification.service";
 
 const ROOT = path.resolve(__dirname, "../..");
 
@@ -37,9 +36,7 @@ const createEmailServiceMock = (): jest.Mocked<IEmailService> =>
 const createWhatsAppServiceMock = (): jest.Mocked<IWhatsAppService> =>
     ({
         sendTextMessage: jest.fn().mockResolvedValue("text-message-id"),
-        sendTemplateMessage: jest
-            .fn()
-            .mockResolvedValue("template-message-id"),
+        sendTemplateMessage: jest.fn().mockResolvedValue("template-message-id"),
     }) as unknown as jest.Mocked<IWhatsAppService>;
 
 describe("email service factory", () => {
@@ -55,7 +52,10 @@ describe("email service factory", () => {
 
 describe("notification service factory", () => {
     it("routes each channel to the injected provider and skips unknown ones", async () => {
-        const email = new EmailProvider(createEmailServiceMock(), createLogger());
+        const email = new EmailProvider(
+            createEmailServiceMock(),
+            createLogger(),
+        );
         const push = new PushProvider();
 
         const notification = createNotificationService([email, push]);
@@ -83,10 +83,12 @@ describe("EmailProvider with injected dependencies", () => {
             { filename: "a.ics", content: "ics", contentType: "text/calendar" },
         ];
 
-        const sent = await provider.send(
-            "user@example.com",
-            { subject: "Cita", body: "Confirmada", templateId: "tpl", attachments },
-        );
+        const sent = await provider.send("user@example.com", {
+            subject: "Cita",
+            body: "Confirmada",
+            templateId: "tpl",
+            attachments,
+        });
 
         expect(sent).toBe(true);
         expect(emailService.sendEmail).toHaveBeenCalledWith(
@@ -185,7 +187,9 @@ describe("WhatsAppProvider with injected dependencies", () => {
             "[WhatsAppProvider] Missing tenantId in options. Cannot send WhatsApp message.",
         );
 
-        whatsappService.sendTextMessage.mockRejectedValue(new Error("meta down"));
+        whatsappService.sendTextMessage.mockRejectedValue(
+            new Error("meta down"),
+        );
         await expect(
             provider.send(
                 "+573001234567",
@@ -213,9 +217,7 @@ describe("infrastructure composition has no module-level singletons", () => {
     it.each(ownedSources)("%s exports factories, not instances", (file) => {
         const source = fs.readFileSync(path.join(ROOT, file), "utf8");
 
-        expect(source).not.toMatch(
-            /export\s+const\s+\w+\s*=\s*new\s+\w/,
-        );
+        expect(source).not.toMatch(/export\s+const\s+\w+\s*=\s*new\s+\w/);
         expect(source).not.toMatch(/private\s+static\s+instance/);
     });
 
@@ -236,9 +238,7 @@ describe("infrastructure composition has no module-level singletons", () => {
         );
 
         expect(source).toContain("export function createLoggerHelpers");
-        expect(source).not.toMatch(
-            /^const\s+logger\s*=\s*pino\(transport\);/m,
-        );
+        expect(source).not.toMatch(/^const\s+logger\s*=\s*pino\(transport\);/m);
         expect(source).not.toMatch(/^const\s+transport\s*=/m);
     });
 

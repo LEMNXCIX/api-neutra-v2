@@ -1,11 +1,11 @@
-import { IWhatsAppConversationRepository } from "@/core/repositories/whatsapp-conversation.repository.interface";
-import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
-import { WhatsAppService } from "./whatsapp.service";
-import type { ILogger } from "@/core/providers/logger.interface";
-import {
-    IWhatsAppBotService,
+import type {
     IncomingWhatsAppMessage,
+    IWhatsAppBotService,
 } from "@/core/ports/whatsapp-bot-service.interface";
+import type { ILogger } from "@/core/providers/logger.interface";
+import type { IWhatsAppConversationRepository } from "@/core/repositories/whatsapp-conversation.repository.interface";
+import type { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
+import type { WhatsAppService } from "./whatsapp.service";
 
 export class WhatsAppBotService implements IWhatsAppBotService {
     constructor(

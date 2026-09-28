@@ -1,4 +1,4 @@
-import { User } from "@/core/entities/user.entity";
+import type { User } from "@/core/entities/user.entity";
 
 export interface IUserPublicResponse {
     id: string;

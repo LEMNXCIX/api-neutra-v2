@@ -1,9 +1,9 @@
-import {
+import type { CreateSlideshowDTO } from "@/core/application/dtos/requests/slide.request";
+import type {
     ISlideRepository,
     SlideshowCreateData,
 } from "@/core/repositories/slide.repository.interface";
-import { CreateSlideshowDTO } from "@/core/application/dtos/requests/slide.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class CreateSlideUseCase {
     constructor(private slideRepository: ISlideRepository) {}

@@ -1,4 +1,4 @@
-import { Request } from "express";
+import type { Request } from "express";
 
 /**
  * Resolve the client-facing origin for redirects, emails, and deep links.

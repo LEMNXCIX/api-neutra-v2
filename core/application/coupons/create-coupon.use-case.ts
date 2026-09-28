@@ -1,14 +1,14 @@
+import type { CreateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
 import {
-    ICouponRepository,
-    CreateCouponData,
-} from "@/core/repositories/coupon.repository.interface";
-import { CreateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
-import { CouponType } from "@/core/entities/coupon.entity";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    ValidationError,
     DuplicateEntityError,
+    ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import { CouponType } from "@/core/entities/coupon.entity";
+import type {
+    CreateCouponData,
+    ICouponRepository,
+} from "@/core/repositories/coupon.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class CreateCouponUseCase {
     constructor(private couponRepository: ICouponRepository) {}
@@ -41,7 +41,7 @@ export class CreateCouponUseCase {
         }
 
         const expirationDate = new Date(data.expiresAt);
-        if (isNaN(expirationDate.getTime())) {
+        if (Number.isNaN(expirationDate.getTime())) {
             throw new ValidationError("Invalid expiration date format");
         }
 

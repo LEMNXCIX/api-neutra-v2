@@ -1,14 +1,14 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { ITokenGenerator } from "@/core/providers/auth-providers.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
     ForbiddenError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { ITokenGenerator } from "@/core/providers/auth-providers.interface";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { AuthErrorCodes, TenantErrorCodes } from "@/types/error-codes";
 
 /**
@@ -80,7 +80,8 @@ export class JoinTenantUseCase {
         }
 
         const alreadyMember = user.tenants?.some(
-            (ut) => ut.tenantId === target.id || ut.tenant?.slug === target.slug,
+            (ut) =>
+                ut.tenantId === target.id || ut.tenant?.slug === target.slug,
         );
         if (alreadyMember) {
             // Same situation registration reports, same code, so a client can

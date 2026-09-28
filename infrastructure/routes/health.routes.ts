@@ -1,5 +1,5 @@
-import { Application } from "express";
-import { HealthController } from "@/interface-adapters/controllers/health.controller";
+import type { Application } from "express";
+import type { HealthController } from "@/interface-adapters/controllers/health.controller";
 
 /**
  * Public process and dependency health endpoints.

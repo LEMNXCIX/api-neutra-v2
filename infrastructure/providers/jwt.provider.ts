@@ -1,11 +1,11 @@
 import jwt from "jsonwebtoken";
 import config from "@/config/index.config";
-import {
+import { JWT_CONSTANTS } from "@/core/domain/constants";
+import type {
+    DecodedToken,
     ITokenGenerator,
     TokenPayload,
-    DecodedToken,
 } from "@/core/providers/auth-providers.interface";
-import { JWT_CONSTANTS } from "@/core/domain/constants";
 
 export class JwtProvider implements ITokenGenerator {
     private secret: string;

@@ -1,10 +1,10 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { User } from "@/core/entities/user.entity";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
     ForbiddenError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { User } from "@/core/entities/user.entity";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { TenantErrorCodes } from "@/types/error-codes";
 
 /**

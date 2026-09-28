@@ -1,11 +1,11 @@
 import { CreateStaffUseCase } from "@/core/application/booking/create-staff.use-case";
 import { UpdateStaffUseCase } from "@/core/application/booking/update-staff.use-case";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
-import { BusinessErrorCodes } from "@/types/error-codes";
-import type { IStaffRepository } from "@/core/repositories/staff.repository.interface";
-import type { IUserRepository } from "@/core/repositories/user.repository.interface";
 import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type { IStaffRepository } from "@/core/repositories/staff.repository.interface";
 import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 function setup() {
     const staffRepository = {

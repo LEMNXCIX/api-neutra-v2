@@ -1,4 +1,4 @@
-import { Role } from "@/core/entities/role.entity";
+import type { Role } from "@/core/entities/role.entity";
 
 export interface RoleCreateData {
     name: string;

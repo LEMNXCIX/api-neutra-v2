@@ -1,13 +1,13 @@
+import type { UpdateCategoryDTO } from "@/core/application/dtos/requests/category.request";
 import {
-    ICategoryRepository,
-    CategoryUpdateData,
-} from "@/core/repositories/category.repository.interface";
-import { UpdateCategoryDTO } from "@/core/application/dtos/requests/category.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    EntityNotFoundError,
     DuplicateEntityError,
+    EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type {
+    CategoryUpdateData,
+    ICategoryRepository,
+} from "@/core/repositories/category.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class UpdateCategoryUseCase {
     constructor(private categoryRepository: ICategoryRepository) {}

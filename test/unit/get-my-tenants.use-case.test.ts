@@ -28,7 +28,9 @@ describe("GetMyTenantsUseCase", () => {
 
         await useCase.execute("user-1");
 
-        expect(tenantRepository.findCreatedByUserId).toHaveBeenCalledWith("user-1");
+        expect(tenantRepository.findCreatedByUserId).toHaveBeenCalledWith(
+            "user-1",
+        );
     });
 
     test("returns an empty list when the user created none", async () => {

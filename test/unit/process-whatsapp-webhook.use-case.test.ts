@@ -1,6 +1,6 @@
+import type { ProcessIncomingMessageUseCase } from "@/core/application/whatsapp/process-incoming-message.use-case";
 import { ProcessWhatsAppWebhookUseCase } from "@/core/application/whatsapp/process-whatsapp-webhook.use-case";
-import { ProcessIncomingMessageUseCase } from "@/core/application/whatsapp/process-incoming-message.use-case";
-import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
+import type { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
 
 describe("ProcessWhatsAppWebhookUseCase", () => {
     const processIncoming = {

@@ -1,15 +1,15 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import {
-    requirePermission,
-    requireSuperAdmin,
-} from "@/middleware/authorization.middleware";
-import { FeatureController } from "@/interface-adapters/controllers/feature.controller";
-import { validateDto } from "@/middleware/validation.middleware";
+import { type Application, Router } from "express";
 import {
     CreateFeatureDto,
     UpdateFeatureDto,
 } from "@/core/application/dtos/requests/feature.request";
+import type { FeatureController } from "@/interface-adapters/controllers/feature.controller";
+import {
+    requirePermission,
+    requireSuperAdmin,
+} from "@/middleware/authorization.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function featureRoutes(
     app: Application,

@@ -1,14 +1,14 @@
-import { prisma } from '@/config/db.config';
+import { prisma } from "@/config/db.config";
 
 async function main() {
     try {
-        console.log('Connecting...');
+        console.log("Connecting...");
         await prisma.$connect();
-        console.log('Connected!');
+        console.log("Connected!");
         const count = await prisma.user.count();
-        console.log('User count:', count);
+        console.log("User count:", count);
     } catch (e) {
-        console.error('Error:', e);
+        console.error("Error:", e);
     } finally {
         await prisma.$disconnect();
     }

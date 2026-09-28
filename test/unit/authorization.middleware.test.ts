@@ -1,17 +1,21 @@
 // RBAC middlewares: pure logic, no DB
+
+import type { NextFunction, Request, Response } from "express";
 import {
-    requirePermission,
-    requireAnyPermission,
     requireAllPermissions,
+    requireAnyPermission,
+    requirePermission,
     requireRole,
 } from "@/middleware/authorization.middleware";
-import type { Request, Response, NextFunction } from "express";
 
 function mockReq(user?: unknown): Request {
     return { user } as unknown as Request;
 }
 
-function run(mw: (req: Request, res: Response, next: NextFunction) => void, user?: unknown) {
+function run(
+    mw: (req: Request, res: Response, next: NextFunction) => void,
+    user?: unknown,
+) {
     const next = jest.fn() as NextFunction;
     let thrown: unknown;
     try {
@@ -24,7 +28,12 @@ function run(mw: (req: Request, res: Response, next: NextFunction) => void, user
 
 const adminUser = {
     id: "u1",
-    role: { id: "r1", name: "ADMIN", level: 5, permissions: ["products:read", "products:write"] },
+    role: {
+        id: "r1",
+        name: "ADMIN",
+        level: 5,
+        permissions: ["products:read", "products:write"],
+    },
 };
 const superAdminUser = {
     id: "u2",
@@ -39,19 +48,28 @@ describe("requirePermission", () => {
     });
 
     test("calls next with the permission", () => {
-        const { next, thrown } = run(requirePermission("products:read"), adminUser);
+        const { next, thrown } = run(
+            requirePermission("products:read"),
+            adminUser,
+        );
         expect(thrown).toBeUndefined();
         expect(next).toHaveBeenCalled();
     });
 
     test("forbidden without the permission", () => {
-        const { next, thrown } = run(requirePermission("users:delete"), adminUser);
+        const { next, thrown } = run(
+            requirePermission("users:delete"),
+            adminUser,
+        );
         expect(next).not.toHaveBeenCalled();
         expect((thrown as Error).message).toMatch(/users:delete/);
     });
 
     test("superadmin bypasses", () => {
-        const { next, thrown } = run(requirePermission("anything:at:all"), superAdminUser);
+        const { next, thrown } = run(
+            requirePermission("anything:at:all"),
+            superAdminUser,
+        );
         expect(thrown).toBeUndefined();
         expect(next).toHaveBeenCalled();
     });
@@ -68,7 +86,10 @@ describe("requireAnyPermission / requireAllPermissions", () => {
     });
 
     test("any: forbidden with no match", () => {
-        const { next, thrown } = run(requireAnyPermission(["a:x", "b:y"]), adminUser);
+        const { next, thrown } = run(
+            requireAnyPermission(["a:x", "b:y"]),
+            adminUser,
+        );
         expect(next).not.toHaveBeenCalled();
         expect(thrown).toBeDefined();
     });

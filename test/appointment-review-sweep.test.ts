@@ -1,11 +1,11 @@
 import { prisma } from "@/config/db.config";
-import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
 import {
     APPOINTMENT_REVIEW_SYSTEM_REASON,
     resolveAppointmentReviewActivationCutoff,
 } from "@/core/application/booking/sweep-appointment-reviews.use-case";
-import { AppointmentStatus } from "@/core/entities/appointment.entity";
 import { canSystemFlagForReview } from "@/core/domain/appointment/appointment.policy";
+import { AppointmentStatus } from "@/core/entities/appointment.entity";
+import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
 
 /**
  * The regression: the activation cutoff was made optional so the two-hour grace
@@ -32,7 +32,7 @@ const startedAt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
 const endedAt = new Date(now.getTime() - 2.5 * 60 * 60 * 1000);
 const eligibleThrough = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
-let created: string[] = [];
+const created: string[] = [];
 let references: { userId: string; serviceId: string; staffId: string };
 
 async function createAppointment(

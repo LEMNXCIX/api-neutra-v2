@@ -1,6 +1,6 @@
-import { extractAuthToken } from "@/helpers/auth-token.helpers";
-import { AUTH_CONSTANTS } from "@/core/domain/constants";
 import type { Request } from "express";
+import { AUTH_CONSTANTS } from "@/core/domain/constants";
+import { extractAuthToken } from "@/helpers/auth-token.helpers";
 
 function mockReq(partial: {
     cookies?: Record<string, string>;

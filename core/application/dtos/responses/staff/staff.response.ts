@@ -1,6 +1,6 @@
-import { Staff } from "@/core/entities/staff.entity";
+import type { Staff } from "@/core/entities/staff.entity";
 import {
-    ITenantMinimalResponse,
+    type ITenantMinimalResponse,
     TenantMinimalResponse,
 } from "../shared/tenant-minimal.response";
 
@@ -35,7 +35,7 @@ export class StaffResponse {
             workingHours: staff.workingHours,
             serviceIds: staff.serviceIds,
             tenantId: staff.tenantId,
-    tenant: staff.tenant
+            tenant: staff.tenant
                 ? TenantMinimalResponse.fromEntity(staff.tenant)
                 : undefined,
             createdAt: staff.createdAt,

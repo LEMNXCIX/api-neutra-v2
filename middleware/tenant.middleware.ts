@@ -1,13 +1,11 @@
-import { Request, Response, NextFunction } from "express";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { ErrorCodes } from "@/types/error-codes";
-import {
-    TENANT_CONSTANTS,
-    isDevelopment,
-} from "@/core/domain/constants";
+import type { NextFunction, Request, Response } from "express";
 import { TENANT_HTTP_CONSTANTS } from "@/config/infrastructure-constants";
+import { isDevelopment, TENANT_CONSTANTS } from "@/core/domain/constants";
 import { evaluateTenantActive } from "@/core/domain/tenant/feature-policy";
+import type { Tenant } from "@/core/entities/tenant.entity";
 import type { ILogger } from "@/core/providers/logger.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { ErrorCodes } from "@/types/error-codes";
 
 function isManagementRoute(normalizedPath: string): boolean {
     return TENANT_HTTP_CONSTANTS.MANAGEMENT_PATH_PREFIXES.some((prefix) =>
@@ -104,7 +102,7 @@ export function createTenantMiddleware(deps: {
             // route pass a STORE tenant. It also read config.env directly, so
             // behaviour depended on ambient config rather than the injected
             // environment.
-            let tenant;
+            let tenant: Tenant | null | undefined;
             if (tenantSlug) {
                 tenant = await deps.tenantRepository.findBySlug(tenantSlug);
             } else if (tenantId) {

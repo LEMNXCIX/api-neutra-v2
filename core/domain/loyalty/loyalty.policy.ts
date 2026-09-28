@@ -1,30 +1,25 @@
-import { TenantType } from "@/core/entities/tenant.entity";
-import { CouponType } from "@/core/entities/coupon.entity";
 import {
     BusinessRuleViolationError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import { CouponType } from "@/core/entities/coupon.entity";
 import {
-    BusinessErrorCodes,
-    LoyaltyErrorCodes,
-} from "@/types/error-codes";
-import {
-    LoyaltyCampaignContributionInput,
+    type LoyaltyCampaignContributionInput,
     LoyaltyCampaignMetric,
     LoyaltyCampaignSource,
     LoyaltyCampaignStatus,
     LoyaltySourceType,
     LoyaltyStatus,
 } from "@/core/entities/loyalty.entity";
+import { TenantType } from "@/core/entities/tenant.entity";
+import { BusinessErrorCodes, LoyaltyErrorCodes } from "@/types/error-codes";
 
 export const MAX_LOYALTY_PRISMA_INT = 2_147_483_647;
 
 const POSITIVE_DECIMAL_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/;
 const DECIMAL_PATTERN = /^-?(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/;
 
-export function isValidPositiveDecimalString(
-    value: unknown,
-): value is string {
+export function isValidPositiveDecimalString(value: unknown): value is string {
     return (
         typeof value === "string" &&
         POSITIVE_DECIMAL_PATTERN.test(value) &&
@@ -54,9 +49,7 @@ export function isValidLoyaltyCampaignMaxClaims(
     );
 }
 
-export function isValidLoyaltyRewardValidDays(
-    value: unknown,
-): value is number {
+export function isValidLoyaltyRewardValidDays(value: unknown): value is number {
     return (
         Number.isSafeInteger(value) &&
         Number(value) > 0 &&
@@ -86,12 +79,13 @@ export function canTransitionLoyaltyCampaignStatus(
     from: LoyaltyCampaignStatus,
     to: LoyaltyCampaignStatus,
 ): boolean {
-    const transitions: Record<LoyaltyCampaignStatus, LoyaltyCampaignStatus[]> = {
-        [LoyaltyCampaignStatus.DRAFT]: [LoyaltyCampaignStatus.ACTIVE],
-        [LoyaltyCampaignStatus.ACTIVE]: [LoyaltyCampaignStatus.ENDED],
-        [LoyaltyCampaignStatus.ENDED]: [LoyaltyCampaignStatus.ARCHIVED],
-        [LoyaltyCampaignStatus.ARCHIVED]: [],
-    };
+    const transitions: Record<LoyaltyCampaignStatus, LoyaltyCampaignStatus[]> =
+        {
+            [LoyaltyCampaignStatus.DRAFT]: [LoyaltyCampaignStatus.ACTIVE],
+            [LoyaltyCampaignStatus.ACTIVE]: [LoyaltyCampaignStatus.ENDED],
+            [LoyaltyCampaignStatus.ENDED]: [LoyaltyCampaignStatus.ARCHIVED],
+            [LoyaltyCampaignStatus.ARCHIVED]: [],
+        };
     return transitions[from]?.includes(to) ?? false;
 }
 
@@ -146,10 +140,7 @@ export function getLoyaltyCampaignProgressValue(
     netTotal: string,
 ): string {
     const normalized = normalizeNonNegativeDecimal(netTotal);
-    if (
-        metric === LoyaltyCampaignMetric.COUNT &&
-        !normalized.endsWith(".00")
-    ) {
+    if (metric === LoyaltyCampaignMetric.COUNT && !normalized.endsWith(".00")) {
         throw new TypeError("COUNT campaign progress must be an integer");
     }
     if (
@@ -355,9 +346,7 @@ export function assertLoyaltyRewardTemplate(
         if (ids === undefined) continue;
         if (
             !Array.isArray(ids) ||
-            ids.some(
-                (id) => typeof id !== "string" || id.trim().length === 0,
-            )
+            ids.some((id) => typeof id !== "string" || id.trim().length === 0)
         ) {
             throw rewardTemplateRejected(
                 `Reward definition ${field} is invalid`,
@@ -367,13 +356,9 @@ export function assertLoyaltyRewardTemplate(
 }
 
 /** A campaign cannot exist without the reward definition it promises. */
-export function assertLoyaltyCampaignRewardProvided(
-    reward: unknown,
-): void {
+export function assertLoyaltyCampaignRewardProvided(reward: unknown): void {
     if (!reward) {
-        throw rewardTemplateRejected(
-            "Campaign reward definition is required",
-        );
+        throw rewardTemplateRejected("Campaign reward definition is required");
     }
 }
 
@@ -387,10 +372,7 @@ export function assertLoyaltyCampaignRewardConfigured(
     rewardValidDays: unknown,
     message: string,
 ): void {
-    if (
-        !rewardCouponId ||
-        !isValidLoyaltyRewardValidDays(rewardValidDays)
-    ) {
+    if (!rewardCouponId || !isValidLoyaltyRewardValidDays(rewardValidDays)) {
         throw rewardTemplateUnusable(message);
     }
 }
@@ -506,4 +488,3 @@ export function getLoyaltyCampaignCustomerStatus(input: {
         ? LoyaltyStatus.READY
         : LoyaltyStatus.IN_PROGRESS;
 }
-

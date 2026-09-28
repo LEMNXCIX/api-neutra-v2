@@ -1,14 +1,14 @@
-import { Worker } from "bullmq";
 import type { Job } from "bullmq";
+import { Worker } from "bullmq";
 import type { SweepAppointmentReviewsResult } from "@/core/application/booking/sweep-appointment-reviews.use-case";
 import type { ILogger } from "@/core/providers/logger.interface";
+import type { MaintenanceQueue } from "@/infrastructure/services/queue.service";
 import {
     APPOINTMENT_REVIEW_SWEEP_JOB_NAME,
     MAINTENANCE_QUEUE_NAME,
     redisOptions,
     scheduleAppointmentReviewSweep,
 } from "@/infrastructure/services/queue.service";
-import type { MaintenanceQueue } from "@/infrastructure/services/queue.service";
 
 export type AppointmentReviewSweep = {
     execute(): Promise<SweepAppointmentReviewsResult>;
@@ -72,9 +72,7 @@ export function createAppointmentReviewWorker({
     if (maintenanceQueue) {
         void schedule(maintenanceQueue)
             .then(() => {
-                logger.info(
-                    "Appointment review sweep scheduler registered",
-                );
+                logger.info("Appointment review sweep scheduler registered");
             })
             .catch((error: unknown) => {
                 logger.error(

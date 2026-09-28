@@ -1,13 +1,13 @@
 import {
-    IWhatsAppBotService,
-    IncomingWhatsAppMessage,
-} from "@/core/ports/whatsapp-bot-service.interface";
-import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    ValidationError,
     EntityNotFoundError,
+    ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type {
+    IncomingWhatsAppMessage,
+    IWhatsAppBotService,
+} from "@/core/ports/whatsapp-bot-service.interface";
+import type { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { WhatsAppErrorCodes } from "@/types/error-codes";
 
 export class ProcessIncomingMessageUseCase {

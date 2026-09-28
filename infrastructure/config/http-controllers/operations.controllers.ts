@@ -1,7 +1,7 @@
+import { GetLogStatsUseCase } from "@/core/application/log/get-log-stats.use-case";
+import { GetLogsUseCase } from "@/core/application/log/get-logs.use-case";
 import { HealthController } from "@/interface-adapters/controllers/health.controller";
 import { LogController } from "@/interface-adapters/controllers/log.controller";
-import { GetLogsUseCase } from "@/core/application/log/get-logs.use-case";
-import { GetLogStatsUseCase } from "@/core/application/log/get-log-stats.use-case";
 import type { Runtime } from "../runtime";
 
 export function createOperationsControllers(runtime: Runtime) {

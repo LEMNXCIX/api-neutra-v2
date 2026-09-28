@@ -1,10 +1,13 @@
-import { IFeatureRepository, FeatureCreateData } from "@/core/repositories/feature.repository.interface";
-import { CreateFeatureDTO } from "@/core/application/dtos/requests/feature.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { CreateFeatureDTO } from "@/core/application/dtos/requests/feature.request";
 import {
-    ValidationError,
     DuplicateEntityError,
+    ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type {
+    FeatureCreateData,
+    IFeatureRepository,
+} from "@/core/repositories/feature.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class CreateFeatureUseCase {

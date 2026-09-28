@@ -1,12 +1,12 @@
-import { Slideshow as PrismaSlideshow, Prisma } from "@prisma/client";
+import { Prisma, type Slideshow as PrismaSlideshow } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import {
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import type { Slideshow } from "@/core/entities/slide.entity";
+import type {
     ISlideRepository,
     SlideshowCreateData,
     SlideshowUpdateData,
 } from "@/core/repositories/slide.repository.interface";
-import { Slideshow } from "@/core/entities/slide.entity";
-import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
 
 export class PrismaSlideRepository implements ISlideRepository {
     private mapToEntity(prismaSlide: PrismaSlideshow): Slideshow {

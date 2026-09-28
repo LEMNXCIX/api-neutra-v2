@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { extractAuthToken } from "@/helpers/auth-token.helpers";
 
 /**
@@ -6,7 +6,9 @@ import { extractAuthToken } from "@/helpers/auth-token.helpers";
  * for machine-to-machine reads (e.g. the CMS tenant selector).
  * If the header doesn't match, falls through to the normal authenticate flow.
  */
-export function serviceTokenOr(authenticate: (req: Request, res: Response, next: NextFunction) => void) {
+export function serviceTokenOr(
+    authenticate: (req: Request, res: Response, next: NextFunction) => void,
+) {
     return (req: Request, res: Response, next: NextFunction) => {
         const expected = process.env.TENANTS_API_TOKEN;
         const provided = req.get("x-api-token") || extractAuthToken(req);

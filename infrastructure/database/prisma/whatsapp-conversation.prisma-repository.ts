@@ -1,14 +1,14 @@
 import {
-    WhatsAppConversation as PrismaWhatsAppConversation,
     Prisma,
+    type PrismaClient,
+    type WhatsAppConversation as PrismaWhatsAppConversation,
 } from "@prisma/client";
-import { PrismaClient } from "@prisma/client";
-import { IWhatsAppConversationRepository } from "@/core/repositories/whatsapp-conversation.repository.interface";
-import { WhatsAppConversation } from "@/core/entities/whatsapp-conversation.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { WhatsAppConversation } from "@/core/entities/whatsapp-conversation.entity";
+import type { IWhatsAppConversationRepository } from "@/core/repositories/whatsapp-conversation.repository.interface";
 
 function parseContext(
     value: Prisma.JsonValue | null,
@@ -19,7 +19,9 @@ function parseContext(
     return undefined;
 }
 
-export class WhatsAppConversationPrismaRepository implements IWhatsAppConversationRepository {
+export class WhatsAppConversationPrismaRepository
+    implements IWhatsAppConversationRepository
+{
     constructor(private prisma: PrismaClient) {}
 
     private mapToEntity(

@@ -1,9 +1,9 @@
-import { prisma } from '../config/db.config';
+import { prisma } from "../config/db.config";
 
 async function main() {
-    const storeTenantId = 'default-tenant-00000000-0000-0000-0000-000000000001';
+    const storeTenantId = "default-tenant-00000000-0000-0000-0000-000000000001";
 
-    console.log('--- PRODUCTS IN STORE TENANT ---');
+    console.log("--- PRODUCTS IN STORE TENANT ---");
     const products = await prisma.product.findMany({
         where: { tenantId: storeTenantId },
         include: {
@@ -11,32 +11,38 @@ async function main() {
                 select: {
                     id: true,
                     name: true,
-                    email: true
-                }
-            }
-        }
+                    email: true,
+                },
+            },
+        },
     });
 
-    console.log(JSON.stringify(products.map(p => ({
-        id: p.id,
-        name: p.name,
-        ownerEmail: p.owner.email
-    })), null, 2));
+    console.log(
+        JSON.stringify(
+            products.map((p) => ({
+                id: p.id,
+                name: p.name,
+                ownerEmail: p.owner.email,
+            })),
+            null,
+            2,
+        ),
+    );
 
-    const ownerIds = [...new Set(products.map(p => p.ownerId))];
-    console.log('\n--- OWNERS OF PRODUCTS IN STORE ---');
+    const ownerIds = [...new Set(products.map((p) => p.ownerId))];
+    console.log("\n--- OWNERS OF PRODUCTS IN STORE ---");
     console.log(ownerIds);
 
     const userTenants = await prisma.userTenant.findMany({
         where: {
             userId: { in: ownerIds },
-            tenantId: storeTenantId
-        }
+            tenantId: storeTenantId,
+        },
     });
-    console.log('\n--- OWNERS LINKED TO STORE TENANT ---');
+    console.log("\n--- OWNERS LINKED TO STORE TENANT ---");
     console.log(userTenants);
 }
 
 main()
-    .catch(e => console.error(e))
+    .catch((e) => console.error(e))
     .finally(() => prisma.$disconnect());

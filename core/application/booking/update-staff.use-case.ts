@@ -1,19 +1,19 @@
-import {
-    IStaffRepository,
-    UpdateStaffData,
-} from "@/core/repositories/staff.repository.interface";
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { UpdateStaffDTO } from "@/core/application/dtos/requests/staff.request";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { UpdateStaffDTO } from "@/core/application/dtos/requests/staff.request";
+import { getStaffDayKeysClosedByBusinessHours } from "@/core/domain/booking/working-hours";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type {
+    IStaffRepository,
+    UpdateStaffData,
+} from "@/core/repositories/staff.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { BusinessErrorCodes } from "@/types/error-codes";
-import { getStaffDayKeysClosedByBusinessHours } from "@/core/domain/booking/working-hours";
 
 export class UpdateStaffUseCase {
     constructor(
@@ -79,7 +79,11 @@ export class UpdateStaffUseCase {
         }
 
         const updateData: UpdateStaffData = { ...data, userId };
-        const staff = await this.staffRepository.update(tenantId, id, updateData);
+        const staff = await this.staffRepository.update(
+            tenantId,
+            id,
+            updateData,
+        );
 
         return Success(staff, "Staff member updated successfully");
     }

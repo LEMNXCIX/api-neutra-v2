@@ -1,42 +1,41 @@
 import {
-    Appointment as PrismaAppointment,
-    AppointmentStatus as PrismaAppointmentStatus,
     Prisma,
+    type Appointment as PrismaAppointment,
+    type AppointmentStatus as PrismaAppointmentStatus,
 } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import {
-    IAppointmentRepository,
-    AppointmentCreateData,
-    AppointmentUpdateData,
-    AppointmentFilters,
-    AppointmentStatusUpdate,
-    AppointmentReviewCandidate,
-    AppointmentReviewCandidateQuery,
-} from "@/core/repositories/appointment.repository.interface";
-import {
-    Appointment,
-    AppointmentStatus,
-} from "@/core/entities/appointment.entity";
 import {
     assertCouponRedeemable,
     assertCouponsFeatureEnabled,
     toRedeemableCoupon,
 } from "@/core/domain/coupon/coupon.policy";
 import {
-    LoyaltyCampaignMetric,
-    LoyaltyCampaignSource,
-    LoyaltyLedgerEntryType,
-    LoyaltySourceType,
-} from "@/core/entities/loyalty.entity";
+    BusinessRuleViolationError,
+    DuplicateEntityError,
+    EntityNotFoundError,
+} from "@/core/domain/errors/domain-errors";
 import {
     getLoyaltyCampaignAccrualCriteria,
     getLoyaltyCampaignContributionValue,
 } from "@/core/domain/loyalty/loyalty.policy";
 import {
-    BusinessRuleViolationError,
-    DuplicateEntityError,
-    EntityNotFoundError,
-} from "@/core/domain/errors/domain-errors";
+    type Appointment,
+    AppointmentStatus,
+} from "@/core/entities/appointment.entity";
+import {
+    type LoyaltyCampaignMetric,
+    LoyaltyLedgerEntryType,
+    LoyaltySourceType,
+} from "@/core/entities/loyalty.entity";
+import type {
+    AppointmentCreateData,
+    AppointmentFilters,
+    AppointmentReviewCandidate,
+    AppointmentReviewCandidateQuery,
+    AppointmentStatusUpdate,
+    AppointmentUpdateData,
+    IAppointmentRepository,
+} from "@/core/repositories/appointment.repository.interface";
 import { extractTenantTimezone } from "@/core/utils/tenant-time";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
@@ -47,7 +46,13 @@ type AppointmentStatusAuditFields = {
 };
 
 type AppointmentWithIncludes = Prisma.AppointmentGetPayload<{
-    include: { user: true; service: true; staff: true; coupon: true; tenant: true };
+    include: {
+        user: true;
+        service: true;
+        staff: true;
+        coupon: true;
+        tenant: true;
+    };
 }> &
     AppointmentStatusAuditFields;
 
@@ -269,15 +274,14 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                           total: total.toNumber(),
                       };
 
-                      const couponsEnabled =
-                          await tx.tenantFeature.findFirst({
-                              where: {
-                                  tenantId,
-                                  enabled: true,
-                                  feature: { key: "COUPONS" },
-                              },
-                              select: { id: true },
-                          });
+                      const couponsEnabled = await tx.tenantFeature.findFirst({
+                          where: {
+                              tenantId,
+                              enabled: true,
+                              feature: { key: "COUPONS" },
+                          },
+                          select: { id: true },
+                      });
                       assertCouponsFeatureEnabled(couponsEnabled !== null);
 
                       const usage = await tx.coupon.updateMany({
@@ -391,7 +395,10 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
             prisma.appointment.count({ where }),
         ]);
 
-        return { appointments: appointments.map((a) => this.mapToEntity(a)), total };
+        return {
+            appointments: appointments.map((a) => this.mapToEntity(a)),
+            total,
+        };
     }
 
     private buildWhere(
@@ -586,9 +593,9 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 if (campaign) {
                     const value = getLoyaltyCampaignContributionValue({
                         metric: campaign.metric as LoyaltyCampaignMetric,
-                        netTotal: new Prisma.Decimal(
-                            appointment.total,
-                        ).toFixed(2),
+                        netTotal: new Prisma.Decimal(appointment.total).toFixed(
+                            2,
+                        ),
                     });
                     await tx.loyaltyLedgerEntry.upsert({
                         where: {
@@ -640,7 +647,9 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 // present it is a deployment floor a caller opted into. It is
                 // spread rather than passed as null, because a null bound is not
                 // the same as no bound.
-                ...(activationCutoff ? { startTime: { gte: activationCutoff } } : {}),
+                ...(activationCutoff
+                    ? { startTime: { gte: activationCutoff } }
+                    : {}),
                 endTime: { lte: eligibleThrough },
             },
             select: {
@@ -683,7 +692,9 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
                 // absent rather than null. A null here used to pass the type
                 // check, because a method parameter narrowed from `Date | null`
                 // to `Date` is compared bivariantly.
-                ...(activationCutoff ? { startTime: { gte: activationCutoff } } : {}),
+                ...(activationCutoff
+                    ? { startTime: { gte: activationCutoff } }
+                    : {}),
                 endTime: { lte: eligibleThrough },
             },
             data: {

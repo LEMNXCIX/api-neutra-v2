@@ -1,18 +1,17 @@
-import { Request, Response } from "express";
-import { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
-import { ClaimLoyaltyRewardUseCase } from "@/core/application/loyalty/claim-loyalty-reward.use-case";
-import { GetLoyaltyCampaignsUseCase } from "@/core/application/loyalty/get-loyalty-campaigns.use-case";
-import { CreateLoyaltyCampaignUseCase } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
-import { UpdateLoyaltyCampaignUseCase } from "@/core/application/loyalty/update-loyalty-campaign.use-case";
-import { TransitionLoyaltyCampaignUseCase } from "@/core/application/loyalty/transition-loyalty-campaign.use-case";
-import { GetTenantLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
-import { GetAllTenantsLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-all-tenants-loyalty-overview.use-case";
-import { LoyaltyPresenter } from "@/core/application/dtos/responses/loyalty/loyalty.response";
-import {
+import type { Request, Response } from "express";
+import type {
     CreateLoyaltyCampaignDTO,
     UpdateLoyaltyCampaignDTO,
 } from "@/core/application/dtos/requests/loyalty.request";
-import { present } from "@/core/utils/use-case-result";
+import { LoyaltyPresenter } from "@/core/application/dtos/responses/loyalty/loyalty.response";
+import type { ClaimLoyaltyRewardUseCase } from "@/core/application/loyalty/claim-loyalty-reward.use-case";
+import type { CreateLoyaltyCampaignUseCase } from "@/core/application/loyalty/create-loyalty-campaign.use-case";
+import type { GetAllTenantsLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-all-tenants-loyalty-overview.use-case";
+import type { GetCustomerLoyaltySummaryUseCase } from "@/core/application/loyalty/get-customer-loyalty-summary.use-case";
+import type { GetLoyaltyCampaignsUseCase } from "@/core/application/loyalty/get-loyalty-campaigns.use-case";
+import type { GetTenantLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
+import type { TransitionLoyaltyCampaignUseCase } from "@/core/application/loyalty/transition-loyalty-campaign.use-case";
+import type { UpdateLoyaltyCampaignUseCase } from "@/core/application/loyalty/update-loyalty-campaign.use-case";
 import {
     EntityNotFoundError,
     ForbiddenError,
@@ -20,12 +19,13 @@ import {
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
 import { isSuperAdmin } from "@/core/domain/rbac/access-policy";
-import { AuthenticatedUser } from "@/types/rbac";
+import { present } from "@/core/utils/use-case-result";
 import {
     AuthErrorCodes,
     TenantErrorCodes,
     ValidationErrorCodes,
 } from "@/types/error-codes";
+import type { AuthenticatedUser } from "@/types/rbac";
 
 function requireUserId(req: Request): string {
     const userId = req.user?.id;
@@ -86,23 +86,24 @@ export class LoyaltyController {
     ) {}
 
     getCustomerCampaigns = async (req: Request, res: Response) => {
-        const result =
-            await this.getCustomerLoyaltySummaryUseCase.executeList(
-                requireTenantId(req),
-                requireUserId(req),
-            );
+        const result = await this.getCustomerLoyaltySummaryUseCase.executeList(
+            requireTenantId(req),
+            requireUserId(req),
+        );
         return res.json(
-            present(result, LoyaltyPresenter.toCustomerCampaignSummaryListResponse),
+            present(
+                result,
+                LoyaltyPresenter.toCustomerCampaignSummaryListResponse,
+            ),
         );
     };
 
     getCustomerCampaign = async (req: Request, res: Response) => {
-        const result =
-            await this.getCustomerLoyaltySummaryUseCase.execute(
-                requireTenantId(req),
-                requireCampaignId(req),
-                requireUserId(req),
-            );
+        const result = await this.getCustomerLoyaltySummaryUseCase.execute(
+            requireTenantId(req),
+            requireCampaignId(req),
+            requireUserId(req),
+        );
         return res.json(
             present(result, LoyaltyPresenter.toCustomerCampaignSummaryResponse),
         );
@@ -116,7 +117,10 @@ export class LoyaltyController {
         );
         return res.json(
             present(result, (data) =>
-                LoyaltyPresenter.toCampaignClaimResponse(data.claim, data.coupon),
+                LoyaltyPresenter.toCampaignClaimResponse(
+                    data.claim,
+                    data.coupon,
+                ),
             ),
         );
     };
@@ -166,9 +170,7 @@ export class LoyaltyController {
             requireCampaignId(req),
             req.validatedBody as UpdateLoyaltyCampaignDTO,
         );
-        return res.json(
-            present(result, LoyaltyPresenter.toCampaignResponse),
-        );
+        return res.json(present(result, LoyaltyPresenter.toCampaignResponse));
     };
 
     deleteCampaign = async (req: Request, res: Response) => {

@@ -1,4 +1,4 @@
-import { TenantType, TenantConfig } from "@/core/entities/tenant.entity";
+import type { TenantConfig, TenantType } from "@/core/entities/tenant.entity";
 
 export interface CreateTenantDTO {
     name: string;

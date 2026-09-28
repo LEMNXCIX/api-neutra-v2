@@ -1,4 +1,4 @@
-import { Feature } from "@/core/entities/feature.entity";
+import type { Feature } from "@/core/entities/feature.entity";
 
 export interface IFeatureResponse {
     id: string;

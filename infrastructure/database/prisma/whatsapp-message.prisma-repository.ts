@@ -1,20 +1,20 @@
 import {
-    WhatsAppMessage as PrismaWhatsAppMessage,
     Prisma,
+    type PrismaClient,
+    type WhatsAppMessage as PrismaWhatsAppMessage,
 } from "@prisma/client";
-import { PrismaClient } from "@prisma/client";
-import { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
-import {
-    WhatsAppMessage,
-    WhatsAppMessageType,
-    WhatsAppMessageStatus,
-    WhatsAppMessageDirection,
-    WhatsAppMessageContent,
-} from "@/core/entities/whatsapp-message.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type {
+    WhatsAppMessage,
+    WhatsAppMessageContent,
+    WhatsAppMessageDirection,
+    WhatsAppMessageStatus,
+    WhatsAppMessageType,
+} from "@/core/entities/whatsapp-message.entity";
+import type { IWhatsAppMessageRepository } from "@/core/repositories/whatsapp-message.repository.interface";
 
 /**
  * type/status/direction are free-form String columns in the schema, so unlike
@@ -101,9 +101,7 @@ function parseContent(value: Prisma.JsonValue | null): WhatsAppMessageContent {
     if (typeof value !== "object" || Array.isArray(value)) return {};
     for (const [key, entry] of Object.entries(value)) {
         if (!isContentValue(entry)) {
-            throw new Error(
-                `Unsupported WhatsApp message content at "${key}"`,
-            );
+            throw new Error(`Unsupported WhatsApp message content at "${key}"`);
         }
     }
     // SAFETY: every entry was checked above to be a string, a string[] or a
@@ -112,7 +110,9 @@ function parseContent(value: Prisma.JsonValue | null): WhatsAppMessageContent {
     return value as unknown as WhatsAppMessageContent;
 }
 
-export class WhatsAppMessagePrismaRepository implements IWhatsAppMessageRepository {
+export class WhatsAppMessagePrismaRepository
+    implements IWhatsAppMessageRepository
+{
     constructor(private prisma: PrismaClient) {}
 
     private mapToEntity(data: PrismaWhatsAppMessage): WhatsAppMessage {

@@ -30,15 +30,15 @@ jest.mock("@/config/db.config", () => {
 
 import { prisma } from "@/config/db.config";
 import { UpdateUserUseCase } from "@/core/application/users/update-user.use-case";
-import { PrismaUserRepository } from "@/infrastructure/database/prisma/user.prisma-repository";
-import { UserController } from "@/interface-adapters/controllers/user.controller";
-import { Success } from "@/core/utils/use-case-result";
-import { User } from "@/core/entities/user.entity";
 import {
     EntityNotFoundError,
     ForbiddenError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { User } from "@/core/entities/user.entity";
+import { Success } from "@/core/utils/use-case-result";
+import { PrismaUserRepository } from "@/infrastructure/database/prisma/user.prisma-repository";
+import { UserController } from "@/interface-adapters/controllers/user.controller";
 import { TenantErrorCodes } from "@/types/error-codes";
 
 const ATTACKER_TENANT = "tenant-attacker";
@@ -98,7 +98,10 @@ function memberUser(tenantIds: string[]): Partial<User> {
 function setup({
     tenantIds = [ATTACKER_TENANT],
     exists = true,
-}: { tenantIds?: string[]; exists?: boolean } = {}) {
+}: {
+    tenantIds?: string[];
+    exists?: boolean;
+} = {}) {
     const user = memberUser(tenantIds);
 
     const repository = {
@@ -111,11 +114,10 @@ function setup({
         // Tenant-scoped: mirrors the Prisma membership predicate.
         findByIdForTenant: jest
             .fn()
-            .mockImplementation(
-                async (tenantId: string, id: string) =>
-                    exists && id === VICTIM_ID && tenantIds.includes(tenantId)
-                        ? user
-                        : null,
+            .mockImplementation(async (tenantId: string, id: string) =>
+                exists && id === VICTIM_ID && tenantIds.includes(tenantId)
+                    ? user
+                    : null,
             ),
         updateForTenant: jest
             .fn()
@@ -301,9 +303,13 @@ describe("IUserRepository update shapes", () => {
         expect(proto.updateForTenant.length).toBe(3);
 
         const repository = prismaSetup();
-        const updated = await repository.updateForTenant(ATTACKER_TENANT, VICTIM_ID, {
-            name: "Renamed",
-        });
+        const updated = await repository.updateForTenant(
+            ATTACKER_TENANT,
+            VICTIM_ID,
+            {
+                name: "Renamed",
+            },
+        );
 
         expect(prismaUser.updateMany).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -356,7 +362,9 @@ describe("IUserRepository update shapes", () => {
         // social-login writes the dynamic provider field and profilePic,
         // forgot-password writes the two reset columns, reset-password writes
         // password plus the two reset columns cleared to undefined.
-        expect(Object.keys(prismaUser.update.mock.calls[0][0].data).sort()).toEqual(
+        expect(
+            Object.keys(prismaUser.update.mock.calls[0][0].data).sort(),
+        ).toEqual(
             [
                 "active",
                 "email",
@@ -377,13 +385,24 @@ describe("IUserRepository update shapes", () => {
     test("narrows the tenant-scoped update to the six admin-safe columns", async () => {
         const repository = prismaSetup();
 
-        await repository.updateForTenant(ATTACKER_TENANT, VICTIM_ID, fullPayload());
+        await repository.updateForTenant(
+            ATTACKER_TENANT,
+            VICTIM_ID,
+            fullPayload(),
+        );
 
         // Spelled out, so "the scoped path dropped everything" cannot pass.
         expect(
             Object.keys(prismaUser.updateMany.mock.calls[0][0].data).sort(),
         ).toEqual(
-            ["active", "email", "name", "phone", "profilePic", "pushToken"].sort(),
+            [
+                "active",
+                "email",
+                "name",
+                "phone",
+                "profilePic",
+                "pushToken",
+            ].sort(),
         );
     });
 });
@@ -547,9 +566,11 @@ describe("PUT /api/users/:id", () => {
     test("the controller hands the use case exactly the six narrowed fields", async () => {
         // Pinned on the controller alone, so the narrowing cannot be moved
         // into the repository and disappear from the HTTP boundary.
-        const execute = jest.fn().mockResolvedValue(
-            Success(entityUser(), "User updated successfully"),
-        );
+        const execute = jest
+            .fn()
+            .mockResolvedValue(
+                Success(entityUser(), "User updated successfully"),
+            );
         const filler = { execute: jest.fn() } as never;
         const controller = new UserController(
             filler,
@@ -588,7 +609,9 @@ describe("PUT /api/users/:id", () => {
         const [tenantId, id, data] = execute.mock.calls[0];
         expect(tenantId).toBe(ATTACKER_TENANT);
         expect(id).toBe(VICTIM_ID);
-        expect(Object.keys(data).sort()).toEqual(Object.keys(SAFE_FIELDS).sort());
+        expect(Object.keys(data).sort()).toEqual(
+            Object.keys(SAFE_FIELDS).sort(),
+        );
         for (const forbidden of TAKEOVER_FIELDS) {
             expect(data).not.toHaveProperty(forbidden[0]);
         }

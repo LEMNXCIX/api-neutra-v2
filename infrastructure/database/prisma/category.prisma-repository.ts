@@ -1,15 +1,15 @@
-import { Category as PrismaCategory, Prisma } from "@prisma/client";
+import { Prisma, type Category as PrismaCategory } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import {
-    ICategoryRepository,
-    CategoryCreateData,
-    CategoryUpdateData,
-} from "@/core/repositories/category.repository.interface";
-import { Category, CategoryType } from "@/core/entities/category.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import { type Category, CategoryType } from "@/core/entities/category.entity";
+import type {
+    CategoryCreateData,
+    CategoryUpdateData,
+    ICategoryRepository,
+} from "@/core/repositories/category.repository.interface";
 
 /** Prove a row's category is a real member before narrowing the domain enum. */
 function isCategoryType(value: string): value is CategoryType {
@@ -26,9 +26,9 @@ function toCategoryType(value: string): CategoryType {
 export class PrismaCategoryRepository implements ICategoryRepository {
     private mapToEntity(
         category: PrismaCategory & {
-        _count?: { products: number };
-        tenant?: { id: string; name: string; slug: string };
-    },
+            _count?: { products: number };
+            tenant?: { id: string; name: string; slug: string };
+        },
     ): Category {
         return {
             id: category.id,
@@ -38,7 +38,11 @@ export class PrismaCategoryRepository implements ICategoryRepository {
             active: category.active,
             tenantId: category.tenantId,
             tenant: category.tenant
-                ? { id: category.tenant.id, name: category.tenant.name, slug: category.tenant.slug }
+                ? {
+                      id: category.tenant.id,
+                      name: category.tenant.name,
+                      slug: category.tenant.slug,
+                  }
                 : undefined,
             createdAt: category.createdAt,
             updatedAt: category.updatedAt,
@@ -102,7 +106,10 @@ export class PrismaCategoryRepository implements ICategoryRepository {
         return category ? this.mapToEntity(category) : null;
     }
 
-    async create(tenantId: string, data: CategoryCreateData): Promise<Category> {
+    async create(
+        tenantId: string,
+        data: CategoryCreateData,
+    ): Promise<Category> {
         try {
             const category = await prisma.category.create({
                 data: {

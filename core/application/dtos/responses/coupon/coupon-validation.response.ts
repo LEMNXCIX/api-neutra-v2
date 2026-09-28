@@ -1,4 +1,4 @@
-import { Coupon } from "@/core/entities/coupon.entity";
+import type { Coupon } from "@/core/entities/coupon.entity";
 
 export interface CouponValidationResult {
     valid: boolean;

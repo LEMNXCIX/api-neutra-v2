@@ -25,14 +25,21 @@ const FORBIDDEN_TREES: readonly string[] = [
 ];
 
 /** R1: packages that pull a framework or a database driver into the domain. */
-const FORBIDDEN_MODULES: readonly string[] = ["express", "@prisma/client", "app"];
+const FORBIDDEN_MODULES: readonly string[] = [
+    "express",
+    "@prisma/client",
+    "app",
+];
 
 const CORE_PREFIX = "core/";
 const DOMAIN_PREFIX = "core/domain/";
 const PRESENTERS_PREFIX = "core/presenters/";
 const MONEY_PREFIX = "infrastructure/database/";
 
-const DOMAIN_ALLOWED_FILES: readonly string[] = ["auth.types.ts", "constants.ts"];
+const DOMAIN_ALLOWED_FILES: readonly string[] = [
+    "auth.types.ts",
+    "constants.ts",
+];
 const MONEY_FIELDS: readonly string[] = ["discountAmount", "subtotal", "total"];
 const MONEY_ZERO = new RegExp(
     `\\b(?:${MONEY_FIELDS.join("|")})\\b\\s*[:=]\\s*0\\b`,
@@ -67,7 +74,10 @@ function listDirectory(directory: string) {
     }
 }
 
-function readSourceFile(rootDir: string, absolutePath: string): SourceFile | null {
+function readSourceFile(
+    rootDir: string,
+    absolutePath: string,
+): SourceFile | null {
     let text: string;
     try {
         text = readFileSync(absolutePath, "utf8");
@@ -195,16 +205,11 @@ const layerDirection: Rule = {
     },
 };
 
-function forbiddenLayer(
-    file: SourceFile,
-    specifier: string,
-): string | null {
+function forbiddenLayer(file: SourceFile, specifier: string): string | null {
     const target = resolveRepoTarget(file, specifier);
     if (target === null) return null;
     const head = target.split("/")[0];
-    return FORBIDDEN_TREES.includes(head)
-        ? `forbidden layer "${head}"`
-        : null;
+    return FORBIDDEN_TREES.includes(head) ? `forbidden layer "${head}"` : null;
 }
 
 const ENTITY_DECLARATIONS: ReadonlyArray<[string, RegExp]> = [
@@ -243,7 +248,9 @@ const domainExists: Rule = {
         if (!existsSync(join(rootDir, "core/domain"))) {
             return ["core/domain/ is missing"];
         }
-        const domainFiles = files.filter((file) => inDirectory(file, DOMAIN_PREFIX));
+        const domainFiles = files.filter((file) =>
+            inDirectory(file, DOMAIN_PREFIX),
+        );
         const hasPolicy = domainFiles.some((file) =>
             file.path.endsWith(".policy.ts"),
         );
@@ -310,22 +317,16 @@ function readCallArguments(text: string, openIndex: number): string {
 const noDuplicatedRules: Rule = {
     id: "R4",
     run: (_rootDir, files) => {
-        const sites = new Map<
-            string,
-            { core: string[]; outer: string[] }
-        >();
+        const sites = new Map<string, { core: string[]; outer: string[] }>();
         for (const file of files) {
             const pattern = /BusinessRuleViolationError\s*\(/g;
-            let match: RegExpExecArray | null;
-            while ((match = pattern.exec(file.text)) !== null) {
+            let match = pattern.exec(file.text);
+            while (match !== null) {
                 const args = readCallArguments(
                     file.text,
                     match.index + match[0].length,
                 );
-                const where = `${file.path}:${lineAtOffset(
-                    file,
-                    match.index,
-                )}`;
+                const where = `${file.path}:${lineAtOffset(file, match.index)}`;
                 for (const literal of args.matchAll(
                     /["'`]([A-Z][A-Z0-9_]{2,})["'`]/g,
                 )) {
@@ -336,6 +337,7 @@ const noDuplicatedRules: Rule = {
                     if (layer === "outer") entry.outer.push(where);
                     sites.set(code, entry);
                 }
+                match = pattern.exec(file.text);
             }
         }
 

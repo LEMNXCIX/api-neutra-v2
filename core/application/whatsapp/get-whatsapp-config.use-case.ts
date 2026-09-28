@@ -1,6 +1,6 @@
-import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
+import type { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class GetWhatsAppConfigUseCase {

@@ -1,18 +1,18 @@
-import { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
-import { ValidateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
-import { CouponValidationResult } from "@/core/application/dtos/responses/coupon/coupon-validation.response";
+import type { ValidateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
+import type { CouponValidationResult } from "@/core/application/dtos/responses/coupon/coupon-validation.response";
 import {
-    isApplicableToProduct,
-    isApplicableToCategory,
-    calculateDiscount,
     assertCouponRedeemable,
+    calculateDiscount,
+    isApplicableToCategory,
+    isApplicableToProduct,
     toRedeemableCoupon,
 } from "@/core/domain/coupon/coupon.policy";
 import {
-    EntityNotFoundError,
     BusinessRuleViolationError,
+    EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
-import { UseCaseResult, Success } from "@/core/utils/use-case-result";
+import type { ICouponRepository } from "@/core/repositories/coupon.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class ValidateCouponUseCase {
     constructor(private couponRepository: ICouponRepository) {}

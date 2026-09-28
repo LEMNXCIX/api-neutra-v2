@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 import {
     DomainError,
-    UnauthorizedError,
     ForbiddenError,
+    UnauthorizedError,
 } from "@/core/domain/errors/domain-errors";
 import {
     evaluateRoleLevel,
@@ -42,7 +42,7 @@ export function requireAnyPermission(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user;
 
-        if (!user || !user.role || !user.role.permissions) {
+        if (!user?.role?.permissions) {
             throw new UnauthorizedError("You must be logged in");
         }
 
@@ -68,7 +68,7 @@ export function requireAllPermissions(permissions: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user;
 
-        if (!user || !user.role || !user.role.permissions) {
+        if (!user?.role?.permissions) {
             throw new UnauthorizedError("You must be logged in");
         }
 
@@ -115,7 +115,7 @@ export function requireRole(minLevel: number) {
     return (req: Request, res: Response, next: NextFunction) => {
         const user = req.user;
 
-        if (!user || !user.role) {
+        if (!user?.role) {
             throw new UnauthorizedError("You must be logged in");
         }
 
@@ -146,19 +146,21 @@ export function requireSuperAdmin(
     next: NextFunction,
 ): void {
     if (!req.user?.role) {
-        return next(new UnauthorizedError());
+        next(new UnauthorizedError());
+        return;
     }
 
     if (!isSuperAdmin(req.user)) {
-        return next(
+        next(
             new ForbiddenError(
                 "Super administrator access is required",
                 AuthErrorCodes.SUPER_ADMIN_REQUIRED,
             ),
         );
+        return;
     }
 
-    return next();
+    next();
 }
 
 export function requireOwnership(

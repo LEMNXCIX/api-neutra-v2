@@ -13,7 +13,9 @@ const createMockClient = () => {
     const listeners: Record<string, EventCallback[]> = {};
 
     const emit = (event: string, ...args: any[]) => {
-        (listeners[event] || []).forEach((cb) => cb(...args));
+        (listeners[event] || []).forEach((cb) => {
+            cb(...args);
+        });
     };
 
     const client = {

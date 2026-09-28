@@ -1,4 +1,3 @@
-import { AppointmentStatus } from "@/core/entities/appointment.entity";
 import {
     IsDateString,
     IsEnum,
@@ -6,6 +5,7 @@ import {
     IsOptional,
     IsString,
 } from "class-validator";
+import { AppointmentStatus } from "@/core/entities/appointment.entity";
 
 export interface CreateAppointmentDTO {
     userId: string;

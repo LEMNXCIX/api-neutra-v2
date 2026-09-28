@@ -1,10 +1,10 @@
 import { prisma } from "@/config/db.config";
-import {
+import type {
     ILogRepository,
-    LogFilters,
-    LogEntry,
-    LogStats,
     LogCreateData,
+    LogEntry,
+    LogFilters,
+    LogStats,
 } from "@/core/repositories/log.repository.interface";
 
 jest.setTimeout(20000);
@@ -44,10 +44,12 @@ beforeAll(async () => {
 
 afterAll(async () => {
     try {
-        const { RedisProvider } =
-            await import("@/infrastructure/providers/redis.provider");
-        const { PinoLoggerProvider } =
-            await import("@/infrastructure/providers/pino-logger.provider");
+        const { RedisProvider } = await import(
+            "@/infrastructure/providers/redis.provider"
+        );
+        const { PinoLoggerProvider } = await import(
+            "@/infrastructure/providers/pino-logger.provider"
+        );
         const redis = new RedisProvider(new PinoLoggerProvider());
         await redis.quit();
     } catch {

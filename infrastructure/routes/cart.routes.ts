@@ -1,9 +1,12 @@
-import { Application, Request, Response, Router } from 'express';
-import type { RequestHandler } from 'express';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { validateDto } from '@/middleware/validation.middleware';
-import { AddToCartDto, RemoveFromCartDto } from '@/core/application/dtos/requests/cart.request';
-import { CartController } from '@/interface-adapters/controllers/cart.controller';
+import type { RequestHandler } from "express";
+import { type Application, type Request, type Response, Router } from "express";
+import {
+    AddToCartDto,
+    RemoveFromCartDto,
+} from "@/core/application/dtos/requests/cart.request";
+import type { CartController } from "@/interface-adapters/controllers/cart.controller";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function cart(
     app: Application,
@@ -11,7 +14,7 @@ function cart(
     authenticate: RequestHandler,
 ) {
     const router = Router();
-    app.use('/api/cart', router);
+    app.use("/api/cart", router);
 
     /**
      * @swagger
@@ -66,7 +69,12 @@ function cart(
      *       401:
      *         description: Unauthorized
      */
-    router.get('/', authenticate, requirePermission('cart:read'), cartController.getItems);
+    router.get(
+        "/",
+        authenticate,
+        requirePermission("cart:read"),
+        cartController.getItems,
+    );
 
     /**
      * @swagger
@@ -82,7 +90,12 @@ function cart(
      *       401:
      *         description: Unauthorized
      */
-    router.post('/', authenticate, requirePermission('cart:write'), cartController.create);
+    router.post(
+        "/",
+        authenticate,
+        requirePermission("cart:write"),
+        cartController.create,
+    );
 
     /**
      * @swagger
@@ -106,7 +119,13 @@ function cart(
      *       400:
      *         description: Invalid input
      */
-    router.post('/add', authenticate, requirePermission('cart:write'), validateDto(AddToCartDto), cartController.addToCart);
+    router.post(
+        "/add",
+        authenticate,
+        requirePermission("cart:write"),
+        validateDto(AddToCartDto),
+        cartController.addToCart,
+    );
 
     /**
      * @swagger
@@ -133,7 +152,13 @@ function cart(
      *       401:
      *         description: Unauthorized
      */
-    router.put('/remove', authenticate, requirePermission('cart:write'), validateDto(RemoveFromCartDto), cartController.removeFromCart);
+    router.put(
+        "/remove",
+        authenticate,
+        requirePermission("cart:write"),
+        validateDto(RemoveFromCartDto),
+        cartController.removeFromCart,
+    );
 
     /**
      * @swagger
@@ -149,7 +174,12 @@ function cart(
      *       401:
      *         description: Unauthorized
      */
-    router.delete('/clear', authenticate, requirePermission('cart:write'), cartController.clearCart);
+    router.delete(
+        "/clear",
+        authenticate,
+        requirePermission("cart:write"),
+        cartController.clearCart,
+    );
 
     /**
      * @swagger
@@ -167,10 +197,19 @@ function cart(
      *       403:
      *         description: Forbidden
      */
-    router.get('/stats', authenticate, requirePermission('stats:read'), cartController.getCartsStats);
+    router.get(
+        "/stats",
+        authenticate,
+        requirePermission("stats:read"),
+        cartController.getCartsStats,
+    );
 
     router.use(async (req: Request, res: Response) => {
-        return res.apiError({ message: 'Pagina no encontrada. :|' }, 'Pagina no encontrada', 404);
+        return res.apiError(
+            { message: "Pagina no encontrada. :|" },
+            "Pagina no encontrada",
+            404,
+        );
     });
 }
 

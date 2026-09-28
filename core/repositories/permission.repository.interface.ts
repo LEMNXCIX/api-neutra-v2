@@ -1,4 +1,4 @@
-import { Permission } from "@/core/entities/permission.entity";
+import type { Permission } from "@/core/entities/permission.entity";
 
 export interface PermissionCreateData {
     name: string;

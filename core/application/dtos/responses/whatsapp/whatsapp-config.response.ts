@@ -1,7 +1,7 @@
-import {
+import type {
+    BotConfig,
     WhatsAppConfig,
     WhatsAppTemplate,
-    BotConfig,
 } from "@/core/entities/whatsapp-config.entity";
 
 export interface IWhatsAppConfigResponse {

@@ -1,15 +1,15 @@
-import { TenantPrismaRepository } from "../infrastructure/database/prisma/tenant.prisma-repository";
-import { PrismaRoleRepository } from "../infrastructure/database/prisma/role.prisma-repository";
-import { PrismaFeatureRepository } from "../infrastructure/database/prisma/feature.prisma-repository";
-import { PrismaLoyaltyRepository } from "../infrastructure/database/prisma/loyalty.prisma-repository";
-import { PrismaPermissionRepository } from "../infrastructure/database/prisma/permission.prisma-repository";
 import { CreateTenantUseCase } from "../core/application/tenant/create-tenant.use-case";
 import { UpdateTenantUseCase } from "../core/application/tenant/update-tenant.use-case";
 import { TenantType } from "../core/entities/tenant.entity";
-import { ILogger } from "../core/providers/logger.interface";
-import { IUserRepository } from "../core/repositories/user.repository.interface";
+import type { ILogger } from "../core/providers/logger.interface";
+import type { IUserRepository } from "../core/repositories/user.repository.interface";
+import { PrismaFeatureRepository } from "../infrastructure/database/prisma/feature.prisma-repository";
+import { PrismaLoyaltyRepository } from "../infrastructure/database/prisma/loyalty.prisma-repository";
+import { PrismaPermissionRepository } from "../infrastructure/database/prisma/permission.prisma-repository";
+import { PrismaRoleRepository } from "../infrastructure/database/prisma/role.prisma-repository";
+import { TenantPrismaRepository } from "../infrastructure/database/prisma/tenant.prisma-repository";
 
-const mockLogger: ILogger = {
+const _mockLogger: ILogger = {
     debug: () => {},
     info: console.log,
     warn: console.warn,

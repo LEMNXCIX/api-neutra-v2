@@ -1,10 +1,10 @@
-import {
+import type { UpdateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
+import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import type {
     ICouponRepository,
     UpdateCouponData,
 } from "@/core/repositories/coupon.repository.interface";
-import { UpdateCouponDTO } from "@/core/application/dtos/requests/coupon.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class UpdateCouponUseCase {
     constructor(private couponRepository: ICouponRepository) {}

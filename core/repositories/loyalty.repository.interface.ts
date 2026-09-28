@@ -1,5 +1,5 @@
-import { Coupon } from "@/core/entities/coupon.entity";
-import {
+import type { Coupon } from "@/core/entities/coupon.entity";
+import type {
     LoyaltyCampaign,
     LoyaltyCampaignMetric,
     LoyaltyCampaignProgress,

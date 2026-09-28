@@ -1,10 +1,10 @@
-import { IUserRepository } from "@/core/repositories/user.repository.interface";
-import { IPasswordHasher } from "@/core/providers/auth-providers.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import {
-    ValidationError,
     BusinessRuleViolationError,
+    ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { IPasswordHasher } from "@/core/providers/auth-providers.interface";
+import type { IUserRepository } from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class ResetPasswordUseCase {
     constructor(

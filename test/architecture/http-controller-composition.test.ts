@@ -49,9 +49,7 @@ const FORBIDDEN_PATTERNS = [
 ];
 
 function stripComments(content: string): string {
-    return content
-        .replace(/\/\*[\s\S]*?\*\//g, "")
-        .replace(/\/\/.*$/gm, "");
+    return content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 }
 
 function readSource(relativePath: string): string {

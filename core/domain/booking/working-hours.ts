@@ -30,9 +30,7 @@ export function hasWorkingHoursSchedule(
     schedule: WorkingHours | null | undefined,
 ): schedule is WorkingHours {
     return (
-        !!schedule &&
-        typeof schedule === "object" &&
-        !Array.isArray(schedule)
+        !!schedule && typeof schedule === "object" && !Array.isArray(schedule)
     );
 }
 
@@ -40,10 +38,7 @@ function dayKeyForDate(date: Date): string {
     return DAY_NAMES[date.getDay()];
 }
 
-function rangesForDayKey(
-    schedule: WorkingHours,
-    day: string,
-): TimeRange[] {
+function rangesForDayKey(schedule: WorkingHours, day: string): TimeRange[] {
     const value = schedule[day];
     if (value === null || value === undefined) return [];
     const candidates = Array.isArray(value) ? value : [value];
@@ -97,10 +92,7 @@ export function getStaffDayKeysClosedByBusinessHours(
 }
 
 /** Intersect two range lists. Empty `b` means "no restriction" → returns a. */
-export function intersectRanges(
-    a: TimeRange[],
-    b: TimeRange[],
-): TimeRange[] {
+export function intersectRanges(a: TimeRange[], b: TimeRange[]): TimeRange[] {
     if (!b.length) return a;
     const result: TimeRange[] = [];
     for (const ra of a) {
@@ -109,8 +101,14 @@ export function intersectRanges(
             const end = Math.min(toMinutes(ra.end), toMinutes(rb.end));
             if (start < end) {
                 result.push({
-                    start: `${Math.floor(start / 60)}`.padStart(2, "0") + ":" + `${start % 60}`.padStart(2, "0"),
-                    end: `${Math.floor(end / 60)}`.padStart(2, "0") + ":" + `${end % 60}`.padStart(2, "0"),
+                    start:
+                        `${Math.floor(start / 60)}`.padStart(2, "0") +
+                        ":" +
+                        `${start % 60}`.padStart(2, "0"),
+                    end:
+                        `${Math.floor(end / 60)}`.padStart(2, "0") +
+                        ":" +
+                        `${end % 60}`.padStart(2, "0"),
                 });
             }
         }
@@ -125,8 +123,7 @@ export function fitsInRanges(
     ranges: TimeRange[],
 ): boolean {
     return ranges.some(
-        (r) =>
-            startMin >= toMinutes(r.start) && endMin <= toMinutes(r.end),
+        (r) => startMin >= toMinutes(r.start) && endMin <= toMinutes(r.end),
     );
 }
 

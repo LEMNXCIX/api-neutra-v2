@@ -1,12 +1,12 @@
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import type { UpdateTenantFeaturesDTO } from "@/core/application/dtos/requests/tenant.request";
+import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
 import {
     assertTenantFeatureDependencies,
     isLoyaltyOrCouponsDisabling,
 } from "@/core/domain/feature/feature.policy";
-import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { UpdateTenantFeaturesDTO } from "@/core/application/dtos/requests/tenant.request";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class UpdateTenantFeaturesUseCase {

@@ -10,12 +10,9 @@ import {
     LoyaltyLedgerEntryType,
     LoyaltySourceType,
 } from "@/core/entities/loyalty.entity";
-import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
 import { PrismaCouponRepository } from "@/infrastructure/database/prisma/coupon.prisma-repository";
-import {
-    LoyaltyErrorCodes,
-    ValidationErrorCodes,
-} from "@/types/error-codes";
+import { PrismaLoyaltyRepository } from "@/infrastructure/database/prisma/loyalty.prisma-repository";
+import { LoyaltyErrorCodes, ValidationErrorCodes } from "@/types/error-codes";
 
 const now = new Date("2030-01-01T00:00:00.000Z");
 const startsAt = new Date("2029-12-01T00:00:00.000Z");
@@ -118,9 +115,11 @@ function setup() {
         }),
     };
     const campaigns = {
-        create: jest.fn().mockImplementation(async ({ data }) =>
-            campaignRow({ ...data, id: "campaign-1" }),
-        ),
+        create: jest
+            .fn()
+            .mockImplementation(async ({ data }) =>
+                campaignRow({ ...data, id: "campaign-1" }),
+            ),
         findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn().mockResolvedValue(null),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -243,7 +242,10 @@ describe("PrismaLoyaltyRepository", () => {
         campaigns.findFirst
             .mockResolvedValueOnce(campaignRow({ status: "DRAFT" }))
             .mockResolvedValueOnce(
-                campaignRow({ status: "DRAFT", claimUntil: new Date("2030-03-01") }),
+                campaignRow({
+                    status: "DRAFT",
+                    claimUntil: new Date("2030-03-01"),
+                }),
             );
         coupons.findFirst.mockResolvedValue(
             couponRow({
@@ -267,7 +269,9 @@ describe("PrismaLoyaltyRepository", () => {
         );
         expect(campaigns.updateMany).toHaveBeenCalledWith(
             expect.objectContaining({
-                data: expect.objectContaining({ claimUntil: new Date("2030-03-01") }),
+                data: expect.objectContaining({
+                    claimUntil: new Date("2030-03-01"),
+                }),
             }),
         );
     });
@@ -306,22 +310,31 @@ describe("PrismaLoyaltyRepository", () => {
             "infrastructure/database/prisma/loyalty.prisma-repository.ts",
             "findActiveCampaignAt",
         ],
-        ["core/repositories/loyalty.repository.interface.ts", "findActiveCampaignAt"],
+        [
+            "core/repositories/loyalty.repository.interface.ts",
+            "findActiveCampaignAt",
+        ],
         [
             "infrastructure/database/prisma/loyalty.prisma-repository.ts",
             "getCampaignStats",
         ],
-        ["core/repositories/loyalty.repository.interface.ts", "getCampaignStats"],
+        [
+            "core/repositories/loyalty.repository.interface.ts",
+            "getCampaignStats",
+        ],
         ["core/entities/loyalty.entity.ts", "LoyaltyCampaignStats"],
         [
             "infrastructure/database/prisma/coupon.prisma-repository.ts",
             "cloneRewardCoupon",
         ],
-        ["core/repositories/coupon.repository.interface.ts", "cloneRewardCoupon"],
+        [
+            "core/repositories/coupon.repository.interface.ts",
+            "cloneRewardCoupon",
+        ],
     ])("keeps the dead %s out of the repository sources", (file, member) => {
-        expect(readFileSync(join(__dirname, "..", "..", file), "utf8")).not.toContain(
-            member,
-        );
+        expect(
+            readFileSync(join(__dirname, "..", "..", file), "utf8"),
+        ).not.toContain(member);
     });
 
     test("keeps the unguarded reward-minting path out of the coupon surface", () => {
@@ -339,7 +352,10 @@ describe("PrismaLoyaltyRepository", () => {
         campaigns.findFirst
             .mockResolvedValueOnce(campaignRow({ status: "DRAFT" }))
             .mockResolvedValueOnce(
-                campaignRow({ status: "DRAFT", targetValue: new Prisma.Decimal("20.00") }),
+                campaignRow({
+                    status: "DRAFT",
+                    targetValue: new Prisma.Decimal("20.00"),
+                }),
             );
 
         await repository.updateCampaign("tenant-1", "campaign-1", {
@@ -355,7 +371,9 @@ describe("PrismaLoyaltyRepository", () => {
                 tenantId: "tenant-1",
                 status: LoyaltyCampaignStatus.DRAFT,
             },
-            data: expect.objectContaining({ targetValue: expect.any(Prisma.Decimal) }),
+            data: expect.objectContaining({
+                targetValue: expect.any(Prisma.Decimal),
+            }),
         });
     });
 
@@ -385,7 +403,9 @@ describe("PrismaLoyaltyRepository", () => {
     test("uses DRAFT compare-and-set for update and delete", async () => {
         const update = setup();
         update.campaigns.findFirst
-            .mockResolvedValueOnce(campaignRow({ status: LoyaltyCampaignStatus.DRAFT }))
+            .mockResolvedValueOnce(
+                campaignRow({ status: LoyaltyCampaignStatus.DRAFT }),
+            )
             .mockResolvedValueOnce(
                 campaignRow({
                     status: LoyaltyCampaignStatus.DRAFT,
@@ -432,7 +452,9 @@ describe("PrismaLoyaltyRepository", () => {
             repository.updateCampaign("tenant-1", "campaign-1", {
                 maxClaims: 2,
             }),
-        ).rejects.toMatchObject({ code: ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS });
+        ).rejects.toMatchObject({
+            code: ValidationErrorCodes.INVALID_CAMPAIGN_MAX_CLAIMS,
+        });
         expect(coupons.findFirst).not.toHaveBeenCalled();
         expect(campaigns.updateMany).not.toHaveBeenCalled();
     });
@@ -502,7 +524,9 @@ describe("PrismaLoyaltyRepository", () => {
                     LoyaltyCampaignStatus.ENDED,
                     LoyaltyCampaignStatus.ARCHIVED,
                 ),
-            ).resolves.toMatchObject({ status: LoyaltyCampaignStatus.ARCHIVED });
+            ).resolves.toMatchObject({
+                status: LoyaltyCampaignStatus.ARCHIVED,
+            });
             expect(due.campaigns.updateMany).toHaveBeenCalledWith({
                 where: {
                     id: "campaign-1",
@@ -532,9 +556,7 @@ describe("PrismaLoyaltyRepository", () => {
         "counts only compatible source rows for %s progress",
         async (source, sourceTypes, progressValue) => {
             const { repository, campaigns, ledger } = setup();
-            campaigns.findFirst.mockResolvedValue(
-                campaignRow({ source }),
-            );
+            campaigns.findFirst.mockResolvedValue(campaignRow({ source }));
             ledger.count.mockImplementation(async ({ where }) => {
                 if (where.entryType === LoyaltyLedgerEntryType.REVERSAL) {
                     return 0;

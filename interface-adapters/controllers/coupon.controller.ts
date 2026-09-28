@@ -1,18 +1,18 @@
-import { Request, Response } from "express";
-import { CreateCouponUseCase } from "@/core/application/coupons/create-coupon.use-case";
-import { GetCouponsUseCase } from "@/core/application/coupons/get-coupons.use-case";
-import { GetCouponsPaginatedUseCase } from "@/core/application/coupons/get-coupons-paginated.use-case";
-import { UpdateCouponUseCase } from "@/core/application/coupons/update-coupon.use-case";
-import { DeleteCouponUseCase } from "@/core/application/coupons/delete-coupon.use-case";
-import { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
-import { GetCouponStatsUseCase } from "@/core/application/coupons/get-coupon-stats.use-case";
-import { CouponResponse } from "@/core/application/dtos/responses/coupon/coupon.response";
-import { present } from "@/core/utils/use-case-result";
-import {
+import type { Request, Response } from "express";
+import type { CreateCouponUseCase } from "@/core/application/coupons/create-coupon.use-case";
+import type { DeleteCouponUseCase } from "@/core/application/coupons/delete-coupon.use-case";
+import type { GetCouponStatsUseCase } from "@/core/application/coupons/get-coupon-stats.use-case";
+import type { GetCouponsUseCase } from "@/core/application/coupons/get-coupons.use-case";
+import type { GetCouponsPaginatedUseCase } from "@/core/application/coupons/get-coupons-paginated.use-case";
+import type { UpdateCouponUseCase } from "@/core/application/coupons/update-coupon.use-case";
+import type { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
+import type {
     CreateCouponDTO,
     UpdateCouponDTO,
     ValidateCouponDTO,
 } from "@/core/application/dtos/requests/coupon.request";
+import { CouponResponse } from "@/core/application/dtos/responses/coupon/coupon.response";
+import { present } from "@/core/utils/use-case-result";
 
 export class CouponController {
     constructor(
@@ -31,9 +31,7 @@ export class CouponController {
             tenantId,
             req.validatedBody as CreateCouponDTO,
         );
-        return res
-            .status(201)
-            .json(present(result, CouponResponse.fromEntity));
+        return res.status(201).json(present(result, CouponResponse.fromEntity));
     };
 
     getAll = async (req: Request, res: Response) => {
@@ -56,8 +54,8 @@ export class CouponController {
                         | "unused"
                         | "all"
                         | undefined,
-                    page: page ? parseInt(page as string) : undefined,
-                    limit: limit ? parseInt(limit as string) : undefined,
+                    page: page ? parseInt(page as string, 10) : undefined,
+                    limit: limit ? parseInt(limit as string, 10) : undefined,
                 },
             );
             return res.json(

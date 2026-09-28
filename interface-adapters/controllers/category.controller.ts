@@ -1,17 +1,16 @@
-import { Request, Response } from "express";
-import { CreateCategoryUseCase } from "@/core/application/categories/create-category.use-case";
-import { GetCategoriesUseCase } from "@/core/application/categories/get-categories.use-case";
-import { UpdateCategoryUseCase } from "@/core/application/categories/update-category.use-case";
-import { DeleteCategoryUseCase } from "@/core/application/categories/delete-category.use-case";
-import { GetCategoryStatsUseCase } from "@/core/application/categories/get-category-stats.use-case";
-
-import { CategoryType } from "@/core/entities/category.entity";
-import { CategoryResponse } from "@/core/application/dtos/responses/category/category.response";
-import { present } from "@/core/utils/use-case-result";
-import {
+import type { Request, Response } from "express";
+import type { CreateCategoryUseCase } from "@/core/application/categories/create-category.use-case";
+import type { DeleteCategoryUseCase } from "@/core/application/categories/delete-category.use-case";
+import type { GetCategoriesUseCase } from "@/core/application/categories/get-categories.use-case";
+import type { GetCategoryStatsUseCase } from "@/core/application/categories/get-category-stats.use-case";
+import type { UpdateCategoryUseCase } from "@/core/application/categories/update-category.use-case";
+import type {
     CreateCategoryDTO,
     UpdateCategoryDTO,
 } from "@/core/application/dtos/requests/category.request";
+import { CategoryResponse } from "@/core/application/dtos/responses/category/category.response";
+import { CategoryType } from "@/core/entities/category.entity";
+import { present } from "@/core/utils/use-case-result";
 
 export class CategoryController {
     constructor(
@@ -36,10 +35,10 @@ export class CategoryController {
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId;
         const page = req.query.page
-            ? parseInt(req.query.page as string)
+            ? parseInt(req.query.page as string, 10)
             : undefined;
         const limit = req.query.limit
-            ? parseInt(req.query.limit as string)
+            ? parseInt(req.query.limit as string, 10)
             : undefined;
         const rawType = req.query.type as string | undefined;
         const validTypes = Object.values(CategoryType) as string[];

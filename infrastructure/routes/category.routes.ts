@@ -1,10 +1,13 @@
-import { Application, Router } from 'express';
-import type { RequestHandler } from 'express';
+import type { RequestHandler } from "express";
+import { type Application, Router } from "express";
+import {
+    CreateCategoryDto,
+    UpdateCategoryDto,
+} from "@/core/application/dtos/requests/category.request";
+import type { CategoryController } from "@/interface-adapters/controllers/category.controller";
+import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { validateDto } from '@/middleware/validation.middleware';
-import { CreateCategoryDto, UpdateCategoryDto } from '@/core/application/dtos/requests/category.request';
-import { CategoryController } from '@/interface-adapters/controllers/category.controller';
+import { validateDto } from "@/middleware/validation.middleware";
 
 function categoryRoutes(
     app: Application,
@@ -13,7 +16,7 @@ function categoryRoutes(
     optionalAuthenticate: RequestHandler,
 ) {
     const router = Router();
-    app.use('/api/categories', router);
+    app.use("/api/categories", router);
 
     /**
      * @swagger
@@ -66,7 +69,12 @@ function categoryRoutes(
      *               items:
      *                 $ref: '#/components/schemas/Category'
      */
-    router.get('/', optionalAuthenticate, resolveSuperAdminTenant, categoryController.getAll);
+    router.get(
+        "/",
+        optionalAuthenticate,
+        resolveSuperAdminTenant,
+        categoryController.getAll,
+    );
 
     /**
      * @swagger
@@ -84,7 +92,12 @@ function categoryRoutes(
      *       403:
      *         description: Forbidden
      */
-    router.get('/stats', authenticate, requirePermission('stats:read'), categoryController.getStats);
+    router.get(
+        "/stats",
+        authenticate,
+        requirePermission("stats:read"),
+        categoryController.getStats,
+    );
 
     /**
      * @swagger
@@ -108,7 +121,7 @@ function categoryRoutes(
      *       404:
      *         description: Category not found
      */
-    router.get('/:id', categoryController.getById);
+    router.get("/:id", categoryController.getById);
 
     // Protected routes
     /**
@@ -140,7 +153,13 @@ function categoryRoutes(
      *       403:
      *         description: Forbidden
      */
-    router.post('/', authenticate, requirePermission('categories:write'), validateDto(CreateCategoryDto), categoryController.create);
+    router.post(
+        "/",
+        authenticate,
+        requirePermission("categories:write"),
+        validateDto(CreateCategoryDto),
+        categoryController.create,
+    );
 
     /**
      * @swagger
@@ -179,7 +198,13 @@ function categoryRoutes(
      *       404:
      *         description: Category not found
      */
-    router.put('/:id', authenticate, requirePermission('categories:write'), validateDto(UpdateCategoryDto), categoryController.update);
+    router.put(
+        "/:id",
+        authenticate,
+        requirePermission("categories:write"),
+        validateDto(UpdateCategoryDto),
+        categoryController.update,
+    );
 
     /**
      * @swagger
@@ -205,7 +230,12 @@ function categoryRoutes(
      *       404:
      *         description: Category not found
      */
-    router.delete('/:id', authenticate, requirePermission('categories:delete'), categoryController.delete);
+    router.delete(
+        "/:id",
+        authenticate,
+        requirePermission("categories:delete"),
+        categoryController.delete,
+    );
 }
 
 export default categoryRoutes;

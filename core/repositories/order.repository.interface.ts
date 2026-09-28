@@ -1,4 +1,4 @@
-import { Order, OrderStatus } from "@/core/entities/order.entity";
+import type { Order, OrderStatus } from "@/core/entities/order.entity";
 
 export interface OrderCreateData {
     userId: string;

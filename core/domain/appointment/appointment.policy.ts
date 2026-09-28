@@ -1,5 +1,5 @@
-import { AppointmentStatus } from "@/core/entities/appointment.entity";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
+import { AppointmentStatus } from "@/core/entities/appointment.entity";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
 /**
@@ -42,7 +42,9 @@ const TERMINAL_APPOINTMENT_STATUSES = new Set<AppointmentStatus>([
     AppointmentStatus.NO_SHOW,
 ]);
 
-export function isAppointmentStatus(value: unknown): value is AppointmentStatus {
+export function isAppointmentStatus(
+    value: unknown,
+): value is AppointmentStatus {
     return (
         typeof value === "string" &&
         (Object.values(AppointmentStatus) as string[]).includes(value)
@@ -106,10 +108,7 @@ export function isTerminalAppointmentStatus(
 }
 
 export function isCancellable(status: AppointmentStatus): boolean {
-    return canTransitionAppointmentStatus(
-        status,
-        AppointmentStatus.CANCELLED,
-    );
+    return canTransitionAppointmentStatus(status, AppointmentStatus.CANCELLED);
 }
 
 export function isCustomerCancellable(status: AppointmentStatus): boolean {

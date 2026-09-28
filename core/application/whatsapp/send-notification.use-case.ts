@@ -1,7 +1,7 @@
-import { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { SendNotificationDTO } from "@/core/application/dtos/requests/whatsapp.request";
+import type { SendNotificationDTO } from "@/core/application/dtos/requests/whatsapp.request";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
+import type { IWhatsAppService } from "@/core/ports/whatsapp-service.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class SendNotificationUseCase {

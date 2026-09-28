@@ -1,54 +1,51 @@
-import express, { Request, Response } from "express";
-import morgan from "morgan";
+import { apiReference } from "@scalar/express-api-reference";
 import cookieParser from "cookie-parser";
-import lusca from "lusca";
+import express, { type Request, type Response } from "express";
 import helmet from "helmet";
-
-import config from "@/config/index.config";
+import lusca from "lusca";
+import morgan from "morgan";
 import { connection } from "@/config/db.config";
-import rateLimiter from "@/middleware/rateLimit.middleware";
-import createResponseMiddleware from "@/middleware/response.middleware";
+import config from "@/config/index.config";
 import { isProduction as checkProduction } from "@/core/domain/constants";
-import createRequestMiddleware from "@/middleware/request.middleware";
-import wideLogMiddleware from "@/middleware/wide-log.middleware";
-import { contextMiddleware } from "@/middleware/context.middleware";
-import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
-import { createTenantMiddleware } from "@/middleware/tenant.middleware";
-import { createAuthenticateMiddleware } from "@/middleware/authenticate.middleware";
-import { createOptionalAuthenticateMiddleware } from "@/middleware/optional-authenticate.middleware";
-import { createRequireTenantFeature } from "@/middleware/tenant-feature.middleware";
-import { corsMiddleware as createCorsMiddleware } from "@/middleware/cors.middleware";
-import { devCookieDomainMiddleware } from "@/middleware/dev-cookie-domain.middleware";
-import { createRuntime } from "@/infrastructure/config/runtime";
 import { createHttpControllers } from "@/infrastructure/config/http-controllers/index";
-import { createErrorMiddleware } from "@/middleware/error.middleware";
-import healthRoutes from "@/infrastructure/routes/health.routes";
-import { scheduleAppointmentReviewSweep } from "@/infrastructure/services/queue.service";
-
+import { createRuntime } from "@/infrastructure/config/runtime";
+import { swaggerSpec } from "@/infrastructure/config/swagger.config";
+import appointmentRoutes from "@/infrastructure/routes/appointment.routes";
 // Rutas
 import auth from "@/infrastructure/routes/auth.routes";
-import users from "@/infrastructure/routes/users.routes";
-import products from "@/infrastructure/routes/products.routes";
-import slide from "@/infrastructure/routes/slide.routes";
-import cart from "@/infrastructure/routes/cart.routes";
-import order from "@/infrastructure/routes/order.routes";
-import category from "@/infrastructure/routes/category.routes";
-import role from "@/infrastructure/routes/role.routes";
-import permission from "@/infrastructure/routes/permission.routes";
 import banner from "@/infrastructure/routes/banner.routes";
+import cart from "@/infrastructure/routes/cart.routes";
+import category from "@/infrastructure/routes/category.routes";
 import coupon from "@/infrastructure/routes/coupon.routes";
-import tenants from "@/infrastructure/routes/tenant.routes";
 import features from "@/infrastructure/routes/feature.routes";
-import whatsappRoutes from "@/infrastructure/routes/whatsapp.routes";
+import healthRoutes from "@/infrastructure/routes/health.routes";
 import logRoutes from "@/infrastructure/routes/log.routes";
-import { swaggerSpec } from "@/infrastructure/config/swagger.config";
-import { apiReference } from "@scalar/express-api-reference";
-
+import loyaltyRoutes from "@/infrastructure/routes/loyalty.routes";
+import order from "@/infrastructure/routes/order.routes";
+import permission from "@/infrastructure/routes/permission.routes";
+import products from "@/infrastructure/routes/products.routes";
+import role from "@/infrastructure/routes/role.routes";
 // Booking Module Routes
 import serviceRoutes from "@/infrastructure/routes/service.routes";
+import slide from "@/infrastructure/routes/slide.routes";
 import staffRoutes from "@/infrastructure/routes/staff.routes";
-import appointmentRoutes from "@/infrastructure/routes/appointment.routes";
-import loyaltyRoutes from "@/infrastructure/routes/loyalty.routes";
+import tenants from "@/infrastructure/routes/tenant.routes";
+import users from "@/infrastructure/routes/users.routes";
+import whatsappRoutes from "@/infrastructure/routes/whatsapp.routes";
+import { scheduleAppointmentReviewSweep } from "@/infrastructure/services/queue.service";
+import { createAuthenticateMiddleware } from "@/middleware/authenticate.middleware";
+import { contextMiddleware } from "@/middleware/context.middleware";
+import { corsMiddleware as createCorsMiddleware } from "@/middleware/cors.middleware";
+import { devCookieDomainMiddleware } from "@/middleware/dev-cookie-domain.middleware";
+import { createErrorMiddleware } from "@/middleware/error.middleware";
+import { notFoundHandlerEnhanced } from "@/middleware/not-found.middleware";
+import { createOptionalAuthenticateMiddleware } from "@/middleware/optional-authenticate.middleware";
+import rateLimiter from "@/middleware/rateLimit.middleware";
+import createRequestMiddleware from "@/middleware/request.middleware";
+import createResponseMiddleware from "@/middleware/response.middleware";
+import { createTenantMiddleware } from "@/middleware/tenant.middleware";
+import { createRequireTenantFeature } from "@/middleware/tenant-feature.middleware";
+import wideLogMiddleware from "@/middleware/wide-log.middleware";
 
 const { port, ENVIRONMENT } = config;
 
@@ -116,9 +113,7 @@ app.use(
 
 // Middlewares (orden: contexto > logging > parsing > security > custom)
 app.use(contextMiddleware);
-app.use(
-    wideLogMiddleware(runtime.repositories.log, runtime.providers.logger),
-);
+app.use(wideLogMiddleware(runtime.repositories.log, runtime.providers.logger));
 if (!checkProduction(ENVIRONMENT)) {
     app.use(morgan("dev"));
 }
@@ -166,12 +161,7 @@ app.use(tenantMiddleware);
 // Domain routes (composition root)
 auth(app, controllers.auth, authenticate, joinTenantAuthenticate);
 users(app, controllers.user, authenticate);
-products(
-    app,
-    controllers.product,
-    authenticate,
-    optionalAuthenticate,
-);
+products(app, controllers.product, authenticate, optionalAuthenticate);
 slide(
     app,
     controllers.slide,
@@ -181,42 +171,17 @@ slide(
 );
 cart(app, controllers.cart, authenticate);
 order(app, controllers.order, authenticate);
-category(
-    app,
-    controllers.category,
-    authenticate,
-    optionalAuthenticate,
-);
+category(app, controllers.category, authenticate, optionalAuthenticate);
 role(app, controllers.role, authenticate);
 permission(app, controllers.permission, authenticate);
 
 // Booking Module
-serviceRoutes(
-    app,
-    controllers.service,
-    authenticate,
-    optionalAuthenticate,
-);
+serviceRoutes(app, controllers.service, authenticate, optionalAuthenticate);
 staffRoutes(app, controllers.staff, authenticate);
 appointmentRoutes(app, controllers.appointment, authenticate);
-loyaltyRoutes(
-    app,
-    controllers.loyalty,
-    authenticate,
-    requireTenantFeature,
-);
-banner(
-    app,
-    controllers.banner,
-    authenticate,
-    requireTenantFeature,
-);
-coupon(
-    app,
-    controllers.coupon,
-    authenticate,
-    requireTenantFeature,
-);
+loyaltyRoutes(app, controllers.loyalty, authenticate, requireTenantFeature);
+banner(app, controllers.banner, authenticate, requireTenantFeature);
+coupon(app, controllers.coupon, authenticate, requireTenantFeature);
 features(app, controllers.feature, authenticate);
 whatsappRoutes(
     app,
@@ -271,7 +236,9 @@ if (require.main === module) {
 
     const portNumber = typeof port === "string" ? parseInt(port, 10) : port;
     app.listen(portNumber, "0.0.0.0", () => {
-        logger.info(`Server started on http://localhost:${portNumber} (0.0.0.0)`);
+        logger.info(
+            `Server started on http://localhost:${portNumber} (0.0.0.0)`,
+        );
     });
 }
 

@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
 import { plainToInstance } from "class-transformer";
-import { validate, ValidationError } from "class-validator";
+import { type ValidationError, validate } from "class-validator";
+import type { NextFunction, Request, Response } from "express";
 import type { ErrorDetail } from "@/types/api-response";
 import { ValidationErrorCodes } from "@/types/error-codes";
 

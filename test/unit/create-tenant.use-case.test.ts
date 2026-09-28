@@ -9,7 +9,9 @@ function setup(existingSlug?: unknown) {
             .fn()
             .mockImplementation(async (data) => ({ id: "t-new", ...data })),
     };
-    const userRepository = { addTenant: jest.fn().mockResolvedValue(undefined) };
+    const userRepository = {
+        addTenant: jest.fn().mockResolvedValue(undefined),
+    };
     const roleRepository = {
         createWithPermissions: jest
             .fn()

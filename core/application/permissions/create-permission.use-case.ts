@@ -1,7 +1,10 @@
-import { IPermissionRepository, PermissionCreateData } from "@/core/repositories/permission.repository.interface";
-import { CreatePermissionDTO } from "@/core/application/dtos/requests/permission.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { CreatePermissionDTO } from "@/core/application/dtos/requests/permission.request";
 import { DuplicateEntityError } from "@/core/domain/errors/domain-errors";
+import type {
+    IPermissionRepository,
+    PermissionCreateData,
+} from "@/core/repositories/permission.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class CreatePermissionUseCase {
     constructor(private permissionRepository: IPermissionRepository) {}

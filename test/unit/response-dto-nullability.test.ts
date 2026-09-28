@@ -1,6 +1,6 @@
 import { OrderResponse } from "@/core/application/dtos/responses/order/order.response";
-import { UserMinimalResponse } from "@/core/application/dtos/responses/shared/user-minimal.response";
 import { StaffMinimalResponse } from "@/core/application/dtos/responses/shared/staff-minimal.response";
+import { UserMinimalResponse } from "@/core/application/dtos/responses/shared/user-minimal.response";
 import type { Order } from "@/core/entities/order.entity";
 import type { Product } from "@/core/entities/product.entity";
 
@@ -77,7 +77,10 @@ describe("OrderResponse.fromEntity", () => {
 
         expect(response.couponId).toBe("coupon-1");
         expect(response.trackingNumber).toBe("TRACK-1");
-        expect(response.user).toEqual({ name: "Ada", email: "ada@example.com" });
+        expect(response.user).toEqual({
+            name: "Ada",
+            email: "ada@example.com",
+        });
     });
 
     it("reduces the user projection to name and email only", () => {
@@ -92,7 +95,10 @@ describe("OrderResponse.fromEntity", () => {
             } as unknown as Partial<Order>),
         );
 
-        expect(response.user).toEqual({ name: "Ada", email: "ada@example.com" });
+        expect(response.user).toEqual({
+            name: "Ada",
+            email: "ada@example.com",
+        });
     });
 
     it("tolerates a missing items array", () => {

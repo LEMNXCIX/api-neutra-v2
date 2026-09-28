@@ -1,11 +1,15 @@
-import { Permission as PrismaPermission, Prisma } from "@prisma/client";
+import { Prisma, type Permission as PrismaPermission } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IPermissionRepository, PermissionCreateData, PermissionUpdateData } from "@/core/repositories/permission.repository.interface";
-import { Permission } from "@/core/entities/permission.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
+import type { Permission } from "@/core/entities/permission.entity";
+import type {
+    IPermissionRepository,
+    PermissionCreateData,
+    PermissionUpdateData,
+} from "@/core/repositories/permission.repository.interface";
 
 export class PrismaPermissionRepository implements IPermissionRepository {
     private mapToEntity(data: PrismaPermission): Permission {

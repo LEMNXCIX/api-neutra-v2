@@ -1,4 +1,4 @@
-import { prisma } from '../config/db.config';
+import { prisma } from "../config/db.config";
 
 async function main() {
     const userCount = await prisma.user.count();
@@ -6,7 +6,7 @@ async function main() {
     const cartCount = await prisma.cart.count();
     const orderCount = await prisma.order.count();
 
-    console.log('--- PostgreSQL Record Counts ---');
+    console.log("--- PostgreSQL Record Counts ---");
     console.log(`Users: ${userCount}`);
     console.log(`Products: ${productCount}`);
     console.log(`Carts: ${cartCount}`);

@@ -1,11 +1,22 @@
 // Covers the anti-cross-tenant membership check (security fix)
 import { ResolveAuthenticatedUserUseCase } from "@/core/application/auth/resolve-authenticated-user.use-case";
-import { ForbiddenError, UnauthorizedError } from "@/core/domain/errors/domain-errors";
+import {
+    ForbiddenError,
+    UnauthorizedError,
+} from "@/core/domain/errors/domain-errors";
 
-const TOKEN = { id: "u1", email: "a@b.com", name: "A", role: { id: "r1", name: "USER", level: 1 } };
+const TOKEN = {
+    id: "u1",
+    email: "a@b.com",
+    name: "A",
+    role: { id: "r1", name: "USER", level: 1 },
+};
 
 function setup(overrides?: { user?: unknown; cached?: string | null }) {
-    const tokenGenerator = { verify: jest.fn().mockReturnValue({ ...TOKEN }), generate: jest.fn() };
+    const tokenGenerator = {
+        verify: jest.fn().mockReturnValue({ ...TOKEN }),
+        generate: jest.fn(),
+    };
     const cache = {
         get: jest.fn().mockResolvedValue(overrides?.cached ?? null),
         set: jest.fn().mockResolvedValue(undefined),
@@ -28,7 +39,12 @@ const memberUser = {
     tenants: [
         {
             tenantId: "t1",
-            role: { id: "r1", name: "ADMIN", level: 5, permissions: [{ name: "products:read" }] },
+            role: {
+                id: "r1",
+                name: "ADMIN",
+                level: 5,
+                permissions: [{ name: "products:read" }],
+            },
             tenant: { id: "t1", slug: "store1" },
         },
     ],
@@ -49,7 +65,10 @@ const superadminUser = {
 describe("ResolveAuthenticatedUserUseCase", () => {
     test("resolves role and permissions for a tenant member", async () => {
         const { useCase, cache } = setup({ user: memberUser });
-        const { user } = await useCase.execute({ token: "tok", tenantId: "t1" });
+        const { user } = await useCase.execute({
+            token: "tok",
+            tenantId: "t1",
+        });
 
         expect(user.role.name).toBe("ADMIN");
         expect(user.role.permissions).toContain("products:read");
@@ -72,7 +91,10 @@ describe("ResolveAuthenticatedUserUseCase", () => {
 
     test("global superadmin can access any tenant", async () => {
         const { useCase } = setup({ user: superadminUser });
-        const { user } = await useCase.execute({ token: "tok", tenantId: "t-any" });
+        const { user } = await useCase.execute({
+            token: "tok",
+            tenantId: "t-any",
+        });
 
         expect(user.role.name).toBe("SUPER_ADMIN");
     });
@@ -81,7 +103,10 @@ describe("ResolveAuthenticatedUserUseCase", () => {
         const { useCase, userRepository, cache } = setup({
             cached: JSON.stringify(["cached:perm"]),
         });
-        const { user } = await useCase.execute({ token: "tok", tenantId: "t1" });
+        const { user } = await useCase.execute({
+            token: "tok",
+            tenantId: "t1",
+        });
 
         expect(user.role.permissions).toEqual(["cached:perm"]);
         expect(userRepository.findById).not.toHaveBeenCalled();

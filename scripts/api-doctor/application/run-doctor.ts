@@ -6,7 +6,10 @@ import type {
     OverallStatus,
 } from "../domain/check-result";
 
-function isBlocking(check: DoctorCheck, profile: DoctorContext["profile"]): boolean {
+function isBlocking(
+    check: DoctorCheck,
+    profile: DoctorContext["profile"],
+): boolean {
     return check.blockingIn.includes(profile);
 }
 
@@ -20,10 +23,7 @@ function skippedCheck(check: DoctorCheck): CheckResult {
     };
 }
 
-function failedCheck(
-    check: DoctorCheck,
-    context: DoctorContext,
-): CheckResult {
+function failedCheck(check: DoctorCheck, context: DoctorContext): CheckResult {
     return {
         id: check.id,
         category: check.category,

@@ -1,5 +1,5 @@
-import { Request, Response } from "express";
-import {
+import type { Request, Response } from "express";
+import type {
     HealthReadiness,
     IHealthService,
 } from "@/core/ports/health-service.interface";
@@ -16,7 +16,10 @@ export class HealthController {
         return res.status(200).json({ status: "ok" });
     };
 
-    readonly ready = async (_req: Request, res: Response): Promise<Response> => {
+    readonly ready = async (
+        _req: Request,
+        res: Response,
+    ): Promise<Response> => {
         let result: HealthReadiness;
         try {
             result = await this.healthService.checkReadiness();

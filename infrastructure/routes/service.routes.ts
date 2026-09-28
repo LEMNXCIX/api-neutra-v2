@@ -1,14 +1,14 @@
-import { Application, Router } from "express";
 import type { RequestHandler } from "express";
-import { requirePermission } from "@/middleware/authorization.middleware";
-import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
-import { ServiceController } from "@/interface-adapters/controllers/service.controller";
-import { requireTenantType } from "@/middleware/tenant-feature.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import { type Application, Router } from "express";
 import {
     CreateServiceDto,
     UpdateServiceDto,
 } from "@/core/application/dtos/requests/service.request";
+import type { ServiceController } from "@/interface-adapters/controllers/service.controller";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
+import { requireTenantType } from "@/middleware/tenant-feature.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function services(
     app: Application,
@@ -119,8 +119,9 @@ function services(
     router.get(
         "/",
         requireTenantType("BOOKING", "HYBRID"),
-        optionalAuthenticate, resolveSuperAdminTenant, (req, res) =>
-        serviceController.getAll(req, res),
+        optionalAuthenticate,
+        resolveSuperAdminTenant,
+        (req, res) => serviceController.getAll(req, res),
     );
 
     /**

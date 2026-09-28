@@ -1,14 +1,14 @@
-import { Request, Response } from "express";
-import { CreateRoleUseCase } from "@/core/application/roles/create-role.use-case";
-import { GetRolesUseCase } from "@/core/application/roles/get-roles.use-case";
-import { UpdateRoleUseCase } from "@/core/application/roles/update-role.use-case";
-import { DeleteRoleUseCase } from "@/core/application/roles/delete-role.use-case";
-import { GetRolesPaginatedUseCase } from "@/core/application/roles/get-roles-paginated.use-case";
-import { RoleResponse } from "@/core/application/dtos/responses/role/role.response";
-import {
+import type { Request, Response } from "express";
+import type {
     CreateRoleDTO,
     UpdateRoleDTO,
 } from "@/core/application/dtos/requests/role.request";
+import { RoleResponse } from "@/core/application/dtos/responses/role/role.response";
+import type { CreateRoleUseCase } from "@/core/application/roles/create-role.use-case";
+import type { DeleteRoleUseCase } from "@/core/application/roles/delete-role.use-case";
+import type { GetRolesUseCase } from "@/core/application/roles/get-roles.use-case";
+import type { GetRolesPaginatedUseCase } from "@/core/application/roles/get-roles-paginated.use-case";
+import type { UpdateRoleUseCase } from "@/core/application/roles/update-role.use-case";
 import { present } from "@/core/utils/use-case-result";
 
 export class RoleController {
@@ -43,10 +43,10 @@ export class RoleController {
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
         const page = req.query.page
-            ? parseInt(req.query.page as string)
+            ? parseInt(req.query.page as string, 10)
             : undefined;
         const limit = req.query.limit
-            ? parseInt(req.query.limit as string)
+            ? parseInt(req.query.limit as string, 10)
             : undefined;
         const search = req.query.search
             ? (req.query.search as string)

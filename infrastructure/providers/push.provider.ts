@@ -1,10 +1,19 @@
-import { INotificationProvider, NotificationMessage } from '@/core/ports/notification-provider.interface';
+import type {
+    INotificationProvider,
+    NotificationMessage,
+} from "@/core/ports/notification-provider.interface";
 
 export class PushProvider implements INotificationProvider {
-    async send(recipient: string, message: NotificationMessage, options?: Record<string, unknown>): Promise<boolean> {
+    async send(
+        recipient: string,
+        message: NotificationMessage,
+        options?: Record<string, unknown>,
+    ): Promise<boolean> {
         // Implementation with Firebase Cloud Messaging (FCM) would go here
         // recipient would be a device token
-        console.log(`[PushProvider] Sending Push Notification to ${recipient}: ${message.body}`);
+        console.log(
+            `[PushProvider] Sending Push Notification to ${recipient}: ${message.body}`,
+        );
 
         // Simulate async API call
         // await firebaseAdmin.messaging().send(...)
@@ -12,6 +21,6 @@ export class PushProvider implements INotificationProvider {
     }
 
     getChannelName(): string {
-        return 'PUSH';
+        return "PUSH";
     }
 }

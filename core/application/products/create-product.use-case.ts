@@ -1,11 +1,11 @@
-import {
-    IProductRepository,
-    CreateProductData,
-} from "@/core/repositories/product.repository.interface";
-import { CreateProductDTO } from "@/core/application/dtos/requests/product.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import { ValidationError } from "@/core/domain/errors/domain-errors";
+import type { CreateProductDTO } from "@/core/application/dtos/requests/product.request";
 import { VALIDATION_CONSTANTS } from "@/core/domain/constants";
+import { ValidationError } from "@/core/domain/errors/domain-errors";
+import type {
+    CreateProductData,
+    IProductRepository,
+} from "@/core/repositories/product.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class CreateProductUseCase {
     constructor(private productRepository: IProductRepository) {}
@@ -28,7 +28,7 @@ export class CreateProductUseCase {
                 : data.price;
         const stock =
             typeof data.stock === "string"
-                ? parseInt(data.stock as string)
+                ? parseInt(data.stock as string, 10)
                 : (data.stock ?? 0);
 
         if (price < 0 || stock < 0) {

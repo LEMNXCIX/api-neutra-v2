@@ -1,17 +1,17 @@
-import { Request, Response, NextFunction } from "express";
-import type { IncomingHttpHeaders } from "http";
-import { ILogRepository } from "@/core/repositories/log.repository.interface";
-import { LogLevel } from "@/core/providers/logger.interface";
+import type { IncomingHttpHeaders } from "node:http";
+import type { NextFunction, Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { RequestContext } from "@/infrastructure/context/request-context";
 import { SECURITY_CONSTANTS } from "@/core/domain/constants";
 import type { ILogger } from "@/core/providers/logger.interface";
+import { LogLevel } from "@/core/providers/logger.interface";
+import type { ILogRepository } from "@/core/repositories/log.repository.interface";
+import { RequestContext } from "@/infrastructure/context/request-context";
 
 export default function wideLogMiddleware(
     logRepository: ILogRepository,
     logger: ILogger,
 ) {
-    return function (req: Request, res: Response, next: NextFunction) {
+    return (req: Request, res: Response, next: NextFunction) => {
         const start = Date.now();
         const traceId = req.traceId || uuidv4();
         req.traceId = traceId;
@@ -29,7 +29,8 @@ export default function wideLogMiddleware(
             try {
                 // Only a string body is JSON text; anything else is stored as-is
                 // (parsing it would throw and land in the catch below anyway).
-                responseBody = typeof body === "string" ? JSON.parse(body) : body;
+                responseBody =
+                    typeof body === "string" ? JSON.parse(body) : body;
             } catch {
                 responseBody = body;
             }

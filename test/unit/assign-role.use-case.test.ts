@@ -10,13 +10,13 @@
  * update-user.use-case.test.ts.
  */
 import { AssignRoleToUserUseCase } from "@/core/application/users/assign-role.use-case";
-import { User } from "@/core/entities/user.entity";
-import { Role } from "@/core/entities/role.entity";
 import {
     EntityNotFoundError,
     ForbiddenError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { Role } from "@/core/entities/role.entity";
+import type { User } from "@/core/entities/user.entity";
 import { TenantErrorCodes } from "@/types/error-codes";
 
 const ATTACKER_TENANT = "tenant-attacker";
@@ -77,11 +77,10 @@ function setup({
         // Tenant-scoped: mirrors the Prisma membership predicate.
         findByIdForTenant: jest
             .fn()
-            .mockImplementation(
-                async (tenantId: string, id: string) =>
-                    exists && id === VICTIM_ID && tenantIds.includes(tenantId)
-                        ? user
-                        : null,
+            .mockImplementation(async (tenantId: string, id: string) =>
+                exists && id === VICTIM_ID && tenantIds.includes(tenantId)
+                    ? user
+                    : null,
             ),
     };
 

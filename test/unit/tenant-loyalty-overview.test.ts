@@ -1,16 +1,16 @@
-import {
-    LoyaltyCampaign,
-    LoyaltyCampaignMetric,
-    LoyaltyCampaignSource,
-    LoyaltyCampaignStatus,
-} from "@/core/entities/loyalty.entity";
-import { Tenant, TenantType } from "@/core/entities/tenant.entity";
+import { GetTenantLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
 import {
     BusinessRuleViolationError,
     EntityNotFoundError,
     ValidationError,
 } from "@/core/domain/errors/domain-errors";
-import { GetTenantLoyaltyOverviewUseCase } from "@/core/application/loyalty/get-tenant-loyalty-overview.use-case";
+import {
+    type LoyaltyCampaign,
+    LoyaltyCampaignMetric,
+    LoyaltyCampaignSource,
+    LoyaltyCampaignStatus,
+} from "@/core/entities/loyalty.entity";
+import { type Tenant, TenantType } from "@/core/entities/tenant.entity";
 import {
     BusinessErrorCodes,
     ResourceErrorCodes,
@@ -75,21 +75,21 @@ function setup(options: SetupOptions = {}) {
     const campaigns = options.campaigns ?? [];
     const claimed = options.claimed ?? {};
 
-      const listCampaigns = jest.fn(
-          async (tenantId: string): Promise<LoyaltyCampaign[]> =>
-              tenantId === TENANT_ID ? campaigns : [],
-      );
-      // The overview counts the tenant's claims in one read now, so the
-      // expectation is the sum the per-campaign loop used to produce.
-      const countCampaignRewardClaims = jest.fn(
-          async (tenantId: string): Promise<number> =>
-              tenantId === TENANT_ID
-                  ? Object.values(claimed).reduce(
-                        (total, value) => total + value,
-                        0,
-                    )
-                  : 0,
-      );
+    const listCampaigns = jest.fn(
+        async (tenantId: string): Promise<LoyaltyCampaign[]> =>
+            tenantId === TENANT_ID ? campaigns : [],
+    );
+    // The overview counts the tenant's claims in one read now, so the
+    // expectation is the sum the per-campaign loop used to produce.
+    const countCampaignRewardClaims = jest.fn(
+        async (tenantId: string): Promise<number> =>
+            tenantId === TENANT_ID
+                ? Object.values(claimed).reduce(
+                      (total, value) => total + value,
+                      0,
+                  )
+                : 0,
+    );
     const findById = jest.fn(
         async (id: string): Promise<Tenant | null> =>
             id === TENANT_ID ? tenant : null,
@@ -162,12 +162,8 @@ describe("GetTenantLoyaltyOverviewUseCase", () => {
     ])(
         "rejects a %s tenant id before reading any repository",
         async (_label, tenantId) => {
-            const {
-                useCase,
-                findById,
-                getTenantFeatureStatus,
-                listCampaigns,
-            } = setup();
+            const { useCase, findById, getTenantFeatureStatus, listCampaigns } =
+                setup();
 
             // The guard is `!tenantId?.trim()`, so a runtime caller that omits
             // the argument must be rejected too; the `string` signature of
@@ -216,11 +212,9 @@ describe("GetTenantLoyaltyOverviewUseCase", () => {
     });
 
     test("rejects with BUSINESS_LOYALTY_REQUIRES_COUPONS when COUPONS is disabled, after the LOYALTY gate", async () => {
-        const {
-            useCase,
-            getTenantFeatureStatus,
-            listCampaigns,
-        } = setup({ features: { LOYALTY: true, COUPONS: false } });
+        const { useCase, getTenantFeatureStatus, listCampaigns } = setup({
+            features: { LOYALTY: true, COUPONS: false },
+        });
 
         const error = await rejection(useCase.execute(TENANT_ID));
 
@@ -270,7 +264,9 @@ describe("GetTenantLoyaltyOverviewUseCase", () => {
             },
         });
         expect(result.data?.campaigns).toEqual(campaigns);
-        expect(result.data?.campaigns.map((campaign) => campaign.status)).toEqual([
+        expect(
+            result.data?.campaigns.map((campaign) => campaign.status),
+        ).toEqual([
             LoyaltyCampaignStatus.DRAFT,
             LoyaltyCampaignStatus.ACTIVE,
             LoyaltyCampaignStatus.ENDED,
@@ -314,8 +310,8 @@ describe("GetTenantLoyaltyOverviewUseCase", () => {
         expect(countCampaignRewardClaims).toHaveBeenCalledWith(TENANT_ID);
         expect(result.data?.stats.totalClaims).toBe(
             Object.values(lifecycleClaims).reduce(
-            (total, value) => total + value,
-            0,
+                (total, value) => total + value,
+                0,
             ),
         );
     });

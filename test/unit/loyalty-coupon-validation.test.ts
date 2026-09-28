@@ -1,6 +1,6 @@
 import { ValidateCouponUseCase } from "@/core/application/coupons/validate-coupon.use-case";
 import { BusinessRuleViolationError } from "@/core/domain/errors/domain-errors";
-import { CouponType, type Coupon } from "@/core/entities/coupon.entity";
+import { type Coupon, CouponType } from "@/core/entities/coupon.entity";
 
 function coupon(overrides: Partial<Coupon> = {}): Coupon {
     return {

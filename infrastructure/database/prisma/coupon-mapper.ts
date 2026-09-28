@@ -1,4 +1,4 @@
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
+import { type Coupon, CouponType } from "@/core/entities/coupon.entity";
 
 /**
  * The coupon columns the mapper reads, and nothing else.

@@ -1,12 +1,11 @@
-import { WhatsAppWebhookController } from "@/infrastructure/webhooks/whatsapp-webhook.controller";
-import { WhatsAppConfigController } from "@/interface-adapters/controllers/whatsapp-config.controller";
-import { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.controller";
-
-import { ProcessIncomingMessageUseCase } from "@/core/application/whatsapp/process-incoming-message.use-case";
-import { ProcessWhatsAppWebhookUseCase } from "@/core/application/whatsapp/process-whatsapp-webhook.use-case";
 import { ConfigureWhatsAppUseCase } from "@/core/application/whatsapp/configure-whatsapp.use-case";
 import { GetWhatsAppConfigUseCase } from "@/core/application/whatsapp/get-whatsapp-config.use-case";
+import { ProcessIncomingMessageUseCase } from "@/core/application/whatsapp/process-incoming-message.use-case";
+import { ProcessWhatsAppWebhookUseCase } from "@/core/application/whatsapp/process-whatsapp-webhook.use-case";
 import { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
+import { WhatsAppWebhookController } from "@/infrastructure/webhooks/whatsapp-webhook.controller";
+import { WhatsAppController } from "@/interface-adapters/controllers/whatsapp.controller";
+import { WhatsAppConfigController } from "@/interface-adapters/controllers/whatsapp-config.controller";
 import type { Runtime } from "../runtime";
 
 export function createMessagingControllers(runtime: Runtime) {

@@ -1,14 +1,15 @@
 /// <reference path="../../types/request-dto.ts" />
-import { Application, Router } from "express";
+
 import type { RequestHandler } from "express";
+import { type Application, Router } from "express";
 import passport from "passport";
-import { AuthController } from "@/interface-adapters/controllers/auth.controller";
-import { authLimiter } from "@/middleware/rateLimit.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
 import {
     ForgotPasswordDto,
     ResetPasswordDto,
 } from "@/core/application/dtos/requests/auth.request";
+import type { AuthController } from "@/interface-adapters/controllers/auth.controller";
+import { authLimiter } from "@/middleware/rateLimit.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 import { CreateUserDto, LoginDto } from "@/types/request-dto";
 
 function auth(
@@ -117,7 +118,11 @@ function auth(
      *       422:
      *         description: Already a member, or the tenant cannot accept members
      */
-    router.post("/join-tenant", joinTenantAuthenticate, authController.joinTenant);
+    router.post(
+        "/join-tenant",
+        joinTenantAuthenticate,
+        authController.joinTenant,
+    );
 
     /**
      * @swagger

@@ -1,12 +1,16 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { IRoleRepository, RoleCreateData, RoleUpdateData } from "@/core/repositories/role.repository.interface";
-import { Role } from "@/core/entities/role.entity";
 import {
     DuplicateEntityError,
     EntityNotFoundError,
     ForbiddenError,
 } from "@/core/domain/errors/domain-errors";
+import type { Role } from "@/core/entities/role.entity";
+import type {
+    IRoleRepository,
+    RoleCreateData,
+    RoleUpdateData,
+} from "@/core/repositories/role.repository.interface";
 
 type RoleWithPermissions = Prisma.RoleGetPayload<{
     include: { permissions: { include: { permission: true } } };
@@ -254,8 +258,7 @@ export class PrismaRoleRepository implements IRoleRepository {
     ): Promise<Role> {
         const { permissionIds, ...roleData } = data;
 
-        const where: Prisma.RoleWhereInput =
-            this.buildWriteWhere(tenantId, id);
+        const where: Prisma.RoleWhereInput = this.buildWriteWhere(tenantId, id);
         const existingRole = await prisma.role.findFirst({ where });
 
         if (!existingRole) {
@@ -329,8 +332,7 @@ export class PrismaRoleRepository implements IRoleRepository {
     }
 
     async delete(tenantId: string | undefined, id: string): Promise<void> {
-        const where: Prisma.RoleWhereInput =
-            this.buildWriteWhere(tenantId, id);
+        const where: Prisma.RoleWhereInput = this.buildWriteWhere(tenantId, id);
         const existingRole = await prisma.role.findFirst({ where });
 
         if (!existingRole) {

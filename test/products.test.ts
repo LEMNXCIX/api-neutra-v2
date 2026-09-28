@@ -1,8 +1,9 @@
 jest.mock("uuid", () => ({
     v4: () => `test-uuid-${Math.random().toString(36).substring(7)}`,
 }));
-import api from "./test-client";
+
 import { getAuthToken } from "./helpers/auth.helper";
+import api from "./test-client";
 
 describe("Products routes", () => {
     let token: string;

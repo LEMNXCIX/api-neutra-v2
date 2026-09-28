@@ -1,15 +1,15 @@
-import {
-    IsString,
-    IsEmail,
-    MinLength,
-    MaxLength,
-    IsOptional,
-    IsArray,
-    IsNumber,
-    IsPositive,
-    Min,
-} from "class-validator";
 import { Transform } from "class-transformer";
+import {
+    IsArray,
+    IsEmail,
+    IsNumber,
+    IsOptional,
+    IsPositive,
+    IsString,
+    MaxLength,
+    Min,
+    MinLength,
+} from "class-validator";
 
 /**
  * @swagger

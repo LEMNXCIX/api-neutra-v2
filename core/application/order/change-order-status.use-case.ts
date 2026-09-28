@@ -1,9 +1,9 @@
-import { IOrderRepository } from "@/core/repositories/order.repository.interface";
-import { OrderStatus } from "@/core/entities/order.entity";
-import { canTransitionTo } from "@/core/domain/order/order.policy";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { InvalidStateError } from "@/core/domain/errors/domain-errors";
+import { canTransitionTo } from "@/core/domain/order/order.policy";
+import type { OrderStatus } from "@/core/entities/order.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { IOrderRepository } from "@/core/repositories/order.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class ChangeOrderStatusUseCase {
@@ -47,18 +47,14 @@ export class ChangeOrderStatusUseCase {
             nextStatus === "ENTREGADO"
                 ? await this.featureRepository.getTenantFeatureStatus(tenantId)
                 : undefined;
-        const updated = await this.orderRepository.updateStatus(
-            tenantId,
-            id,
-            {
-                expectedStatus: order.status,
-                status: nextStatus,
-                ...(features?.LOYALTY === true && {
-                    qualifyLoyalty: true as const,
-                }),
-                ...(trackingNumber !== undefined && { trackingNumber }),
-            },
-        );
+        const updated = await this.orderRepository.updateStatus(tenantId, id, {
+            expectedStatus: order.status,
+            status: nextStatus,
+            ...(features?.LOYALTY === true && {
+                qualifyLoyalty: true as const,
+            }),
+            ...(trackingNumber !== undefined && { trackingNumber }),
+        });
         if (!updated) {
             throw new InvalidStateError(
                 "Order status changed before the update could be applied",

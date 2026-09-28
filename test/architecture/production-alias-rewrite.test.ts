@@ -1,5 +1,4 @@
-import fs from "node:fs";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import fs, { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -12,8 +11,8 @@ import { rewriteProductionAliases } from "../../scripts/verify-production-build"
 // specifiers are assembled from a constant instead. The strings the assertions
 // see at runtime are byte-for-byte what a hand-written literal would produce.
 const AT = "@" + "/";
-const OUTSIDE_SPECIFIER = AT + "../outside";
-const INSIDE_SPECIFIER = AT + "core/thing";
+const OUTSIDE_SPECIFIER = `${AT}../outside`;
+const INSIDE_SPECIFIER = `${AT}core/thing`;
 
 /**
  * The rewriter used to match any quoted aliased specifier anywhere in a file,
@@ -27,7 +26,11 @@ describe("production alias rewrite", () => {
     beforeEach(() => {
         root = mkdtempSync(join(tmpdir(), "alias-rewrite-"));
         mkdirSync(join(root, "core"), { recursive: true });
-        writeFileSync(join(root, "core", "thing.js"), "module.exports = {};\n", "utf8");
+        writeFileSync(
+            join(root, "core", "thing.js"),
+            "module.exports = {};\n",
+            "utf8",
+        );
     });
 
     afterEach(() => {
@@ -59,10 +62,9 @@ describe("production alias rewrite", () => {
         const comment = `// documented example: from "${OUTSIDE_SPECIFIER}"`;
         writeFileSync(
             file,
-            [
-                comment,
-                `const { thing } = require("${INSIDE_SPECIFIER}");`,
-            ].join("\n"),
+            [comment, `const { thing } = require("${INSIDE_SPECIFIER}");`].join(
+                "\n",
+            ),
             "utf8",
         );
 

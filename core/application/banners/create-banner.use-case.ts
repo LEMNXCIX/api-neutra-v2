@@ -1,10 +1,10 @@
-import {
-    IBannerRepository,
-    BannerCreateData,
-} from "@/core/repositories/banner.repository.interface";
-import { CreateBannerDTO } from "@/core/application/dtos/requests/banner.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { CreateBannerDTO } from "@/core/application/dtos/requests/banner.request";
 import { ValidationError } from "@/core/domain/errors/domain-errors";
+import type {
+    BannerCreateData,
+    IBannerRepository,
+} from "@/core/repositories/banner.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { ValidationErrorCodes } from "@/types/error-codes";
 
 export class CreateBannerUseCase {

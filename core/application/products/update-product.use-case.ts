@@ -1,9 +1,9 @@
-import {
+import type { UpdateProductDTO } from "@/core/application/dtos/requests/product.request";
+import type {
     IProductRepository,
     UpdateProductData,
 } from "@/core/repositories/product.repository.interface";
-import { UpdateProductDTO } from "@/core/application/dtos/requests/product.request";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class UpdateProductUseCase {
     constructor(private productRepository: IProductRepository) {}
@@ -26,7 +26,7 @@ export class UpdateProductUseCase {
             stock:
                 data.stock !== undefined
                     ? typeof data.stock === "string"
-                        ? parseInt(data.stock)
+                        ? parseInt(data.stock, 10)
                         : data.stock
                     : undefined,
             categoryIds: data.categoryIds,

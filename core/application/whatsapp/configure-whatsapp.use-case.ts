@@ -1,12 +1,12 @@
-import { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
-import { WhatsAppConfig } from "@/core/entities/whatsapp-config.entity";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { UseCaseResult, Success } from "@/core/utils/use-case-result";
-import { ConfigureWhatsAppDTO } from "@/core/application/dtos/requests/whatsapp.request";
+import type { ConfigureWhatsAppDTO } from "@/core/application/dtos/requests/whatsapp.request";
 import {
-    ValidationError,
     ForbiddenError,
+    ValidationError,
 } from "@/core/domain/errors/domain-errors";
+import type { WhatsAppConfig } from "@/core/entities/whatsapp-config.entity";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { IWhatsAppConfigRepository } from "@/core/repositories/whatsapp-config.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { AuthErrorCodes, ValidationErrorCodes } from "@/types/error-codes";
 
 export class ConfigureWhatsAppUseCase {
@@ -27,7 +27,7 @@ export class ConfigureWhatsAppUseCase {
         }
         const features =
             await this.featureRepository.getTenantFeatureStatus(tenantId);
-        if (!features["WHATSAPP_API"]) {
+        if (!features.WHATSAPP_API) {
             throw new ForbiddenError(
                 "Upgrade required: WHATSAPP_API feature is not enabled for this tenant.",
                 AuthErrorCodes.FORBIDDEN,

@@ -1,9 +1,10 @@
 // Import factories only — avoids loading Container/Prisma in unit tests
+
+import type { NextFunction, Request, Response } from "express";
+import { AUTH_CONSTANTS } from "@/core/domain/constants";
+import { ForbiddenError } from "@/core/domain/errors/domain-errors";
 import { createAuthenticateMiddleware } from "@/middleware/authenticate.factory";
 import { createOptionalAuthenticateMiddleware } from "@/middleware/optional-authenticate.factory";
-import { ForbiddenError } from "@/core/domain/errors/domain-errors";
-import { AUTH_CONSTANTS } from "@/core/domain/constants";
-import type { Request, Response, NextFunction } from "express";
 
 const logger = {
     info: jest.fn(),

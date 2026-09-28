@@ -1,13 +1,13 @@
-import { Application, Router } from 'express';
-import type { RequestHandler } from 'express';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { CouponController } from '@/interface-adapters/controllers/coupon.controller';
-import { validateDto } from '@/middleware/validation.middleware';
+import type { RequestHandler } from "express";
+import { type Application, Router } from "express";
 import {
     CreateCouponDto,
     UpdateCouponDto,
     ValidateCouponDto,
-} from '@/core/application/dtos/requests/coupon.request';
+} from "@/core/application/dtos/requests/coupon.request";
+import type { CouponController } from "@/interface-adapters/controllers/coupon.controller";
+import { requirePermission } from "@/middleware/authorization.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 function couponRoutes(
     app: Application,
@@ -16,7 +16,7 @@ function couponRoutes(
     requireTenantFeature: (featureKey: string) => RequestHandler,
 ) {
     const router = Router();
-    app.use('/api/coupons', router);
+    app.use("/api/coupons", router);
 
     /**
      * @swagger
@@ -77,9 +77,12 @@ function couponRoutes(
      *         description: Unauthorized
      */
     router.post(
-        '/validate',
+        "/validate",
         requireTenantFeature("COUPONS"),
-        authenticate, validateDto(ValidateCouponDto), couponController.validate);
+        authenticate,
+        validateDto(ValidateCouponDto),
+        couponController.validate,
+    );
 
     // Admin routes
     /**
@@ -99,9 +102,12 @@ function couponRoutes(
      *         description: Forbidden
      */
     router.get(
-        '/stats',
+        "/stats",
         requireTenantFeature("COUPONS"),
-        authenticate, requirePermission('stats:read'), couponController.getStats);
+        authenticate,
+        requirePermission("stats:read"),
+        couponController.getStats,
+    );
 
     /**
      * @swagger
@@ -126,9 +132,12 @@ function couponRoutes(
      *         description: Forbidden
      */
     router.get(
-        '/',
+        "/",
         requireTenantFeature("COUPONS"),
-        authenticate, requirePermission('coupons:read'), couponController.getAll);
+        authenticate,
+        requirePermission("coupons:read"),
+        couponController.getAll,
+    );
 
     /**
      * @swagger
@@ -155,9 +164,12 @@ function couponRoutes(
      *         description: Coupon not found
      */
     router.get(
-        '/:id',
+        "/:id",
         requireTenantFeature("COUPONS"),
-        authenticate, requirePermission('coupons:read'), couponController.getById);
+        authenticate,
+        requirePermission("coupons:read"),
+        couponController.getById,
+    );
 
     /**
      * @swagger
@@ -184,9 +196,12 @@ function couponRoutes(
      *         description: Coupon not found
      */
     router.get(
-        '/code/:code',
+        "/code/:code",
         requireTenantFeature("COUPONS"),
-        authenticate, requirePermission('coupons:read'), couponController.getByCode);
+        authenticate,
+        requirePermission("coupons:read"),
+        couponController.getByCode,
+    );
 
     /**
      * @swagger
@@ -235,9 +250,13 @@ function couponRoutes(
      *         description: Forbidden
      */
     router.post(
-        '/',
+        "/",
         requireTenantFeature("COUPONS"),
-        authenticate, requirePermission('coupons:write'), validateDto(CreateCouponDto), couponController.create);
+        authenticate,
+        requirePermission("coupons:write"),
+        validateDto(CreateCouponDto),
+        couponController.create,
+    );
 
     /**
      * @swagger
@@ -280,9 +299,13 @@ function couponRoutes(
      *         description: Coupon not found
      */
     router.put(
-        '/:id',
+        "/:id",
         requireTenantFeature("COUPONS"),
-        authenticate, requirePermission('coupons:write'), validateDto(UpdateCouponDto), couponController.update);
+        authenticate,
+        requirePermission("coupons:write"),
+        validateDto(UpdateCouponDto),
+        couponController.update,
+    );
 
     /**
      * @swagger
@@ -309,9 +332,12 @@ function couponRoutes(
      *         description: Coupon not found
      */
     router.delete(
-        '/:id',
+        "/:id",
         requireTenantFeature("COUPONS"),
-        authenticate, requirePermission('coupons:delete'), couponController.delete);
+        authenticate,
+        requirePermission("coupons:delete"),
+        couponController.delete,
+    );
 }
 
 export default couponRoutes;

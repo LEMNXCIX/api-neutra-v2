@@ -1,6 +1,6 @@
-import { IStaffRepository } from "@/core/repositories/staff.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import type { IStaffRepository } from "@/core/repositories/staff.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetStaffByUserIdUseCase {
     constructor(private staffRepository: IStaffRepository) {}

@@ -1,13 +1,19 @@
-import {
+import type {
     Appointment,
     AppointmentStatus,
 } from "@/core/entities/appointment.entity";
-import { IUserMinimalResponse } from "../shared/user-minimal.response";
-import { IStaffMinimalResponse } from "../shared/staff-minimal.response";
-import { IServiceMinimalResponse } from "../shared/service-minimal.response";
-import { UserMinimalResponse } from "../shared/user-minimal.response";
-import { StaffMinimalResponse } from "../shared/staff-minimal.response";
-import { ServiceMinimalResponse } from "../shared/service-minimal.response";
+import {
+    type IServiceMinimalResponse,
+    ServiceMinimalResponse,
+} from "../shared/service-minimal.response";
+import {
+    type IStaffMinimalResponse,
+    StaffMinimalResponse,
+} from "../shared/staff-minimal.response";
+import {
+    type IUserMinimalResponse,
+    UserMinimalResponse,
+} from "../shared/user-minimal.response";
 
 export interface IAppointmentResponse {
     id: string;

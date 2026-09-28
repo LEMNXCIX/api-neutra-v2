@@ -1,7 +1,4 @@
-import {
-    WhatsAppTemplate,
-    BotConfig,
-} from "@/core/entities/whatsapp-config.entity";
+import { plainToInstance, Transform } from "class-transformer";
 import {
     IsArray,
     IsBoolean,
@@ -11,7 +8,10 @@ import {
     MinLength,
     ValidateNested,
 } from "class-validator";
-import { plainToInstance, Transform } from "class-transformer";
+import type {
+    BotConfig,
+    WhatsAppTemplate,
+} from "@/core/entities/whatsapp-config.entity";
 
 export interface ConfigureWhatsAppDTO {
     phoneNumberId?: string;

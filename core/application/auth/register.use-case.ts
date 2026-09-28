@@ -1,20 +1,23 @@
-import { IUserRepository, UserCreateData } from "@/core/repositories/user.repository.interface";
+import type { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
 import {
+    BusinessRuleViolationError,
+    EntityNotFoundError,
+    ValidationError,
+} from "@/core/domain/errors/domain-errors";
+import type {
     IPasswordHasher,
     ITokenGenerator,
 } from "@/core/providers/auth-providers.interface";
-import { CreateUserDTO } from "@/core/application/dtos/requests/user.request";
-import { IQueueProvider } from "@/core/providers/queue-provider.interface";
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { IRoleRepository } from "@/core/repositories/role.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
-import {
-    ValidationError,
-    EntityNotFoundError,
-    BusinessRuleViolationError,
-} from "@/core/domain/errors/domain-errors";
-import { AuthErrorCodes } from "@/types/error-codes";
 import type { ILogger } from "@/core/providers/logger.interface";
+import type { IQueueProvider } from "@/core/providers/queue-provider.interface";
+import type { IRoleRepository } from "@/core/repositories/role.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import type {
+    IUserRepository,
+    UserCreateData,
+} from "@/core/repositories/user.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
+import { AuthErrorCodes } from "@/types/error-codes";
 
 export class RegisterUseCase {
     constructor(
@@ -86,7 +89,9 @@ export class RegisterUseCase {
                 );
             }
         } else {
-            const hashedPassword = await this.passwordHasher.hash(data.password);
+            const hashedPassword = await this.passwordHasher.hash(
+                data.password,
+            );
 
             const newUserData: UserCreateData = {
                 name: data.name,
@@ -138,30 +143,30 @@ export class RegisterUseCase {
 
         const { password: _, ...safeUser } = userWithRole;
 
-          // The welcome email is not allowed to fail the registration, so the
-          // enqueue is not awaited. It used to swallow the rejection entirely,
-          // which made a permanently broken queue provider indistinguishable
-          // from a healthy one. Logged with the same context pattern
-          // CreateOrderUseCase uses for its non-fatal confirmation email.
-          this.queueProvider
-              .enqueue("notifications", {
-                  type: "WELCOME_EMAIL",
-                  email: userWithRole.email,
-                  name: userWithRole.name,
-                  tenantId: currentTenantId,
-                  origin: origin,
-              })
-              .catch((error: unknown) => {
-                  this.logger.error(
-                      "Failed to enqueue welcome email for new user",
-                      error,
-                      {
-                          userId: userWithRole.id,
-                          tenantId: currentTenantId,
-                          email: userWithRole.email,
-                      },
-                  );
-              });
+        // The welcome email is not allowed to fail the registration, so the
+        // enqueue is not awaited. It used to swallow the rejection entirely,
+        // which made a permanently broken queue provider indistinguishable
+        // from a healthy one. Logged with the same context pattern
+        // CreateOrderUseCase uses for its non-fatal confirmation email.
+        this.queueProvider
+            .enqueue("notifications", {
+                type: "WELCOME_EMAIL",
+                email: userWithRole.email,
+                name: userWithRole.name,
+                tenantId: currentTenantId,
+                origin: origin,
+            })
+            .catch((error: unknown) => {
+                this.logger.error(
+                    "Failed to enqueue welcome email for new user",
+                    error,
+                    {
+                        userId: userWithRole.id,
+                        tenantId: currentTenantId,
+                        email: userWithRole.email,
+                    },
+                );
+            });
 
         return Success({ ...safeUser, token }, "User created successfully");
     }

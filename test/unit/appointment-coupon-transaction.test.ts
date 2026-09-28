@@ -1,8 +1,6 @@
 import { prisma } from "@/config/db.config";
 import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/appointment.prisma-repository";
-import {
-    BusinessErrorCodes,
-} from "@/types/error-codes";
+import { BusinessErrorCodes } from "@/types/error-codes";
 
 function couponRow(overrides: Record<string, unknown> = {}) {
     return {
@@ -173,11 +171,10 @@ describe("Prisma appointment coupon transaction", () => {
         const create = jest.spyOn(prisma.appointment, "create");
 
         await expect(
-            new PrismaAppointmentRepository().create(
-                "tenant-1",
-                data(),
-            ),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.COUPONS_FEATURE_REQUIRED });
+            new PrismaAppointmentRepository().create("tenant-1", data()),
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.COUPONS_FEATURE_REQUIRED,
+        });
         expect(usage).not.toHaveBeenCalled();
         expect(create).not.toHaveBeenCalled();
     });
@@ -244,10 +241,7 @@ describe("Prisma appointment coupon transaction", () => {
             const create = jest.spyOn(prisma.appointment, "create");
 
             await expect(
-                new PrismaAppointmentRepository().create(
-                    "tenant-1",
-                    data(),
-                ),
+                new PrismaAppointmentRepository().create("tenant-1", data()),
             ).rejects.toThrow(message);
             expect(usage).not.toHaveBeenCalled();
             expect(create).not.toHaveBeenCalled();
@@ -283,7 +277,9 @@ describe("Prisma appointment coupon transaction", () => {
 
         await expect(
             new PrismaAppointmentRepository().create("tenant-1", data()),
-        ).rejects.toMatchObject({ code: BusinessErrorCodes.COUPON_UNAVAILABLE });
+        ).rejects.toMatchObject({
+            code: BusinessErrorCodes.COUPON_UNAVAILABLE,
+        });
         expect(create).not.toHaveBeenCalled();
     });
 

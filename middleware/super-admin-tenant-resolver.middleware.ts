@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
+import { isSuperAdmin } from "@/core/domain/rbac/access-policy";
 import { AppError } from "@/types/api-response";
 import { TenantErrorCodes } from "@/types/error-codes";
-import { isSuperAdmin } from "@/core/domain/rbac/access-policy";
 
 export function resolveSuperAdminTenant(
     req: Request,

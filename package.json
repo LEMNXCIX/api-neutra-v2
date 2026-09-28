@@ -19,7 +19,11 @@
     "dev:watch": "cross-env NODE_ENV=development nodemon --watch \"./**/*.ts\" --exec \"tsx ./app.ts\"",
     "postinstall": "prisma generate",
     "check:arch": "node scripts/check-architecture.ts",
-    "lint:arch": "node scripts/check-architecture.ts"
+    "lint:arch": "node scripts/check-architecture.ts",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
+    "check": "biome ci"
   },
   "keywords": [],
   "author": "",
@@ -62,6 +66,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
     "@swc/core": "^1.15.3",
     "@swc/jest": "^0.2.39",
     "@types/bcrypt": "^6.0.0",

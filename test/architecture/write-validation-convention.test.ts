@@ -38,37 +38,80 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import express, { Request, Response } from "express";
-import request from "supertest";
 import { getMetadataStorage } from "class-validator";
-import createResponseMiddleware from "@/middleware/response.middleware";
-import type { ILogger } from "@/core/providers/logger.interface";
-
-import { validateDto } from "@/middleware/validation.middleware";
-import { CreateRoleDto } from "@/core/application/dtos/requests/role.request";
-import { CreateBannerDto } from "@/core/application/dtos/requests/banner.request";
-import { CreateAppointmentDto } from "@/core/application/dtos/requests/appointment.request";
-import { CreateCouponDto } from "@/core/application/dtos/requests/coupon.request";
-import { CreateCategoryDto } from "@/core/application/dtos/requests/category.request";
-import { CreatePermissionDto } from "@/core/application/dtos/requests/permission.request";
-import { CreateProductDto, SearchProductDto, UpdateProductDto } from "@/core/application/dtos/requests/product.request";
-import { CreateServiceDto, UpdateServiceDto } from "@/core/application/dtos/requests/service.request";
-import { CreateSlideshowDto, UpdateSlideshowDto } from "@/core/application/dtos/requests/slide.request";
-import { AssignStaffServiceDto, CreateStaffDto, SyncStaffServicesDto, UpdateStaffDto } from "@/core/application/dtos/requests/staff.request";
-import { UpdateRoleDto } from "@/core/application/dtos/requests/role.request";
-import { UpdateUserDto, AssignRoleDto } from "@/core/application/dtos/requests/user.request";
-import { UpdateBannerDto } from "@/core/application/dtos/requests/banner.request";
-import { UpdateCouponDto, ValidateCouponDto } from "@/core/application/dtos/requests/coupon.request";
-import { UpdateCategoryDto } from "@/core/application/dtos/requests/category.request";
-import { UpdatePermissionDto } from "@/core/application/dtos/requests/permission.request";
-import { AddToCartDto, RemoveFromCartDto } from "@/core/application/dtos/requests/cart.request";
-import { CancelAppointmentDto, UpdateAppointmentStatusDto } from "@/core/application/dtos/requests/appointment.request";
-import { CreateFeatureDto, UpdateFeatureDto } from "@/core/application/dtos/requests/feature.request";
-import { ChangeOrderStatusDto, CreateOrderDto, UpdateOrderDto } from "@/core/application/dtos/requests/order.request";
-import { SendNotificationDto } from "@/core/application/dtos/requests/whatsapp.request";
-import { CreateTenantDto } from "@/core/application/dtos/requests/tenant.dto";
+import express, { type Request, type Response } from "express";
+import request from "supertest";
+import {
+    CancelAppointmentDto,
+    CreateAppointmentDto,
+    UpdateAppointmentStatusDto,
+} from "@/core/application/dtos/requests/appointment.request";
+import {
+    CreateBannerDto,
+    UpdateBannerDto,
+} from "@/core/application/dtos/requests/banner.request";
+import {
+    AddToCartDto,
+    RemoveFromCartDto,
+} from "@/core/application/dtos/requests/cart.request";
+import {
+    CreateCategoryDto,
+    UpdateCategoryDto,
+} from "@/core/application/dtos/requests/category.request";
+import {
+    CreateCouponDto,
+    UpdateCouponDto,
+    ValidateCouponDto,
+} from "@/core/application/dtos/requests/coupon.request";
+import {
+    CreateFeatureDto,
+    UpdateFeatureDto,
+} from "@/core/application/dtos/requests/feature.request";
 import { CreateLoyaltyCampaignDto } from "@/core/application/dtos/requests/loyalty.request";
-import { ConfigureWhatsAppDto } from "@/core/application/dtos/requests/whatsapp.request";
+import {
+    ChangeOrderStatusDto,
+    CreateOrderDto,
+    UpdateOrderDto,
+} from "@/core/application/dtos/requests/order.request";
+import {
+    CreatePermissionDto,
+    UpdatePermissionDto,
+} from "@/core/application/dtos/requests/permission.request";
+import {
+    CreateProductDto,
+    SearchProductDto,
+    UpdateProductDto,
+} from "@/core/application/dtos/requests/product.request";
+import {
+    CreateRoleDto,
+    UpdateRoleDto,
+} from "@/core/application/dtos/requests/role.request";
+import {
+    CreateServiceDto,
+    UpdateServiceDto,
+} from "@/core/application/dtos/requests/service.request";
+import {
+    CreateSlideshowDto,
+    UpdateSlideshowDto,
+} from "@/core/application/dtos/requests/slide.request";
+import {
+    AssignStaffServiceDto,
+    CreateStaffDto,
+    SyncStaffServicesDto,
+    UpdateStaffDto,
+} from "@/core/application/dtos/requests/staff.request";
+import { CreateTenantDto } from "@/core/application/dtos/requests/tenant.dto";
+import {
+    AssignRoleDto,
+    UpdateUserDto,
+} from "@/core/application/dtos/requests/user.request";
+import {
+    ConfigureWhatsAppDto,
+    SendNotificationDto,
+} from "@/core/application/dtos/requests/whatsapp.request";
+import type { ILogger } from "@/core/providers/logger.interface";
+import createResponseMiddleware from "@/middleware/response.middleware";
+import { validateDto } from "@/middleware/validation.middleware";
 
 const ROOT = path.resolve(__dirname, "../..");
 const ROUTES_DIR = path.join(ROOT, "infrastructure/routes");
@@ -153,18 +196,23 @@ function readRoutes(): Route[] {
         if (!file.endsWith(".ts")) continue;
         const source = fs.readFileSync(path.join(ROUTES_DIR, file), "utf-8");
         const pattern = /\b(?:router|app)\.(get|post|put|patch|delete)\s*\(/g;
-        let match: RegExpExecArray | null;
-        while ((match = pattern.exec(source)) !== null) {
+        let match = pattern.exec(source);
+        while (match !== null) {
             const openIndex = source.indexOf("(", match.index);
             const args = splitArguments(argumentsAt(source, openIndex));
-            const pathArg = (args[0] ?? "").trim().replace(/^["'`]|["'`]$/g, "");
+            const pathArg = (args[0] ?? "")
+                .trim()
+                .replace(/^["'`]|["'`]$/g, "");
             routes.push({
                 file: `infrastructure/routes/${file}`,
                 method: match[1],
                 path: pathArg,
-                hasValidateDto: args.some((arg) => arg.includes("validateDto(")),
+                hasValidateDto: args.some((arg) =>
+                    arg.includes("validateDto("),
+                ),
                 handlers: args.slice(1).join(", "),
             });
+            match = pattern.exec(source);
         }
     }
     return routes;
@@ -186,42 +234,120 @@ const WRITE_ROUTES = ROUTES.filter((route) =>
  * payload is Meta's schema, not ours.
  */
 const UNWIRED_WRITE_ROUTES: ReadonlyArray<{ route: string; reason: string }> = [
-    { route: "infrastructure/routes/appointment.routes.ts DELETE /:id", reason: "bodyless: reads the path param and the actor only" },
-    { route: "infrastructure/routes/auth.routes.ts POST /logout", reason: "bodyless: ends the session, reads no body" },
-    { route: "infrastructure/routes/auth.routes.ts POST /join-tenant", reason: "bodyless: the target tenant comes from the header and the identity from the token" },
-    { route: "infrastructure/routes/banner.routes.ts POST /:id/impression", reason: "bodyless: an analytics counter keyed on the path param" },
-    { route: "infrastructure/routes/banner.routes.ts POST /:id/click", reason: "bodyless: an analytics counter keyed on the path param" },
-    { route: "infrastructure/routes/banner.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/cart.routes.ts POST /", reason: "bodyless: the cart is derived entirely from req.user" },
-    { route: "infrastructure/routes/cart.routes.ts DELETE /clear", reason: "bodyless: clears the caller's own cart" },
-    { route: "infrastructure/routes/category.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/coupon.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/feature.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/loyalty.routes.ts POST /me/campaigns/:campaignId/claim", reason: "bodyless: campaignId and the identity only" },
-    { route: "infrastructure/routes/loyalty.routes.ts DELETE /admin/campaigns/:campaignId", reason: "bodyless: a lifecycle transition with no payload" },
-    { route: "infrastructure/routes/loyalty.routes.ts POST /admin/campaigns/:campaignId/activate", reason: "bodyless: a lifecycle transition with no payload" },
-    { route: "infrastructure/routes/loyalty.routes.ts POST /admin/campaigns/:campaignId/end", reason: "bodyless: a lifecycle transition with no payload" },
-    { route: "infrastructure/routes/loyalty.routes.ts POST /admin/campaigns/:campaignId/archive", reason: "bodyless: a lifecycle transition with no payload" },
-    { route: "infrastructure/routes/permission.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/products.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/role.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/service.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/slide.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/staff.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/tenant.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/users.routes.ts DELETE /:id", reason: "bodyless: reads the path param only" },
-    { route: "infrastructure/routes/whatsapp.routes.ts POST /webhooks/whatsapp", reason: "bodyless for us: the webhook payload is Meta's schema" },
+    {
+        route: "infrastructure/routes/appointment.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param and the actor only",
+    },
+    {
+        route: "infrastructure/routes/auth.routes.ts POST /logout",
+        reason: "bodyless: ends the session, reads no body",
+    },
+    {
+        route: "infrastructure/routes/auth.routes.ts POST /join-tenant",
+        reason: "bodyless: the target tenant comes from the header and the identity from the token",
+    },
+    {
+        route: "infrastructure/routes/banner.routes.ts POST /:id/impression",
+        reason: "bodyless: an analytics counter keyed on the path param",
+    },
+    {
+        route: "infrastructure/routes/banner.routes.ts POST /:id/click",
+        reason: "bodyless: an analytics counter keyed on the path param",
+    },
+    {
+        route: "infrastructure/routes/banner.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/cart.routes.ts POST /",
+        reason: "bodyless: the cart is derived entirely from req.user",
+    },
+    {
+        route: "infrastructure/routes/cart.routes.ts DELETE /clear",
+        reason: "bodyless: clears the caller's own cart",
+    },
+    {
+        route: "infrastructure/routes/category.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/coupon.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/feature.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/loyalty.routes.ts POST /me/campaigns/:campaignId/claim",
+        reason: "bodyless: campaignId and the identity only",
+    },
+    {
+        route: "infrastructure/routes/loyalty.routes.ts DELETE /admin/campaigns/:campaignId",
+        reason: "bodyless: a lifecycle transition with no payload",
+    },
+    {
+        route: "infrastructure/routes/loyalty.routes.ts POST /admin/campaigns/:campaignId/activate",
+        reason: "bodyless: a lifecycle transition with no payload",
+    },
+    {
+        route: "infrastructure/routes/loyalty.routes.ts POST /admin/campaigns/:campaignId/end",
+        reason: "bodyless: a lifecycle transition with no payload",
+    },
+    {
+        route: "infrastructure/routes/loyalty.routes.ts POST /admin/campaigns/:campaignId/archive",
+        reason: "bodyless: a lifecycle transition with no payload",
+    },
+    {
+        route: "infrastructure/routes/permission.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/products.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/role.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/service.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/slide.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/staff.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/tenant.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/users.routes.ts DELETE /:id",
+        reason: "bodyless: reads the path param only",
+    },
+    {
+        route: "infrastructure/routes/whatsapp.routes.ts POST /webhooks/whatsapp",
+        reason: "bodyless for us: the webhook payload is Meta's schema",
+    },
 ];
 
 describe("case 6 — every body-taking write route carries a validateDto", () => {
-    const label = (route: Route) => `${route.file} ${route.method.toUpperCase()} ${route.path}`;
+    const label = (route: Route) =>
+        `${route.file} ${route.method.toUpperCase()} ${route.path}`;
 
     test("the write-route inventory is not empty, so the rule below has something to police", () => {
         expect(WRITE_ROUTES.length).toBeGreaterThan(40);
     });
 
     test("every write route either carries validateDto or is listed as deliberately unwired", () => {
-        const unwired = WRITE_ROUTES.filter((route) => !route.hasValidateDto).map(label);
+        const unwired = WRITE_ROUTES.filter(
+            (route) => !route.hasValidateDto,
+        ).map(label);
         const declared = UNWIRED_WRITE_ROUTES.map((entry) => entry.route);
 
         expect([...unwired].sort()).toEqual([...declared].sort());
@@ -281,7 +407,9 @@ describe("case 6 — every body-taking write route carries a validateDto", () =>
         ];
 
         for (const name of bodyTakingWrites) {
-            const route = WRITE_ROUTES.find((candidate) => label(candidate) === name);
+            const route = WRITE_ROUTES.find(
+                (candidate) => label(candidate) === name,
+            );
             expect(route).toBeDefined();
             expect(`${name} → ${route?.hasValidateDto}`).toBe(`${name} → true`);
         }
@@ -297,7 +425,9 @@ describe("case 6 — every body-taking write route carries a validateDto", () =>
             "infrastructure/routes/whatsapp.routes.ts POST /admin/whatsapp/config",
         ];
         for (const name of preWired) {
-            const route = WRITE_ROUTES.find((candidate) => label(candidate) === name);
+            const route = WRITE_ROUTES.find(
+                (candidate) => label(candidate) === name,
+            );
             expect(`${name} → ${route?.hasValidateDto}`).toBe(`${name} → true`);
         }
     });
@@ -306,16 +436,18 @@ describe("case 6 — every body-taking write route carries a validateDto", () =>
         // `test/cart.test.ts` and `test/slide.test.ts` post an empty body
         // unauthenticated and assert 401/403. If validation ran before
         // `authenticate`, those would become 400s.
-        for (const route of WRITE_ROUTES.filter((candidate) => candidate.hasValidateDto)) {
+        for (const route of WRITE_ROUTES.filter(
+            (candidate) => candidate.hasValidateDto,
+        )) {
             const args = route.handlers.split(/,(?![^()[\]]*[)\]}])/);
             const validateIndex = route.handlers.indexOf("validateDto(");
             const handlerIndex = Math.max(
                 route.handlers.lastIndexOf("Controller."),
                 route.handlers.lastIndexOf("(req, res)"),
             );
-            expect(`${route.file} ${route.path} → ${validateIndex < handlerIndex}`).toBe(
-                `${route.file} ${route.path} → true`,
-            );
+            expect(
+                `${route.file} ${route.path} → ${validateIndex < handlerIndex}`,
+            ).toBe(`${route.file} ${route.path} → true`);
             void args;
         }
     });
@@ -350,9 +482,11 @@ describe("case 7 — validateDto refuses a wrongly typed body with 400", () => {
     test("CreateRoleDto: an unknown key plus a wrongly typed `level` is refused", async () => {
         const { app, reached } = appWith(CreateRoleDto);
 
-        const response = await request(app)
-            .post("/thing")
-            .send({ name: "EDITOR", level: "not-a-number", tenantId: "tenant-victim" });
+        const response = await request(app).post("/thing").send({
+            name: "EDITOR",
+            level: "not-a-number",
+            tenantId: "tenant-victim",
+        });
 
         expect(response.status).toBe(400);
         expect(reached).not.toHaveBeenCalled();
@@ -373,9 +507,10 @@ describe("case 7 — validateDto refuses a wrongly typed body with 400", () => {
     test("CreateAppointmentDto: a missing `staffId` is refused", async () => {
         const { app, reached } = appWith(CreateAppointmentDto);
 
-        const response = await request(app)
-            .post("/thing")
-            .send({ serviceId: "svc-1", startTime: "2030-01-01T10:00:00.000Z" });
+        const response = await request(app).post("/thing").send({
+            serviceId: "svc-1",
+            startTime: "2030-01-01T10:00:00.000Z",
+        });
 
         expect(response.status).toBe(400);
         expect(reached).not.toHaveBeenCalled();
@@ -411,7 +546,12 @@ describe("case 7 — validateDto refuses a wrongly typed body with 400", () => {
  * 3. No controller reads req.body on a write path
  * ------------------------------------------------------------------ */
 
-type RawRead = { file: string; method: string; reason: string; onWriteRoute: boolean };
+type RawRead = {
+    file: string;
+    method: string;
+    reason: string;
+    onWriteRoute: boolean;
+};
 
 /**
  * Every remaining `req.body` read in a controller, with the reason. Compared
@@ -421,21 +561,71 @@ type RawRead = { file: string; method: string; reason: string; onWriteRoute: boo
 const ALLOWED_RAW_BODY_READS: ReadonlyArray<RawRead> = [
     // Not mounted on any route: no DTO class exists, so there is nothing
     // validatedBody could hold.
-    { file: "cart.controller.ts", method: "changeAmount", reason: "not mounted on any route; no DTO class", onWriteRoute: false },
-    { file: "user.controller.ts", method: "create", reason: "not mounted on any route; no DTO class", onWriteRoute: false },
-    { file: "user.controller.ts", method: "getOrCreateByProvider", reason: "not mounted on any route; no DTO class", onWriteRoute: false },
+    {
+        file: "cart.controller.ts",
+        method: "changeAmount",
+        reason: "not mounted on any route; no DTO class",
+        onWriteRoute: false,
+    },
+    {
+        file: "user.controller.ts",
+        method: "create",
+        reason: "not mounted on any route; no DTO class",
+        onWriteRoute: false,
+    },
+    {
+        file: "user.controller.ts",
+        method: "getOrCreateByProvider",
+        reason: "not mounted on any route; no DTO class",
+        onWriteRoute: false,
+    },
     // Narrowings that predate this change and are pinned by tests outside the
     // allowed edit surface. The route now carries validateDto, so the declared
     // fields are type-checked; the narrowing still owns the field *set*.
-    { file: "role.controller.ts", method: "create", reason: "narrowing pinned by test/unit/role-permission-scope.test.ts", onWriteRoute: true },
-    { file: "role.controller.ts", method: "update", reason: "narrowing pinned by test/unit/role-permission-scope.test.ts", onWriteRoute: true },
-    { file: "feature.controller.ts", method: "create", reason: "narrowing pinned by test/unit/feature-catalog-scope.test.ts", onWriteRoute: true },
-    { file: "feature.controller.ts", method: "update", reason: "narrowing pinned by test/unit/feature-catalog-scope.test.ts", onWriteRoute: true },
-    { file: "user.controller.ts", method: "update", reason: "narrowing pinned by test/unit/update-user.use-case.test.ts", onWriteRoute: true },
-    { file: "order.controller.ts", method: "create", reason: "reads one field; pinned by test/unit/create-order.use-case.test.ts", onWriteRoute: true },
+    {
+        file: "role.controller.ts",
+        method: "create",
+        reason: "narrowing pinned by test/unit/role-permission-scope.test.ts",
+        onWriteRoute: true,
+    },
+    {
+        file: "role.controller.ts",
+        method: "update",
+        reason: "narrowing pinned by test/unit/role-permission-scope.test.ts",
+        onWriteRoute: true,
+    },
+    {
+        file: "feature.controller.ts",
+        method: "create",
+        reason: "narrowing pinned by test/unit/feature-catalog-scope.test.ts",
+        onWriteRoute: true,
+    },
+    {
+        file: "feature.controller.ts",
+        method: "update",
+        reason: "narrowing pinned by test/unit/feature-catalog-scope.test.ts",
+        onWriteRoute: true,
+    },
+    {
+        file: "user.controller.ts",
+        method: "update",
+        reason: "narrowing pinned by test/unit/update-user.use-case.test.ts",
+        onWriteRoute: true,
+    },
+    {
+        file: "order.controller.ts",
+        method: "create",
+        reason: "reads one field; pinned by test/unit/create-order.use-case.test.ts",
+        onWriteRoute: true,
+    },
     // A GET route that reads `orderId` out of the body. Not a write path, and
     // not this change's business.
-    { file: "order.controller.ts", method: "getOne", reason: "mounted on GET /api/order/getOrder, a read", onWriteRoute: false },
+    {
+        file: "order.controller.ts",
+        method: "getOne",
+        reason: "mounted on GET /api/order/getOrder, a read",
+        onWriteRoute: false,
+    },
 ];
 
 /** Maps `interface-adapters/controllers/x.controller.ts` to its write handlers. */
@@ -449,19 +639,30 @@ function writeHandlersByController(): Map<string, Set<string>> {
 
         // controller class name -> the variable it is bound to in this file
         const variables = new Map<string, string>();
-        const importPattern = /import\s*\{\s*(\w+Controller)\s*\}\s*from\s*["']@\/interface-adapters\/controllers\/([\w.-]+)["']/g;
-        let imported: RegExpExecArray | null;
-        while ((imported = importPattern.exec(source)) !== null) {
+        // `type` is optional because Biome's useImportType rewrites a
+        // type-only controller import to `import type { XController }`, and
+        // that binding is still the one wired into the router.
+        const importPattern =
+            /import\s+(?:type\s+)?\{\s*(\w+Controller)\s*\}\s*from\s*["']@\/interface-adapters\/controllers\/([\w.-]+)["']/g;
+        let imported = importPattern.exec(source);
+        while (imported !== null) {
             const className = imported[1];
-            const variable = new RegExp(`(\\w+)\\s*:\\s*${className}\\b`).exec(source);
+            const variable = new RegExp(`(\\w+)\\s*:\\s*${className}\\b`).exec(
+                source,
+            );
             if (variable) variables.set(variable[1], `${imported[2]}.ts`);
+            imported = importPattern.exec(source);
         }
 
         for (const candidate of ROUTES.filter(
-            (item) => item.file === relative && (WRITE_METHODS as readonly string[]).includes(item.method),
+            (item) =>
+                item.file === relative &&
+                (WRITE_METHODS as readonly string[]).includes(item.method),
         )) {
             for (const [variable, controllerFile] of variables) {
-                const uses = candidate.handlers.match(new RegExp(`\\b${variable}\\.(\\w+)`, "g"));
+                const uses = candidate.handlers.match(
+                    new RegExp(`\\b${variable}\\.(\\w+)`, "g"),
+                );
                 if (!uses) continue;
                 for (const use of uses) {
                     const method = use.slice(variable.length + 1);
@@ -496,7 +697,9 @@ function methodChunks(file: string): Array<{ name: string; source: string }> {
     });
     return starts.map((entry, index) => ({
         name: entry.name,
-        source: lines.slice(entry.line, starts[index + 1]?.line ?? lines.length).join("\n"),
+        source: lines
+            .slice(entry.line, starts[index + 1]?.line ?? lines.length)
+            .join("\n"),
     }));
 }
 
@@ -505,7 +708,10 @@ function actualRawBodyReads(): Array<{ file: string; method: string }> {
     for (const file of fs.readdirSync(CONTROLLERS_DIR).sort()) {
         if (!file.endsWith(".ts")) continue;
         for (const method of methodChunks(file)) {
-            if (method.source.includes("req.body") && method.name !== "constructor") {
+            if (
+                method.source.includes("req.body") &&
+                method.name !== "constructor"
+            ) {
                 reads.push({ file, method: method.name });
             }
         }
@@ -576,15 +782,22 @@ describe("case 9 — the req.validatedBody ?? req.body fallback is gone", () => 
         const offenders: string[] = [];
         for (const file of fs.readdirSync(CONTROLLERS_DIR).sort()) {
             if (!file.endsWith(".ts")) continue;
-            const source = fs.readFileSync(path.join(CONTROLLERS_DIR, file), "utf-8");
+            const source = fs.readFileSync(
+                path.join(CONTROLLERS_DIR, file),
+                "utf-8",
+            );
             if (/validatedBody\s*\?\?/.test(source)) offenders.push(file);
         }
         expect(offenders).toEqual([]);
     });
 
     test("the loyalty controller reads validatedBody for both campaign writes", () => {
-        expect(loyalty).toContain("req.validatedBody as CreateLoyaltyCampaignDTO");
-        expect(loyalty).toContain("req.validatedBody as UpdateLoyaltyCampaignDTO");
+        expect(loyalty).toContain(
+            "req.validatedBody as CreateLoyaltyCampaignDTO",
+        );
+        expect(loyalty).toContain(
+            "req.validatedBody as UpdateLoyaltyCampaignDTO",
+        );
     });
 });
 
@@ -594,38 +807,92 @@ describe("case 9 — the req.validatedBody ?? req.body fallback is gone", () => 
 
 /** module -> the classes it must export, by name. */
 const CONVERTED_DTOS: ReadonlyArray<{ module: string; classes: string[] }> = [
-    { module: "appointment.request.ts", classes: ["CreateAppointmentDto", "CancelAppointmentDto", "UpdateAppointmentStatusDto"] },
-    { module: "banner.request.ts", classes: ["CreateBannerDto", "UpdateBannerDto"] },
-    { module: "cart.request.ts", classes: ["AddToCartDto", "RemoveFromCartDto"] },
-    { module: "category.request.ts", classes: ["CreateCategoryDto", "UpdateCategoryDto"] },
-    { module: "coupon.request.ts", classes: ["CreateCouponDto", "UpdateCouponDto", "ValidateCouponDto"] },
-    { module: "feature.request.ts", classes: ["CreateFeatureDto", "UpdateFeatureDto"] },
-    { module: "order.request.ts", classes: ["CreateOrderDto", "UpdateOrderDto", "ChangeOrderStatusDto"] },
-    { module: "permission.request.ts", classes: ["CreatePermissionDto", "UpdatePermissionDto"] },
-    { module: "product.request.ts", classes: ["CreateProductDto", "UpdateProductDto", "SearchProductDto"] },
+    {
+        module: "appointment.request.ts",
+        classes: [
+            "CreateAppointmentDto",
+            "CancelAppointmentDto",
+            "UpdateAppointmentStatusDto",
+        ],
+    },
+    {
+        module: "banner.request.ts",
+        classes: ["CreateBannerDto", "UpdateBannerDto"],
+    },
+    {
+        module: "cart.request.ts",
+        classes: ["AddToCartDto", "RemoveFromCartDto"],
+    },
+    {
+        module: "category.request.ts",
+        classes: ["CreateCategoryDto", "UpdateCategoryDto"],
+    },
+    {
+        module: "coupon.request.ts",
+        classes: ["CreateCouponDto", "UpdateCouponDto", "ValidateCouponDto"],
+    },
+    {
+        module: "feature.request.ts",
+        classes: ["CreateFeatureDto", "UpdateFeatureDto"],
+    },
+    {
+        module: "order.request.ts",
+        classes: ["CreateOrderDto", "UpdateOrderDto", "ChangeOrderStatusDto"],
+    },
+    {
+        module: "permission.request.ts",
+        classes: ["CreatePermissionDto", "UpdatePermissionDto"],
+    },
+    {
+        module: "product.request.ts",
+        classes: ["CreateProductDto", "UpdateProductDto", "SearchProductDto"],
+    },
     { module: "role.request.ts", classes: ["CreateRoleDto", "UpdateRoleDto"] },
-    { module: "service.request.ts", classes: ["CreateServiceDto", "UpdateServiceDto"] },
-    { module: "slide.request.ts", classes: ["CreateSlideshowDto", "UpdateSlideshowDto"] },
-    { module: "staff.request.ts", classes: ["CreateStaffDto", "UpdateStaffDto", "AssignStaffServiceDto", "SyncStaffServicesDto"] },
+    {
+        module: "service.request.ts",
+        classes: ["CreateServiceDto", "UpdateServiceDto"],
+    },
+    {
+        module: "slide.request.ts",
+        classes: ["CreateSlideshowDto", "UpdateSlideshowDto"],
+    },
+    {
+        module: "staff.request.ts",
+        classes: [
+            "CreateStaffDto",
+            "UpdateStaffDto",
+            "AssignStaffServiceDto",
+            "SyncStaffServicesDto",
+        ],
+    },
     { module: "user.request.ts", classes: ["UpdateUserDto", "AssignRoleDto"] },
     // `ConfigureWhatsAppDto` already existed; `SendNotificationDto` and the
     // nested component class are the ones this change added.
-    { module: "whatsapp.request.ts", classes: ["ConfigureWhatsAppDto", "WhatsAppComponentDto", "SendNotificationDto"] },
+    {
+        module: "whatsapp.request.ts",
+        classes: [
+            "ConfigureWhatsAppDto",
+            "WhatsAppComponentDto",
+            "SendNotificationDto",
+        ],
+    },
 ];
 
 describe("case 10 — one class-validator class per converted DTO", () => {
-    test.each(CONVERTED_DTOS.map((entry) => [entry.module, entry.classes] as const))(
-        "%s exports its classes by name",
-        (module, classes) => {
-            const source = fs.readFileSync(path.join(REQUESTS_DIR, module), "utf-8");
-            const declared = [...source.matchAll(/export\s+(?:default\s+)?class\s+(\w+)/g)].map(
-                (match) => match[1],
-            );
-            for (const name of classes) {
-                expect(declared).toContain(name);
-            }
-        },
-    );
+    test.each(
+        CONVERTED_DTOS.map((entry) => [entry.module, entry.classes] as const),
+    )("%s exports its classes by name", (module, classes) => {
+        const source = fs.readFileSync(
+            path.join(REQUESTS_DIR, module),
+            "utf-8",
+        );
+        const declared = [
+            ...source.matchAll(/export\s+(?:default\s+)?class\s+(\w+)/g),
+        ].map((match) => match[1]);
+        for (const name of classes) {
+            expect(declared).toContain(name);
+        }
+    });
 
     test("the declared class list matches what the modules actually export, both ways", () => {
         const expected = CONVERTED_DTOS.flatMap((entry) =>
@@ -633,8 +900,13 @@ describe("case 10 — one class-validator class per converted DTO", () => {
         ).sort();
         const actual: string[] = [];
         for (const entry of CONVERTED_DTOS) {
-            const source = fs.readFileSync(path.join(REQUESTS_DIR, entry.module), "utf-8");
-            for (const match of source.matchAll(/export\s+(?:default\s+)?class\s+(\w+)/g)) {
+            const source = fs.readFileSync(
+                path.join(REQUESTS_DIR, entry.module),
+                "utf-8",
+            );
+            for (const match of source.matchAll(
+                /export\s+(?:default\s+)?class\s+(\w+)/g,
+            )) {
                 actual.push(`${entry.module}:${match[1]}`);
             }
         }
@@ -649,22 +921,44 @@ describe("case 10 — one class-validator class per converted DTO", () => {
         // compile time and registers nothing, so `validateDto` on it would
         // accept every body.
         const classes = [
-            CreateRoleDto, UpdateRoleDto,
-            CreateBannerDto, UpdateBannerDto,
-            CreateCategoryDto, UpdateCategoryDto,
-            CreateCouponDto, UpdateCouponDto, ValidateCouponDto,
-            CreateFeatureDto, UpdateFeatureDto,
-            CreatePermissionDto, UpdatePermissionDto,
-            CreateProductDto, UpdateProductDto, SearchProductDto,
-            CreateServiceDto, UpdateServiceDto,
-            CreateSlideshowDto, UpdateSlideshowDto,
-            CreateStaffDto, UpdateStaffDto, AssignStaffServiceDto, SyncStaffServicesDto,
-            UpdateUserDto, AssignRoleDto,
-            AddToCartDto, RemoveFromCartDto,
-            CreateAppointmentDto, CancelAppointmentDto, UpdateAppointmentStatusDto,
-            CreateOrderDto, UpdateOrderDto, ChangeOrderStatusDto,
+            CreateRoleDto,
+            UpdateRoleDto,
+            CreateBannerDto,
+            UpdateBannerDto,
+            CreateCategoryDto,
+            UpdateCategoryDto,
+            CreateCouponDto,
+            UpdateCouponDto,
+            ValidateCouponDto,
+            CreateFeatureDto,
+            UpdateFeatureDto,
+            CreatePermissionDto,
+            UpdatePermissionDto,
+            CreateProductDto,
+            UpdateProductDto,
+            SearchProductDto,
+            CreateServiceDto,
+            UpdateServiceDto,
+            CreateSlideshowDto,
+            UpdateSlideshowDto,
+            CreateStaffDto,
+            UpdateStaffDto,
+            AssignStaffServiceDto,
+            SyncStaffServicesDto,
+            UpdateUserDto,
+            AssignRoleDto,
+            AddToCartDto,
+            RemoveFromCartDto,
+            CreateAppointmentDto,
+            CancelAppointmentDto,
+            UpdateAppointmentStatusDto,
+            CreateOrderDto,
+            UpdateOrderDto,
+            ChangeOrderStatusDto,
             SendNotificationDto,
-            CreateTenantDto, CreateLoyaltyCampaignDto, ConfigureWhatsAppDto,
+            CreateTenantDto,
+            CreateLoyaltyCampaignDto,
+            ConfigureWhatsAppDto,
         ];
 
         const storage = getMetadataStorage();
@@ -684,9 +978,18 @@ describe("case 10 — one class-validator class per converted DTO", () => {
     });
 
     test("the modules that already had classes still export them", () => {
-        for (const module of ["tenant.dto.ts", "loyalty.request.ts", "whatsapp.request.ts"]) {
-            const source = fs.readFileSync(path.join(REQUESTS_DIR, module), "utf-8");
-            const declared = [...source.matchAll(/export\s+class\s+(\w+)/g)].map((match) => match[1]);
+        for (const module of [
+            "tenant.dto.ts",
+            "loyalty.request.ts",
+            "whatsapp.request.ts",
+        ]) {
+            const source = fs.readFileSync(
+                path.join(REQUESTS_DIR, module),
+                "utf-8",
+            );
+            const declared = [
+                ...source.matchAll(/export\s+class\s+(\w+)/g),
+            ].map((match) => match[1]);
             expect(declared.length).toBeGreaterThan(0);
         }
         expect(typeof CreateTenantDto).toBe("function");

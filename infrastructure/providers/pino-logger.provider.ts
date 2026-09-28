@@ -1,15 +1,24 @@
-import { ILogger, LogLevel, LogOptions } from '@/core/providers/logger.interface';
-import pino, { type Logger } from 'pino';
-import config from '@/config/index.config';
-import { isProduction } from '@/core/domain/constants';
-import { RequestContext } from '@/infrastructure/context/request-context';
-import { SECURITY_CONSTANTS } from '@/core/domain/constants';
+import pino, { type Logger } from "pino";
+import config from "@/config/index.config";
+import { isProduction, SECURITY_CONSTANTS } from "@/core/domain/constants";
+import {
+    type ILogger,
+    LogLevel,
+    type LogOptions,
+} from "@/core/providers/logger.interface";
+import { RequestContext } from "@/infrastructure/context/request-context";
 
 /**
  * A JSON value. Recursive on purpose: the sanitizer walks nested objects and
  * arrays, so a flat `Record<string, unknown>` could not be checked.
  */
-type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonValue =
+    | string
+    | number
+    | boolean
+    | null
+    | JsonValue[]
+    | { [key: string]: JsonValue };
 
 /**
  * What `sanitize` takes and returns. It is a pass-through filter: it returns a
@@ -19,7 +28,7 @@ type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string
 type LogPayload = JsonValue | Record<string, unknown> | undefined;
 
 function isJsonObject(value: unknown): value is { [key: string]: JsonValue } {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
+    return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export class PinoLoggerProvider implements ILogger {
@@ -31,9 +40,9 @@ export class PinoLoggerProvider implements ILogger {
 
     constructor() {
         // Configuración desde variables de entorno
-        this.logPayloads = process.env.LOG_PAYLOADS === 'true';
-        this.logResponses = process.env.LOG_RESPONSES === 'true';
-        this.logHeaders = process.env.LOG_HEADERS === 'true';
+        this.logPayloads = process.env.LOG_PAYLOADS === "true";
+        this.logResponses = process.env.LOG_RESPONSES === "true";
+        this.logHeaders = process.env.LOG_HEADERS === "true";
         this.logLevel = (process.env.LOG_LEVEL as LogLevel) || LogLevel.INFO;
         const transport = isProduction(config.ENVIRONMENT)
             ? undefined
@@ -44,9 +53,15 @@ export class PinoLoggerProvider implements ILogger {
         this.logger = pino(transport);
     }
 
-    info(message: string, metadata?: Record<string, unknown>, options?: LogOptions): void {
+    info(
+        message: string,
+        metadata?: Record<string, unknown>,
+        options?: LogOptions,
+    ): void {
         const shouldLog = this.shouldLogMetadata(options);
-        const sanitizedMetadata = shouldLog ? this.sanitize(metadata, options) : undefined;
+        const sanitizedMetadata = shouldLog
+            ? this.sanitize(metadata, options)
+            : undefined;
         // Pino accepts (obj, msg) or (msg)
         if (isJsonObject(sanitizedMetadata)) {
             this.logger.info({ msg: message, ...sanitizedMetadata });
@@ -55,9 +70,15 @@ export class PinoLoggerProvider implements ILogger {
         }
     }
 
-    warn(message: string, metadata?: Record<string, unknown>, options?: LogOptions): void {
+    warn(
+        message: string,
+        metadata?: Record<string, unknown>,
+        options?: LogOptions,
+    ): void {
         const shouldLog = this.shouldLogMetadata(options);
-        const sanitizedMetadata = shouldLog ? this.sanitize(metadata, options) : undefined;
+        const sanitizedMetadata = shouldLog
+            ? this.sanitize(metadata, options)
+            : undefined;
         if (isJsonObject(sanitizedMetadata)) {
             this.logger.warn({ msg: message, ...sanitizedMetadata });
         } else {
@@ -65,26 +86,40 @@ export class PinoLoggerProvider implements ILogger {
         }
     }
 
-    error(message: string, error?: Error | unknown, metadata?: Record<string, unknown>): void {
+    error(
+        message: string,
+        error?: Error | unknown,
+        metadata?: Record<string, unknown>,
+    ): void {
         let finalError = error;
         let finalMetadata: Record<string, unknown> | undefined = metadata;
 
-        // If the second argument is an object but not an instance of Error, 
+        // If the second argument is an object but not an instance of Error,
         // and metadata is undefined, treat the second argument as metadata.
-        if (error && !(error instanceof Error) && typeof error === 'object' && metadata === undefined) {
+        if (
+            error &&
+            !(error instanceof Error) &&
+            typeof error === "object" &&
+            metadata === undefined
+        ) {
             // SAFETY: the branch already proved a non-Error object, which is the
             // log-metadata shape; the value is forwarded exactly as it arrived.
             finalMetadata = error as Record<string, unknown>;
             finalError = undefined;
         }
 
-        const errorObj: unknown = finalError instanceof Error
-            ? { message: finalError.message, stack: finalError.stack, name: finalError.name }
-            : finalError !== undefined
-                ? (typeof finalError === 'object' && finalError !== null
-                    ? this.sanitize(finalError as Record<string, unknown>)
-                    : { message: String(finalError) })
-                : undefined;
+        const errorObj: unknown =
+            finalError instanceof Error
+                ? {
+                      message: finalError.message,
+                      stack: finalError.stack,
+                      name: finalError.name,
+                  }
+                : finalError !== undefined
+                  ? typeof finalError === "object" && finalError !== null
+                      ? this.sanitize(finalError as Record<string, unknown>)
+                      : { message: String(finalError) }
+                  : undefined;
 
         const logPayload: Record<string, unknown> = { msg: message };
         if (errorObj) logPayload.error = errorObj;
@@ -103,7 +138,11 @@ export class PinoLoggerProvider implements ILogger {
         this.logger.error(logPayload);
     }
 
-    debug(message: string, metadata?: Record<string, unknown>, options?: LogOptions): void {
+    debug(
+        message: string,
+        metadata?: Record<string, unknown>,
+        options?: LogOptions,
+    ): void {
         // Pino wrapper in helpers might not expose debug, checking...
         // The helper only exports info, warn, error. We might need to extend it or use pino instance directly if possible.
         // For now, mapping debug to info if level is debug, or ignoring.
@@ -111,19 +150,30 @@ export class PinoLoggerProvider implements ILogger {
         // Given the helper limitation, I'll map debug to info but only if LOG_LEVEL is debug.
         if (this.logLevel === LogLevel.DEBUG) {
             const shouldLog = this.shouldLogMetadata(options);
-            const sanitizedMetadata = shouldLog ? this.sanitize(metadata, options) : undefined;
+            const sanitizedMetadata = shouldLog
+                ? this.sanitize(metadata, options)
+                : undefined;
             if (isJsonObject(sanitizedMetadata)) {
-                this.logger.info({ level: 'DEBUG', msg: message, ...sanitizedMetadata });
+                this.logger.info({
+                    level: "DEBUG",
+                    msg: message,
+                    ...sanitizedMetadata,
+                });
             } else {
-                this.logger.info({ level: 'DEBUG', msg: message });
+                this.logger.info({ level: "DEBUG", msg: message });
             }
         }
     }
 
-    logRequest(req: { method: string; url: string; body?: Record<string, unknown>; headers?: Record<string, string> }): void {
+    logRequest(req: {
+        method: string;
+        url: string;
+        body?: Record<string, unknown>;
+        headers?: Record<string, string>;
+    }): void {
         const metadata: Record<string, unknown> = {
             method: req.method,
-            url: req.url
+            url: req.url,
         };
 
         if (this.logPayloads && req.body) {
@@ -134,22 +184,31 @@ export class PinoLoggerProvider implements ILogger {
             metadata.headers = this.sanitizeHeaders(req.headers);
         }
 
-        this.info('\n\nHTTP Request', metadata);
+        this.info("\n\nHTTP Request", metadata);
     }
 
-    logResponse(res: { statusCode: number; body?: Record<string, unknown>; headers?: Record<string, string> }): void {
+    logResponse(res: {
+        statusCode: number;
+        body?: Record<string, unknown>;
+        headers?: Record<string, string>;
+    }): void {
         const metadata: Record<string, unknown> = {
-            statusCode: res.statusCode
+            statusCode: res.statusCode,
         };
 
         // For error responses (4xx, 5xx), extract error message if available
         if (res.statusCode >= 400 && res.body) {
             try {
-                const body: Record<string, unknown> = typeof res.body === 'string'
-                    ? (JSON.parse(res.body) as Record<string, unknown>)
-                    : res.body;
+                const body: Record<string, unknown> =
+                    typeof res.body === "string"
+                        ? (JSON.parse(res.body) as Record<string, unknown>)
+                        : res.body;
 
-                if (body.errors && Array.isArray(body.errors) && body.errors.length > 0) {
+                if (
+                    body.errors &&
+                    Array.isArray(body.errors) &&
+                    body.errors.length > 0
+                ) {
                     const errorMessage: unknown = body.errors[0].message;
 
                     // The two are joined only when they actually differ. A domain
@@ -184,11 +243,12 @@ export class PinoLoggerProvider implements ILogger {
             metadata.headers = this.sanitizeHeaders(res.headers);
         }
 
-        this.info('\n\nHTTP Response', metadata);
+        this.info("\n\nHTTP Response", metadata);
     }
 
     private shouldLogMetadata(options?: LogOptions): boolean {
-        if (options?.includePayload !== undefined) return options.includePayload;
+        if (options?.includePayload !== undefined)
+            return options.includePayload;
         // Default behavior: log metadata if provided, unless it's a payload/response controlled by env vars
         // But here 'metadata' is generic.
         return true;
@@ -212,16 +272,20 @@ export class PinoLoggerProvider implements ILogger {
         const sensitiveFields = SECURITY_CONSTANTS.SENSITIVE_FIELDS;
 
         const sanitizeObject = (obj: JsonValue): JsonValue => {
-            if (typeof obj !== 'object' || obj === null) return obj;
+            if (typeof obj !== "object" || obj === null) return obj;
 
             if (Array.isArray(obj)) {
-                return obj.map(item => sanitizeObject(item));
+                return obj.map((item) => sanitizeObject(item));
             }
 
             for (const key in obj) {
-                if (sensitiveFields.some(field => key.toLowerCase() === field.toLowerCase())) {
-                    obj[key] = '[REDACTED]';
-                } else if (typeof obj[key] === 'object') {
+                if (
+                    sensitiveFields.some(
+                        (field) => key.toLowerCase() === field.toLowerCase(),
+                    )
+                ) {
+                    obj[key] = "[REDACTED]";
+                } else if (typeof obj[key] === "object") {
                     obj[key] = sanitizeObject(obj[key]);
                 }
             }
@@ -231,15 +295,19 @@ export class PinoLoggerProvider implements ILogger {
         return sanitizeObject(cloned);
     }
 
-    private sanitizeHeaders(headers: Record<string, string>): Record<string, string> {
+    private sanitizeHeaders(
+        headers: Record<string, string>,
+    ): Record<string, string> {
         const sanitized = { ...headers };
         // Remover headers sensibles
         const sensitiveHeaders = SECURITY_CONSTANTS.SENSITIVE_HEADERS;
-        sensitiveHeaders.forEach(header => {
+        sensitiveHeaders.forEach((header) => {
             // Case insensitive check for headers
-            const key = Object.keys(sanitized).find(k => k.toLowerCase() === header);
+            const key = Object.keys(sanitized).find(
+                (k) => k.toLowerCase() === header,
+            );
             if (key) {
-                sanitized[key] = '[REDACTED]';
+                sanitized[key] = "[REDACTED]";
             }
         });
         return sanitized;

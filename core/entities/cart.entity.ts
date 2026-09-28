@@ -1,4 +1,4 @@
-import { Product } from "@/core/entities/product.entity";
+import type { Product } from "@/core/entities/product.entity";
 
 export interface CartItem {
     id: string;

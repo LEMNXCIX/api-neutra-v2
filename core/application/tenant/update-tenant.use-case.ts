@@ -1,17 +1,17 @@
-import { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { UpdateTenantDTO } from "@/core/application/dtos/requests/tenant.request";
 import {
     BusinessRuleViolationError,
-    EntityNotFoundError,
     DuplicateEntityError,
+    EntityNotFoundError,
 } from "@/core/domain/errors/domain-errors";
-import { UpdateTenantDTO } from "@/core/application/dtos/requests/tenant.request";
-import { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
-import { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
 import {
     assertTenantFeatureDependencies,
     isLoyaltyOrCouponsDisabling,
 } from "@/core/domain/feature/feature.policy";
+import type { IFeatureRepository } from "@/core/repositories/feature.repository.interface";
+import type { ILoyaltyRepository } from "@/core/repositories/loyalty.repository.interface";
+import type { ITenantRepository } from "@/core/repositories/tenant.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 import { BusinessErrorCodes } from "@/types/error-codes";
 
 export class UpdateTenantUseCase {
@@ -54,10 +54,7 @@ export class UpdateTenantUseCase {
 
             assertTenantFeatureDependencies(mergedFeatures);
             if (
-                isLoyaltyOrCouponsDisabling(
-                    currentFeatures,
-                    featureChanges,
-                ) &&
+                isLoyaltyOrCouponsDisabling(currentFeatures, featureChanges) &&
                 (await this.loyaltyRepository.hasLiveLoyaltyObligations(id))
             ) {
                 throw new BusinessRuleViolationError(
@@ -90,11 +87,10 @@ export class UpdateTenantUseCase {
                         ...(existing.config?.settings || {}),
                         ...(nextData.config?.settings || {}),
                     },
-                    features:
-                        mergedTenantFeatures ?? {
-                            ...(existing.config?.features || {}),
-                            ...(nextData.config?.features || {}),
-                        },
+                    features: mergedTenantFeatures ?? {
+                        ...(existing.config?.features || {}),
+                        ...(nextData.config?.features || {}),
+                    },
                 },
             };
         }

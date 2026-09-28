@@ -1,9 +1,9 @@
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/config/db.config";
-import { ICartRepository } from "@/core/repositories/cart.repository.interface";
-import { Cart, CartItem } from "@/core/entities/cart.entity";
-import { Product } from "@/core/entities/product.entity";
 import { EntityNotFoundError } from "@/core/domain/errors/domain-errors";
+import type { Cart, CartItem } from "@/core/entities/cart.entity";
+import type { Product } from "@/core/entities/product.entity";
+import type { ICartRepository } from "@/core/repositories/cart.repository.interface";
 
 type CartProduct = Pick<Product, "id" | "name" | "price" | "image" | "stock">;
 

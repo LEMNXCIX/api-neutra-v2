@@ -1,16 +1,16 @@
-import { Request, Response } from "express";
-import { CreateBannerUseCase } from "@/core/application/banners/create-banner.use-case";
-import { GetBannersUseCase } from "@/core/application/banners/get-banners.use-case";
-import { UpdateBannerUseCase } from "@/core/application/banners/update-banner.use-case";
-import { DeleteBannerUseCase } from "@/core/application/banners/delete-banner.use-case";
-import { TrackBannerAnalyticsUseCase } from "@/core/application/banners/track-banner-analytics.use-case";
-import { GetBannerStatsUseCase } from "@/core/application/banners/get-banner-stats.use-case";
-import { BannerResponse } from "@/core/application/dtos/responses/banner/banner.response";
-import { present } from "@/core/utils/use-case-result";
-import {
+import type { Request, Response } from "express";
+import type { CreateBannerUseCase } from "@/core/application/banners/create-banner.use-case";
+import type { DeleteBannerUseCase } from "@/core/application/banners/delete-banner.use-case";
+import type { GetBannerStatsUseCase } from "@/core/application/banners/get-banner-stats.use-case";
+import type { GetBannersUseCase } from "@/core/application/banners/get-banners.use-case";
+import type { TrackBannerAnalyticsUseCase } from "@/core/application/banners/track-banner-analytics.use-case";
+import type { UpdateBannerUseCase } from "@/core/application/banners/update-banner.use-case";
+import type {
     CreateBannerDTO,
     UpdateBannerDTO,
 } from "@/core/application/dtos/requests/banner.request";
+import { BannerResponse } from "@/core/application/dtos/responses/banner/banner.response";
+import { present } from "@/core/utils/use-case-result";
 
 export class BannerController {
     constructor(
@@ -28,9 +28,7 @@ export class BannerController {
             tenantId,
             req.validatedBody as CreateBannerDTO,
         );
-        return res
-            .status(201)
-            .json(present(result, BannerResponse.fromEntity));
+        return res.status(201).json(present(result, BannerResponse.fromEntity));
     };
 
     getAll = async (req: Request, res: Response) => {

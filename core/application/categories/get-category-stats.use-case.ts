@@ -1,5 +1,5 @@
-import { ICategoryRepository } from "@/core/repositories/category.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { ICategoryRepository } from "@/core/repositories/category.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetCategoryStatsUseCase {
     constructor(private categoryRepository: ICategoryRepository) {}

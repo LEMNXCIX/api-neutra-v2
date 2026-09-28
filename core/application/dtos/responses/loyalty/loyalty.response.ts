@@ -1,5 +1,9 @@
-import { Coupon, CouponType } from "@/core/entities/coupon.entity";
 import {
+    CouponResponse,
+    type ICouponResponse,
+} from "@/core/application/dtos/responses/coupon/coupon.response";
+import type { Coupon, CouponType } from "@/core/entities/coupon.entity";
+import type {
     LoyaltyCampaign,
     LoyaltyCampaignCustomerSummary,
     LoyaltyCampaignMetric,
@@ -9,10 +13,6 @@ import {
     LoyaltyRewardClaimStatus,
     LoyaltyStatus,
 } from "@/core/entities/loyalty.entity";
-import {
-    CouponResponse,
-    ICouponResponse,
-} from "@/core/application/dtos/responses/coupon/coupon.response";
 
 export interface ILoyaltyCampaignResponse {
     id: string;
@@ -173,8 +173,7 @@ export class LoyaltyPresenter {
             target: summary.target ?? summary.targetValue,
             remaining: summary.remaining ?? summary.remainingValue,
             status: summary.status ?? summary.customerStatus,
-            campaignStatus:
-                summary.campaignStatus ?? summary.lifecycleStatus,
+            campaignStatus: summary.campaignStatus ?? summary.lifecycleStatus,
             ...(summary.claim
                 ? {
                       claim: {
@@ -220,17 +219,15 @@ export class LoyaltyPresenter {
         };
     }
 
-    static toTenantCampaignOverviewResponse(
-        overview: {
-            tenantId: string;
-            name: string;
-            slug: string;
-            type: string;
-            active: boolean;
-            campaigns: LoyaltyCampaign[];
-            stats: ILoyaltyTenantCampaignOverviewResponse["stats"];
-        },
-    ): ILoyaltyTenantCampaignOverviewResponse {
+    static toTenantCampaignOverviewResponse(overview: {
+        tenantId: string;
+        name: string;
+        slug: string;
+        type: string;
+        active: boolean;
+        campaigns: LoyaltyCampaign[];
+        stats: ILoyaltyTenantCampaignOverviewResponse["stats"];
+    }): ILoyaltyTenantCampaignOverviewResponse {
         return {
             tenantId: overview.tenantId,
             name: overview.name,

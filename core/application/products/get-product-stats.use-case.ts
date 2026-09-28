@@ -1,5 +1,5 @@
-import { IProductRepository } from "@/core/repositories/product.repository.interface";
-import { Success, UseCaseResult } from "@/core/utils/use-case-result";
+import type { IProductRepository } from "@/core/repositories/product.repository.interface";
+import { Success, type UseCaseResult } from "@/core/utils/use-case-result";
 
 export class GetProductStatsUseCase {
     constructor(private productRepository: IProductRepository) {}

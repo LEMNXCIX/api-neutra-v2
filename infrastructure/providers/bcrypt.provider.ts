@@ -1,5 +1,5 @@
-import bcrypt from 'bcrypt';
-import { IPasswordHasher } from '@/core/providers/auth-providers.interface';
+import bcrypt from "bcrypt";
+import type { IPasswordHasher } from "@/core/providers/auth-providers.interface";
 
 export class BcryptProvider implements IPasswordHasher {
     async hash(password: string): Promise<string> {
