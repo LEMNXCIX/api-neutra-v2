@@ -27,6 +27,7 @@ import { PrismaAppointmentRepository } from "@/infrastructure/database/prisma/ap
  */
 
 const repository = new PrismaAppointmentRepository();
+const tag = `sweep-probe-${Date.now()}`;
 const now = new Date();
 const startedAt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
 const endedAt = new Date(now.getTime() - 2.5 * 60 * 60 * 1000);
@@ -67,15 +68,59 @@ async function readStatus(id: string): Promise<string | undefined> {
 
 describe("the review sweep's optional lower bound, against a real database", () => {
     beforeAll(async () => {
-        const appointment = await prisma.appointment.findFirst({
-            select: { userId: true, serviceId: true, staffId: true },
+        // Builds its own references rather than borrowing an existing
+        // appointment. The seed creates a HYBRID tenant, one user, and no
+        // services, no staff and no appointments, so a suite that reads an
+        // appointment to get a serviceId and a staffId passes on a development
+        // database that has accumulated them and fails on the fresh one the ci
+        // job creates. That is what this did.
+        const tenant = await prisma.tenant.findFirst({
+            where: { active: true, type: { in: ["BOOKING", "HYBRID"] } },
+            select: { id: true },
         });
-        if (!appointment) {
+        if (!tenant) {
             throw new Error(
-                "this suite needs one seeded appointment to borrow a user, service and staff from",
+                "this suite needs an active BOOKING or HYBRID tenant, which the seed creates",
             );
         }
-        references = appointment;
+        const user = await prisma.user.create({
+            data: {
+                name: "Sweep Probe",
+                email: `${tag}-user@example.invalid`,
+                password: "probe-not-a-real-password",
+            },
+            select: { id: true },
+        });
+        const service = await prisma.service.create({
+            data: {
+                name: "Sweep Probe Service",
+                duration: 30,
+                price: 0,
+                tenantId: tenant.id,
+            },
+            select: { id: true },
+        });
+        const staff = await prisma.staff.create({
+            data: { name: "Sweep Probe Staff", tenantId: tenant.id },
+            select: { id: true },
+        });
+        references = {
+            userId: user.id,
+            serviceId: service.id,
+            staffId: staff.id,
+        };
+    });
+
+    afterAll(async () => {
+        if (references) {
+            await prisma.staff.deleteMany({
+                where: { id: references.staffId },
+            });
+            await prisma.service.deleteMany({
+                where: { id: references.serviceId },
+            });
+            await prisma.user.deleteMany({ where: { id: references.userId } });
+        }
     });
 
     afterEach(async () => {
