@@ -100,6 +100,7 @@
     "passport": "^0.7.0",
     "passport-oauth": "^1.0.0",
     "xmldom": "npm:@xmldom/xmldom@^0.8.10",
+    "js-yaml": "^4.1.0",
     "@types/express-serve-static-core": "5.1.0"
   },
   "allowScripts": {
