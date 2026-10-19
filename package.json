@@ -45,7 +45,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "express-session": "^1.18.2",
-    "handlebars": "^4.7.8",
+    "handlebars": "^4.7.10",
     "helmet": "^8.3.0",
     "ics": "^3.8.1",
     "ioredis": "^6.0.0",
@@ -100,6 +100,7 @@
     "passport": "^0.7.0",
     "passport-oauth": "^1.0.0",
     "xmldom": "npm:@xmldom/xmldom@^0.8.10",
+    "js-yaml": "^4.1.0",
     "@types/express-serve-static-core": "5.1.0"
   },
   "allowScripts": {
