@@ -1,12 +1,13 @@
 import type { Request, Response } from "express";
 import type { SendNotificationDto } from "@/core/application/dtos/requests/whatsapp.request";
 import type { SendNotificationUseCase } from "@/core/application/whatsapp/send-notification.use-case";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class WhatsAppController {
     constructor(private sendNotificationUseCase: SendNotificationUseCase) {}
 
     async sendTemplate(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         // `tenantId` is the authenticated context, not a body field: it is
         // spread last, so a body naming another tenant cannot redirect the
         // message. The DTO does not declare it at all.

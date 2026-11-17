@@ -11,6 +11,7 @@ import type {
 } from "@/core/application/dtos/requests/banner.request";
 import { BannerResponse } from "@/core/application/dtos/responses/banner/banner.response";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class BannerController {
     constructor(
@@ -23,7 +24,7 @@ export class BannerController {
     ) {}
 
     create = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.createBannerUseCase.execute(
             tenantId,
             req.validatedBody as CreateBannerDTO,
@@ -32,7 +33,7 @@ export class BannerController {
     };
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
 
         const result = await this.getBannersUseCase.execute(tenantId, false);
         return res.json(
@@ -45,7 +46,7 @@ export class BannerController {
     };
 
     getActive = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.getBannersUseCase.execute(tenantId, true); // Get only active banners
         return res.json(
             present(result, (banners) =>
@@ -57,14 +58,14 @@ export class BannerController {
     };
 
     getById = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.getBannersUseCase.executeById(tenantId, id);
         return res.json(present(result, BannerResponse.fromEntity));
     };
 
     update = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.updateBannerUseCase.execute(
             tenantId,
@@ -75,14 +76,14 @@ export class BannerController {
     };
 
     delete = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.deleteBannerUseCase.execute(tenantId, id);
         return res.json(result);
     };
 
     trackImpression = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.trackBannerAnalyticsUseCase.trackImpression(
             tenantId,
@@ -92,7 +93,7 @@ export class BannerController {
     };
 
     trackClick = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.trackBannerAnalyticsUseCase.trackClick(
             tenantId,
@@ -102,7 +103,7 @@ export class BannerController {
     };
 
     getStats = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.getBannerStatsUseCase.execute(tenantId);
         return res.json(result);
     };

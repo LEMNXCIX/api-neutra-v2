@@ -16,6 +16,7 @@ import type { GetUsersStatsUseCase } from "@/core/application/users/get-users-st
 import type { GetUsersSummaryStatsUseCase } from "@/core/application/users/get-users-summary-stats.use-case";
 import type { UpdateUserUseCase } from "@/core/application/users/update-user.use-case";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class UserController {
     constructor(
@@ -32,7 +33,7 @@ export class UserController {
     ) {}
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.getAllUsersUseCase.execute(tenantId);
         return res.json(
             present(result, (users) =>
@@ -51,7 +52,7 @@ export class UserController {
     };
 
     getByEmail = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { email } = req.params;
         const result = await this.getUserByEmailUseCase.execute(
             tenantId,
@@ -62,7 +63,7 @@ export class UserController {
     };
 
     create = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.createUserUseCase.execute(tenantId, req.body);
         return res.status(201).json(
             present(result, (data) => ({
@@ -73,7 +74,7 @@ export class UserController {
     };
 
     getOrCreateByProvider = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.getOrCreateByProviderUseCase.execute(
             tenantId,
             req.body,
@@ -99,7 +100,7 @@ export class UserController {
     };
 
     update = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         // `users.routes.ts` has no `validateDto`, so `req.body` is whatever the
         // client sent. Reading the six admin-safe columns off it — rather than
@@ -123,7 +124,7 @@ export class UserController {
     };
 
     assignRole = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const { roleId } = req.validatedBody as AssignRoleDTO;
         const result = await this.assignRoleToUserUseCase.execute(
@@ -135,7 +136,7 @@ export class UserController {
     };
 
     delete = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.deleteUserUseCase.execute(tenantId, id);
         return res.json(result);

@@ -12,6 +12,7 @@ import type { GetRolesPaginatedUseCase } from "@/core/application/roles/get-role
 import type { UpdateRoleUseCase } from "@/core/application/roles/update-role.use-case";
 import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class RoleController {
     constructor(
@@ -23,7 +24,7 @@ export class RoleController {
     ) {}
 
     create = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         // `role.routes.ts` carries no `validateDto`, so `req.body` is whatever
         // the client sent. Reading the five fields a role write accepts —
         // rather than forwarding it — keeps the body equal to the
@@ -43,7 +44,7 @@ export class RoleController {
     };
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const query = (req.validatedQuery ?? {}) as PagedSearchQueryDto;
         const { page, limit } = parsePagination(query);
 
@@ -74,14 +75,14 @@ export class RoleController {
     };
 
     getById = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.getRolesUseCase.executeById(tenantId, id);
         return res.json(present(result, RoleResponse.fromEntity));
     };
 
     update = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         // Same narrowing as `create` above: five fields, no `validateDto` to
         // do it, and the update path replaces the role's whole permission set,
@@ -99,7 +100,7 @@ export class RoleController {
     };
 
     delete = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.deleteRoleUseCase.execute(tenantId, id);
         return res.json(result);

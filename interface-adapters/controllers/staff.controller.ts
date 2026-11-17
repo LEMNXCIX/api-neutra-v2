@@ -15,6 +15,7 @@ import type {
 } from "@/core/application/dtos/requests/staff.request";
 import { StaffResponse } from "@/core/application/dtos/responses/staff/staff.response";
 import { present } from "@/core/utils/use-case-result";
+import { currentUser, tenantIdOf } from "@/helpers/request-context.helpers";
 import { AppError } from "@/types/api-response";
 import { AuthErrorCodes } from "@/types/error-codes";
 
@@ -30,7 +31,7 @@ export class StaffController {
     ) {}
 
     async create(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.createStaffUseCase.execute(
             tenantId,
             req.validatedBody as CreateStaffDTO,
@@ -58,7 +59,7 @@ export class StaffController {
     }
 
     async update(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.updateStaffUseCase.execute(
             tenantId,
@@ -69,14 +70,14 @@ export class StaffController {
     }
 
     async delete(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.deleteStaffUseCase.execute(tenantId, id);
         return res.status(200).json(result);
     }
 
     async assignService(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { staffId } = req.params;
         const { serviceId } = req.validatedBody as AssignStaffServiceDTO;
 
@@ -89,7 +90,7 @@ export class StaffController {
     }
 
     async syncServices(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { staffId } = req.params;
         const { serviceIds } = req.validatedBody as SyncStaffServicesDTO;
 
@@ -102,8 +103,8 @@ export class StaffController {
     }
 
     async getMe(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
-        const user = req.user!;
+        const tenantId = tenantIdOf(req);
+        const user = currentUser(req);
 
         if (!user?.id) {
             throw new AppError(

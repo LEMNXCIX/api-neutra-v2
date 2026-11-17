@@ -20,6 +20,7 @@ import type { UpdateOrderUseCase } from "@/core/application/order/update-order.u
 import type { OrderStatus } from "@/core/entities/order.entity";
 import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
+import { currentUser, tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class OrderController {
     constructor(
@@ -44,7 +45,7 @@ export class OrderController {
     }
 
     async getStats(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const query = (req.validatedQuery ?? {}) as DatedQueryDto;
         const startDate = query.startDate
             ? new Date(query.startDate)
@@ -65,8 +66,8 @@ export class OrderController {
     }
 
     async create(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
-        const userId = req.user!.id;
+        const tenantId = tenantIdOf(req);
+        const userId = currentUser(req).id;
         const { couponCode } = req.body;
         const result = await this.createOrderUseCase.execute(
             tenantId,
@@ -77,22 +78,22 @@ export class OrderController {
     }
 
     async getOne(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { orderId } = req.body;
         const result = await this.getOrderUseCase.execute(tenantId, orderId);
         return res.json(present(result, OrderResponse.fromEntity));
     }
 
     async getOneById(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.getOrderUseCase.execute(tenantId, id);
         return res.json(present(result, OrderResponse.fromEntity));
     }
 
     async getByUser(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
-        const userId = req.user!.id;
+        const tenantId = tenantIdOf(req);
+        const userId = currentUser(req).id;
         const status = ((req.validatedQuery ?? {}) as OrderStatusQueryDto)
             .status as OrderStatus | undefined;
         const result = await this.getUserOrdersUseCase.execute(
@@ -110,7 +111,7 @@ export class OrderController {
     }
 
     async getAll(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const query = (req.validatedQuery ?? {}) as OrderListQueryDto;
 
         // Always paginated: unbounded list endpoints are a memory/DoS risk.
@@ -134,7 +135,7 @@ export class OrderController {
     }
 
     async changeStatus(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { idOrder, status } = req.validatedBody as ChangeOrderStatusDto;
         const result = await this.changeOrderStatusUseCase.execute(
             tenantId,
@@ -145,7 +146,7 @@ export class OrderController {
     }
 
     async update(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.updateOrderUseCase.execute(
             tenantId,

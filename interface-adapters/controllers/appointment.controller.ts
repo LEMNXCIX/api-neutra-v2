@@ -25,6 +25,7 @@ import { assertAppointmentStatus } from "@/core/domain/appointment/appointment.p
 import { hasAnyRole, hasPermission } from "@/core/domain/rbac/access-policy";
 import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
+import { currentUser, tenantIdOf } from "@/helpers/request-context.helpers";
 import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
 import { APPOINTMENT_OPERATIONAL_ROLES } from "@/middleware/authorization.middleware";
 import { AppError } from "@/types/api-response";
@@ -63,8 +64,8 @@ export class AppointmentController {
     ) {}
 
     async create(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
-        const actor = getAppointmentActor(req.user!);
+        const tenantId = tenantIdOf(req);
+        const actor = getAppointmentActor(currentUser(req));
         const origin = resolveRequestOrigin(req);
         const body = req.validatedBody as CreateAppointmentDto;
         // The body may carry `userId`, and it is honoured only when the actor
@@ -149,7 +150,7 @@ export class AppointmentController {
     }
 
     async getById(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
 
         const result = await this.getAppointmentByIdUseCase.execute(
@@ -160,21 +161,21 @@ export class AppointmentController {
     }
 
     async cancel(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const { reason } = req.validatedBody as CancelAppointmentDTO;
 
         const result = await this.cancelAppointmentUseCase.execute(
             tenantId,
             id,
-            getAppointmentActor(req.user!),
+            getAppointmentActor(currentUser(req)),
             reason,
         );
         return res.json(present(result, AppointmentResponse.fromEntity));
     }
 
     async updateStatus(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const { status, reason } =
             req.validatedBody as UpdateAppointmentStatusDto;
@@ -184,7 +185,7 @@ export class AppointmentController {
             tenantId,
             id,
             status,
-            getAppointmentActor(req.user!),
+            getAppointmentActor(currentUser(req)),
             reason,
             origin,
         );
@@ -192,7 +193,7 @@ export class AppointmentController {
     }
 
     async getAvailability(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { staffId, serviceId, date, timezoneOffset } =
             (req.validatedQuery ?? {}) as AvailabilityQueryDto;
 
@@ -207,13 +208,13 @@ export class AppointmentController {
     }
 
     async delete(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
 
         const result = await this.deleteAppointmentUseCase.execute(
             tenantId,
             id,
-            getAppointmentActor(req.user!),
+            getAppointmentActor(currentUser(req)),
         );
         return res.json(result);
     }

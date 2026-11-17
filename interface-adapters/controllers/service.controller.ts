@@ -10,6 +10,7 @@ import type {
 } from "@/core/application/dtos/requests/service.request";
 import { ServiceResponse } from "@/core/application/dtos/responses/service/service.response";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class ServiceController {
     constructor(
@@ -20,7 +21,7 @@ export class ServiceController {
     ) {}
 
     async create(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.createServiceUseCase.execute(
             tenantId,
             req.validatedBody as CreateServiceDTO,
@@ -53,7 +54,7 @@ export class ServiceController {
     }
 
     async update(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.updateServiceUseCase.execute(
             tenantId,
@@ -66,7 +67,7 @@ export class ServiceController {
     }
 
     async delete(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.deleteServiceUseCase.execute(tenantId, id);
         return res.status(200).json(result);

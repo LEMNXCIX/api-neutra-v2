@@ -17,6 +17,7 @@ import {
     deleteCookie,
     providerResponse,
 } from "@/helpers/authResponse.helpers";
+import { currentUser, tenantIdOf } from "@/helpers/request-context.helpers";
 import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
 
 export class AuthController {
@@ -47,14 +48,14 @@ export class AuthController {
     async joinTenant(req: Request, res: Response) {
         const result = await this.joinTenantUseCase.execute(
             req.tenantId,
-            req.user!.id,
+            currentUser(req).id,
         );
         return authResponse(req, res, result, 200);
     }
 
     async login(req: Request, res: Response) {
         // tenantId can be undefined for global login
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         // No `?? req.body` fallback: the route always validates, and a fallback
         // would silently read an unvalidated body whenever that ever stopped
         // being true. The convention suite forbids the pattern for this reason.
@@ -64,7 +65,7 @@ export class AuthController {
     }
 
     async signup(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const origin = resolveRequestOrigin(req);
         const result = await this.registerUseCase.execute(
             tenantId,
@@ -75,7 +76,7 @@ export class AuthController {
     }
 
     async socialLogin(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         // SAFETY: the OAuth strategy populates `req.user` with the provider
         // profile, but `Express.User` is typed as the authenticated JWT user, so
         // the two shapes cannot both be expressed. The runtime guard below is
@@ -103,11 +104,11 @@ export class AuthController {
     validate(req: Request, res: Response) {
         return res
             .status(200)
-            .json(Success({ user: req.user! }, "Validación exitosa"));
+            .json(Success({ user: currentUser(req) }, "Validación exitosa"));
     }
 
     async forgotPassword(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const origin = resolveRequestOrigin(req);
         const body = req.validatedBody as ForgotPasswordDTO;
         const result = await this.forgotPasswordUseCase.execute(

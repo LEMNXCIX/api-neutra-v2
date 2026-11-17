@@ -4,6 +4,7 @@ import { WhatsAppConfigResponse } from "@/core/application/dtos/responses/whatsa
 import type { ConfigureWhatsAppUseCase } from "@/core/application/whatsapp/configure-whatsapp.use-case";
 import type { GetWhatsAppConfigUseCase } from "@/core/application/whatsapp/get-whatsapp-config.use-case";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class WhatsAppConfigController {
     constructor(
@@ -12,7 +13,7 @@ export class WhatsAppConfigController {
     ) {}
 
     async getConfig(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
 
         const result = await this.getWhatsAppConfigUseCase.execute(tenantId);
         return res.json(
@@ -23,7 +24,7 @@ export class WhatsAppConfigController {
     }
 
     async updateConfig(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
 
         const result = await this.configureWhatsAppUseCase.execute(
             tenantId,

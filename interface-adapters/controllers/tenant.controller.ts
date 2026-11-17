@@ -15,6 +15,7 @@ import type { GetTenantsUseCase } from "@/core/application/tenant/get-tenants.us
 import type { UpdateTenantUseCase } from "@/core/application/tenant/update-tenant.use-case";
 import type { UpdateTenantFeaturesUseCase } from "@/core/application/tenant/update-tenant-features.use-case";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 import { AppError } from "@/types/api-response";
 import { AuthErrorCodes } from "@/types/error-codes";
 
@@ -103,7 +104,7 @@ export class TenantController {
     }
 
     async getFeatures(req: Request, res: Response) {
-        const tenantId = req.params.id || req.tenantId!;
+        const tenantId = req.params.id || tenantIdOf(req);
         const result = await this.getTenantFeaturesUseCase.execute(tenantId);
         return res.json(result);
     }

@@ -14,6 +14,7 @@ import type { GetProductSummaryStatsUseCase } from "@/core/application/products/
 import type { SearchProductsUseCase } from "@/core/application/products/search-products.use-case";
 import type { UpdateProductUseCase } from "@/core/application/products/update-product.use-case";
 import { present } from "@/core/utils/use-case-result";
+import { currentUser, tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class ProductController {
     constructor(
@@ -38,7 +39,7 @@ export class ProductController {
     }
 
     async getAll(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
 
         const result = await this.getAllProductsUseCase.execute(tenantId);
         return res.json(
@@ -51,7 +52,7 @@ export class ProductController {
     }
 
     async getOne(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
 
         const id = req.params.id;
         const result = await this.getProductUseCase.execute(tenantId, id);
@@ -59,12 +60,12 @@ export class ProductController {
     }
 
     async create(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.createProductUseCase.execute(tenantId, {
             ...(req.validatedBody as CreateProductDto),
             // `ownerId` is the authenticated author, not a body field: it is
             // spread last, so a body carrying one cannot claim the product.
-            ownerId: req.user!.id,
+            ownerId: currentUser(req).id,
         });
         return res
             .status(201)
@@ -72,7 +73,7 @@ export class ProductController {
     }
 
     async update(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const id = req.params.id;
         const result = await this.updateProductUseCase.execute(
             tenantId,
@@ -83,9 +84,9 @@ export class ProductController {
     }
 
     async delete(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const id = req.params.id;
-        const userId = req.user!.id;
+        const userId = currentUser(req).id;
         const result = await this.deleteProductUseCase.execute(
             tenantId,
             id,
@@ -95,7 +96,7 @@ export class ProductController {
     }
 
     async search(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const name = (req.validatedBody as SearchProductDto).name;
         const result = await this.searchProductsUseCase.execute(tenantId, name);
         return res.json(
@@ -108,13 +109,13 @@ export class ProductController {
     }
 
     async getStats(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.getProductStatsUseCase.execute(tenantId);
         return res.json(result);
     }
 
     async getSummaryStats(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result =
             await this.getProductSummaryStatsUseCase.execute(tenantId);
         return res.json(result);

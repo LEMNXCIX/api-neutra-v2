@@ -13,6 +13,7 @@ import { CategoryResponse } from "@/core/application/dtos/responses/category/cat
 import { CategoryType } from "@/core/entities/category.entity";
 import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class CategoryController {
     constructor(
@@ -24,7 +25,7 @@ export class CategoryController {
     ) {}
 
     create = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.createCategoryUseCase.execute(
             tenantId,
             req.validatedBody as CreateCategoryDTO,
@@ -67,7 +68,7 @@ export class CategoryController {
     };
 
     getById = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.getCategoriesUseCase.executeById(
             tenantId,
@@ -77,7 +78,7 @@ export class CategoryController {
     };
 
     update = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.updateCategoryUseCase.execute(
             tenantId,
@@ -88,14 +89,14 @@ export class CategoryController {
     };
 
     delete = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.deleteCategoryUseCase.execute(tenantId, id);
         return res.json(result);
     };
 
     getStats = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.getCategoryStatsUseCase.execute(tenantId);
         return res.json(result);
     };

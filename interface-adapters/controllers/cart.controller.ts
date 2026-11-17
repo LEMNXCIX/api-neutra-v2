@@ -12,6 +12,7 @@ import type {
 } from "@/core/application/dtos/requests/cart.request";
 import { CartResponse } from "@/core/application/dtos/responses/cart/cart.response";
 import { present } from "@/core/utils/use-case-result";
+import { currentUser, tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class CartController {
     constructor(
@@ -25,8 +26,8 @@ export class CartController {
     ) {}
 
     getItems = async (req: Request, res: Response) => {
-        const { id } = req.user!;
-        const tenantId = req.tenantId!;
+        const { id } = currentUser(req);
+        const tenantId = tenantIdOf(req);
         // GetCartUseCase returns a flat product array, not a Cart entity —
         // CartPresenter would read .items off the array and yield {}.
         const result = await this.getCartUseCase.execute(tenantId, id);
@@ -34,8 +35,8 @@ export class CartController {
     };
 
     addToCart = async (req: Request, res: Response) => {
-        const { id } = req.user!;
-        const tenantId = req.tenantId!;
+        const { id } = currentUser(req);
+        const tenantId = tenantIdOf(req);
         const { productId, amount } = req.validatedBody as AddToCartDTO;
         const result = await this.addToCartUseCase.execute(
             tenantId,
@@ -47,15 +48,15 @@ export class CartController {
     };
 
     create = async (req: Request, res: Response) => {
-        const { id } = req.user!;
-        const tenantId = req.tenantId!;
+        const { id } = currentUser(req);
+        const tenantId = tenantIdOf(req);
         const result = await this.createCartUseCase.execute(tenantId, id);
         return res.status(201).json(present(result, CartResponse.fromEntity));
     };
 
     removeFromCart = async (req: Request, res: Response) => {
-        const { id } = req.user!;
-        const tenantId = req.tenantId!;
+        const { id } = currentUser(req);
+        const tenantId = tenantIdOf(req);
         const { id: idProduct } = req.validatedBody as RemoveFromCartDTO;
         const result = await this.removeFromCartUseCase.execute(
             tenantId,
@@ -66,8 +67,8 @@ export class CartController {
     };
 
     changeAmount = async (req: Request, res: Response) => {
-        const { id } = req.user!;
-        const tenantId = req.tenantId!;
+        const { id } = currentUser(req);
+        const tenantId = tenantIdOf(req);
         const { idProduct } = req.params;
         const { amount } = req.body;
         const result = await this.changeAmountUseCase.execute(
@@ -80,14 +81,14 @@ export class CartController {
     };
 
     clearCart = async (req: Request, res: Response) => {
-        const { id } = req.user!;
-        const tenantId = req.tenantId!;
+        const { id } = currentUser(req);
+        const tenantId = tenantIdOf(req);
         const result = await this.clearCartUseCase.execute(tenantId, id);
         return res.json(result);
     };
 
     getCartsStats = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.getCartStatsUseCase.execute(tenantId);
         return res.json(result);
     };

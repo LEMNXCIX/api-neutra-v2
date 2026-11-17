@@ -12,6 +12,7 @@ import type { GetPermissionsPaginatedUseCase } from "@/core/application/permissi
 import type { UpdatePermissionUseCase } from "@/core/application/permissions/update-permission.use-case";
 import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class PermissionController {
     constructor(
@@ -23,7 +24,7 @@ export class PermissionController {
     ) {}
 
     create = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.createPermissionUseCase.execute(
             tenantId,
             req.validatedBody as CreatePermissionDTO,
@@ -34,7 +35,7 @@ export class PermissionController {
     };
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const query = (req.validatedQuery ?? {}) as PagedSearchQueryDto;
         const { page, limit } = parsePagination(query);
 
@@ -69,7 +70,7 @@ export class PermissionController {
     };
 
     getById = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.getPermissionsUseCase.executeById(
             tenantId,
@@ -79,7 +80,7 @@ export class PermissionController {
     };
 
     update = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.updatePermissionUseCase.execute(
             tenantId,
@@ -90,7 +91,7 @@ export class PermissionController {
     };
 
     delete = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.deletePermissionUseCase.execute(tenantId, id);
         return res.json(result);

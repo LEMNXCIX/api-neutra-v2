@@ -15,6 +15,7 @@ import type { CouponListQueryDto } from "@/core/application/dtos/requests/list-q
 import { CouponResponse } from "@/core/application/dtos/responses/coupon/coupon.response";
 import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class CouponController {
     constructor(
@@ -28,7 +29,7 @@ export class CouponController {
     ) {}
 
     create = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.createCouponUseCase.execute(
             tenantId,
             req.validatedBody as CreateCouponDTO,
@@ -37,7 +38,7 @@ export class CouponController {
     };
 
     getAll = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
 
         const query = (req.validatedQuery ?? {}) as CouponListQueryDto;
         const { page, limit } = parsePagination(query);
@@ -90,14 +91,14 @@ export class CouponController {
     };
 
     getById = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.getCouponsUseCase.executeById(tenantId, id);
         return res.json(present(result, CouponResponse.fromEntity));
     };
 
     getByCode = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { code } = req.params;
         const result = await this.getCouponsUseCase.executeByCode(
             tenantId,
@@ -107,7 +108,7 @@ export class CouponController {
     };
 
     update = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.updateCouponUseCase.execute(
             tenantId,
@@ -118,14 +119,14 @@ export class CouponController {
     };
 
     delete = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { id } = req.params;
         const result = await this.deleteCouponUseCase.execute(tenantId, id);
         return res.json(result);
     };
 
     validate = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.validateCouponUseCase.execute(
             tenantId,
             req.validatedBody as ValidateCouponDTO,
@@ -143,7 +144,7 @@ export class CouponController {
     };
 
     getStats = async (req: Request, res: Response) => {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
 
         const result = await this.getCouponStatsUseCase.execute(tenantId);
         return res.json(result);

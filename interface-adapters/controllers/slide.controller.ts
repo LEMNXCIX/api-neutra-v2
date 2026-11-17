@@ -11,6 +11,7 @@ import type { GetSliderStatsUseCase } from "@/core/application/slide/get-slider-
 import type { GetSlidesUseCase } from "@/core/application/slide/get-slides.use-case";
 import type { UpdateSlideUseCase } from "@/core/application/slide/update-slide.use-case";
 import { present } from "@/core/utils/use-case-result";
+import { tenantIdOf } from "@/helpers/request-context.helpers";
 
 export class SlideController {
     constructor(
@@ -30,20 +31,20 @@ export class SlideController {
     }
 
     async getById(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const id = req.params.id;
         const result = await this.getSlidesUseCase.executeById(tenantId, id);
         return res.json(present(result, SlideResponse.fromEntity));
     }
 
     async getStats(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.getSliderStatsUseCase.execute(tenantId);
         return res.json(result);
     }
 
     async create(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const result = await this.createSlideUseCase.execute(
             tenantId,
             req.validatedBody as CreateSlideshowDTO,
@@ -52,7 +53,7 @@ export class SlideController {
     }
 
     async update(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const id = req.params.id;
         const result = await this.updateSlideUseCase.execute(
             tenantId,
@@ -63,7 +64,7 @@ export class SlideController {
     }
 
     async getAll(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const { activeOnly } = (req.validatedQuery ?? {}) as ActiveOnlyQueryDto;
         // Slides historically default to showing all (no documented activeOnly param).
         const activeOnlyFlag = activeOnly === "true";
@@ -81,7 +82,7 @@ export class SlideController {
     }
 
     async delete(req: Request, res: Response) {
-        const tenantId = req.tenantId!;
+        const tenantId = tenantIdOf(req);
         const id = req.params.id;
         const result = await this.deleteSlideUseCase.execute(tenantId, id);
         return res.json(result);
