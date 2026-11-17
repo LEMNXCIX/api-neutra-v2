@@ -410,6 +410,127 @@ const noRequireInCore: Rule = {
     },
 };
 
+/**
+ * R8: HTTP status codes stay in the delivery layer. Logging DTOs legitimately
+ * carry a `statusCode` field, so only domain errors and use cases are scanned.
+ */
+const noHttpStatusInCore: Rule = {
+    id: "R8",
+    run: (_rootDir, files) => {
+        const violations: Violation[] = [];
+        for (const file of files) {
+            const inDomain = inDirectory(file, DOMAIN_PREFIX);
+            const isUseCase =
+                inDirectory(file, `${CORE_PREFIX}application/`) &&
+                file.path.endsWith(".use-case.ts");
+            if (!inDomain && !isUseCase) continue;
+            file.lines.forEach((line, index) => {
+                if (!isCodeLine(line) || !/\bstatusCode\b/.test(line)) return;
+                violations.push(
+                    inDomain
+                        ? `${file.path}:${index + 1} uses statusCode in the domain layer`
+                        : `${file.path}:${index + 1} inspects an HTTP statusCode in a use case`,
+                );
+            });
+        }
+        return violations;
+    },
+};
+
+/** R9: persistence ports depend on domain types, never on HTTP request DTOs. */
+const portsIgnoreHttpDtos: Rule = {
+    id: "R9",
+    run: (_rootDir, files) => {
+        const violations: Violation[] = [];
+        for (const file of files) {
+            if (!inDirectory(file, `${CORE_PREFIX}repositories/`)) continue;
+            file.lines.forEach((line, index) => {
+                if (!isCodeLine(line)) return;
+                for (const { specifier } of moduleSpecifiers(line)) {
+                    const target = resolveRepoTarget(file, specifier);
+                    if (target?.startsWith("core/application/dtos/")) {
+                        violations.push(
+                            `${file.path}:${index + 1} imports "${specifier}" — ports must not depend on application DTOs`,
+                        );
+                    }
+                }
+            });
+        }
+        return violations;
+    },
+};
+
+/** Quoted text is not code: a comment-like string must not trigger a rule. */
+function withoutStringLiterals(line: string): string {
+    return line.replace(
+        /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g,
+        "",
+    );
+}
+
+/** Shared detector for R10 and R11: middleware must receive deps, not locate them. */
+function concreteWiringViolations(
+    files: readonly SourceFile[],
+    fileMatches: (path: string) => boolean,
+    label: string,
+    checkJwt: boolean,
+): Violation[] {
+    const violations: Violation[] = [];
+    for (const file of files) {
+        if (!fileMatches(file.path)) continue;
+        file.lines.forEach((line, index) => {
+            if (!isCodeLine(line)) return;
+            const specifiers = moduleSpecifiers(line);
+            const where = `${file.path}:${index + 1}`;
+            if (
+                checkJwt &&
+                specifiers.some((entry) => entry.specifier === "jsonwebtoken")
+            ) {
+                violations.push(`${where} imports "jsonwebtoken" in ${label}`);
+            }
+            if (
+                specifiers.some((entry) => /redis/i.test(entry.specifier)) ||
+                /\bRedisProvider\b/.test(line)
+            ) {
+                violations.push(
+                    `${where} imports a Redis provider in ${label}`,
+                );
+            }
+            if (/\bContainer\b/.test(withoutStringLiterals(line))) {
+                violations.push(`${where} references Container in ${label}`);
+            }
+        });
+    }
+    return violations;
+}
+
+/** R10: auth middleware only extracts a token and delegates to the use case. */
+const authMiddlewareIsThin: Rule = {
+    id: "R10",
+    run: (_rootDir, files) =>
+        concreteWiringViolations(
+            files,
+            (path) =>
+                /^middleware\/(?:(?:optional-)?authenticate|authProvider|service-token)/.test(
+                    path,
+                ),
+            "auth middleware",
+            true,
+        ),
+};
+
+/** R11: tenant/feature middleware receives its repository and cache by factory. */
+const tenantMiddlewareIsThin: Rule = {
+    id: "R11",
+    run: (_rootDir, files) =>
+        concreteWiringViolations(
+            files,
+            (path) => /^middleware\/(?:tenant|feature)/.test(path),
+            "tenant/feature middleware",
+            false,
+        ),
+};
+
 const RULES: readonly Rule[] = [
     layerDirection,
     entitiesAreTypes,
@@ -418,6 +539,10 @@ const RULES: readonly Rule[] = [
     noPresenters,
     noHardcodedMoney,
     noRequireInCore,
+    noHttpStatusInCore,
+    portsIgnoreHttpDtos,
+    authMiddlewareIsThin,
+    tenantMiddlewareIsThin,
 ];
 
 export function runArchitectureRules(context: DoctorContext): CheckRunResult {

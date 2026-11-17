@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { type Application, Router } from "express";
+import { ActiveOnlyQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import {
     AssignStaffServiceDto,
     CreateStaffDto,
@@ -10,7 +11,10 @@ import type { StaffController } from "@/interface-adapters/controllers/staff.con
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import {
+    validateDto,
+    validateQueryDto,
+} from "@/middleware/validation.middleware";
 
 function staff(
     app: Application,
@@ -157,6 +161,7 @@ function staff(
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         resolveSuperAdminTenant,
+        validateQueryDto(ActiveOnlyQueryDto),
         (req, res) => staffController.getAll(req, res),
     );
 

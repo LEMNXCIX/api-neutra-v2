@@ -8,6 +8,11 @@ import type { GetAppointmentsNeedingReviewUseCase } from "@/core/application/boo
 import type { GetAvailabilityUseCase } from "@/core/application/booking/get-availability.use-case";
 import type { UpdateAppointmentStatusUseCase } from "@/core/application/booking/update-appointment-status.use-case";
 import type {
+    AttentionAppointmentsQueryDto,
+    AvailabilityQueryDto,
+    ListAppointmentsQueryDto,
+} from "@/core/application/dtos/requests/appointment.query";
+import type {
     AppointmentMutationActor,
     CancelAppointmentDTO,
     CreateAppointmentDTO,
@@ -18,6 +23,7 @@ import { AppointmentResponse } from "@/core/application/dtos/responses/appointme
 import { AppointmentListResponse } from "@/core/application/dtos/responses/appointment/appointment-list.response";
 import { assertAppointmentStatus } from "@/core/domain/appointment/appointment.policy";
 import { hasAnyRole, hasPermission } from "@/core/domain/rbac/access-policy";
+import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
 import { resolveRequestOrigin } from "@/helpers/request-origin.helpers";
 import { APPOINTMENT_OPERATIONAL_ROLES } from "@/middleware/authorization.middleware";
@@ -35,6 +41,13 @@ function getAppointmentActor(
         canManage: isOperational && hasPermission(user, "appointments:write"),
         canDelete: isOperational && hasPermission(user, "appointments:delete"),
     };
+}
+
+/** One presenter for every list endpoint so the response shape cannot drift. */
+function presentAppointmentList(appointments: unknown): unknown[] {
+    return Array.isArray(appointments)
+        ? appointments.map((a) => AppointmentListResponse.fromEntity(a))
+        : [];
 }
 
 export class AppointmentController {
@@ -76,60 +89,38 @@ export class AppointmentController {
 
     async getAll(req: Request, res: Response) {
         const tenantId = req.tenantId;
+        const query = (req.validatedQuery ?? {}) as ListAppointmentsQueryDto;
 
         const filters: Record<string, unknown> = {};
-
-        if (req.query.userId) filters.userId = req.query.userId as string;
-        if (req.query.staffId) filters.staffId = req.query.staffId as string;
-        if (req.query.serviceId)
-            filters.serviceId = req.query.serviceId as string;
-        if (req.query.status !== undefined) {
-            assertAppointmentStatus(req.query.status);
-            filters.status = req.query.status;
+        if (query.userId) filters.userId = query.userId;
+        if (query.staffId) filters.staffId = query.staffId;
+        if (query.serviceId) filters.serviceId = query.serviceId;
+        if (query.status !== undefined) {
+            assertAppointmentStatus(query.status);
+            filters.status = query.status;
         }
-        if (req.query.startDate)
-            filters.startDate = new Date(req.query.startDate as string);
-        if (req.query.endDate)
-            filters.endDate = new Date(req.query.endDate as string);
+        if (query.startDate) filters.startDate = new Date(query.startDate);
+        if (query.endDate) filters.endDate = new Date(query.endDate);
 
-        const page = req.query.page
-            ? parseInt(req.query.page as string, 10)
-            : undefined;
-        const limit = req.query.limit
-            ? parseInt(req.query.limit as string, 10)
-            : undefined;
+        const { page, limit } = parsePagination(query);
+        const hasPagination =
+            query.page !== undefined || query.limit !== undefined;
 
-        if (page || limit) {
+        if (hasPagination) {
             const result = await this.getAppointmentsUseCase.executePaginated(
                 tenantId,
                 filters,
-                page || 1,
-                limit || 10,
+                page,
+                limit,
             );
-            return res.json(
-                present(result, (appointments) =>
-                    Array.isArray(appointments)
-                        ? appointments.map((a) =>
-                              AppointmentListResponse.fromEntity(a),
-                          )
-                        : [],
-                ),
-            );
+            return res.json(present(result, presentAppointmentList));
         }
 
         const result = await this.getAppointmentsUseCase.execute(
             tenantId,
             filters,
         );
-        return res.json(
-            present(result, (appointments) =>
-                Array.isArray(appointments)
-                    ? appointments.map((a) =>
-                          AppointmentListResponse.fromEntity(a),
-                      )
-                    : [],
-            ),
-        );
+        return res.json(present(result, presentAppointmentList));
     }
 
     async getAttention(req: Request, res: Response) {
@@ -145,28 +136,16 @@ export class AppointmentController {
             );
         }
         const tenantId = req.tenantId.trim();
-
-        const parsedPage = Number.parseInt(req.query.page as string, 10);
-        const parsedLimit = Number.parseInt(req.query.limit as string, 10);
-        const page = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
-        const limit = Number.isFinite(parsedLimit)
-            ? Math.min(100, Math.max(1, parsedLimit))
-            : 10;
+        const { page, limit } = parsePagination(
+            (req.validatedQuery ?? {}) as AttentionAppointmentsQueryDto,
+        );
 
         const result = await this.getAppointmentsNeedingReviewUseCase.execute(
             tenantId,
             page,
             limit,
         );
-        return res.json(
-            present(result, (appointments) =>
-                Array.isArray(appointments)
-                    ? appointments.map((a) =>
-                          AppointmentListResponse.fromEntity(a),
-                      )
-                    : [],
-            ),
-        );
+        return res.json(present(result, presentAppointmentList));
     }
 
     async getById(req: Request, res: Response) {
@@ -214,13 +193,14 @@ export class AppointmentController {
 
     async getAvailability(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const { staffId, serviceId, date, timezoneOffset } = req.query;
+        const { staffId, serviceId, date, timezoneOffset } =
+            (req.validatedQuery ?? {}) as AvailabilityQueryDto;
 
         const result = await this.getAvailabilityUseCase.execute(tenantId, {
-            staffId: staffId as string,
-            serviceId: serviceId as string,
-            date: date as string,
-            timezoneOffset: timezoneOffset as string,
+            staffId,
+            serviceId,
+            date,
+            timezoneOffset,
         });
 
         return res.json(result);

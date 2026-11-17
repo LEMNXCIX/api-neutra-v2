@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type { PagedSearchQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import type {
     CreateRoleDTO,
     UpdateRoleDTO,
@@ -9,6 +10,7 @@ import type { DeleteRoleUseCase } from "@/core/application/roles/delete-role.use
 import type { GetRolesUseCase } from "@/core/application/roles/get-roles.use-case";
 import type { GetRolesPaginatedUseCase } from "@/core/application/roles/get-roles-paginated.use-case";
 import type { UpdateRoleUseCase } from "@/core/application/roles/update-role.use-case";
+import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
 
 export class RoleController {
@@ -42,22 +44,15 @@ export class RoleController {
 
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
-        const page = req.query.page
-            ? parseInt(req.query.page as string, 10)
-            : undefined;
-        const limit = req.query.limit
-            ? parseInt(req.query.limit as string, 10)
-            : undefined;
-        const search = req.query.search
-            ? (req.query.search as string)
-            : undefined;
+        const query = (req.validatedQuery ?? {}) as PagedSearchQueryDto;
+        const { page, limit } = parsePagination(query);
 
-        if (page || limit || search) {
+        if (query.page || query.limit || query.search) {
             const result = await this.getRolesPaginatedUseCase.execute(
                 tenantId,
-                page,
-                limit,
-                search,
+                query.page ? page : undefined,
+                query.limit ? limit : undefined,
+                query.search,
             );
             return res.json(
                 present(result, (roles) =>

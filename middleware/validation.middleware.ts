@@ -33,6 +33,36 @@ export const validateDto = <T>(ctor: new () => T) => {
     };
 };
 
+/** Same contract as `validateDto`, but for query strings instead of a body. */
+export const validateQueryDto = <T>(ctor: new () => T) => {
+    return async (
+        req: Request,
+        res: Response,
+        next: NextFunction,
+    ): Promise<void> => {
+        const dto = plainToInstance(ctor, req.query);
+        const errors = await validate(dto as object);
+        if (errors.length > 0) {
+            const details = errors.map(
+                (err: ValidationError) =>
+                    ({
+                        code: ValidationErrorCodes.INVALID_FORMAT,
+                        message:
+                            Object.values(err.constraints || {})[0] ||
+                            "Invalid field",
+                        field: err.property,
+                        domain: "validation",
+                    }) as ErrorDetail,
+            );
+
+            res.apiError(details, "Validación fallida", 400);
+            return;
+        }
+        req.validatedQuery = dto;
+        next();
+    };
+};
+
 // Higher-order: compose multiple validators
 export const composeValidators = (
     ...validators: Array<

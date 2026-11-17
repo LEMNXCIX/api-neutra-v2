@@ -1,7 +1,12 @@
 import type { RequestHandler } from "express";
 import { type Application, Router } from "express";
+import {
+    LogListQueryDto,
+    SimpleQueryDto,
+} from "@/core/application/dtos/requests/list-query.dto";
 import type { LogController } from "@/interface-adapters/controllers/log.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
+import { validateQueryDto } from "@/middleware/validation.middleware";
 
 export default function logRoutes(
     app: Application,
@@ -120,6 +125,7 @@ export default function logRoutes(
         "/logs",
         authenticate,
         requirePermission("features:read"),
+        validateQueryDto(LogListQueryDto),
         (req, res) => controller.getAll(req, res),
     );
 
@@ -163,6 +169,7 @@ export default function logRoutes(
         "/logs/stats",
         authenticate,
         requirePermission("features:read"),
+        validateQueryDto(SimpleQueryDto),
         (req, res) => controller.getStats(req, res),
     );
 }

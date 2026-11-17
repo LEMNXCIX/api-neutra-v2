@@ -8,8 +8,10 @@ import type {
     CreateCategoryDTO,
     UpdateCategoryDTO,
 } from "@/core/application/dtos/requests/category.request";
+import type { CategoryListQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import { CategoryResponse } from "@/core/application/dtos/responses/category/category.response";
 import { CategoryType } from "@/core/entities/category.entity";
+import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
 
 export class CategoryController {
@@ -34,13 +36,8 @@ export class CategoryController {
 
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId;
-        const page = req.query.page
-            ? parseInt(req.query.page as string, 10)
-            : undefined;
-        const limit = req.query.limit
-            ? parseInt(req.query.limit as string, 10)
-            : undefined;
-        const rawType = req.query.type as string | undefined;
+        const query = (req.validatedQuery ?? {}) as CategoryListQueryDto;
+        const rawType = query.type;
         const validTypes = Object.values(CategoryType) as string[];
 
         if (rawType && !validTypes.includes(rawType)) {
@@ -52,11 +49,12 @@ export class CategoryController {
         }
 
         const type = rawType as CategoryType | undefined;
+        const { page, limit } = parsePagination(query);
 
         const result = await this.getCategoriesUseCase.execute(
             tenantId,
-            page,
-            limit,
+            query.page ? page : undefined,
+            query.limit ? limit : undefined,
             type,
         );
         return res.json(

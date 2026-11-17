@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type { PagedSearchQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import type {
     CreatePermissionDTO,
     UpdatePermissionDTO,
@@ -9,6 +10,7 @@ import type { DeletePermissionUseCase } from "@/core/application/permissions/del
 import type { GetPermissionsUseCase } from "@/core/application/permissions/get-permissions.use-case";
 import type { GetPermissionsPaginatedUseCase } from "@/core/application/permissions/get-permissions-paginated.use-case";
 import type { UpdatePermissionUseCase } from "@/core/application/permissions/update-permission.use-case";
+import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
 
 export class PermissionController {
@@ -33,22 +35,15 @@ export class PermissionController {
 
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
-        const page = req.query.page
-            ? parseInt(req.query.page as string, 10)
-            : undefined;
-        const limit = req.query.limit
-            ? parseInt(req.query.limit as string, 10)
-            : undefined;
-        const search = req.query.search
-            ? (req.query.search as string)
-            : undefined;
+        const query = (req.validatedQuery ?? {}) as PagedSearchQueryDto;
+        const { page, limit } = parsePagination(query);
 
-        if (page || limit || search) {
+        if (query.page || query.limit || query.search) {
             const result = await this.getPermissionsPaginatedUseCase.execute(
                 tenantId,
-                page,
-                limit,
-                search,
+                query.page ? page : undefined,
+                query.limit ? limit : undefined,
+                query.search,
             );
             return res.json(
                 present(result, (permissions) =>

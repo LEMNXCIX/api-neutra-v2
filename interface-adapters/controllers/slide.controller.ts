@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type { ActiveOnlyQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import type {
     CreateSlideshowDTO,
     UpdateSlideshowDTO,
@@ -63,10 +64,12 @@ export class SlideController {
 
     async getAll(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const activeOnly = req.query.activeOnly === "true";
+        const { activeOnly } = (req.validatedQuery ?? {}) as ActiveOnlyQueryDto;
+        // Slides historically default to showing all (no documented activeOnly param).
+        const activeOnlyFlag = activeOnly === "true";
 
         const result = await this.getSlidesUseCase.execute(tenantId, {
-            activeOnly,
+            activeOnly: activeOnlyFlag,
         });
         return res.json(
             present(result, (slides) =>

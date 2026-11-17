@@ -6,6 +6,7 @@ import type { GetStaffUseCase } from "@/core/application/booking/get-staff.use-c
 import type { GetStaffByUserIdUseCase } from "@/core/application/booking/get-staff-by-user-id.use-case";
 import type { SyncStaffServicesUseCase } from "@/core/application/booking/sync-staff-services.use-case";
 import type { UpdateStaffUseCase } from "@/core/application/booking/update-staff.use-case";
+import type { ActiveOnlyQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import type {
     AssignStaffServiceDTO,
     CreateStaffDTO,
@@ -40,7 +41,10 @@ export class StaffController {
     async getAll(req: Request, res: Response) {
         const tenantId = req.tenantId;
 
-        const activeOnly = req.query.activeOnly !== "false";
+        const { activeOnly: raw } = (req.validatedQuery ??
+            {}) as ActiveOnlyQueryDto;
+        // Historical default for services/staff is `true` (see Swagger).
+        const activeOnly = raw !== "false";
         const result = await this.getStaffUseCase.execute(tenantId, activeOnly);
         return res
             .status(200)

@@ -11,7 +11,9 @@ import type {
     UpdateCouponDTO,
     ValidateCouponDTO,
 } from "@/core/application/dtos/requests/coupon.request";
+import type { CouponListQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import { CouponResponse } from "@/core/application/dtos/responses/coupon/coupon.response";
+import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
 
 export class CouponController {
@@ -37,25 +39,31 @@ export class CouponController {
     getAll = async (req: Request, res: Response) => {
         const tenantId = req.tenantId!;
 
-        // Check if pagination/filtering query params are present
-        const { search, type, status, page, limit } = req.query;
+        const query = (req.validatedQuery ?? {}) as CouponListQueryDto;
+        const { page, limit } = parsePagination(query);
 
-        if (page || limit || search || type || status) {
+        if (
+            query.page ||
+            query.limit ||
+            query.search ||
+            query.type ||
+            query.status
+        ) {
             // Use paginated endpoint
             const result = await this.getCouponsPaginatedUseCase.execute(
                 tenantId,
                 {
-                    search: search as string,
-                    type: type as string,
-                    status: status as
+                    search: query.search,
+                    type: query.type,
+                    status: query.status as
                         | "active"
                         | "expired"
                         | "used"
                         | "unused"
                         | "all"
                         | undefined,
-                    page: page ? parseInt(page as string, 10) : undefined,
-                    limit: limit ? parseInt(limit as string, 10) : undefined,
+                    page: query.page ? page : undefined,
+                    limit: query.limit ? limit : undefined,
                 },
             );
             return res.json(

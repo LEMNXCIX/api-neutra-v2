@@ -1,5 +1,10 @@
 import type { Request, Response } from "express";
 import type {
+    DatedQueryDto,
+    OrderListQueryDto,
+    OrderStatusQueryDto,
+} from "@/core/application/dtos/requests/list-query.dto";
+import type {
     ChangeOrderStatusDto,
     UpdateOrderDTO,
 } from "@/core/application/dtos/requests/order.request";
@@ -13,6 +18,7 @@ import type { GetOrdersPaginatedUseCase } from "@/core/application/order/get-ord
 import type { GetUserOrdersUseCase } from "@/core/application/order/get-user-orders.use-case";
 import type { UpdateOrderUseCase } from "@/core/application/order/update-order.use-case";
 import type { OrderStatus } from "@/core/entities/order.entity";
+import { parsePagination } from "@/core/utils/pagination";
 import { present } from "@/core/utils/use-case-result";
 
 export class OrderController {
@@ -39,12 +45,11 @@ export class OrderController {
 
     async getStats(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const startDate = req.query.startDate
-            ? new Date(req.query.startDate as string)
+        const query = (req.validatedQuery ?? {}) as DatedQueryDto;
+        const startDate = query.startDate
+            ? new Date(query.startDate)
             : undefined;
-        const endDate = req.query.endDate
-            ? new Date(req.query.endDate as string)
-            : undefined;
+        const endDate = query.endDate ? new Date(query.endDate) : undefined;
 
         const result = await this.getOrderStatsUseCase.execute(
             tenantId,
@@ -88,7 +93,8 @@ export class OrderController {
     async getByUser(req: Request, res: Response) {
         const tenantId = req.tenantId!;
         const userId = req.user!.id;
-        const status = req.query.status as OrderStatus | undefined;
+        const status = ((req.validatedQuery ?? {}) as OrderStatusQueryDto)
+            .status as OrderStatus | undefined;
         const result = await this.getUserOrdersUseCase.execute(
             tenantId,
             userId,
@@ -105,22 +111,18 @@ export class OrderController {
 
     async getAll(req: Request, res: Response) {
         const tenantId = req.tenantId!;
-        const { search, status, page, limit } = req.query;
+        const query = (req.validatedQuery ?? {}) as OrderListQueryDto;
 
         // Always paginated: unbounded list endpoints are a memory/DoS risk.
-        const parsedPage = page ? parseInt(page as string, 10) : 1;
-        const parsedLimit = limit ? parseInt(limit as string, 10) : 50;
+        // Orders keep their historical default of 50 (other lists use 10).
+        const { page, limit } = parsePagination(query, { defaultLimit: 50 });
         const result = await this.getOrdersPaginatedUseCase.execute(tenantId, {
-            search: search as string,
-            status: status as string,
-            page: Math.max(1, parsedPage),
-            limit: Math.min(100, Math.max(1, parsedLimit)),
-            startDate: req.query.startDate
-                ? new Date(req.query.startDate as string)
-                : undefined,
-            endDate: req.query.endDate
-                ? new Date(req.query.endDate as string)
-                : undefined,
+            search: query.search,
+            status: query.status,
+            page,
+            limit,
+            startDate: query.startDate ? new Date(query.startDate) : undefined,
+            endDate: query.endDate ? new Date(query.endDate) : undefined,
         });
         return res.json(
             present(result, (orders) =>

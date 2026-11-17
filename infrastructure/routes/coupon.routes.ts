@@ -5,9 +5,13 @@ import {
     UpdateCouponDto,
     ValidateCouponDto,
 } from "@/core/application/dtos/requests/coupon.request";
+import { CouponListQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import type { CouponController } from "@/interface-adapters/controllers/coupon.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import {
+    validateDto,
+    validateQueryDto,
+} from "@/middleware/validation.middleware";
 
 function couponRoutes(
     app: Application,
@@ -136,6 +140,7 @@ function couponRoutes(
         requireTenantFeature("COUPONS"),
         authenticate,
         requirePermission("coupons:read"),
+        validateQueryDto(CouponListQueryDto),
         couponController.getAll,
     );
 

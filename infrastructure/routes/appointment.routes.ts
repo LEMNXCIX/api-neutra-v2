@@ -1,6 +1,11 @@
 import type { RequestHandler } from "express";
 import { type Application, Router } from "express";
 import {
+    AttentionAppointmentsQueryDto,
+    AvailabilityQueryDto,
+    ListAppointmentsQueryDto,
+} from "@/core/application/dtos/requests/appointment.query";
+import {
     CancelAppointmentDto,
     CreateAppointmentDto,
     UpdateAppointmentStatusDto,
@@ -16,7 +21,10 @@ import {
     requireConcreteTenantContext,
     requireTenantType,
 } from "@/middleware/tenant-feature.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import {
+    validateDto,
+    validateQueryDto,
+} from "@/middleware/validation.middleware";
 
 function appointments(
     app: Application,
@@ -98,9 +106,10 @@ function appointments(
      *         description: Service ID
      *       - in: query
      *         name: staffId
+     *         required: true
      *         schema:
      *           type: string
-     *         description: Staff member ID (optional)
+     *         description: Staff member ID
      *       - in: query
      *         name: date
      *         required: true
@@ -132,6 +141,7 @@ function appointments(
     router.get(
         "/availability",
         requireTenantType("BOOKING", "HYBRID"),
+        validateQueryDto(AvailabilityQueryDto),
         (req, res) => appointmentController.getAvailability(req, res),
     );
 
@@ -230,6 +240,7 @@ function appointments(
         requireTenantType("BOOKING", "HYBRID"),
         authenticate,
         resolveSuperAdminTenant,
+        validateQueryDto(ListAppointmentsQueryDto),
         (req, res) => appointmentController.getAll(req, res),
     );
 
@@ -289,6 +300,7 @@ function appointments(
         requireConcreteTenantContext,
         requirePermission("appointments:read"),
         requireAnyRole(APPOINTMENT_OPERATIONAL_ROLES),
+        validateQueryDto(AttentionAppointmentsQueryDto),
         (req, res) => appointmentController.getAttention(req, res),
     );
 

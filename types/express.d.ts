@@ -15,6 +15,7 @@ declare global {
             };
             traceId?: string;
             validatedBody?: unknown;
+            validatedQuery?: unknown;
         }
 
         interface Response {

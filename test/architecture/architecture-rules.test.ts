@@ -274,4 +274,127 @@ describe("architecture.rules", () => {
             "R7 core/utils/money.ts:1 calls require() inside core/",
         ]);
     });
+
+    test("R8 rejects statusCode in a domain error", async () => {
+        write(
+            "core/domain/errors/domain-errors.ts",
+            "export class DomainError extends Error {\n    public readonly statusCode = 400;\n}\n",
+        );
+
+        const result = await runIn(sandbox);
+
+        expect(result.status).toBe("FAIL");
+        expect(detailsFor(result, "R8")).toEqual([
+            "R8 core/domain/errors/domain-errors.ts:2 uses statusCode in the domain layer",
+        ]);
+    });
+
+    test("R8 rejects an HTTP statusCode check in a use case", async () => {
+        write(
+            "core/application/order/create-order.use-case.ts",
+            'if ("statusCode" in error && error.statusCode === 404) {\n    throw new Error("empty cart");\n}\n',
+        );
+
+        const result = await runIn(sandbox);
+
+        expect(detailsFor(result, "R8")).toEqual([
+            "R8 core/application/order/create-order.use-case.ts:1 inspects an HTTP statusCode in a use case",
+        ]);
+    });
+
+    test("R9 rejects a repository port importing an application DTO", async () => {
+        write(
+            "core/repositories/order.repository.interface.ts",
+            'import type { CreateOrderDTO } from "@/core/application/dtos/requests/order.request";\n',
+        );
+
+        const result = await runIn(sandbox);
+
+        expect(result.status).toBe("FAIL");
+        expect(detailsFor(result, "R9")).toEqual([
+            'R9 core/repositories/order.repository.interface.ts:1 imports "@/core/application/dtos/requests/order.request" — ports must not depend on application DTOs',
+        ]);
+    });
+
+    test("R10 rejects concrete JWT/Redis/Container wiring in auth middleware", async () => {
+        write(
+            "middleware/authenticate.factory.ts",
+            [
+                'import jwt from "jsonwebtoken";',
+                'import { RedisProvider } from "@/infrastructure/providers/redis.provider";',
+                'import Container from "@/infrastructure/config/container";',
+                "",
+            ].join("\n"),
+        );
+
+        const result = await runIn(sandbox);
+
+        expect(result.status).toBe("FAIL");
+        expect(detailsFor(result, "R10")).toEqual([
+            'R10 middleware/authenticate.factory.ts:1 imports "jsonwebtoken" in auth middleware',
+            "R10 middleware/authenticate.factory.ts:2 imports a Redis provider in auth middleware",
+            "R10 middleware/authenticate.factory.ts:3 references Container in auth middleware",
+        ]);
+    });
+
+    test("R11 rejects Container/Redis wiring in tenant and feature middleware", async () => {
+        write(
+            "middleware/tenant.middleware.ts",
+            [
+                'import Container from "@/infrastructure/config/container";',
+                'import { RedisProvider } from "@/infrastructure/providers/redis.provider";',
+                "",
+            ].join("\n"),
+        );
+
+        const result = await runIn(sandbox);
+
+        expect(result.status).toBe("FAIL");
+        expect(detailsFor(result, "R11")).toEqual([
+            "R11 middleware/tenant.middleware.ts:1 references Container in tenant/feature middleware",
+            "R11 middleware/tenant.middleware.ts:2 imports a Redis provider in tenant/feature middleware",
+        ]);
+    });
+
+    test("R10 detects a RedisProvider symbol behind a neutral specifier", async () => {
+        write(
+            "middleware/authenticate.factory.ts",
+            'import { RedisProvider } from "@/core/providers/cache";\n',
+        );
+
+        expect(detailsFor(await runIn(sandbox), "R10")).toEqual([
+            "R10 middleware/authenticate.factory.ts:1 imports a Redis provider in auth middleware",
+        ]);
+    });
+
+    test("R11 ignores jsonwebtoken and Container mentioned inside a string", async () => {
+        write(
+            "middleware/tenant.middleware.ts",
+            [
+                'import jwt from "jsonwebtoken";',
+                'const note = "Container is no longer used here";',
+                "",
+            ].join("\n"),
+        );
+
+        expect(detailsFor(await runIn(sandbox), "R11")).toEqual([]);
+    });
+
+    test("R10 covers authProvider and service-token middleware", async () => {
+        write(
+            "middleware/authProvider.middleware.ts",
+            'import jwt from "jsonwebtoken";\n',
+        );
+        write(
+            "middleware/service-token.middleware.ts",
+            'import { RedisProvider } from "@/infrastructure/providers/redis.provider";\n',
+        );
+
+        const result = await runIn(sandbox);
+
+        expect(detailsFor(result, "R10")).toEqual([
+            'R10 middleware/authProvider.middleware.ts:1 imports "jsonwebtoken" in auth middleware',
+            "R10 middleware/service-token.middleware.ts:1 imports a Redis provider in auth middleware",
+        ]);
+    });
 });

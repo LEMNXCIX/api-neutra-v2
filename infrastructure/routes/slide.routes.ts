@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { type Application, Router } from "express";
+import { ActiveOnlyQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import {
     CreateSlideshowDto,
     UpdateSlideshowDto,
@@ -7,7 +8,10 @@ import {
 import type { SlideController } from "@/interface-adapters/controllers/slide.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import {
+    validateDto,
+    validateQueryDto,
+} from "@/middleware/validation.middleware";
 
 function slide(
     app: Application,
@@ -155,6 +159,7 @@ function slide(
         optionalAuthenticate,
         requireTenantFeature("SLIDES"),
         resolveSuperAdminTenant,
+        validateQueryDto(ActiveOnlyQueryDto),
         slideController.getAll,
     );
 

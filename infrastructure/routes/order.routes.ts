@@ -1,6 +1,11 @@
 import type { RequestHandler } from "express";
 import { type Application, Router } from "express";
 import {
+    DatedQueryDto,
+    OrderListQueryDto,
+    OrderStatusQueryDto,
+} from "@/core/application/dtos/requests/list-query.dto";
+import {
     ChangeOrderStatusDto,
     CreateOrderDto,
     UpdateOrderDto,
@@ -8,7 +13,10 @@ import {
 import type { OrderController } from "@/interface-adapters/controllers/order.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import {
+    validateDto,
+    validateQueryDto,
+} from "@/middleware/validation.middleware";
 
 function order(
     app: Application,
@@ -175,6 +183,7 @@ function order(
         "/getOrderByUser",
         requireTenantType("STORE", "HYBRID"),
         authenticate,
+        validateQueryDto(OrderStatusQueryDto),
         orderController.getByUser,
     );
 
@@ -220,6 +229,7 @@ function order(
         requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("stats:read"),
+        validateQueryDto(DatedQueryDto),
         orderController.getStats,
     );
 
@@ -248,6 +258,7 @@ function order(
         requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:read"),
+        validateQueryDto(OrderListQueryDto),
         orderController.getAll,
     );
 
@@ -270,6 +281,7 @@ function order(
         requireTenantType("STORE", "HYBRID"),
         authenticate,
         requirePermission("orders:read"),
+        validateQueryDto(OrderListQueryDto),
         orderController.getAll,
     ); // Alias
 

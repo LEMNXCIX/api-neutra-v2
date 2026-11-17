@@ -4,10 +4,14 @@ import {
     CreateCategoryDto,
     UpdateCategoryDto,
 } from "@/core/application/dtos/requests/category.request";
+import { CategoryListQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import type { CategoryController } from "@/interface-adapters/controllers/category.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import {
+    validateDto,
+    validateQueryDto,
+} from "@/middleware/validation.middleware";
 
 function categoryRoutes(
     app: Application,
@@ -73,6 +77,7 @@ function categoryRoutes(
         "/",
         optionalAuthenticate,
         resolveSuperAdminTenant,
+        validateQueryDto(CategoryListQueryDto),
         categoryController.getAll,
     );
 

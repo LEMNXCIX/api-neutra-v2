@@ -3,6 +3,7 @@ import type { CreateServiceUseCase } from "@/core/application/booking/create-ser
 import type { DeleteServiceUseCase } from "@/core/application/booking/delete-service.use-case";
 import type { GetServicesUseCase } from "@/core/application/booking/get-services.use-case";
 import type { UpdateServiceUseCase } from "@/core/application/booking/update-service.use-case";
+import type { ActiveOnlyQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import type {
     CreateServiceDTO,
     UpdateServiceDTO,
@@ -32,7 +33,10 @@ export class ServiceController {
     async getAll(req: Request, res: Response) {
         const tenantId = req.tenantId;
 
-        const activeOnly = req.query.activeOnly !== "false";
+        const { activeOnly: raw } = (req.validatedQuery ??
+            {}) as ActiveOnlyQueryDto;
+        // Historical default for services/staff is `true` (see Swagger).
+        const activeOnly = raw !== "false";
         const result = await this.getServicesUseCase.execute(
             tenantId,
             activeOnly,

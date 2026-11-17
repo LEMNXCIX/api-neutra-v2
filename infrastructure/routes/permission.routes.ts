@@ -1,12 +1,16 @@
 import type { RequestHandler } from "express";
 import { type Application, Router } from "express";
+import { PagedSearchQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import {
     CreatePermissionDto,
     UpdatePermissionDto,
 } from "@/core/application/dtos/requests/permission.request";
 import type { PermissionController } from "@/interface-adapters/controllers/permission.controller";
 import { requirePermission } from "@/middleware/authorization.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import {
+    validateDto,
+    validateQueryDto,
+} from "@/middleware/validation.middleware";
 
 function permissionRoutes(
     app: Application,
@@ -65,6 +69,7 @@ function permissionRoutes(
         "/",
         authenticate,
         requirePermission("permissions:read"),
+        validateQueryDto(PagedSearchQueryDto),
         permissionController.getAll,
     );
 

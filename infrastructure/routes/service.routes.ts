@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { type Application, Router } from "express";
+import { ActiveOnlyQueryDto } from "@/core/application/dtos/requests/list-query.dto";
 import {
     CreateServiceDto,
     UpdateServiceDto,
@@ -8,7 +9,10 @@ import type { ServiceController } from "@/interface-adapters/controllers/service
 import { requirePermission } from "@/middleware/authorization.middleware";
 import { resolveSuperAdminTenant } from "@/middleware/super-admin-tenant-resolver.middleware";
 import { requireTenantType } from "@/middleware/tenant-feature.middleware";
-import { validateDto } from "@/middleware/validation.middleware";
+import {
+    validateDto,
+    validateQueryDto,
+} from "@/middleware/validation.middleware";
 
 function services(
     app: Application,
@@ -121,6 +125,7 @@ function services(
         requireTenantType("BOOKING", "HYBRID"),
         optionalAuthenticate,
         resolveSuperAdminTenant,
+        validateQueryDto(ActiveOnlyQueryDto),
         (req, res) => serviceController.getAll(req, res),
     );
 
