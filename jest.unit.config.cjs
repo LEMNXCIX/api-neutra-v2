@@ -5,6 +5,9 @@ const javascriptTransform = "^.+\\.[cm]?js$";
 module.exports = {
     testEnvironment: "node",
     rootDir: __dirname,
+    // Stable path so CI can persist transforms across runs. Jest still
+    // invalidates individual entries when the source changes.
+    cacheDirectory: "<rootDir>/.jest-cache",
     testMatch: [
         "<rootDir>/test/unit/**/*.test.ts",
         "<rootDir>/test/architecture/**/*.test.ts",

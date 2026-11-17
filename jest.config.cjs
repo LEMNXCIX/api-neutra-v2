@@ -1,6 +1,7 @@
 module.exports = {
     testEnvironment: "node",
     rootDir: __dirname,
+    cacheDirectory: "<rootDir>/.jest-cache",
     testMatch: ["**/test/**/*.test.ts", "**/test/**/*.test.js"],
     // Unit/architecture suites use jest.unit.config.cjs (no DB bootstrap)
     testPathIgnorePatterns: [
