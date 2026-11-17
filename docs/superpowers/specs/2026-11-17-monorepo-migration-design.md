@@ -33,6 +33,8 @@ Las decisiones abajo **revocan** explícitamente preferencias del brief original
 | D8 | **Approach B**: raíz nueva en `neutra/`, historial de API y CMS importado por `git fetch` local | Decisión de sesión |
 | D9 | **Push a `origin/main` de `api-neutra-v2` autorizado** | Decisión de sesión — revoca "no hacer push bajo ningún concepto". Se ejecuta en implementación, con verificación previa del remote; **no en esta sesión de diseño** |
 | D10 | El test de drift del front queda degradado temporalmente (no roto); se reata en la fase de incorporación del front | Decisión de sesión |
+| D11 | Paquetes sin prefijo de organización: `api`, `cms`, `@neutra/commons` | Decisión de sesión |
+| D12 | El envelope de responses, `ErrorDetail` y el catálogo de códigos son contrato compartido con el front: viven en commons y el front los consume en la fase 2 | Decisión de sesión |
 
 > Nota sobre D9: el push no es necesario para preservar los 3 commits — `git fetch` desde el repo local ya los trae. Se hace porque el usuario lo pidió explícitamente, no como mecanismo de preservación.
 
@@ -53,17 +55,17 @@ neutra/                          # directorio vacío existente; raíz del monore
 └── .github/workflows/CI.yml
 ```
 
-Nombres de paquetes propuestos, alineados con `role`: root `neutra`, API `neutra-api`, CMS `neutra-cms`, commons `@0xc1x/neutra-commons` (`workspace:*` en los consumidores).
+Nombres de paquetes: root `neutra`, API `api`, CMS `cms`, commons `@neutra/commons` (`workspace:*` en los consumidores). **Sin el prefijo `0xc1x` de `role`** (decisión de sesión).
 
 **`apps/web` no se crea**: no tiene consumidor todavía y un workspace vacío sería ruido. La incorporación del front es una fase posterior con su propio spec/plan.
 
 ### Grafo de dependencias
 
 ```
-packages/commons  ◄── apps/api
+packages/commons  ◄── apps/api      (fase 1: envelope, errores, enums y DTOs)
         ▲
-        └── apps/cms   (solo enums, en una fase posterior de CMS)
-apps/web           (fase posterior, tras cutover)
+        ├── apps/cms                (enums; resto en fase posterior de CMS)
+        └── apps/web                (fase 2: envelope, errores y DTOs; sustituye copias locales)
 ```
 
 `commons` no depende de ningún app. La API no es BFF del CMS ni del front en este diseño; el front seguirá teniendo sus propios Server Routes BFF.
@@ -75,16 +77,18 @@ apps/web           (fase posterior, tras cutover)
 | Enums de dominio (13) | `core/entities/*.ts` | `packages/commons/src/enums/` | `AppointmentStatus`, `CategoryType`, `CouponType`, `TenantType`, 8 `Loyalty*`, `OrderStatus` (string union) y `WhatsApp*` (string unions). No importan Prisma; solo aliases `@/` intra-entidad a reescribir. |
 | Entidades | `core/entities/*.ts` | `packages/commons/src/<domain>/entities/` | Tipos puros. Reescribir los `import("@/core/...")` a rutas relativas del paquete. |
 | DTOs de request (20 con class-validator) | `core/application/dtos/requests/**` | `packages/commons/src/<domain>/schemas/` | Pasan a Zod schemas + `z.infer`. Los 3 sin decoradores (`log.request.ts`, `tenant.request.ts`) pasan igual. |
-| DTOs de response (24, sin validación) | `core/application/dtos/responses/**` | `packages/commons/src/<domain>/dtos/` | Tipos + schemas Zod opcionales para contratos de test. |
-| Envelope | `types/api-response.ts` | `packages/commons/src/_common/schemas/api.schema.ts` | `ResponsePagination`, `ErrorDetail` (`metadata?: unknown`), `StandardResponse<T>` con `meta: { traceId, timestamp }`. **Forma cable exacta, sin derivas.** |
-| Catálogo de errores | `types/error-codes.ts` | `packages/commons/src/_common/errors/` | 11 familias (`AUTH_*` … `WHATSAPP_*`), `ErrorCode`, `ErrorCodes`. ~94 códigos. |
+| DTOs de response (24, sin validación) | `core/application/dtos/responses/**` | `packages/commons/src/<domain>/dtos/` | Tipos + schemas Zod opcionales para contratos de test. **Compartidos con el front en fase 2.** |
+| Envelope | `types/api-response.ts` | `packages/commons/src/_common/schemas/api.schema.ts` | `ResponsePagination`, `ErrorDetail` (`metadata?: unknown`), `StandardResponse<T>` con `meta: { traceId, timestamp }`. **Forma cable exacta, sin derivas. Consumido por API en fase 1 y por el front en fase 2 (D12).** |
+| Catálogo de errores | `types/error-codes.ts` | `packages/commons/src/_common/errors/` | 11 familias (`AUTH_*` … `WHATSAPP_*`), `ErrorCode`, `ErrorCodes`. ~94 códigos. **Compartido con el front en fase 2 (D12).** |
 | `AppError` | `types/api-response.ts` | Se queda en `apps/api` | Es comportamiento (`extends Error`, `statusCode`, `code`, `details?`), no contrato de cable. |
 | `httpStatusFromDomainError`, `getHttpStatusFromErrorCode` | `types/error-codes.ts` | Se quedan en `apps/api` | Lógica de la API. Candidatos a compartir en el futuro si el front los necesita; YAGNI ahora. |
-| Copias del front (`src/types/**`, `src/lib/error-messages.ts`) | `neutra-frontend` | Se quedan en el front | El spec de TanStack dice `src/types` se queda y "backend changes fuera de alcance". Se migran en la fase posterior con aprobación de ese spec. |
+| Copias del front (`src/types/**`, `src/lib/error-messages.ts`) | `neutra-frontend` | Temporales: permanecen en fase 1 y se eliminan en fase 2 | El envelope, los errores y los DTOs pasan a importarse desde `@neutra/commons` (D12). El spec de TanStack actual dice que `src/types` se queda; **esa parte del spec debe revisarse en fase 2**, con su propio spec/plan. No se toca `neutra-frontend` ahora. |
 
 ### Regla de propiedad
 
 `packages/commons` es la única fuente de verdad de los tipos de cable. Un cambio en un enum, código de error o envelope debe romper la compilación de sus consumidores en el mismo comando (`bun run typecheck` en la raíz con turbo). No se versionan contratos intermedios: contrato + consumidores se actualizan en el mismo commit/PR, como en `role`.
+
+Por D12, el envelope y el catálogo de errores son contrato **API ↔ front**, no detalles internos de la API. En consecuencia, `commons` debe ser **isomórfico**: solo Zod y tipos, sin importar `node:*`, Prisma, Express ni nada que dependa del runtime de Node, para que `apps/web` pueda consumirlo en navegador y en Server Routes. `AppError` y los resolvers de status HTTP se quedan en la API precisamente por eso.
 
 ## 5. Estrategia de migración por fases
 
@@ -100,7 +104,7 @@ Se ejecuta como una secuencia de commits locales incrementales, todos verificabl
 2. **Push autorizado (D9):** verificar `git remote -v` y `git branch`, luego `git push origin main` en `api-neutra-v2` para asegurar los 3 commits. Sin force push.
 3. **Importar API (Approach B):** en `neutra/`, `git remote add api ../api-neutra-v2`, `git fetch api`, `git merge --allow-unrelated-histories api/main`, y mover el árbol a `apps/api/`. Los 3 commits quedan en el historial.
 4. **`packages/commons`:** crear el paquete (`type: module`, `dist/`, `exports`, `zod` como dependencia), portar enums → entities → envelope/códigos → schemas. Build a `dist/` con `tsc`.
-5. **Consumo desde la API:** `"@0xc1x/neutra-commons": "workspace:*"`, importar enums/envelope/códigos desde commons y borrar las copias locales. `bun run typecheck` en verde.
+5. **Consumo desde la API:** `"@neutra/commons": "workspace:*"`, importar enums/envelope/códigos desde commons y borrar las copias locales. `bun run typecheck` en verde.
 6. **Reemplazo total de validación (D7):** migrar `middleware/validation.middleware.ts` y los 20 DTOs + 16 call sites a Zod; eliminar `class-validator` y `class-transformer` de `apps/api/package.json`. Ver §6.
 7. **Guards:** adaptar `check-architecture.ts`, el adapter R1–R11, `verify-production-build.ts` y agregar `check-commons-align.mjs`. Ver §7.
 8. **Build / CI / Docker:** parametrizar `tsconfig`, `prisma.config.ts`, `tsconfig.build.json`, Dockerfiles, docker-compose y CI. Ver §8.
@@ -109,7 +113,7 @@ Se ejecuta como una secuencia de commits locales incrementales, todos verificabl
 
 ### Fase 2 — Front (fuera de alcance)
 
-Tras el cutover de TanStack: crear `apps/web`, mover `src/types/**` y `src/lib/error-messages.ts` a commons, reatar el test de drift (D10) y revalidar los gates de paridad byte-a-byte del spec del front. Requiere spec/plan propio.
+Tras el cutover de TanStack: crear `apps/web`, hacer que importe `@neutra/commons` para el envelope, `ErrorDetail`, el catálogo de códigos y los DTOs de response (D12), eliminar sus copias locales en `src/types/**` y `src/lib/error-messages.ts`, reatar el test de drift (D10) y revalidar los gates de paridad byte-a-byte del spec del front. La parte del spec de TanStack que dice "`src/types` se queda" debe revisarse formalmente en esta fase. Requiere spec/plan propio.
 
 ## 6. Zod vs class-validator
 
@@ -143,7 +147,7 @@ Ningún guard se debilita para que la migración pase. Si una regla requiere cam
 | `scripts/check-architecture.ts` | Permanece en `apps/api/scripts`. Su `ROOT = __dirname/..` pasa a resolver `apps/api`, que es exactamente la raíz que asumen `PROTECTED_DIRS`, `CORE_DIRS` y los checks de `as any` / Prisma / HTTP-composition. Sin cambios semánticos. |
 | Doctor R1–R11 (`scripts/api-doctor/adapters/architecture.adapter.ts`) | Ya parametrizable vía `DoctorContext.rootDir`. El root passa a `apps/api`; los prefijos `core/`, `infrastructure/`, `middleware/` siguen siendo relativos a la app. Reglas: R1 dirección de capas, R2 entidades-tipo, R3 dominio, R4 reglas duplicadas, R5 sin presenters, R6 dinero, R7 sin `require`, R8 sin HTTP status, R9 puestos ignoran DTOs HTTP, R10/R11 middleware delgado. |
 | `verify-production-build.ts` | `moduleRoot = apps/api/scripts`; `projectRoot` detecta `apps/api/package.json` y queda en `apps/api`. Sigue verificando `dist/app.js`, Swagger y los paths `/health`, `/ready`. Sin cambios funcionales. |
-| `check-commons-align.mjs` (nuevo) | Port de `role`. Verifica que `apps/api` declare `@0xc1x/neutra-commons: workspace:*`, que `dist/index.js` + `dist/index.d.ts` existan, y que la major de `zod` coincida entre commons y la API. Se ejecuta antes de typecheck/test, en local y en CI. |
+| `check-commons-align.mjs` (nuevo) | Port de `role`. Verifica que `apps/api` declare `@neutra/commons: workspace:*`, que `dist/index.js` + `dist/index.d.ts` existan, y que la major de `zod` coincida entre commons y la API. Se ejecuta antes de typecheck/test, en local y en CI. |
 
 Scripts root sugeridos: `build`, `typecheck`, `test`, `lint`, `format:check`, `check:arch`, `doctor:api`, `commons:check` — todos vía turbo con `--filter` cuando aplique.
 
@@ -153,7 +157,7 @@ Scripts root sugeridos: `build`, `typecheck`, `test`, `lint`, `format:check`, `c
 
 - Node 22.x y setup de bun en el job raíz; caché de `bun.lock` en lugar de `package-lock.json`.
 - `bun install --frozen-lockfile` en la raíz (una sola instalación para los 3 workspaces).
-- Prisma: `generate`, `migrate deploy` y `db seed` ejecutados con `bun run --cwd apps/api ...` (o `turbo run --filter=neutra-api`).
+- Prisma: `generate`, `migrate deploy` y `db seed` ejecutados con `bun run --cwd apps/api ...` (o `turbo run --filter=api`).
 - `commons:check` antes de typecheck/test; `turbo run build` garantiza commons → consumidores.
 - `check:arch` y `doctor:api` apuntando a `apps/api`.
 - Servicios Postgres + Redis y env (`DATABASE_URL`, `SUPER_ADMIN_PASSWORD`) se mantienen.
@@ -174,6 +178,7 @@ Scripts root sugeridos: `build`, `typecheck`, `test`, `lint`, `format:check`, `c
 - [ ] `check:arch` verde; doctor **R1–R11** verde; ninguna regla debilitada.
 - [ ] `commons:check` verde: `workspace:*`, `dist/` presente, majors de zod alineados.
 - [ ] `packages/commons` compila y publica `dist/index.js` + `dist/index.d.ts`.
+- [ ] `@neutra/commons` es isomórfico: 0 imports de `node:*`, Prisma o Express (verificado por grep), de modo que el front pueda consumirlo en fase 2.
 - [ ] **0 imports de `class-validator` ni `class-transformer`** en `apps/api` (verificado por grep en CI).
 - [ ] `apps/cms` compila (`strapi build`) con las versiones importadas.
 - [ ] Los 3 commits originales (`ed9dbe0`, `96894cb`, `4dbebd5`) están presentes en el historial local.
@@ -192,6 +197,7 @@ Scripts root sugeridos: `build`, `typecheck`, `test`, `lint`, `format:check`, `c
 | Guards con raíz asumida | Ejecutar todos antes y después; `DoctorContext.rootDir` y `__dirname/..` apuntan a `apps/api`. No relajar reglas. |
 | CMS con dependencias en vuelo | Importar working tree tal cual; si no compila, revertir versiones dentro del commit de importación. No tocar el repo fuente. |
 | Test de drift del front ciego (D10) | Documentado, con fix obligatorio en fase 2. No se toca `neutra-frontend`. |
+| El envelope/errores compartidos (D12) arrastran dependencias de Node a commons | commons solo Zod + tipos; check de isomorfismo en CI y en el DoD. |
 | Push (D9) | Verificar remote y branch antes de ejecutar; sin force; solo `origin/main` de `api-neutra-v2`. |
 | Zod transitivo → directo | Declarar `zod` en commons y en la API con la misma major; `commons:check` lo verifica. |
 | `apps/web` vacío | No se crea hasta que exista consumidor real. |
